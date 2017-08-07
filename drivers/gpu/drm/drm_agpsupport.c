@@ -34,6 +34,7 @@
 #include <drm/drmP.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include "drm_legacy.h"
 
 #if __OS_HAS_AGP
 
@@ -227,7 +228,6 @@ int drm_agp_alloc(struct drm_device *dev, struct drm_agp_buffer *request)
 }
 EXPORT_SYMBOL(drm_agp_alloc);
 
-
 int drm_agp_alloc_ioctl(struct drm_device *dev, void *data,
 			struct drm_file *file_priv)
 {
@@ -287,7 +287,6 @@ int drm_agp_unbind(struct drm_device *dev, struct drm_agp_binding *request)
 }
 EXPORT_SYMBOL(drm_agp_unbind);
 
-
 int drm_agp_unbind_ioctl(struct drm_device *dev, void *data,
 			 struct drm_file *file_priv)
 {
@@ -331,7 +330,6 @@ int drm_agp_bind(struct drm_device *dev, struct drm_agp_binding *request)
 }
 EXPORT_SYMBOL(drm_agp_bind);
 
-
 int drm_agp_bind_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv)
 {
@@ -372,8 +370,6 @@ int drm_agp_free(struct drm_device *dev, struct drm_agp_buffer *request)
 	return 0;
 }
 EXPORT_SYMBOL(drm_agp_free);
-
-
 
 int drm_agp_free_ioctl(struct drm_device *dev, void *data,
 		       struct drm_file *file_priv)

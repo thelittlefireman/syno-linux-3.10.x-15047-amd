@@ -19,7 +19,6 @@
 #define KIRKWOOD_AUDIO_WIN_BASE_REG(win)	(0xA00 + ((win)<<3))
 #define KIRKWOOD_AUDIO_WIN_CTRL_REG(win)	(0xA04 + ((win)<<3))
 
-
 #define KIRKWOOD_RECCTL			0x1000
 #define KIRKWOOD_RECCTL_SPDIF_EN		(1<<11)
 #define KIRKWOOD_RECCTL_I2S_EN			(1<<10)
@@ -54,16 +53,13 @@
 #define KIRKWOOD_PLAYCTL_MONO_OFF		(0<<5)
 #define KIRKWOOD_PLAYCTL_I2S_MUTE		(1<<7)
 #define KIRKWOOD_PLAYCTL_SPDIF_EN		(1<<4)
-#define KIRKWOOD_PLAYCTL_I2S_EN			(1<<3)
+#define KIRKWOOD_PLAYCTL_I2S_EN		(1<<3)
 #define KIRKWOOD_PLAYCTL_SIZE_MASK		(7<<0)
 #define KIRKWOOD_PLAYCTL_SIZE_16		(7<<0)
 #define KIRKWOOD_PLAYCTL_SIZE_16_C		(3<<0)
 #define KIRKWOOD_PLAYCTL_SIZE_20		(2<<0)
 #define KIRKWOOD_PLAYCTL_SIZE_24		(1<<0)
 #define KIRKWOOD_PLAYCTL_SIZE_32		(0<<0)
-
-#define KIRKWOOD_PLAYCTL_ENABLE_MASK		(KIRKWOOD_PLAYCTL_SPDIF_EN | \
-						 KIRKWOOD_PLAYCTL_I2S_EN)
 
 #define KIRKWOOD_PLAY_BUF_ADDR			0x1104
 #define KIRKWOOD_PLAY_BUF_SIZE			0x1108
@@ -123,10 +119,8 @@
 /* need to find where they come from               */
 #define KIRKWOOD_SND_MIN_PERIODS		8
 #define KIRKWOOD_SND_MAX_PERIODS		16
-#define KIRKWOOD_SND_MIN_PERIOD_BYTES		0x800
-#define KIRKWOOD_SND_MAX_PERIOD_BYTES		0x8000
-#define KIRKWOOD_SND_MAX_BUFFER_BYTES		(KIRKWOOD_SND_MAX_PERIOD_BYTES \
-						 * KIRKWOOD_SND_MAX_PERIODS)
+#define KIRKWOOD_SND_MIN_PERIOD_BYTES		0x4000
+#define KIRKWOOD_SND_MAX_PERIOD_BYTES		0x4000
 
 struct kirkwood_dma_data {
 	void __iomem *io;
@@ -134,12 +128,8 @@ struct kirkwood_dma_data {
 	struct clk *extclk;
 	uint32_t ctl_play;
 	uint32_t ctl_rec;
-	struct snd_pcm_substream *substream_play;
-	struct snd_pcm_substream *substream_rec;
 	int irq;
 	int burst;
 };
-
-extern struct snd_soc_platform_driver kirkwood_soc_platform;
 
 #endif

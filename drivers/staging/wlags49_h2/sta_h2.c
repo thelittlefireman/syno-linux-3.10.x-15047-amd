@@ -24,7 +24,6 @@
  * Commandline:	g:\fw\fupu3.exe /f=4 /n=fw_image /i=r3023600.hex
  */
 
-
 #include "hcfcfg.h"	/* to get hcf_16 etc defined as well as */
 			/* possible settings which influence mdd.h or dhf.h */
 #include "mdd.h"	/* to get COMP_ID_STA etc defined */
@@ -4435,7 +4434,7 @@ static const CFG_PROG_STRCT fw_image_code[] = {
 		0000,
 	0x000F368E,	/* Start execution address */
 	},
-	{ 0000, 0000, 0000, 0000, 00000000, 0000, NULL}
+	{ 0000, 0000, 0000, 0000, 00000000, 0000, 00000000}
 };
 
 static const CFG_RANGE20_STRCT fw_image_infocompat[] = {
@@ -4472,9 +4471,8 @@ memimage fw_image = {
 	"FUPU7D37dhfwci\001C",			/* signature, <format number>, C/Bin type */
 	(CFG_PROG_STRCT *) fw_image_code,
 	0x000F368E,
-	NULL,					/* (dummy) pdaplug */
-	NULL,					/* (dummy) priplug */
+	00000000,					/* (dummy) pdaplug */
+	00000000,					/* (dummy) priplug */
 	(CFG_RANGE20_STRCT *) fw_image_infocompat,
 	(CFG_IDENTITY_STRCT *) fw_image_infoidentity,
 };
-

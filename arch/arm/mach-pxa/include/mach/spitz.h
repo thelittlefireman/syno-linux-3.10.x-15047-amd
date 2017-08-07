@@ -15,8 +15,8 @@
 #define __ASM_ARCH_SPITZ_H  1
 #endif
 
-#include "irqs.h" /* PXA_NR_BUILTIN_GPIO, PXA_GPIO_TO_IRQ */
 #include <linux/fb.h>
+#include <linux/gpio.h>
 
 /* Spitz/Akita GPIOs */
 
@@ -54,7 +54,6 @@
 #define SPITZ_GPIO_CF2_IRQ         (106) /* CF slot1 Ready */
 #define SPITZ_GPIO_CF2_CD          (93)
 
-
 /* Spitz/Akita Keyboard Definitions */
 
 #define SPITZ_KEY_STROBE_NUM         (11)
@@ -87,7 +86,6 @@
 #define SPITZ_GPIO_KEY_SENSE4        36
 #define SPITZ_GPIO_KEY_SENSE5        38
 #define SPITZ_GPIO_KEY_SENSE6        39
-
 
 /* Spitz Scoop Device (No. 1) GPIOs */
 /* Suspend States in comments */

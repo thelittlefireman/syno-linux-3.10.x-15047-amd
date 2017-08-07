@@ -25,7 +25,6 @@
 
 #include "i2c-core.h"
 
-
 /* These symbols are exported ONLY FOR the i2c core.
  * No other users will be supported.
  */
@@ -37,7 +36,6 @@ EXPORT_SYMBOL_GPL(__i2c_board_list);
 
 int __i2c_first_dynamic_bus_num;
 EXPORT_SYMBOL_GPL(__i2c_first_dynamic_bus_num);
-
 
 /**
  * i2c_register_board_info - statically declare I2C devices

@@ -425,6 +425,8 @@ ENTRY(cpu_arm926_do_resume)
 ENDPROC(cpu_arm926_do_resume)
 #endif
 
+	__CPUINIT
+
 	.type	__arm926_setup, #function
 __arm926_setup:
 	mov	r0, #0
@@ -433,7 +435,6 @@ __arm926_setup:
 #ifdef CONFIG_MMU
 	mcr	p15, 0, r0, c8, c7		@ invalidate I,D TLBs on v4
 #endif
-
 
 #ifdef CONFIG_CPU_DCACHE_WRITETHROUGH
 	mov	r0, #4				@ disable write-back on caches explicitly

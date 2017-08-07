@@ -1,12 +1,10 @@
 #include "symbol.h"
-#include "util.h"
 
 #include <stdio.h>
 #include <fcntl.h>
 #include <string.h>
 #include <byteswap.h>
 #include <sys/stat.h>
-
 
 static bool check_need_swap(int file_endian)
 {
@@ -254,7 +252,6 @@ int symsrc__init(struct symsrc *ss, struct dso *dso __maybe_unused,
 	if (!ss->name)
 		goto out_close;
 
-	ss->fd = fd;
 	ss->type = type;
 
 	return 0;
@@ -276,7 +273,7 @@ bool symsrc__has_symtab(struct symsrc *ss __maybe_unused)
 
 void symsrc__destroy(struct symsrc *ss)
 {
-	zfree(&ss->name);
+	free(ss->name);
 	close(ss->fd);
 }
 
@@ -301,28 +298,6 @@ int dso__load_sym(struct dso *dso, struct map *map __maybe_unused,
 		return 1;
 	}
 	return 0;
-}
-
-int file__read_maps(int fd __maybe_unused, bool exe __maybe_unused,
-		    mapfn_t mapfn __maybe_unused, void *data __maybe_unused,
-		    bool *is_64_bit __maybe_unused)
-{
-	return -1;
-}
-
-int kcore_extract__create(struct kcore_extract *kce __maybe_unused)
-{
-	return -1;
-}
-
-void kcore_extract__delete(struct kcore_extract *kce __maybe_unused)
-{
-}
-
-int kcore_copy(const char *from_dir __maybe_unused,
-	       const char *to_dir __maybe_unused)
-{
-	return -1;
 }
 
 void symbol__elf_init(void)

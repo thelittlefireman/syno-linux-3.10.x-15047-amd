@@ -9,7 +9,6 @@
  * Work to add BIOS PROM support was completed by Mike Habeck.
  */
 
-#include <linux/acpi.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -30,6 +29,7 @@
 #include <asm/sn/sn_feature_sets.h>
 #include <asm/sn/sn_sal.h>
 #include <asm/sn/types.h>
+#include <linux/acpi.h>
 #include <asm/sn/acpi.h>
 
 #include "../pci.h"
@@ -38,13 +38,11 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("SGI (prarit@sgi.com, dickie@sgi.com, habeck@sgi.com)");
 MODULE_DESCRIPTION("SGI Altix Hot Plug PCI Controller Driver");
 
-
 /* SAL call error codes. Keep in sync with prom header io/include/pcibr.h */
 #define PCI_SLOT_ALREADY_UP		2	/* slot already up */
 #define PCI_SLOT_ALREADY_DOWN		3	/* slot already down */
 #define PCI_L1_ERR			7	/* L1 console command error */
 #define PCI_EMPTY_33MHZ			15	/* empty 33 MHz bus */
-
 
 #define PCIIO_ASIC_TYPE_TIOCA		4
 #define PCI_L1_QSIZE			128	/* our L1 message buffer size */
@@ -243,7 +241,6 @@ static int sn_slot_enable(struct hotplug_slot *bss_hotplug_slot,
 	 */
 	rc = sal_pcibr_slot_enable(pcibus_info, device_num, &resp, ssdt);
 
-
 	if (rc == PCI_SLOT_ALREADY_UP) {
 		dev_dbg(&slot->pci_bus->self->dev, "is already active\n");
 		return 1; /* return 1 to user */
@@ -414,7 +411,7 @@ static int enable_slot(struct hotplug_slot *bss_hotplug_slot)
 		acpi_handle rethandle;
 		acpi_status ret;
 
-		phandle = acpi_device_handle(PCI_CONTROLLER(slot->pci_bus)->companion);
+		phandle = PCI_CONTROLLER(slot->pci_bus)->acpi_handle;
 
 		if (acpi_bus_get_device(phandle, &pdevice)) {
 			dev_dbg(&slot->pci_bus->self->dev,
@@ -459,15 +456,12 @@ static int enable_slot(struct hotplug_slot *bss_hotplug_slot)
 		acpi_scan_lock_release();
 	}
 
-	pci_lock_rescan_remove();
-
 	/* Call the driver for the new device */
 	pci_bus_add_devices(slot->pci_bus);
 	/* Call the drivers for the new devices subordinate to PPB */
 	if (new_ppb)
 		pci_bus_add_devices(new_bus);
 
-	pci_unlock_rescan_remove();
 	mutex_unlock(&sn_hotplug_mutex);
 
 	if (rc == 0)
@@ -498,7 +492,7 @@ static int disable_slot(struct hotplug_slot *bss_hotplug_slot)
 
 	/* free the ACPI resources for the slot */
 	if (SN_ACPI_BASE_SUPPORT() &&
-            PCI_CONTROLLER(slot->pci_bus)->companion) {
+            PCI_CONTROLLER(slot->pci_bus)->acpi_handle) {
 		unsigned long long adr;
 		struct acpi_device *device;
 		acpi_handle phandle;
@@ -507,7 +501,7 @@ static int disable_slot(struct hotplug_slot *bss_hotplug_slot)
 		acpi_status ret;
 
 		/* Get the rootbus node pointer */
-		phandle = acpi_device_handle(PCI_CONTROLLER(slot->pci_bus)->companion);
+		phandle = PCI_CONTROLLER(slot->pci_bus)->acpi_handle;
 
 		acpi_scan_lock_acquire();
 		/*
@@ -543,7 +537,6 @@ static int disable_slot(struct hotplug_slot *bss_hotplug_slot)
 		acpi_scan_lock_release();
 	}
 
-	pci_lock_rescan_remove();
 	/* Free the SN resources assigned to the Linux device.*/
 	list_for_each_entry_safe(dev, temp, &slot->pci_bus->devices, bus_list) {
 		if (PCI_SLOT(dev->devfn) != slot->device_num + 1)
@@ -554,7 +547,6 @@ static int disable_slot(struct hotplug_slot *bss_hotplug_slot)
 		pci_stop_and_remove_bus_device(dev);
 		pci_dev_put(dev);
 	}
-	pci_unlock_rescan_remove();
 
 	/* Remove the SSDT for the slot from the ACPI namespace */
 	if (SN_ACPI_BASE_SUPPORT() && ssdt_id) {

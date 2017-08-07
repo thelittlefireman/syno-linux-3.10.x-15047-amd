@@ -23,6 +23,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -31,7 +32,6 @@
 
 #include <media/lirc.h>
 #include <media/lirc_dev.h>
-
 
 #define MOD_AUTHOR	"Venky Raju <dev@venky.ws>"
 #define MOD_DESC	"Driver for SoundGraph iMON MultiMedia IR/Display"
@@ -624,7 +624,7 @@ static void imon_incoming_packet(struct imon_context *context,
 	}
 
 	if (debug) {
-		dev_info(dev, "raw packet: ");
+		printk(KERN_INFO "raw packet: ");
 		for (i = 0; i < len; ++i)
 			printk("%02x ", buf[i]);
 		printk("\n");
@@ -807,8 +807,7 @@ static int imon_probe(struct usb_interface *interface,
 
 	/* Input endpoint is mandatory */
 	if (!ir_ep_found) {
-		dev_err(dev, "%s: no valid input (IR) endpoint found.\n",
-			__func__);
+		dev_err(dev, "%s: no valid input (IR) endpoint found.\n", __func__);
 		retval = -ENODEV;
 		alloc_status = 2;
 		goto alloc_status_switch;
@@ -878,8 +877,8 @@ static int imon_probe(struct usb_interface *interface,
 		alloc_status = 7;
 		goto unlock;
 	} else
-		dev_info(dev, "Registered iMON driver (lirc minor: %d)\n",
-			 lirc_minor);
+		dev_info(dev, "Registered iMON driver "
+			 "(lirc minor: %d)\n", lirc_minor);
 
 	/* Needed while unregistering! */
 	driver->minor = lirc_minor;
@@ -911,8 +910,8 @@ static int imon_probe(struct usb_interface *interface,
 	if (retval) {
 		dev_err(dev, "%s: usb_submit_urb failed for intf0 (%d)\n",
 			__func__, retval);
-		alloc_status = 8;
-		goto unlock;
+		mutex_unlock(&context->ctx_lock);
+		goto exit;
 	}
 
 	usb_set_intfdata(interface, context);
@@ -923,8 +922,8 @@ static int imon_probe(struct usb_interface *interface,
 
 		if (usb_register_dev(interface, &imon_class)) {
 			/* Not a fatal error, so ignore */
-			dev_info(dev, "%s: could not get a minor number for display\n",
-				 __func__);
+			dev_info(dev, "%s: could not get a minor number for "
+				 "display\n", __func__);
 		}
 	}
 
@@ -937,23 +936,17 @@ unlock:
 alloc_status_switch:
 
 	switch (alloc_status) {
-	case 8:
-		lirc_unregister_driver(driver->minor);
 	case 7:
 		usb_free_urb(tx_urb);
 	case 6:
 		usb_free_urb(rx_urb);
-		/* fall-through */
 	case 5:
 		if (rbuf)
 			lirc_buffer_free(rbuf);
-		/* fall-through */
 	case 4:
 		kfree(rbuf);
-		/* fall-through */
 	case 3:
 		kfree(driver);
-		/* fall-through */
 	case 2:
 		kfree(context);
 		context = NULL;
@@ -965,6 +958,7 @@ alloc_status_switch:
 		retval = 0;
 	}
 
+exit:
 	mutex_unlock(&driver_lock);
 
 	return retval;

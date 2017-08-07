@@ -25,7 +25,6 @@ static inline void alchemy_gpio1_input_enable(void)
 	wmb();
 }
 
-
 /* Linux gpio framework integration.
 *
 * 4 use cases of Alchemy GPIOS:
@@ -65,7 +64,6 @@ static inline int __au_irq_to_gpio(unsigned int irq)
 	return -EINVAL;
 }
 
-
 /* using gpiolib to provide up to 2 gpio_chips for on-chip gpios */
 #ifndef CONFIG_ALCHEMY_GPIO_INDIRECT	/* case (2) */
 
@@ -79,7 +77,6 @@ static inline int __au_irq_to_gpio(unsigned int irq)
 #include <asm-generic/gpio.h>
 
 #endif	/* !CONFIG_ALCHEMY_GPIO_INDIRECT */
-
 
 #endif	/* CONFIG_GPIOLIB */
 

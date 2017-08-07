@@ -69,7 +69,6 @@ MODULE_PARM_DESC(ac97_clock, "AC'97 codec clock (default 48000Hz).");
 static bool enable;
 module_param(enable, bool, 0444);
 
-
 /*
  *  Direct registers
  */
@@ -204,7 +203,6 @@ DEFINE_VIA_REGSET(MI, 0x50);
 #define  VIA_MC97_CTRL_INIT     (VIA_MC97_CTRL_ENABLE|\
                                  VIA_MC97_CTRL_SECONDARY)
 
-
 /*
  * pcm stream
  */
@@ -312,7 +310,7 @@ static int build_via_table(struct viadev *dev, struct snd_pcm_substream *substre
 			unsigned int addr;
 
 			if (idx >= VIA_TABLE_SIZE) {
-				dev_err(&pci->dev, "too much table size!\n");
+				snd_printk(KERN_ERR "via82xx: too much table size!\n");
 				return -EINVAL;
 			}
 			addr = snd_pcm_sgbuf_get_addr(substream, ofs);
@@ -329,9 +327,8 @@ static int build_via_table(struct viadev *dev, struct snd_pcm_substream *substre
 			} else
 				flag = 0; /* period continues to the next */
 			/*
-			dev_dbg(&pci->dev,
-				"tbl %d: at %d  size %d (rest %d)\n",
-				idx, ofs, r, rest);
+			printk(KERN_DEBUG "via: tbl %d: at %d  size %d "
+			       "(rest %d)\n", idx, ofs, r, rest);
 			*/
 			((u32 *)dev->table.area)[(idx<<1) + 1] = cpu_to_le32(r | flag);
 			dev->idx_table[idx].offset = ofs;
@@ -345,7 +342,6 @@ static int build_via_table(struct viadev *dev, struct snd_pcm_substream *substre
 	dev->bufsize2 = dev->bufsize / 2;
 	return 0;
 }
-
 
 static int clean_via_table(struct viadev *dev, struct snd_pcm_substream *substream,
 			   struct pci_dev *pci)
@@ -383,7 +379,7 @@ static int snd_via82xx_codec_ready(struct via82xx_modem *chip, int secondary)
 		if (!((val = snd_via82xx_codec_xread(chip)) & VIA_REG_AC97_BUSY))
 			return val & 0xffff;
 	}
-	dev_err(chip->card->dev, "codec_ready: codec %i is not ready [0x%x]\n",
+	snd_printk(KERN_ERR "codec_ready: codec %i is not ready [0x%x]\n",
 		   secondary, snd_via82xx_codec_xread(chip));
 	return -EIO;
 }
@@ -444,8 +440,7 @@ static unsigned short snd_via82xx_codec_read(struct snd_ac97 *ac97, unsigned sho
 	xval |= (reg & 0x7f) << VIA_REG_AC97_CMD_SHIFT;
       	while (1) {
       		if (again++ > 3) {
-			dev_err(chip->card->dev,
-				"codec_read: codec %i is not valid [0x%x]\n",
+			snd_printk(KERN_ERR "codec_read: codec %i is not valid [0x%x]\n",
 				   ac97->num, snd_via82xx_codec_xread(chip));
 		      	return 0xffff;
 		}
@@ -474,7 +469,6 @@ static void snd_via82xx_channel_reset(struct via82xx_modem *chip, struct viadev 
 	// outl(0, VIADEV_REG(viadev, OFFSET_CURR_PTR));
 	viadev->lastpos = 0;
 }
-
 
 /*
  *  Interrupt handler
@@ -562,9 +556,7 @@ static int snd_via82xx_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	((pos) < viadev->lastpos && ((pos) >= viadev->bufsize2 ||\
 				     viadev->lastpos < viadev->bufsize2))
 
-static inline unsigned int calc_linear_pos(struct via82xx_modem *chip,
-					   struct viadev *viadev,
-					   unsigned int idx,
+static inline unsigned int calc_linear_pos(struct viadev *viadev, unsigned int idx,
 					   unsigned int count)
 {
 	unsigned int size, res;
@@ -574,21 +566,20 @@ static inline unsigned int calc_linear_pos(struct via82xx_modem *chip,
 
 	/* check the validity of the calculated position */
 	if (size < count) {
-		dev_err(chip->card->dev,
-			"invalid via82xx_cur_ptr (size = %d, count = %d)\n",
+		snd_printd(KERN_ERR "invalid via82xx_cur_ptr (size = %d, count = %d)\n",
 			   (int)size, (int)count);
 		res = viadev->lastpos;
 	} else if (check_invalid_pos(viadev, res)) {
 #ifdef POINTER_DEBUG
-		dev_dbg(chip->card->dev,
-			"fail: idx = %i/%i, lastpos = 0x%x, bufsize2 = 0x%x, offsize = 0x%x, size = 0x%x, count = 0x%x\n",
-			idx, viadev->tbl_entries, viadev->lastpos,
+		printk(KERN_DEBUG "fail: idx = %i/%i, lastpos = 0x%x, "
+		       "bufsize2 = 0x%x, offsize = 0x%x, size = 0x%x, "
+		       "count = 0x%x\n", idx, viadev->tbl_entries, viadev->lastpos,
 		       viadev->bufsize2, viadev->idx_table[idx].offset,
 		       viadev->idx_table[idx].size, count);
 #endif
 		if (count && size < count) {
-			dev_dbg(chip->card->dev,
-				"invalid via82xx_cur_ptr, using last valid pointer\n");
+			snd_printd(KERN_ERR "invalid via82xx_cur_ptr, "
+				   "using last valid pointer\n");
 			res = viadev->lastpos;
 		} else {
 			if (! count)
@@ -600,8 +591,8 @@ static inline unsigned int calc_linear_pos(struct via82xx_modem *chip,
 				 */
 				res = viadev->idx_table[idx].offset + size;
 			if (check_invalid_pos(viadev, res)) {
-				dev_dbg(chip->card->dev,
-					"invalid via82xx_cur_ptr (2), using last valid pointer\n");
+				snd_printd(KERN_ERR "invalid via82xx_cur_ptr (2), "
+					   "using last valid pointer\n");
 				res = viadev->lastpos;
 			}
 		}
@@ -637,7 +628,7 @@ static snd_pcm_uframes_t snd_via686_pcm_pointer(struct snd_pcm_substream *substr
 	else /* CURR_PTR holds the address + 8 */
 		idx = ((ptr - (unsigned int)viadev->table.addr) / 8 - 1) %
 			viadev->tbl_entries;
-	res = calc_linear_pos(chip, viadev, idx, count);
+	res = calc_linear_pos(viadev, idx, count);
 	spin_unlock(&chip->reg_lock);
 
 	return bytes_to_frames(substream->runtime, res);
@@ -682,7 +673,6 @@ static int snd_via82xx_hw_free(struct snd_pcm_substream *substream)
 	snd_pcm_lib_free_pages(substream);
 	return 0;
 }
-
 
 /*
  * set up the table pointer
@@ -735,7 +725,6 @@ static struct snd_pcm_hardware snd_via82xx_hw =
 	.fifo_size =		0,
 };
 
-
 /*
  * open callback skeleton
  */
@@ -767,7 +756,6 @@ static int snd_via82xx_modem_pcm_open(struct via82xx_modem *chip, struct viadev 
 
 	return 0;
 }
-
 
 /*
  * open callback for playback
@@ -802,7 +790,6 @@ static int snd_via82xx_pcm_close(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-
 /* via686 playback callbacks */
 static struct snd_pcm_ops snd_via686_playback_ops = {
 	.open =		snd_via82xx_playback_open,
@@ -828,7 +815,6 @@ static struct snd_pcm_ops snd_via686_capture_ops = {
 	.pointer =	snd_via686_pcm_pointer,
 	.page =		snd_pcm_sgbuf_ops_page,
 };
-
 
 static void init_viadev(struct via82xx_modem *chip, int idx, unsigned int reg_offset,
 			int direction)
@@ -871,11 +857,9 @@ static int snd_via686_pcm_new(struct via82xx_modem *chip)
 	return 0;
 }
 
-
 /*
  *  Mixer part
  */
-
 
 static void snd_via82xx_mixer_free_ac97_bus(struct snd_ac97_bus *bus)
 {
@@ -888,7 +872,6 @@ static void snd_via82xx_mixer_free_ac97(struct snd_ac97 *ac97)
 	struct via82xx_modem *chip = ac97->private_data;
 	chip->ac97 = NULL;
 }
-
 
 static int snd_via82xx_mixer_new(struct via82xx_modem *chip)
 {
@@ -917,7 +900,6 @@ static int snd_via82xx_mixer_new(struct via82xx_modem *chip)
 
 	return 0;
 }
-
 
 /*
  * proc interface
@@ -996,8 +978,7 @@ static int snd_via82xx_chip_init(struct via82xx_modem *chip)
 	} while (time_before(jiffies, end_time));
 
 	if ((val = snd_via82xx_codec_xread(chip)) & VIA_REG_AC97_BUSY)
-		dev_err(chip->card->dev,
-			"AC'97 codec is not ready [0x%x]\n", val);
+		snd_printk(KERN_ERR "AC'97 codec is not ready [0x%x]\n", val);
 
 	snd_via82xx_codec_xwrite(chip, VIA_REG_AC97_READ |
 				 VIA_REG_AC97_SECONDARY_VALID |
@@ -1060,7 +1041,8 @@ static int snd_via82xx_resume(struct device *dev)
 	pci_set_power_state(pci, PCI_D0);
 	pci_restore_state(pci);
 	if (pci_enable_device(pci) < 0) {
-		dev_err(dev, "pci_enable_device failed, disabling device\n");
+		printk(KERN_ERR "via82xx-modem: pci_enable_device failed, "
+		       "disabling device\n");
 		snd_card_disconnect(card);
 		return -EIO;
 	}
@@ -1142,7 +1124,7 @@ static int snd_via82xx_create(struct snd_card *card,
 	chip->port = pci_resource_start(pci, 0);
 	if (request_irq(pci->irq, snd_via82xx_interrupt, IRQF_SHARED,
 			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
+		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_via82xx_free(chip);
 		return -EBUSY;
 	}
@@ -1166,10 +1148,11 @@ static int snd_via82xx_create(struct snd_card *card,
 	 * We call pci_set_master here because it does not hurt. */
 	pci_set_master(pci);
 
+	snd_card_set_dev(card, &pci->dev);
+
 	*r_via = chip;
 	return 0;
 }
-
 
 static int snd_via82xx_probe(struct pci_dev *pci,
 			     const struct pci_device_id *pci_id)
@@ -1180,7 +1163,7 @@ static int snd_via82xx_probe(struct pci_dev *pci,
 	unsigned int i;
 	int err;
 
-	err = snd_card_new(&pci->dev, index, id, THIS_MODULE, 0, &card);
+	err = snd_card_create(index, id, THIS_MODULE, 0, &card);
 	if (err < 0)
 		return err;
 
@@ -1191,7 +1174,7 @@ static int snd_via82xx_probe(struct pci_dev *pci,
 		sprintf(card->shortname, "VIA 82XX modem");
 		break;
 	default:
-		dev_err(card->dev, "invalid card type %d\n", card_type);
+		snd_printk(KERN_ERR "invalid card type %d\n", card_type);
 		err = -EINVAL;
 		goto __error;
 	}
@@ -1230,6 +1213,7 @@ static int snd_via82xx_probe(struct pci_dev *pci,
 static void snd_via82xx_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
+	pci_set_drvdata(pci, NULL);
 }
 
 static struct pci_driver via82xx_modem_driver = {

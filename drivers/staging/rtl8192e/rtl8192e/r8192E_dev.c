@@ -2,7 +2,7 @@
  * Copyright(c) 2008 - 2010 Realtek Corporation. All rights reserved.
  *
  * Based on the r8180 driver, which is:
- * Copyright 2004-2005 Andrea Merello <andrea.merello@gmail.com>, et al.
+ * Copyright 2004-2005 Andrea Merello <andreamrl@tiscali.it>, et al.
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
  * published by the Free Software Foundation.
@@ -30,7 +30,7 @@
 #include "rtl_dm.h"
 #include "rtl_wx.h"
 
-static int WDCAPARA_ADD[] = {EDCAPARA_BE, EDCAPARA_BK, EDCAPARA_VI, EDCAPARA_VO};
+extern int WDCAPARA_ADD[];
 
 void rtl8192e_start_beacon(struct net_device *dev)
 {
@@ -193,12 +193,11 @@ void rtl8192e_SetHwReg(struct net_device *dev, u8 variable, u8 *val)
 
 		dm_init_edca_turbo(dev);
 
-		u4bAcParam = (((le16_to_cpu(
-					qos_parameters->tx_op_limit[pAcParam])) <<
+		u4bAcParam = ((((u32)(qos_parameters->tx_op_limit[pAcParam])) <<
 			     AC_PARAM_TXOP_LIMIT_OFFSET) |
-			     ((le16_to_cpu(qos_parameters->cw_max[pAcParam])) <<
+			     (((u32)(qos_parameters->cw_max[pAcParam])) <<
 			     AC_PARAM_ECW_MAX_OFFSET) |
-			     ((le16_to_cpu(qos_parameters->cw_min[pAcParam])) <<
+			     (((u32)(qos_parameters->cw_min[pAcParam])) <<
 			     AC_PARAM_ECW_MIN_OFFSET) |
 			     (((u32)u1bAIFS) << AC_PARAM_AIFS_OFFSET));
 
@@ -721,7 +720,7 @@ start:
 	}
 	priv->pFirmware->firmware_status = FW_STATUS_0_INIT;
 
-	if (priv->RegRfOff)
+	if (priv->RegRfOff == true)
 		priv->rtllib->eRFPowerState = eRfOff;
 
 	ulRegRead = read_nic_dword(dev, CPU_GEN);
@@ -746,7 +745,7 @@ start:
 	}
 	RT_TRACE(COMP_INIT, "BB Config Start!\n");
 	rtStatus = rtl8192_BBConfig(dev);
-	if (!rtStatus) {
+	if (rtStatus != true) {
 		RT_TRACE(COMP_ERR, "BB Config failed\n");
 		return rtStatus;
 	}
@@ -857,7 +856,7 @@ start:
 	if (priv->ResetProgress == RESET_TYPE_NORESET) {
 		RT_TRACE(COMP_INIT, "RF Config Started!\n");
 		rtStatus = rtl8192_phy_RFConfig(dev);
-		if (!rtStatus) {
+		if (rtStatus != true) {
 			RT_TRACE(COMP_ERR, "RF Config failed\n");
 			return rtStatus;
 		}
@@ -870,7 +869,7 @@ start:
 
 	write_nic_byte(dev, 0x87, 0x0);
 
-	if (priv->RegRfOff) {
+	if (priv->RegRfOff == true) {
 		RT_TRACE((COMP_INIT | COMP_RF | COMP_POWER),
 			  "%s(): Turn off RF for RegRfOff ----------\n",
 			  __func__);
@@ -1185,7 +1184,7 @@ void  rtl8192_tx_fill_desc(struct net_device *dev, struct tx_desc *pdesc,
 						cb_desc);
 
 	if (pci_dma_mapping_error(priv->pdev, mapping))
-		RT_TRACE(COMP_ERR, "DMA Mapping error\n");
+		RT_TRACE(COMP_ERR, "DMA Mapping error\n");;
 	if (cb_desc->bAMPDUEnable) {
 		pTxFwInfo->AllowAggregation = 1;
 		pTxFwInfo->RxMF = cb_desc->ampdu_factor;
@@ -1227,7 +1226,6 @@ void  rtl8192_tx_fill_desc(struct net_device *dev, struct tx_desc *pdesc,
 
 	pdesc->SecCAMID = 0;
 	pdesc->RATid = cb_desc->RATRIndex;
-
 
 	pdesc->NoEnc = 1;
 	pdesc->SecType = 0x0;
@@ -1272,7 +1270,7 @@ void  rtl8192_tx_fill_desc(struct net_device *dev, struct tx_desc *pdesc,
 	pdesc->LastSeg = 1;
 	pdesc->TxBufferSize = skb->len;
 
-	pdesc->TxBuffAddr = mapping;
+	pdesc->TxBuffAddr = cpu_to_le32(mapping);
 }
 
 void  rtl8192_tx_fill_cmd_desc(struct net_device *dev,
@@ -1284,7 +1282,7 @@ void  rtl8192_tx_fill_cmd_desc(struct net_device *dev,
 			 PCI_DMA_TODEVICE);
 
 	if (pci_dma_mapping_error(priv->pdev, mapping))
-		RT_TRACE(COMP_ERR, "DMA Mapping error\n");
+		RT_TRACE(COMP_ERR, "DMA Mapping error\n");;
 	memset(entry, 0, 12);
 	entry->LINIP = cb_desc->bLastIniPkt;
 	entry->FirstSeg = 1;
@@ -1302,7 +1300,7 @@ void  rtl8192_tx_fill_cmd_desc(struct net_device *dev,
 		entry_tmp->RATid = (u8)DESC_PACKET_TYPE_INIT;
 	}
 	entry->TxBufferSize = skb->len;
-	entry->TxBuffAddr = mapping;
+	entry->TxBuffAddr = cpu_to_le32(mapping);
 	entry->OWN = 1;
 }
 
@@ -1447,7 +1445,6 @@ static long rtl8192_signal_scale_mapping(struct r8192_priv *priv, long currsig)
 	return retsig;
 }
 
-
 #define	 rx_hal_is_cck_rate(_pdrvinfo)\
 			((_pdrvinfo->RxRate == DESC90_RATE1M ||\
 			_pdrvinfo->RxRate == DESC90_RATE2M ||\
@@ -1496,7 +1493,6 @@ static void rtl8192_query_rxphystatus(
 			      rFPGA0_XA_HSSIParameter2, 0x200);
 		check_reg824 = 1;
 	}
-
 
 	prxpkt = (u8 *)pdrvinfo;
 
@@ -1612,7 +1608,6 @@ static void rtl8192_query_rxphystatus(
 			}
 		}
 
-
 		rx_pwr_all = (((pofdm_buf->pwdb_all) >> 1) & 0x7f) - 106;
 		pwdb_all = rtl819x_query_rxpwrpercentage(rx_pwr_all);
 
@@ -1645,7 +1640,6 @@ static void rtl8192_query_rxphystatus(
 									& 0xff);
 			}
 		}
-
 
 		rxsc_sgien_exflg = pofdm_buf->rxsc_sgien_exflg;
 		prxsc = (struct phy_ofdm_rx_status_rxsc_sgien_exintfflag *)
@@ -1755,7 +1749,6 @@ static void rtl8192_process_phyinfo(struct r8192_priv *priv, u8 *buffer,
 				 priv->stats.rx_rssi_percentage[rfpath]);
 		}
 	}
-
 
 	if (prev_st->bPacketBeacon) {
 		if (slide_beacon_adc_pwdb_statistics++ >=
@@ -1867,15 +1860,15 @@ static void rtl8192_TranslateRxSignalStuff(struct net_device *dev,
 	type = WLAN_FC_GET_TYPE(fc);
 	praddr = hdr->addr1;
 
-	bpacket_match_bssid =
-		((RTLLIB_FTYPE_CTL != type) &&
-		 ether_addr_equal(priv->rtllib->current_network.bssid,
-				  (fc & RTLLIB_FCTL_TODS) ? hdr->addr1 :
-				  (fc & RTLLIB_FCTL_FROMDS) ? hdr->addr2 :
-				  hdr->addr3) &&
-		 (!pstats->bHwError) && (!pstats->bCRC) && (!pstats->bICV));
-	bpacket_toself = bpacket_match_bssid &&		/* check this */
-			 ether_addr_equal(praddr, priv->rtllib->dev->dev_addr);
+	bpacket_match_bssid = ((RTLLIB_FTYPE_CTL != type) &&
+			(!compare_ether_addr(priv->rtllib->
+			current_network.bssid,
+			   (fc & RTLLIB_FCTL_TODS) ? hdr->addr1 :
+			   (fc & RTLLIB_FCTL_FROMDS) ? hdr->addr2 : hdr->addr3))
+		&& (!pstats->bHwError) && (!pstats->bCRC) && (!pstats->bICV));
+	bpacket_toself =  bpacket_match_bssid &&	/* check this */
+			  (!compare_ether_addr(praddr,
+			  priv->rtllib->dev->dev_addr));
 	if (WLAN_FC_GET_FRAMETYPE(fc) == RTLLIB_STYPE_BEACON)
 		bPacketBeacon = true;
 	if (bpacket_match_bssid)
@@ -2066,7 +2059,6 @@ bool rtl8192_rx_query_status_desc(struct net_device *dev,
 				 pDrvInfo->FirstAGGR, pDrvInfo->PartAggr);
 		skb_trim(skb, skb->len - 4/*sCrcLng*/);
 
-
 		stats->packetlength = stats->Length-4;
 		stats->fraglength = stats->packetlength;
 		stats->fragoffset = 0;
@@ -2108,7 +2100,6 @@ void rtl8192_halt_adapter(struct net_device *dev, bool reset)
 			write_nic_dword(dev, WFCRC1, 0xffffffff);
 			write_nic_dword(dev, WFCRC2, 0xffffffff);
 
-
 			write_nic_byte(dev, PMR, 0x5);
 			write_nic_byte(dev, MacBlkCtrl, 0xa);
 		}
@@ -2129,11 +2120,10 @@ void rtl8192_update_ratr_table(struct net_device *dev)
 	struct rtllib_device *ieee = priv->rtllib;
 	u8 *pMcsRate = ieee->dot11HTOperationalRateSet;
 	u32 ratr_value = 0;
-	u16 rate_config = 0;
 	u8 rate_index = 0;
 
-	rtl8192_config_rate(dev, &rate_config);
-	ratr_value = rate_config | *pMcsRate << 12;
+	rtl8192_config_rate(dev, (u16 *)(&ratr_value));
+	ratr_value |= (*(u16 *)(pMcsRate)) << 12;
 	switch (ieee->mode) {
 	case IEEE_A:
 		ratr_value &= 0x00000FF0;
@@ -2209,12 +2199,11 @@ rtl8192_InitializeVariables(struct net_device  *dev)
 			    IMR_RDU | IMR_RXFOVW | IMR_TXFOVW |
 			    IMR_BcnInt | IMR_TBDOK | IMR_TBDER);
 
-
 	priv->MidHighPwrTHR_L1 = 0x3B;
 	priv->MidHighPwrTHR_L2 = 0x40;
 	priv->PwrDomainProtect = false;
 
-	priv->bfirst_after_down = false;
+	priv->bfirst_after_down = 0;
 }
 
 void rtl8192_EnableInterrupt(struct net_device *dev)
@@ -2242,7 +2231,6 @@ void rtl8192_ClearInterrupt(struct net_device *dev)
 	write_nic_dword(dev, ISR, tmp);
 }
 
-
 void rtl8192_enable_rx(struct net_device *dev)
 {
 	struct r8192_priv *priv = (struct r8192_priv *)rtllib_priv(dev);
@@ -2261,7 +2249,6 @@ void rtl8192_enable_tx(struct net_device *dev)
 	for (i = 0; i < MAX_TX_QUEUE_COUNT; i++)
 		write_nic_dword(dev, TX_DESC_BASE[i], priv->tx_ring[i].dma);
 }
-
 
 void rtl8192_interrupt_recognized(struct net_device *dev, u32 *p_inta,
 				  u32 *p_intb)
@@ -2311,7 +2298,6 @@ bool rtl8192_HalRxCheckStuck(struct net_device *dev)
 			rx_chk_cnt = 0;
 	}
 
-
 	SlotIndex = (priv->SilentResetRxSlotIndex++)%SilentResetRxSoltNum;
 
 	if (priv->RxCounter == RegRxCounter) {
@@ -2326,7 +2312,6 @@ bool rtl8192_HalRxCheckStuck(struct net_device *dev)
 				TotalRxStuckCount +=
 					 priv->SilentResetRxStuckEvent[i];
 		}
-
 
 	} else {
 		priv->SilentResetRxStuckEvent[SlotIndex] = 0;

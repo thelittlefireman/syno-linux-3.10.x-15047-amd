@@ -45,7 +45,6 @@
 #include <xen/grant_table.h>
 #include <xen/xenbus.h>
 #include <xen/xen.h>
-#include <xen/features.h>
 
 #include "xenbus_probe.h"
 
@@ -120,7 +119,6 @@ int xenbus_watch_path(struct xenbus_device *dev, const char *path,
 	return err;
 }
 EXPORT_SYMBOL_GPL(xenbus_watch_path);
-
 
 /**
  * xenbus_watch_pathfmt - register a watch on a sprintf-formatted path
@@ -255,7 +253,6 @@ static char *error_path(struct xenbus_device *dev)
 	return kasprintf(GFP_KERNEL, "error/%s", dev->nodename);
 }
 
-
 static void xenbus_va_dev_error(struct xenbus_device *dev, int err,
 				const char *fmt, va_list ap)
 {
@@ -294,7 +291,6 @@ fail:
 	kfree(printf_buffer);
 	kfree(path_buffer);
 }
-
 
 /**
  * xenbus_dev_error
@@ -373,7 +369,6 @@ int xenbus_grant_ring(struct xenbus_device *dev, unsigned long ring_mfn)
 }
 EXPORT_SYMBOL_GPL(xenbus_grant_ring);
 
-
 /**
  * Allocate an event channel for the given xenbus_device, assigning the newly
  * created local port to *port.  Return 0 on success, or -errno on error.  On
@@ -399,6 +394,31 @@ int xenbus_alloc_evtchn(struct xenbus_device *dev, int *port)
 }
 EXPORT_SYMBOL_GPL(xenbus_alloc_evtchn);
 
+/**
+ * Bind to an existing interdomain event channel in another domain. Returns 0
+ * on success and stores the local port in *port. On error, returns -errno,
+ * switches the device to XenbusStateClosing, and saves the error in XenStore.
+ */
+int xenbus_bind_evtchn(struct xenbus_device *dev, int remote_port, int *port)
+{
+	struct evtchn_bind_interdomain bind_interdomain;
+	int err;
+
+	bind_interdomain.remote_dom = dev->otherend_id;
+	bind_interdomain.remote_port = remote_port;
+
+	err = HYPERVISOR_event_channel_op(EVTCHNOP_bind_interdomain,
+					  &bind_interdomain);
+	if (err)
+		xenbus_dev_fatal(dev, err,
+				 "binding to event channel %d from domain %d",
+				 remote_port, dev->otherend_id);
+	else
+		*port = bind_interdomain.local_port;
+
+	return err;
+}
+EXPORT_SYMBOL_GPL(xenbus_bind_evtchn);
 
 /**
  * Free an existing event channel. Returns 0 on success or -errno on error.
@@ -417,7 +437,6 @@ int xenbus_free_evtchn(struct xenbus_device *dev, int port)
 	return err;
 }
 EXPORT_SYMBOL_GPL(xenbus_free_evtchn);
-
 
 /**
  * xenbus_map_ring_valloc
@@ -524,7 +543,6 @@ static int xenbus_map_ring_valloc_hvm(struct xenbus_device *dev,
 	return err;
 }
 
-
 /**
  * xenbus_map_ring
  * @dev: xenbus device
@@ -559,7 +577,6 @@ int xenbus_map_ring(struct xenbus_device *dev, int gnt_ref,
 	return op.status;
 }
 EXPORT_SYMBOL_GPL(xenbus_map_ring);
-
 
 /**
  * xenbus_unmap_ring_vfree
@@ -686,7 +703,6 @@ int xenbus_unmap_ring(struct xenbus_device *dev,
 }
 EXPORT_SYMBOL_GPL(xenbus_unmap_ring);
 
-
 /**
  * xenbus_read_driver_state
  * @path: path for driver
@@ -717,7 +733,7 @@ static const struct xenbus_ring_ops ring_ops_hvm = {
 
 void __init xenbus_ring_ops_init(void)
 {
-	if (!xen_feature(XENFEAT_auto_translated_physmap))
+	if (xen_pv_domain())
 		ring_ops = &ring_ops_pv;
 	else
 		ring_ops = &ring_ops_hvm;

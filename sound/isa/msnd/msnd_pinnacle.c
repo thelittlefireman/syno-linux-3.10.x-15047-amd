@@ -192,7 +192,6 @@ static irqreturn_t snd_msnd_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-
 static int snd_msnd_reset_dsp(long io, unsigned char *info)
 {
 	int timeout = 100;
@@ -378,7 +377,6 @@ static int snd_msnd_init_sma(struct snd_msnd *chip)
 
 	return 0;
 }
-
 
 static int upload_dsp_code(struct snd_card *card)
 {
@@ -594,7 +592,6 @@ static int snd_msnd_attach(struct snd_card *card)
 		goto err_release_region;
 	}
 
-
 	if (mpu_io[0] != SNDRV_AUTO_PORT) {
 		struct snd_mpu401 *mpu;
 
@@ -634,7 +631,6 @@ err_release_region:
 	free_irq(chip->irq, chip);
 	return err;
 }
-
 
 static void snd_msnd_unload(struct snd_card *card)
 {
@@ -819,7 +815,6 @@ module_param_array(ide_irq, int, NULL, S_IRUGO);
 module_param_array(joystick_io, long, NULL, S_IRUGO);
 #endif
 
-
 static int snd_msnd_isa_match(struct device *pdev, unsigned int i)
 {
 	if (io[i] == SNDRV_AUTO_PORT)
@@ -905,11 +900,12 @@ static int snd_msnd_isa_probe(struct device *pdev, unsigned int idx)
 		return -ENODEV;
 	}
 
-	err = snd_card_new(pdev, index[idx], id[idx], THIS_MODULE,
-			   sizeof(struct snd_msnd), &card);
+	err = snd_card_create(index[idx], id[idx], THIS_MODULE,
+			      sizeof(struct snd_msnd), &card);
 	if (err < 0)
 		return err;
 
+	snd_card_set_dev(card, pdev);
 	chip = card->private_data;
 	chip->card = card;
 
@@ -1065,6 +1061,7 @@ cfg_error:
 static int snd_msnd_isa_remove(struct device *pdev, unsigned int dev)
 {
 	snd_msnd_unload(dev_get_drvdata(pdev));
+	dev_set_drvdata(pdev, NULL);
 	return 0;
 }
 
@@ -1121,14 +1118,14 @@ static int snd_msnd_pnp_detect(struct pnp_card_link *pcard,
 	 * Create a new ALSA sound card entry, in anticipation
 	 * of detecting our hardware ...
 	 */
-	ret = snd_card_new(&pcard->card->dev,
-			   index[idx], id[idx], THIS_MODULE,
-			   sizeof(struct snd_msnd), &card);
+	ret = snd_card_create(index[idx], id[idx], THIS_MODULE,
+			      sizeof(struct snd_msnd), &card);
 	if (ret < 0)
 		return ret;
 
 	chip = card->private_data;
 	chip->card = card;
+	snd_card_set_dev(card, &pcard->card->dev);
 
 	/*
 	 * Read the correct parameters off the ISA PnP bus ...
@@ -1240,4 +1237,3 @@ static void __exit snd_msnd_exit(void)
 
 module_init(snd_msnd_init);
 module_exit(snd_msnd_exit);
-

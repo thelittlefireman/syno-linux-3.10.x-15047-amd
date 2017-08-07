@@ -40,4 +40,3 @@
 	tst	\rd, #AT91_DBGU_TXEMPTY			@ DBGU_TXEMPTY = 1 when transmission complete
 	beq	1001b
 	.endm
-

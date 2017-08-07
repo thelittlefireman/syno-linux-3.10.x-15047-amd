@@ -22,7 +22,6 @@
 #ifndef __SOUND_EMU10K1_H
 #define __SOUND_EMU10K1_H
 
-
 #include <sound/pcm.h>
 #include <sound/rawmidi.h>
 #include <sound/hwdep.h>
@@ -41,7 +40,8 @@
 
 #define EMUPAGESIZE     4096
 #define MAXREQVOICES    8
-#define MAXPAGES        8192
+#define MAXPAGES0       4096	/* 32 bit mode */
+#define MAXPAGES1       8192	/* 31 bit mode */
 #define RESERVED        0
 #define NUM_MIDI        16
 #define NUM_G           64              /* use all channels */
@@ -50,8 +50,7 @@
 
 /* FIXME? - according to the OSS driver the EMU10K1 needs a 29 bit DMA mask */
 #define EMU10K1_DMA_MASK	0x7fffffffUL	/* 31bit */
-#define AUDIGY_DMA_MASK		0x7fffffffUL	/* 31bit FIXME - 32 should work? */
-						/* See ALSA bug #1276 - rlrevell */
+#define AUDIGY_DMA_MASK		0xffffffffUL	/* 32bit mode */
 
 #define TMEMSIZE        256*1024
 #define TMEMSIZEREG     4
@@ -146,7 +145,6 @@
 #define INTE_A_MIDITXENABLE2	0x00020000	/* Enable MIDI transmit-buffer-empty interrupts	*/
 #define INTE_A_MIDIRXENABLE2	0x00010000	/* Enable MIDI receive-buffer-empty interrupts	*/
 
-
 #define INTE_SAMPLERATETRACKER	0x00002000	/* Enable sample rate tracker interrupts	*/
 						/* NOTE: This bit must always be enabled       	*/
 #define INTE_FXDSPENABLE	0x00001000	/* Enable FX DSP interrupts			*/
@@ -214,8 +212,6 @@
 						/* conversion for the corresponding		*/
  						/* I2S format input				*/
 /* Rest of HCFG 0x0000000f same as below. LOCKSOUNDCACHE etc.  */
-
-
 
 /* Older chips */
 #define HCFG_CODECFORMAT_AC97	0x00000000	/* AC97 CODEC format -- Primary Output		*/
@@ -364,7 +360,6 @@
 #define JOYSTICK_BUTTONS	0x0f		/* Joystick button data				*/
 #define JOYSTICK_COMPARATOR	0xf0		/* Joystick comparator data			*/
 
-
 /********************************************************************************************************/
 /* Emu10k1 pointer-offset register set, accessed through the PTR and DATA registers			*/
 /********************************************************************************************************/
@@ -436,6 +431,8 @@
 #define CCCA_CURRADDR_MASK	0x00ffffff	/* Current address of the selected channel		*/
 #define CCCA_CURRADDR		0x18000008
 
+/* undefine CCR to avoid conflict with the definition for SH */
+#undef CCR
 #define CCR			0x09		/* Cache control register				*/
 #define CCR_CACHEINVALIDSIZE	0x07190009
 #define CCR_CACHEINVALIDSIZE_MASK	0xfe000000	/* Number of invalid samples cache for this channel    	*/
@@ -466,8 +463,11 @@
 
 #define MAPB			0x0d		/* Cache map B						*/
 
-#define MAP_PTE_MASK		0xffffe000	/* The 19 MSBs of the PTE indexed by the PTI		*/
-#define MAP_PTI_MASK		0x00001fff	/* The 13 bit index to one of the 8192 PTE dwords      	*/
+#define MAP_PTE_MASK0		0xfffff000	/* The 20 MSBs of the PTE indexed by the PTI		*/
+#define MAP_PTI_MASK0		0x00000fff	/* The 12 bit index to one of the 4096 PTE dwords      	*/
+
+#define MAP_PTE_MASK1		0xffffe000	/* The 19 MSBs of the PTE indexed by the PTI		*/
+#define MAP_PTI_MASK1		0x00001fff	/* The 13 bit index to one of the 8192 PTE dwords      	*/
 
 /* 0x0e, 0x0f: Not used */
 
@@ -527,7 +527,6 @@
 #define IFATN_ATTENUATION_MASK	0x000000ff	/* Initial attenuation in 0.375dB steps			*/
 #define IFATN_ATTENUATION	0x08000019
 
-
 #define PEFE			0x1a		/* Pitch envelope and filter envelope amount register	*/
 #define PEFE_PITCHAMOUNT_MASK	0x0000ff00	/* Pitch envlope amount					*/
 						/* Signed 2's complement, +/- one octave peak extremes	*/
@@ -540,7 +539,6 @@
 						/* Signed 2's complement, +/- one octave extremes	*/
 #define FMMOD_MOFILTER		0x000000ff	/* Filter LFO modulation depth				*/
 						/* Signed 2's complement, +/- three octave extremes	*/
-
 
 #define TREMFRQ 		0x1c		/* Tremolo amount and modulation LFO frequency register	*/
 #define TREMFRQ_DEPTH		0x0000ff00	/* Tremolo depth					*/
@@ -706,7 +704,6 @@
 
 /* Current Send H, G Amounts */
 #define A_CSHG			0x4f
-
 
 #define CDCS			0x50		/* CD-ROM digital channel status register	*/
 
@@ -952,7 +949,6 @@
 #define HIWORD_OPCODE_MASK	0x00f00000	/* Instruction opcode				*/
 #define HIWORD_RESULT_MASK	0x000ffc00	/* Instruction result				*/
 #define HIWORD_OPA_MASK		0x000003ff	/* Instruction operand A			*/
-
 
 /* Audigy Soundcard have a different instruction format */
 #define A_MICROCODEBASE		0x600
@@ -1704,6 +1700,7 @@ struct snd_emu10k1 {
 	unsigned short model;			/* subsystem id */
 	unsigned int card_type;			/* EMU10K1_CARD_* */
 	unsigned int ecard_ctrl;		/* ecard control bits */
+	unsigned int address_mode;		/* address mode */
 	unsigned long dma_mask;			/* PCI DMA mask */
 	unsigned int delay_pcm_irq;		/* in samples */
 	int max_cache_pages;			/* max memory size / PAGE_SIZE */

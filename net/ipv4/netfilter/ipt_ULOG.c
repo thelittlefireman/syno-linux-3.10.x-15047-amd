@@ -121,7 +121,6 @@ static void ulog_send(struct ulog_net *ulog, unsigned int nlgroupnum)
 	ub->lastnlh = NULL;
 }
 
-
 /* timer function to flush queue in flushtimeout time */
 static void ulog_timer(unsigned long data)
 {
@@ -325,12 +324,6 @@ static void ipt_logfn(struct net *net,
 static int ulog_tg_check(const struct xt_tgchk_param *par)
 {
 	const struct ipt_ulog_info *loginfo = par->targinfo;
-
-	if (!par->net->xt.ulog_warn_deprecated) {
-		pr_info("ULOG is deprecated and it will be removed soon, "
-			"use NFLOG instead\n");
-		par->net->xt.ulog_warn_deprecated = true;
-	}
 
 	if (loginfo->prefix[sizeof(loginfo->prefix) - 1] != '\0') {
 		pr_debug("prefix not null-terminated\n");

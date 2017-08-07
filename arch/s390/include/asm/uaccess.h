@@ -19,7 +19,6 @@
 #define VERIFY_READ     0
 #define VERIFY_WRITE    1
 
-
 /*
  * The fs value determines whether argument validity checking should be
  * performed or not.  If get_fs() == USER_DS, checking is performed, with
@@ -29,7 +28,6 @@
  */
 
 #define MAKE_MM_SEG(a)  ((mm_segment_t) { (a) })
-
 
 #define KERNEL_DS       MAKE_MM_SEG(0)
 #define USER_DS         MAKE_MM_SEG(1)
@@ -92,56 +90,37 @@ static inline unsigned long extable_fixup(const struct exception_table_entry *x)
 #define ARCH_HAS_SORT_EXTABLE
 #define ARCH_HAS_SEARCH_EXTABLE
 
-/**
- * __copy_from_user: - Copy a block of data from user space, with less checking.
- * @to:   Destination address, in kernel space.
- * @from: Source address, in user space.
- * @n:	  Number of bytes to copy.
- *
- * Context: User context only.	This function may sleep.
- *
- * Copy data from user space to kernel space.  Caller must check
- * the specified block with access_ok() before calling this function.
- *
- * Returns number of bytes that could not be copied.
- * On success, this will be zero.
- *
- * If some data could not be copied, this function will pad the copied
- * data to the requested size using zero bytes.
- */
-unsigned long __must_check __copy_from_user(void *to, const void __user *from,
-					    unsigned long n);
+struct uaccess_ops {
+	size_t (*copy_from_user)(size_t, const void __user *, void *);
+	size_t (*copy_from_user_small)(size_t, const void __user *, void *);
+	size_t (*copy_to_user)(size_t, void __user *, const void *);
+	size_t (*copy_to_user_small)(size_t, void __user *, const void *);
+	size_t (*copy_in_user)(size_t, void __user *, const void __user *);
+	size_t (*clear_user)(size_t, void __user *);
+	size_t (*strnlen_user)(size_t, const char __user *);
+	size_t (*strncpy_from_user)(size_t, const char __user *, char *);
+	int (*futex_atomic_op)(int op, u32 __user *, int oparg, int *old);
+	int (*futex_atomic_cmpxchg)(u32 *, u32 __user *, u32 old, u32 new);
+};
 
-/**
- * __copy_to_user: - Copy a block of data into user space, with less checking.
- * @to:   Destination address, in user space.
- * @from: Source address, in kernel space.
- * @n:	  Number of bytes to copy.
- *
- * Context: User context only.	This function may sleep.
- *
- * Copy data from kernel space to user space.  Caller must check
- * the specified block with access_ok() before calling this function.
- *
- * Returns number of bytes that could not be copied.
- * On success, this will be zero.
- */
-unsigned long __must_check __copy_to_user(void __user *to, const void *from,
-					  unsigned long n);
+extern struct uaccess_ops uaccess;
+extern struct uaccess_ops uaccess_std;
+extern struct uaccess_ops uaccess_mvcos;
+extern struct uaccess_ops uaccess_mvcos_switch;
+extern struct uaccess_ops uaccess_pt;
 
-#define __copy_to_user_inatomic __copy_to_user
-#define __copy_from_user_inatomic __copy_from_user
+extern int __handle_fault(unsigned long, unsigned long, int);
 
-static inline int __put_user_fn(void *x, void __user *ptr, unsigned long size)
+static inline int __put_user_fn(size_t size, void __user *ptr, void *x)
 {
-	size = __copy_to_user(ptr, x, size);
-	return size ? -EFAULT : 0;
+	size = uaccess.copy_to_user_small(size, ptr, x);
+	return size ? -EFAULT : size;
 }
 
-static inline int __get_user_fn(void *x, const void __user *ptr, unsigned long size)
+static inline int __get_user_fn(size_t size, const void __user *ptr, void *x)
 {
-	size = __copy_from_user(x, ptr, size);
-	return size ? -EFAULT : 0;
+	size = uaccess.copy_from_user_small(size, ptr, x);
+	return size ? -EFAULT : size;
 }
 
 /*
@@ -158,8 +137,8 @@ static inline int __get_user_fn(void *x, const void __user *ptr, unsigned long s
 	case 2:							\
 	case 4:							\
 	case 8:							\
-		__pu_err = __put_user_fn(&__x, ptr,		\
-					 sizeof(*(ptr)));	\
+		__pu_err = __put_user_fn(sizeof (*(ptr)),	\
+					 ptr, &__x);		\
 		break;						\
 	default:						\
 		__put_user_bad();				\
@@ -174,8 +153,7 @@ static inline int __get_user_fn(void *x, const void __user *ptr, unsigned long s
 	__put_user(x, ptr);					\
 })
 
-
-int __put_user_bad(void) __attribute__((noreturn));
+extern int __put_user_bad(void) __attribute__((noreturn));
 
 #define __get_user(x, ptr)					\
 ({								\
@@ -184,29 +162,29 @@ int __put_user_bad(void) __attribute__((noreturn));
 	switch (sizeof(*(ptr))) {				\
 	case 1: {						\
 		unsigned char __x;				\
-		__gu_err = __get_user_fn(&__x, ptr,		\
-					 sizeof(*(ptr)));	\
+		__gu_err = __get_user_fn(sizeof (*(ptr)),	\
+					 ptr, &__x);		\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 2: {						\
 		unsigned short __x;				\
-		__gu_err = __get_user_fn(&__x, ptr,		\
-					 sizeof(*(ptr)));	\
+		__gu_err = __get_user_fn(sizeof (*(ptr)),	\
+					 ptr, &__x);		\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 4: {						\
 		unsigned int __x;				\
-		__gu_err = __get_user_fn(&__x, ptr,		\
-					 sizeof(*(ptr)));	\
+		__gu_err = __get_user_fn(sizeof (*(ptr)),	\
+					 ptr, &__x);		\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
 	case 8: {						\
 		unsigned long long __x;				\
-		__gu_err = __get_user_fn(&__x, ptr,		\
-					 sizeof(*(ptr)));	\
+		__gu_err = __get_user_fn(sizeof (*(ptr)),	\
+					 ptr, &__x);		\
 		(x) = *(__force __typeof__(*(ptr)) *) &__x;	\
 		break;						\
 	};							\
@@ -223,10 +201,36 @@ int __put_user_bad(void) __attribute__((noreturn));
 	__get_user(x, ptr);					\
 })
 
-int __get_user_bad(void) __attribute__((noreturn));
+extern int __get_user_bad(void) __attribute__((noreturn));
 
 #define __put_user_unaligned __put_user
 #define __get_user_unaligned __get_user
+
+/**
+ * __copy_to_user: - Copy a block of data into user space, with less checking.
+ * @to:   Destination address, in user space.
+ * @from: Source address, in kernel space.
+ * @n:    Number of bytes to copy.
+ *
+ * Context: User context only.  This function may sleep.
+ *
+ * Copy data from kernel space to user space.  Caller must check
+ * the specified block with access_ok() before calling this function.
+ *
+ * Returns number of bytes that could not be copied.
+ * On success, this will be zero.
+ */
+static inline unsigned long __must_check
+__copy_to_user(void __user *to, const void *from, unsigned long n)
+{
+	if (__builtin_constant_p(n) && (n <= 256))
+		return uaccess.copy_to_user_small(n, to, from);
+	else
+		return uaccess.copy_to_user(n, to, from);
+}
+
+#define __copy_to_user_inatomic __copy_to_user
+#define __copy_from_user_inatomic __copy_from_user
 
 /**
  * copy_to_user: - Copy a block of data into user space.
@@ -248,7 +252,33 @@ copy_to_user(void __user *to, const void *from, unsigned long n)
 	return __copy_to_user(to, from, n);
 }
 
-void copy_from_user_overflow(void)
+/**
+ * __copy_from_user: - Copy a block of data from user space, with less checking.
+ * @to:   Destination address, in kernel space.
+ * @from: Source address, in user space.
+ * @n:    Number of bytes to copy.
+ *
+ * Context: User context only.  This function may sleep.
+ *
+ * Copy data from user space to kernel space.  Caller must check
+ * the specified block with access_ok() before calling this function.
+ *
+ * Returns number of bytes that could not be copied.
+ * On success, this will be zero.
+ *
+ * If some data could not be copied, this function will pad the copied
+ * data to the requested size using zero bytes.
+ */
+static inline unsigned long __must_check
+__copy_from_user(void *to, const void __user *from, unsigned long n)
+{
+	if (__builtin_constant_p(n) && (n <= 256))
+		return uaccess.copy_from_user_small(n, from, to);
+	else
+		return uaccess.copy_from_user(n, from, to);
+}
+
+extern void copy_from_user_overflow(void)
 #ifdef CONFIG_DEBUG_STRICT_USER_COPY_CHECKS
 __compiletime_warning("copy_from_user() buffer size is not provably correct")
 #endif
@@ -283,8 +313,11 @@ copy_from_user(void *to, const void __user *from, unsigned long n)
 	return __copy_from_user(to, from, n);
 }
 
-unsigned long __must_check
-__copy_in_user(void __user *to, const void __user *from, unsigned long n);
+static inline unsigned long __must_check
+__copy_in_user(void __user *to, const void __user *from, unsigned long n)
+{
+	return uaccess.copy_in_user(n, to, from);
+}
 
 static inline unsigned long __must_check
 copy_in_user(void __user *to, const void __user *from, unsigned long n)
@@ -296,22 +329,18 @@ copy_in_user(void __user *to, const void __user *from, unsigned long n)
 /*
  * Copy a null terminated string from userspace.
  */
-
-long __strncpy_from_user(char *dst, const char __user *src, long count);
-
 static inline long __must_check
 strncpy_from_user(char *dst, const char __user *src, long count)
 {
 	might_fault();
-	return __strncpy_from_user(dst, src, count);
+	return uaccess.strncpy_from_user(count, src, dst);
 }
 
-unsigned long __must_check __strnlen_user(const char __user *src, unsigned long count);
-
-static inline unsigned long strnlen_user(const char __user *src, unsigned long n)
+static inline unsigned long
+strnlen_user(const char __user * src, unsigned long n)
 {
 	might_fault();
-	return __strnlen_user(src, n);
+	return uaccess.strnlen_user(n, src);
 }
 
 /**
@@ -333,14 +362,21 @@ static inline unsigned long strnlen_user(const char __user *src, unsigned long n
 /*
  * Zero Userspace
  */
-unsigned long __must_check __clear_user(void __user *to, unsigned long size);
 
-static inline unsigned long __must_check clear_user(void __user *to, unsigned long n)
+static inline unsigned long __must_check
+__clear_user(void __user *to, unsigned long n)
 {
-	might_fault();
-	return __clear_user(to, n);
+	return uaccess.clear_user(n, to);
 }
 
-int copy_to_user_real(void __user *dest, void *src, unsigned long count);
+static inline unsigned long __must_check
+clear_user(void __user *to, unsigned long n)
+{
+	might_fault();
+	return uaccess.clear_user(n, to);
+}
+
+extern int copy_to_user_real(void __user *dest, void *src, size_t count);
+extern int copy_from_user_real(void *dest, void __user *src, size_t count);
 
 #endif /* __S390_UACCESS_H */

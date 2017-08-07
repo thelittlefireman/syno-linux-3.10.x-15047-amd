@@ -237,10 +237,7 @@ static void pnx8xxx_rx_chars(struct pnx8xxx_port *sport)
 		status = FIFO_TO_SM(serial_in(sport, PNX8XXX_FIFO)) |
 			 ISTAT_TO_SM(serial_in(sport, PNX8XXX_ISTAT));
 	}
-
-	spin_unlock(&sport->port.lock);
 	tty_flip_buffer_push(&sport->port.state->port);
-	spin_lock(&sport->port.lock);
 }
 
 static void pnx8xxx_tx_chars(struct pnx8xxx_port *sport)
@@ -635,7 +632,6 @@ static struct uart_ops pnx8xxx_pops = {
 	.verify_port	= pnx8xxx_verify_port,
 };
 
-
 /*
  * Setup the PNX8XXX serial ports.
  *
@@ -803,6 +799,8 @@ static int pnx8xxx_serial_probe(struct platform_device *pdev)
 static int pnx8xxx_serial_remove(struct platform_device *pdev)
 {
 	struct pnx8xxx_port *sport = platform_get_drvdata(pdev);
+
+	platform_set_drvdata(pdev, NULL);
 
 	if (sport)
 		uart_remove_one_port(&pnx8xxx_reg, &sport->port);

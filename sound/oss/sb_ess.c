@@ -244,7 +244,6 @@ static struct ess_command ess_i16s[] =		/* input 16 bit stereo */
 static struct ess_command *ess_inp_cmds[] =
 	{ ess_i08m, ess_i16m, ess_i08s, ess_i16s };
 
-
 /*
  * Commands for initializing Audio 1 for output (playback)
  */
@@ -865,6 +864,8 @@ printk(KERN_INFO "FKS: ess_dsp_reset 1\n");
 ess_show_mixerregs (devc);
 #endif
 
+	DEB(printk("Entered ess_dsp_reset()\n"));
+
 	outb(3, DSP_RESET); /* Reset FIFO too */
 
 	udelay(10);
@@ -878,6 +879,8 @@ ess_show_mixerregs (devc);
 		return 0;   /* Sorry */
 	}
 	ess_extended (devc);
+
+	DEB(printk("sb_dsp_reset() OK\n"));
 
 #ifdef FKS_LOGGING
 printk(KERN_INFO "FKS: dsp_reset 2\n");
@@ -1540,7 +1543,7 @@ static int ess_has_rec_mixer (int submodel)
 		return 1;
 	default:
 		return 0;
-	}
+	};
 };
 
 #ifdef FKS_LOGGING
@@ -1824,4 +1827,3 @@ int ess_midi_init(sb_devc * devc, struct address_info *hw_config)
 
 	return 1;
 }
-

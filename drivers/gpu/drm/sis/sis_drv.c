@@ -72,6 +72,7 @@ static const struct file_operations sis_driver_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = drm_mmap,
 	.poll = drm_poll,
+	.fasync = drm_fasync,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = drm_compat_ioctl,
 #endif
@@ -94,7 +95,7 @@ static int sis_driver_open(struct drm_device *dev, struct drm_file *file)
 	return 0;
 }
 
-static void sis_driver_postclose(struct drm_device *dev, struct drm_file *file)
+void sis_driver_postclose(struct drm_device *dev, struct drm_file *file)
 {
 	struct sis_file_private *file_priv = file->driver_priv;
 
@@ -102,7 +103,7 @@ static void sis_driver_postclose(struct drm_device *dev, struct drm_file *file)
 }
 
 static struct drm_driver driver = {
-	.driver_features = DRIVER_USE_AGP,
+	.driver_features = DRIVER_USE_AGP | DRIVER_USE_MTRR,
 	.load = sis_driver_load,
 	.unload = sis_driver_unload,
 	.open = sis_driver_open,

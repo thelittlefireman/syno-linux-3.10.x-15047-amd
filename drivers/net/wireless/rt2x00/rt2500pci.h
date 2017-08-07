@@ -13,7 +13,9 @@
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, see <http://www.gnu.org/licenses/>.
+	along with this program; if not, write to the
+	Free Software Foundation, Inc.,
+	59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /*
@@ -877,7 +879,6 @@
 #define ARTCSR0_ACK_CTS_5_5MBS		FIELD32(0x0000ff00)
 #define ARTCSR0_ACK_CTS_2MBS		FIELD32(0x00ff0000)
 #define ARTCSR0_ACK_CTS_1MBS		FIELD32(0xff000000)
-
 
 /*
  * ARTCSR1: OFDM ACK/CTS payload consumed time for 6/9/12/18 mbps.

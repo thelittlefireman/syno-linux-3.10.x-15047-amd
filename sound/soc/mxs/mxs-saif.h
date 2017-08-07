@@ -16,7 +16,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-
 #ifndef _MXS_SAIF_H
 #define _MXS_SAIF_H
 
@@ -117,6 +116,7 @@ struct mxs_saif {
 	unsigned int mclk_in_use;
 	void __iomem *base;
 	int irq;
+	struct mxs_pcm_dma_params dma_param;
 	unsigned int id;
 	unsigned int master_id;
 	unsigned int cur_rate;
@@ -124,11 +124,6 @@ struct mxs_saif {
 
 	u32 fifo_underrun;
 	u32 fifo_overrun;
-
-	enum {
-		MXS_SAIF_STATE_STOPPED,
-		MXS_SAIF_STATE_RUNNING,
-	} state;
 };
 
 extern int mxs_saif_put_mclk(unsigned int saif_id);

@@ -29,7 +29,6 @@
 #define WKUP_MOD					0x400
 #define PLL_MOD						0x500
 
-
 /* Chip-specific module offsets */
 #define OMAP24XX_GR_MOD					OCP_MOD
 #define OMAP24XX_DSP_MOD				0x800
@@ -47,18 +46,6 @@
 #define OMAP3430_GR_MOD					0xa00
 #define OMAP3430_NEON_MOD				0xb00
 #define OMAP3430ES2_USBHOST_MOD				0xc00
-
-/*
- * TI81XX PRM module offsets
- */
-#define TI81XX_PRM_DEVICE_MOD			0x0000
-#define TI816X_PRM_ACTIVE_MOD			0x0a00
-#define TI81XX_PRM_DEFAULT_MOD			0x0b00
-#define TI816X_PRM_IVAHD0_MOD			0x0c00
-#define TI816X_PRM_IVAHD1_MOD			0x0d00
-#define TI816X_PRM_IVAHD2_MOD			0x0e00
-#define TI816X_PRM_SGX_MOD				0x0f00
-#define TI81XX_PRM_ALWON_MOD			0x1800
 
 /* 24XX register bits shared between CM & PRM registers */
 
@@ -199,7 +186,6 @@
 /* CM_IDLEST_MDM and PM_WKST_MDM shared bits */
 #define OMAP2430_ST_MDM_SHIFT				0
 #define OMAP2430_ST_MDM_MASK				(1 << 0)
-
 
 /* 3430 register bits shared between CM & PRM registers */
 
@@ -417,8 +403,6 @@
 #define OMAP3430_EN_CORE_SHIFT				0
 #define OMAP3430_EN_CORE_MASK				(1 << 0)
 
-
-
 /*
  * Maximum time(us) it takes to output the signal WUCLKOUT of the last
  * pad of the I/O ring after asserting WUCLKIN high.  Tero measured
@@ -503,4 +487,3 @@ extern void omap_prcm_irq_complete(void);
 # endif
 
 #endif
-

@@ -379,7 +379,6 @@ static inline void print_err_status(struct tm6000_core *dev,
 	}
 }
 
-
 /*
  * Controls the isoc copy of each urb packet
  */
@@ -620,7 +619,6 @@ static int tm6000_prepare_isoc(struct tm6000_core *dev)
 		    max_packets, num_bufs, sb_size,
 		    dev->isoc_in.maxsize, size);
 
-
 	if (!dev->urb_buffer && tm6000_alloc_urb_buffers(dev) < 0) {
 		tm6000_err("cannot allocate memory for urb buffers\n");
 
@@ -745,7 +743,6 @@ buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 	int rc = 0;
 
 	BUG_ON(NULL == fh->fmt);
-
 
 	/* FIXME: It assumes depth=2 */
 	/* The only currently supported format is 16 bits/pixel */
@@ -1076,15 +1073,6 @@ static int vidioc_s_std(struct file *file, void *priv, v4l2_std_id norm)
 	return 0;
 }
 
-static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *norm)
-{
-	struct tm6000_fh *fh = priv;
-	struct tm6000_core *dev = fh->dev;
-
-	*norm = dev->norm;
-	return 0;
-}
-
 static const char *iname[] = {
 	[TM6000_INPUT_TV] = "Television",
 	[TM6000_INPUT_COMPOSITE1] = "Composite 1",
@@ -1143,7 +1131,7 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 
 	dev->input = i;
 
-	rc = vidioc_s_std(file, priv, dev->norm);
+	rc = vidioc_s_std(file, priv, dev->vfd->current_norm);
 
 	return rc;
 }
@@ -1556,7 +1544,6 @@ static const struct v4l2_ioctl_ops video_ioctl_ops = {
 	.vidioc_try_fmt_vid_cap   = vidioc_try_fmt_vid_cap,
 	.vidioc_s_fmt_vid_cap     = vidioc_s_fmt_vid_cap,
 	.vidioc_s_std             = vidioc_s_std,
-	.vidioc_g_std             = vidioc_g_std,
 	.vidioc_enum_input        = vidioc_enum_input,
 	.vidioc_g_input           = vidioc_g_input,
 	.vidioc_s_input           = vidioc_s_input,
@@ -1580,6 +1567,7 @@ static struct video_device tm6000_template = {
 	.ioctl_ops      = &video_ioctl_ops,
 	.release	= video_device_release,
 	.tvnorms        = TM6000_STD,
+	.current_norm   = V4L2_STD_NTSC_M,
 };
 
 static const struct v4l2_file_operations radio_fops = {

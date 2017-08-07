@@ -38,7 +38,6 @@ config KVM
 	select PERF_EVENTS
 	select HAVE_KVM_MSI
 	select HAVE_KVM_CPU_RELAX_INTERCEPT
-	select KVM_VFIO
 	---help---
 	  Support hosting fully virtualized guest machines using hardware
 	  virtualization extensions.  You will need a fairly recent
@@ -80,7 +79,7 @@ config KVM_MMU_AUDIT
 	depends on KVM && TRACEPOINTS
 	---help---
 	 This option adds a R/W kVM module parameter 'mmu_audit', which allows
-	 auditing of KVM MMU events at runtime.
+	 audit  KVM MMU at runtime.
 
 config KVM_DEVICE_ASSIGNMENT
 	bool "KVM legacy PCI device assignment support"

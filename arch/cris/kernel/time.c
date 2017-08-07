@@ -31,7 +31,6 @@
 #include <linux/profile.h>
 #include <linux/sched.h>	/* just for sched_clock() - funny that */
 
-
 #define D(x)
 
 #define TICK_SIZE tick
@@ -51,7 +50,6 @@ unsigned long get_cmos_time(void)
 	return 0;
 }
 
-
 int update_persistent_clock(struct timespec now)
 {
 	return set_rtc_mmss(now.tv_sec);
@@ -62,7 +60,6 @@ void read_persistent_clock(struct timespec *ts)
 	ts->tv_sec = 0;
 	ts->tv_nsec = 0;
 }
-
 
 extern void cris_profile_sample(struct pt_regs* regs);
 

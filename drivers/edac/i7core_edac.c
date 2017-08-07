@@ -9,7 +9,7 @@
  * GNU General Public License version 2 only.
  *
  * Copyright (c) 2009-2010 by:
- *	 Mauro Carvalho Chehab
+ *	 Mauro Carvalho Chehab <mchehab@redhat.com>
  *
  * Red Hat Inc. http://www.redhat.com
  *
@@ -56,7 +56,6 @@ MODULE_PARM_DESC(use_pci_fixup, "Enable PCI fixup to seek for hidden devices");
  * Quick Path Interconnect, just increment this number.
  */
 #define MAX_SOCKET_BUSES	2
-
 
 /*
  * Alter this version for the module when modifications are made
@@ -120,7 +119,6 @@ MODULE_PARM_DESC(use_pci_fixup, "Enable PCI fixup to seek for hidden devices");
 
 #define DIMM_TOP_COR_ERR(r)			(((r) >> 16) & 0x7fff)
 #define DIMM_BOT_COR_ERR(r)			((r) & 0x7fff)
-
 
 	/* OFFSETS for Devices 4,5 and 6 Function 0 */
 
@@ -207,7 +205,6 @@ struct i7core_info {
 	u32	max_dod;
 	u32	ch_map;
 };
-
 
 struct i7core_inject {
 	int	enable;
@@ -394,7 +391,7 @@ static const struct pci_id_table pci_dev_table[] = {
 /*
  *	pci_device_id	table for which devices we are looking for
  */
-static const struct pci_device_id i7core_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(i7core_pci_tbl) = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_X58_HUB_MGMT)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_LYNNFIELD_QPI_LINK0)},
 	{0,}			/* 0 terminated list. */
@@ -558,7 +555,6 @@ static int get_dimm_config(struct mem_ctl_info *mci)
 		pci_read_config_dword(pvt->pci_ch[i][0],
 				MC_CHANNEL_DIMM_INIT_PARAMS, &data);
 
-
 		if (data & THREE_DIMMS_PRESENT)
 			pvt->channel[i].is_3dimms_present = true;
 
@@ -704,7 +700,7 @@ static ssize_t i7core_inject_section_store(struct device *dev,
 	if (pvt->inject.enable)
 		disable_inject(mci);
 
-	rc = kstrtoul(data, 10, &value);
+	rc = strict_strtoul(data, 10, &value);
 	if ((rc < 0) || (value > 3))
 		return -EIO;
 
@@ -741,7 +737,7 @@ struct i7core_pvt *pvt = mci->pvt_info;
 	if (pvt->inject.enable)
 		disable_inject(mci);
 
-	rc = kstrtoul(data, 10, &value);
+	rc = strict_strtoul(data, 10, &value);
 	if ((rc < 0) || (value > 7))
 		return -EIO;
 
@@ -781,7 +777,7 @@ static ssize_t i7core_inject_eccmask_store(struct device *dev,
 	if (pvt->inject.enable)
 		disable_inject(mci);
 
-	rc = kstrtoul(data, 10, &value);
+	rc = strict_strtoul(data, 10, &value);
 	if (rc < 0)
 		return -EIO;
 
@@ -830,7 +826,7 @@ static ssize_t i7core_inject_store_##param(			\
 	if (!strcasecmp(data, "any") || !strcasecmp(data, "any\n"))\
 		value = -1;					\
 	else {							\
-		rc = kstrtoul(data, 10, &value);		\
+		rc = strict_strtoul(data, 10, &value);		\
 		if ((rc < 0) || (value >= limit))		\
 			return -EIO;				\
 	}							\
@@ -934,7 +930,7 @@ static ssize_t i7core_inject_enable_store(struct device *dev,
 	if (!pvt->pci_ch[pvt->inject.channel][0])
 		return 0;
 
-	rc = kstrtoul(data, 10, &enable);
+	rc = strict_strtoul(data, 10, &enable);
 	if ((rc < 0))
 		return 0;
 
@@ -1019,7 +1015,6 @@ static ssize_t i7core_inject_enable_store(struct device *dev,
 
 	edac_dbg(0, "Error inject addr match 0x%016llx, ecc 0x%08x, inject 0x%08x\n",
 		 mask, pvt->inject.eccmask, injectmask);
-
 
 	return count;
 }
@@ -1149,7 +1144,6 @@ static DEVICE_ATTR(inject_section, S_IRUGO | S_IWUSR,
 
 static DEVICE_ATTR(inject_type, S_IRUGO | S_IWUSR,
 		   i7core_inject_type_show, i7core_inject_type_store);
-
 
 static DEVICE_ATTR(inject_eccmask, S_IRUGO | S_IWUSR,
 		   i7core_inject_eccmask_show, i7core_inject_eccmask_store);
@@ -1708,7 +1702,7 @@ static void i7core_mce_output_error(struct mem_ctl_info *mci,
 				    const struct mce *m)
 {
 	struct i7core_pvt *pvt = mci->pvt_info;
-	char *optype, *err;
+	char *type, *optype, *err;
 	enum hw_event_mc_err_type tp_event;
 	unsigned long error = m->status & 0x1ff0000l;
 	bool uncorrected_error = m->mcgstatus & 1ll << 61;
@@ -1721,11 +1715,15 @@ static void i7core_mce_output_error(struct mem_ctl_info *mci,
 	u32 errnum = find_first_bit(&error, 32);
 
 	if (uncorrected_error) {
-		if (ripv)
+		if (ripv) {
+			type = "FATAL";
 			tp_event = HW_EVENT_ERR_FATAL;
-		else
+		} else {
+			type = "NON_FATAL";
 			tp_event = HW_EVENT_ERR_UNCORRECTED;
+		}
 	} else {
+		type = "CORRECTED";
 		tp_event = HW_EVENT_ERR_CORRECTED;
 	}
 
@@ -1874,7 +1872,7 @@ static int i7core_mce_check_error(struct notifier_block *nb, unsigned long val,
 
 	i7_dev = get_i7core_dev(mce->socketid);
 	if (!i7_dev)
-		return NOTIFY_BAD;
+		return NOTIFY_DONE;
 
 	mci = i7_dev->mci;
 	pvt = mci->pvt_info;
@@ -1938,7 +1936,6 @@ struct memdev_dmi_entry {
 	u32 extended_size;
 	u16 conf_mem_clk_speed;
 } __attribute__((__packed__));
-
 
 /*
  * Decode the DRAM Clock Frequency, be paranoid, make sure that all
@@ -2246,7 +2243,6 @@ static int i7core_register_mci(struct i7core_dev *i7core_dev)
 	if (unlikely(rc < 0))
 		goto fail0;
 
-
 	/* Get dimm basic config */
 	get_dimm_config(mci);
 	/* record ptr to the generic device */
@@ -2457,7 +2453,7 @@ module_init(i7core_init);
 module_exit(i7core_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Mauro Carvalho Chehab");
+MODULE_AUTHOR("Mauro Carvalho Chehab <mchehab@redhat.com>");
 MODULE_AUTHOR("Red Hat Inc. (http://www.redhat.com)");
 MODULE_DESCRIPTION("MC Driver for Intel i7 Core memory controllers - "
 		   I7CORE_REVISION);

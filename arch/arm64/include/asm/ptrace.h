@@ -42,7 +42,6 @@
 #define COMPAT_PSR_MODE_UND	0x0000001b
 #define COMPAT_PSR_MODE_SYS	0x0000001f
 #define COMPAT_PSR_T_BIT	0x00000020
-#define COMPAT_PSR_E_BIT	0x00000200
 #define COMPAT_PSR_F_BIT	0x00000040
 #define COMPAT_PSR_I_BIT	0x00000080
 #define COMPAT_PSR_A_BIT	0x00000100
@@ -68,18 +67,17 @@
 
 /* Architecturally defined mapping between AArch32 and AArch64 registers */
 #define compat_usr(x)	regs[(x)]
-#define compat_fp	regs[11]
 #define compat_sp	regs[13]
 #define compat_lr	regs[14]
 #define compat_sp_hyp	regs[15]
-#define compat_sp_irq	regs[16]
-#define compat_lr_irq	regs[17]
-#define compat_sp_svc	regs[18]
-#define compat_lr_svc	regs[19]
-#define compat_sp_abt	regs[20]
-#define compat_lr_abt	regs[21]
-#define compat_sp_und	regs[22]
-#define compat_lr_und	regs[23]
+#define compat_lr_irq	regs[16]
+#define compat_sp_irq	regs[17]
+#define compat_lr_svc	regs[18]
+#define compat_sp_svc	regs[19]
+#define compat_lr_abt	regs[20]
+#define compat_sp_abt	regs[21]
+#define compat_lr_und	regs[22]
+#define compat_sp_und	regs[23]
 #define compat_r8_fiq	regs[24]
 #define compat_r9_fiq	regs[25]
 #define compat_r10_fiq	regs[26]
@@ -133,7 +131,7 @@ struct pt_regs {
 	(!((regs)->pstate & PSR_F_BIT))
 
 #define user_stack_pointer(regs) \
-	(!compat_user_mode(regs)) ? ((regs)->sp) : ((regs)->compat_sp)
+	((regs)->sp)
 
 /*
  * Are the current registers suitable for user mode? (used to maintain
@@ -165,13 +163,15 @@ static inline int valid_user_regs(struct user_pt_regs *regs)
 	return 0;
 }
 
-#define instruction_pointer(regs)	((unsigned long)(regs)->pc)
+#define instruction_pointer(regs)	(regs)->pc
 
 #ifdef CONFIG_SMP
 extern unsigned long profile_pc(struct pt_regs *regs);
 #else
 #define profile_pc(regs) instruction_pointer(regs)
 #endif
+
+extern int aarch32_break_trap(struct pt_regs *regs);
 
 #endif /* __ASSEMBLY__ */
 #endif

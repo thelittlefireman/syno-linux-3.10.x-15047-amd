@@ -18,7 +18,7 @@
 #include <linux/i2c.h>
 #include <linux/io.h>
 #include <linux/clk.h>
-#include <linux/platform_data/at24.h>
+#include <linux/i2c/at24.h>
 #include <linux/leds.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
@@ -95,7 +95,6 @@ static inline int have_tvp7002(void)
 #define CPLD_CCD_IO3	CPLD_OFFSET(0x3f,1)
 
 static void __iomem *cpld;
-
 
 /* NOTE:  this is geared for the standard config, with a socketed
  * 2 GByte Micron NAND (MT29F16G08FAA) using 128KB sectors.  If you
@@ -176,7 +175,7 @@ static struct at24_platform_data eeprom_info = {
 	.context	= (void *)0x7f00,
 };
 
-static struct snd_platform_data dm365_evm_snd_data __maybe_unused = {
+static struct snd_platform_data dm365_evm_snd_data = {
 	.asp_chan_q = EVENTQ_3,
 };
 
@@ -505,10 +504,11 @@ static struct vpbe_output dm365evm_vpbe_outputs[] = {
 /*
  * Amplifiers on the board
  */
-static struct ths7303_platform_data ths7303_pdata = {
+struct ths7303_platform_data ths7303_pdata = {
 	.ch_1 = 3,
 	.ch_2 = 3,
 	.ch_3 = 3,
+	.init_enable = 1,
 };
 
 static struct amp_config_info vpbe_amp = {
@@ -625,7 +625,6 @@ static int __init cpld_leds_init(void)
 /* run after subsys_initcall() for LEDs */
 fs_initcall(cpld_leds_init);
 
-
 static void __init evm_init_cpld(void)
 {
 	u8 mux, resets;
@@ -718,6 +717,10 @@ fail:
 	/* REVISIT export switches: NTSC/PAL (SW5.6), EXTRA1 (SW5.2), etc */
 }
 
+static struct davinci_uart_config uart_config __initdata = {
+	.enabled_uarts = (1 << 0),
+};
+
 static void __init dm365_evm_map_io(void)
 {
 	dm365_init();
@@ -743,14 +746,8 @@ static struct spi_board_info dm365_evm_spi_info[] __initconst = {
 
 static __init void dm365_evm_init(void)
 {
-	int ret;
-
-	ret = dm365_gpio_register();
-	if (ret)
-		pr_warn("%s: GPIO init failed: %d\n", __func__, ret);
-
 	evm_init_i2c();
-	davinci_serial_init(dm365_serial_device);
+	davinci_serial_init(&uart_config);
 
 	dm365evm_emac_configure();
 	dm365evm_mmc_configure();
@@ -784,4 +781,3 @@ MACHINE_START(DAVINCI_DM365_EVM, "DaVinci DM365 EVM")
 	.dma_zone_size	= SZ_128M,
 	.restart	= davinci_restart,
 MACHINE_END
-

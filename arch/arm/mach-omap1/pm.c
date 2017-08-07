@@ -71,11 +71,7 @@ static unsigned int mpui7xx_sleep_save[MPUI7XX_SLEEP_SAVE_SIZE];
 static unsigned int mpui1510_sleep_save[MPUI1510_SLEEP_SAVE_SIZE];
 static unsigned int mpui1610_sleep_save[MPUI1610_SLEEP_SAVE_SIZE];
 
-#ifndef CONFIG_OMAP_32K_TIMER
-
-static unsigned short enable_dyn_sleep = 0;
-
-#else
+#ifdef CONFIG_OMAP_32K_TIMER
 
 static unsigned short enable_dyn_sleep = 1;
 
@@ -589,7 +585,6 @@ static int omap_pm_prepare(void)
 	return 0;
 }
 
-
 /*
  *	omap_pm_enter - Actually enter a sleep state.
  *	@state:		State we're entering.
@@ -611,7 +606,6 @@ static int omap_pm_enter(suspend_state_t state)
 	return 0;
 }
 
-
 /**
  *	omap_pm_finish - Finish up suspend sequence.
  *
@@ -624,7 +618,6 @@ static void omap_pm_finish(void)
 	cpu_idle_poll_ctrl(false);
 }
 
-
 static irqreturn_t omap_wakeup_interrupt(int irq, void *dev)
 {
 	return IRQ_HANDLED;
@@ -632,10 +625,9 @@ static irqreturn_t omap_wakeup_interrupt(int irq, void *dev)
 
 static struct irqaction omap_wakeup_irq = {
 	.name		= "peripheral wakeup",
+	.flags		= IRQF_DISABLED,
 	.handler	= omap_wakeup_interrupt
 };
-
-
 
 static const struct platform_suspend_ops omap_pm_ops = {
 	.prepare	= omap_pm_prepare,

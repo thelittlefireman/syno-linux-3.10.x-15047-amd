@@ -108,7 +108,6 @@ static ssize_t show_name(struct device *dev, struct device_attribute
 	return sprintf(buf, "%s\n", data->name);
 }
 
-
 static ssize_t show_temp(struct device *dev,
 			 struct device_attribute *devattr, char *buf)
 {
@@ -135,7 +134,7 @@ static SENSOR_DEVICE_ATTR_2(temp3_input, S_IRUGO, show_temp, NULL, 1, 0);
 static SENSOR_DEVICE_ATTR_2(temp4_input, S_IRUGO, show_temp, NULL, 1, 1);
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 
-static const struct pci_device_id k8temp_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(k8temp_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_K8_NB_MISC) },
 	{ 0 },
 };

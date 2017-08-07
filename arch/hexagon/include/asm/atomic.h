@@ -26,20 +26,7 @@
 #include <asm/cmpxchg.h>
 
 #define ATOMIC_INIT(i)		{ (i) }
-
-/*  Normal writes in our arch don't clear lock reservations  */
-
-static inline void atomic_set(atomic_t *v, int new)
-{
-	asm volatile(
-		"1:	r6 = memw_locked(%0);\n"
-		"	memw_locked(%0,p0) = %1;\n"
-		"	if (!P0) jump 1b;\n"
-		:
-		: "r" (&v->counter), "r" (new)
-		: "memory", "p0", "r6"
-	);
-}
+#define atomic_set(v, i)	((v)->counter = (i))
 
 /**
  * atomic_read - reads a word, atomically
@@ -55,7 +42,6 @@ static inline void atomic_set(atomic_t *v, int new)
  * @new: new value (technically passed in a register -- see xchg)
  */
 #define atomic_xchg(v, new)	(xchg(&((v)->counter), (new)))
-
 
 /**
  * atomic_cmpxchg - atomic compare-and-exchange values
@@ -175,10 +161,5 @@ static inline int __atomic_add_unless(atomic_t *v, int a, int u)
 
 #define atomic_inc_return(v) (atomic_add_return(1, v))
 #define atomic_dec_return(v) (atomic_sub_return(1, v))
-
-#define smp_mb__before_atomic_dec()	barrier()
-#define smp_mb__after_atomic_dec()	barrier()
-#define smp_mb__before_atomic_inc()	barrier()
-#define smp_mb__after_atomic_inc()	barrier()
 
 #endif

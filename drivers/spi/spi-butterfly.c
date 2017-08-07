@@ -31,7 +31,6 @@
 
 #include <linux/mtd/partitions.h>
 
-
 /*
  * This uses SPI to talk with an "AVR Butterfly", which is a $US20 card
  * with a battery powered AVR microcontroller and lots of goodies.  You
@@ -40,7 +39,6 @@
  * See Documentation/spi/butterfly for information about how to build
  * and use this custom parallel port cable.
  */
-
 
 /* DATA output bits (pins 2..9 == D0..D7) */
 #define	butterfly_nreset (1 << 1)		/* pin 3 */
@@ -56,13 +54,10 @@
 /* CONTROL output bits */
 #define	spi_cs_bit	PARPORT_CONTROL_SELECT	/* pin 17 */
 
-
-
 static inline struct butterfly *spidev_to_pp(struct spi_device *spi)
 {
 	return spi->controller_data;
 }
-
 
 struct butterfly {
 	/* REVISIT ... for now, this must be first */
@@ -144,11 +139,10 @@ static void butterfly_chipselect(struct spi_device *spi, int value)
 	parport_frob_control(pp->port, spi_cs_bit, value ? spi_cs_bit : 0);
 }
 
-
 /* we only needed to implement one mode here, and choose SPI_MODE_0 */
 
-#define spidelay(X)	do { } while (0)
-/* #define spidelay	ndelay */
+#define	spidelay(X)	do{}while(0)
+//#define	spidelay	ndelay
 
 #include "spi-bitbang-txrx.h"
 
@@ -171,15 +165,15 @@ static struct mtd_partition partitions[] = { {
 	/* sector 0 = 8 pages * 264 bytes/page (1 block)
 	 * sector 1 = 248 pages * 264 bytes/page
 	 */
-	.name		= "bookkeeping",	/* 66 KB */
+	.name		= "bookkeeping",	// 66 KB
 	.offset		= 0,
 	.size		= (8 + 248) * 264,
-	/* .mask_flags	= MTD_WRITEABLE, */
+//	.mask_flags	= MTD_WRITEABLE,
 }, {
 	/* sector 2 = 256 pages * 264 bytes/page
 	 * sectors 3-5 = 512 pages * 264 bytes/page
 	 */
-	.name		= "filesystem",		/* 462 KB */
+	.name		= "filesystem",		// 462 KB
 	.offset		= MTDPART_OFS_APPEND,
 	.size		= MTDPART_SIZ_FULL,
 } };
@@ -189,7 +183,6 @@ static struct flash_platform_data flash = {
 	.parts		= partitions,
 	.nr_parts	= ARRAY_SIZE(partitions),
 };
-
 
 /* REVISIT remove this ugly global and its "only one" limitation */
 static struct butterfly *butterfly;
@@ -209,7 +202,7 @@ static void butterfly_attach(struct parport *p)
 	 * and no way to be selective about what it binds to.
 	 */
 
-	master = spi_alloc_master(dev, sizeof(*pp));
+	master = spi_alloc_master(dev, sizeof *pp);
 	if (!master) {
 		status = -ENOMEM;
 		goto done;
@@ -225,7 +218,7 @@ static void butterfly_attach(struct parport *p)
 	master->bus_num = 42;
 	master->num_chipselect = 2;
 
-	pp->bitbang.master = master;
+	pp->bitbang.master = spi_master_get(master);
 	pp->bitbang.chipselect = butterfly_chipselect;
 	pp->bitbang.txrx_word[SPI_MODE_0] = butterfly_txrx_word_mode0;
 
@@ -266,7 +259,6 @@ static void butterfly_attach(struct parport *p)
 	parport_write_data(pp->port, pp->lastbyte);
 	msleep(100);
 
-
 	/*
 	 * Start SPI ... for now, hide that we're two physical busses.
 	 */
@@ -289,6 +281,7 @@ static void butterfly_attach(struct parport *p)
 		pr_debug("%s: dataflash at %s\n", p->name,
 				dev_name(&pp->dataflash->dev));
 
+	// dev_info(_what?_, ...)
 	pr_info("%s: AVR Butterfly\n", p->name);
 	butterfly = pp;
 	return;
@@ -309,6 +302,7 @@ done:
 static void butterfly_detach(struct parport *p)
 {
 	struct butterfly	*pp;
+	int			status;
 
 	/* FIXME this global is ugly ... but, how to quickly get from
 	 * the parport to the "struct butterfly" associated with it?
@@ -320,7 +314,7 @@ static void butterfly_detach(struct parport *p)
 	butterfly = NULL;
 
 	/* stop() unregisters child devices too */
-	spi_bitbang_stop(&pp->bitbang);
+	status = spi_bitbang_stop(&pp->bitbang);
 
 	/* turn off VCC */
 	parport_write_data(pp->port, 0);
@@ -337,7 +331,6 @@ static struct parport_driver butterfly_driver = {
 	.attach =	butterfly_attach,
 	.detach =	butterfly_detach,
 };
-
 
 static int __init butterfly_init(void)
 {

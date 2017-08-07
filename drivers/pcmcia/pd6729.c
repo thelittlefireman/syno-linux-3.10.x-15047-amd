@@ -19,7 +19,6 @@
 
 #include <pcmcia/ss.h>
 
-
 #include "pd6729.h"
 #include "i82365.h"
 #include "cirrus.h"
@@ -290,7 +289,6 @@ static int pd6729_get_status(struct pcmcia_socket *sock, u_int *value)
 	return 0;
 }
 
-
 static int pd6729_set_socket(struct pcmcia_socket *sock, socket_state_t *state)
 {
 	struct pd6729_socket *socket
@@ -560,7 +558,6 @@ static int pd6729_init(struct pcmcia_socket *sock)
 	return 0;
 }
 
-
 /* the pccard structure and its functions */
 static struct pccard_operations pd6729_operations = {
 	.init			= pd6729_init,
@@ -644,7 +641,6 @@ static int pd6729_pci_probe(struct pci_dev *dev,
 	if (!pci_resource_start(dev, 0)) {
 		dev_warn(&dev->dev, "refusing to load the driver as the "
 			"io_base is NULL.\n");
-		ret = -ENOMEM;
 		goto err_out_disable;
 	}
 
@@ -674,7 +670,6 @@ static int pd6729_pci_probe(struct pci_dev *dev,
 	mask = pd6729_isa_scan();
 	if (irq_mode == 0 && mask == 0) {
 		dev_warn(&dev->dev, "no ISA interrupt is available.\n");
-		ret = -ENODEV;
 		goto err_out_free_res;
 	}
 
@@ -777,4 +772,15 @@ static struct pci_driver pd6729_pci_driver = {
 	.remove		= pd6729_pci_remove,
 };
 
-module_pci_driver(pd6729_pci_driver);
+static int pd6729_module_init(void)
+{
+	return pci_register_driver(&pd6729_pci_driver);
+}
+
+static void pd6729_module_exit(void)
+{
+	pci_unregister_driver(&pd6729_pci_driver);
+}
+
+module_init(pd6729_module_init);
+module_exit(pd6729_module_exit);

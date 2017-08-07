@@ -24,8 +24,7 @@
  * Passed to the actors
  */
 struct splice_desc {
-	size_t total_len;		/* remaining length */
-	unsigned int len;		/* current length */
+	unsigned int len, total_len;	/* current and remaining length */
 	unsigned int flags;		/* splice flags */
 	/*
 	 * actor() private data
@@ -93,4 +92,12 @@ extern void splice_shrink_spd(struct splice_pipe_desc *);
 extern void spd_release_page(struct splice_pipe_desc *, unsigned int);
 
 extern const struct pipe_buf_operations page_cache_pipe_buf_ops;
+
+#ifdef CONFIG_AUFS_FHSM
+extern long do_splice_from(struct pipe_inode_info *pipe, struct file *out,
+			   loff_t *ppos, size_t len, unsigned int flags);
+extern long do_splice_to(struct file *in, loff_t *ppos,
+			 struct pipe_inode_info *pipe, size_t len,
+			 unsigned int flags);
+#endif /* CONFIG_AUFS_FHSM */
 #endif

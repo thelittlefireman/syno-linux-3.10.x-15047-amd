@@ -263,7 +263,6 @@ static __inline__ int __atomic_add_unless(atomic_t *v, int a, int u)
 	return c;
 }
 
-
 static __inline__ void atomic_clear_mask(unsigned long  mask, atomic_t *addr)
 {
 	unsigned long flags;

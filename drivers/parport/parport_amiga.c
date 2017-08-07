@@ -33,7 +33,6 @@
 #define DPRINTK(x...)	do { } while (0)
 #endif
 
-
 static void amiga_write_data(struct parport *p, unsigned char data)
 {
 	DPRINTK(KERN_DEBUG "write_data %c\n",data);
@@ -232,6 +231,7 @@ static int __exit amiga_parallel_remove(struct platform_device *pdev)
 	if (port->irq != PARPORT_IRQ_NONE)
 		free_irq(IRQ_AMIGA_CIAA_FLG, port);
 	parport_put_port(port);
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 

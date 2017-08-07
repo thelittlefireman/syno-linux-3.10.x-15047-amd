@@ -150,7 +150,7 @@ static void tosa_bat_external_power_changed(struct power_supply *psy)
 
 static irqreturn_t tosa_bat_gpio_isr(int irq, void *data)
 {
-	pr_info("tosa_bat_gpio irq\n");
+	pr_info("tosa_bat_gpio irq: %d\n", gpio_get_value(irq_to_gpio(irq)));
 	schedule_work(&bat_work);
 	return IRQ_HANDLED;
 }
@@ -201,7 +201,6 @@ static void tosa_bat_work(struct work_struct *work)
 	tosa_bat_update(&tosa_bat_main);
 	tosa_bat_update(&tosa_bat_jacket);
 }
-
 
 static enum power_supply_property tosa_bat_main_props[] = {
 	POWER_SUPPLY_PROP_STATUS,

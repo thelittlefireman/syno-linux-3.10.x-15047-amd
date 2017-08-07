@@ -42,7 +42,6 @@
  */
 #define MAX_BRIGHT	0x07
 
-
 #define SABI_IFACE_MAIN			0x00
 #define SABI_IFACE_SUB			0x02
 #define SABI_IFACE_COMPLETE		0x04
@@ -1559,7 +1558,6 @@ static int __init samsung_init(void)
 	mutex_init(&samsung->sabi_mutex);
 	samsung->handle_backlight = true;
 	samsung->quirks = quirks;
-
 
 #ifdef CONFIG_ACPI
 	if (samsung->quirks->broken_acpi_video)

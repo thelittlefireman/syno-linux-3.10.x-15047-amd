@@ -3,6 +3,7 @@
 #include <linux/string.h>
 #include <linux/kernel.h>
 #include <linux/ctype.h>
+#include <linux/init.h>
 #include <linux/dmar.h>
 
 #include <asm/smp.h>
@@ -133,7 +134,7 @@ static struct apic apic_x2apic_phys = {
 
 	.trampoline_phys_low		= DEFAULT_TRAMPOLINE_PHYS_LOW,
 	.trampoline_phys_high		= DEFAULT_TRAMPOLINE_PHYS_HIGH,
-	.wait_for_init_deassert		= false,
+	.wait_for_init_deassert		= NULL,
 	.smp_callin_clear_local_apic	= NULL,
 	.inquire_remote_apic		= NULL,
 

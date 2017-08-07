@@ -1053,7 +1053,6 @@ static struct clksrc_clk clk_sclk_spi1 = {
 	.reg_div = { .reg = S5P_CLK_DIV5, .shift = 4, .size = 4 },
 	};
 
-
 static struct clksrc_clk *clksrc_cdev[] = {
 	&clk_sclk_uart0,
 	&clk_sclk_uart1,
@@ -1362,4 +1361,5 @@ void __init s5pv210_register_clocks(void)
 	for (ptr = 0; ptr < ARRAY_SIZE(clk_cdev); ptr++)
 		s3c_disable_clocks(clk_cdev[ptr], 1);
 
+	s3c_pwmclk_init();
 }

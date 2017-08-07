@@ -19,7 +19,6 @@
 #include <linux/init.h>
 #include <linux/device.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <linux/gpio.h>
@@ -55,7 +54,6 @@
 #include <mach/regs-clock.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-lcd.h>
-#include <mach/gpio-samsung.h>
 
 #include <plat/clock.h>
 #include <plat/cpu.h>
@@ -63,6 +61,7 @@
 #include <plat/gpio-cfg.h>
 #include <plat/pll.h>
 #include <plat/pm.h>
+#include <plat/regs-serial.h>
 #include <plat/samsung-time.h>
 
 #include "common.h"
@@ -498,14 +497,12 @@ static void h1940_backlight_exit(struct device *dev)
 	gpio_set_value(H1940_LATCH_MAX1698_nSHUTDOWN, 0);
 }
 
-
 static struct platform_pwm_backlight_data backlight_data = {
 	.pwm_id         = 0,
 	.max_brightness = 100,
 	.dft_brightness = 50,
 	/* tcnt = 0x31 */
 	.pwm_period_ns  = 36296,
-	.enable_gpio    = -1,
 	.init           = h1940_backlight_init,
 	.notify		= h1940_backlight_notify,
 	.exit           = h1940_backlight_exit,
@@ -514,7 +511,7 @@ static struct platform_pwm_backlight_data backlight_data = {
 static struct platform_device h1940_backlight = {
 	.name = "pwm-backlight",
 	.dev  = {
-		.parent = &samsung_device_pwm.dev,
+		.parent = &s3c_device_timer[0].dev,
 		.platform_data = &backlight_data,
 	},
 	.id   = -1,
@@ -634,7 +631,7 @@ static struct platform_device *h1940_devices[] __initdata = {
 	&h1940_device_bluetooth,
 	&s3c_device_sdi,
 	&s3c_device_rtc,
-	&samsung_device_pwm,
+	&s3c_device_timer[0],
 	&h1940_backlight,
 	&h1940_lcd_powerdev,
 	&s3c_device_adc,

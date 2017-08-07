@@ -35,8 +35,6 @@
  *					response
  */
 
-#define pr_fmt(fmt) "X25: " fmt
-
 #include <linux/module.h>
 #include <linux/capability.h>
 #include <linux/errno.h>
@@ -84,7 +82,6 @@ struct compat_x25_subscrip_struct {
 };
 #endif
 
-
 int x25_parse_address_block(struct sk_buff *skb,
 		struct x25_address *called_addr,
 		struct x25_address *calling_addr)
@@ -117,7 +114,6 @@ empty:
 
 	return rc;
 }
-
 
 int x25_addr_ntoa(unsigned char *p, struct x25_address *called_addr,
 		  struct x25_address *calling_addr)
@@ -226,7 +222,7 @@ static void x25_kill_by_device(struct net_device *dev)
 static int x25_device_event(struct notifier_block *this, unsigned long event,
 			    void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = ptr;
 	struct x25_neigh *nb;
 
 	if (!net_eq(dev_net(dev), &init_net))
@@ -1082,7 +1078,7 @@ static int x25_sendmsg(struct kiocb *iocb, struct socket *sock,
 {
 	struct sock *sk = sock->sk;
 	struct x25_sock *x25 = x25_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_x25 *, usx25, msg->msg_name);
+	struct sockaddr_x25 *usx25 = (struct sockaddr_x25 *)msg->msg_name;
 	struct sockaddr_x25 sx25;
 	struct sk_buff *skb;
 	unsigned char *asmptr;
@@ -1251,14 +1247,13 @@ out_kfree_skb:
 	goto out;
 }
 
-
 static int x25_recvmsg(struct kiocb *iocb, struct socket *sock,
 		       struct msghdr *msg, size_t size,
 		       int flags)
 {
 	struct sock *sk = sock->sk;
 	struct x25_sock *x25 = x25_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_x25 *, sx25, msg->msg_name);
+	struct sockaddr_x25 *sx25 = (struct sockaddr_x25 *)msg->msg_name;
 	size_t copied;
 	int qbit, header_len;
 	struct sk_buff *skb;
@@ -1353,7 +1348,6 @@ out:
 	release_sock(sk);
 	return rc;
 }
-
 
 static int x25_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 {
@@ -1811,7 +1805,7 @@ static int __init x25_init(void)
 	if (rc != 0)
 		goto out_sock;
 
-	pr_info("Linux Version 0.2\n");
+	printk(KERN_INFO "X.25 for Linux Version 0.2\n");
 
 	x25_register_sysctl();
 	rc = x25_proc_init();

@@ -13,13 +13,15 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 // #define	DEBUG			// error path messages, extra info
 // #define	VERBOSE			// more; success messages
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -27,7 +29,6 @@
 #include <linux/mii.h>
 #include <linux/usb.h>
 #include <linux/usb/usbnet.h>
-
 
 /*
  * Prolific PL-2301/PL-2302 driver ... http://www.prolific.com.tw/ 
@@ -108,7 +109,6 @@ static const struct driver_info	prolific_info = {
 	.reset =	pl_reset,
 };
 
-
 /*-------------------------------------------------------------------------*/
 
 /*
@@ -133,6 +133,11 @@ static const struct usb_device_id	products [] = {
 	.driver_info =  (unsigned long) &prolific_info,
 }, {
 	USB_DEVICE(0x050d, 0x258a),     /* Belkin F5U258/F5U279 (PL-25A1) */
+	.driver_info =  (unsigned long) &prolific_info,
+}, {
+	USB_DEVICE(0x3923, 0x7825),     /* National Instruments USB
+					 * Host-to-Host Cable
+					 */
 	.driver_info =  (unsigned long) &prolific_info,
 },
 

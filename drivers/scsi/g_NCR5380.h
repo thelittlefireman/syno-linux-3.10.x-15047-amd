@@ -32,7 +32,6 @@
 #ifndef GENERIC_NCR5380_H
 #define GENERIC_NCR5380_H
 
-
 #define GENERIC_NCR5380_PUBLIC_RELEASE 1
 
 #ifdef NCR53C400
@@ -134,4 +133,3 @@ static const char* generic_NCR5380_info(struct Scsi_Host *);
 #endif /* else def HOSTS_C */
 #endif /* ndef ASM */
 #endif /* GENERIC_NCR5380_H */
-

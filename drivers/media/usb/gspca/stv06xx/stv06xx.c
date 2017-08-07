@@ -452,7 +452,7 @@ frame_data:
 					NULL, 0);
 
 			if (sd->bridge == BRIDGE_ST6422)
-				sd->to_skip = gspca_dev->pixfmt.width * 4;
+				sd->to_skip = gspca_dev->width * 4;
 
 			if (chunk_len)
 				PERR("Chunk length is "
@@ -577,8 +577,6 @@ static int stv06xx_config(struct gspca_dev *gspca_dev,
 	sd->sensor = NULL;
 	return -ENODEV;
 }
-
-
 
 /* -- module initialisation -- */
 static const struct usb_device_id device_table[] = {

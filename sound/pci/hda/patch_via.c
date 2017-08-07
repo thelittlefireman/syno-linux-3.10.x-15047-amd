@@ -45,7 +45,6 @@
 /*									     */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-
 #include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
@@ -138,7 +137,6 @@ static struct via_spec *via_new_spec(struct hda_codec *codec)
 	spec->gen.indep_hp = 1;
 	spec->gen.keep_eapd_on = 1;
 	spec->gen.pcm_playback_hook = via_playback_pcm_hook;
-	spec->gen.add_stereo_mix_input = 1;
 	return spec;
 }
 
@@ -208,9 +206,9 @@ static void vt1708_stop_hp_work(struct hda_codec *codec)
 		return;
 	if (spec->hp_work_active) {
 		snd_hda_codec_write(codec, 0x1, 0, 0xf81, 1);
-		codec->jackpoll_interval = 0;
 		cancel_delayed_work_sync(&codec->jackpoll_work);
 		spec->hp_work_active = false;
+		codec->jackpoll_interval = 0;
 	}
 }
 
@@ -356,7 +354,6 @@ static const struct snd_kcontrol_new via_pin_power_ctl_enum[] = {
 	{} /* terminator */
 };
 
-
 /* check AA path's mute status */
 static bool is_aa_path_mute(struct hda_codec *codec)
 {
@@ -465,8 +462,14 @@ static void via_playback_pcm_hook(struct hda_pcm_stream *hinfo,
 
 static void via_free(struct hda_codec *codec)
 {
+	struct via_spec *spec = codec->spec;
+
+	if (!spec)
+		return;
+
 	vt1708_stop_hp_work(codec);
-	snd_hda_gen_free(codec);
+	snd_hda_gen_spec_free(&spec->gen);
+	kfree(spec);
 }
 
 #ifdef CONFIG_PM
@@ -475,9 +478,14 @@ static int via_suspend(struct hda_codec *codec)
 	struct via_spec *spec = codec->spec;
 	vt1708_stop_hp_work(codec);
 
-	/* Fix pop noise on headphones */
-	if (spec->codec_type == VT1802)
-		snd_hda_shutup_pins(codec);
+	if (spec->codec_type == VT1802) {
+		/* Fix pop noise on headphones */
+		int i;
+		for (i = 0; i < spec->gen.autocfg.hp_outs; i++)
+			snd_hda_codec_write(codec, spec->gen.autocfg.hp_pins[i],
+					    0, AC_VERB_SET_PIN_WIDGET_CONTROL,
+					    0x00);
+	}
 
 	return 0;
 }
@@ -510,7 +518,6 @@ static const struct hda_codec_ops via_patch_ops = {
 	.check_power_status = via_check_power_status,
 #endif
 };
-
 
 static const struct hda_verb vt1708_init_verbs[] = {
 	/* power down jack detect function */
@@ -736,8 +743,6 @@ static int patch_vt1708(struct hda_codec *codec)
 	/* don't support the input jack switching due to lack of unsol event */
 	/* (it may work with polling, though, but it needs testing) */
 	spec->gen.suppress_auto_mic = 1;
-	/* Some machines show the broken speaker mute */
-	spec->gen.auto_mute_via_amp = 1;
 
 	/* Add HP and CD pin config connect bit re-config action */
 	vt1708_set_pinconfig_connect(codec, VT1708_HP_PIN_NID);
@@ -1141,7 +1146,6 @@ static int add_secret_dac_path(struct hda_codec *codec)
 	return 0;
 }
 
-
 static int patch_vt1718S(struct hda_codec *codec)
 {
 	struct via_spec *spec;
@@ -1226,7 +1230,6 @@ static const struct snd_kcontrol_new vt1716s_dmic_mixer[] = {
 	 },
 	{}			/* end */
 };
-
 
 /* mono-out mixer elements */
 static const struct snd_kcontrol_new vt1716S_mono_out_mixer[] = {
@@ -1626,7 +1629,6 @@ static void set_widgets_power_state_vt1812(struct hda_codec *codec)
 		update_power_state(codec, 0x14, AC_PWRST_D0);
 		update_power_state(codec, 0x34, AC_PWRST_D0);
 	}
-
 
 	/* Mono Out */
 	/* PW13 (31h), MW13(1ch), MUX13(3ch), MW14(3eh) */

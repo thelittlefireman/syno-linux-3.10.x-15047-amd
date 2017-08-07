@@ -68,7 +68,6 @@ static struct nla_policy wl1271_tm_policy[WL1271_TM_ATTR_MAX + 1] = {
 	[WL1271_TM_ATTR_PLT_MODE] =	{ .type = NLA_U32 },
 };
 
-
 static int wl1271_tm_cmd_test(struct wl1271 *wl, struct nlattr *tb[])
 {
 	int buf_len, ret, len;
@@ -179,8 +178,7 @@ static int wl1271_tm_cmd_interrogate(struct wl1271 *wl, struct nlattr *tb[])
 		goto out_sleep;
 	}
 
-	ret = wl1271_cmd_interrogate(wl, ie_id, cmd,
-				     sizeof(struct acx_header), sizeof(*cmd));
+	ret = wl1271_cmd_interrogate(wl, ie_id, cmd, sizeof(*cmd));
 	if (ret < 0) {
 		wl1271_warning("testmode cmd interrogate failed: %d", ret);
 		goto out_free;
@@ -298,8 +296,7 @@ static int wl1271_tm_cmd_set_plt_mode(struct wl1271 *wl, struct nlattr *tb[])
 		ret = wl1271_plt_stop(wl);
 		break;
 	case PLT_ON:
-	case PLT_CHIP_AWAKE:
-		ret = wl1271_plt_start(wl, val);
+		ret = wl1271_plt_start(wl, PLT_ON);
 		break;
 	case PLT_FEM_DETECT:
 		ret = wl1271_tm_detect_fem(wl, tb);
@@ -358,12 +355,10 @@ out:
 	return ret;
 }
 
-int wl1271_tm_cmd(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
-		  void *data, int len)
+int wl1271_tm_cmd(struct ieee80211_hw *hw, void *data, int len)
 {
 	struct wl1271 *wl = hw->priv;
 	struct nlattr *tb[WL1271_TM_ATTR_MAX + 1];
-	u32 nla_cmd;
 	int err;
 
 	err = nla_parse(tb, WL1271_TM_ATTR_MAX, data, len, wl1271_tm_policy);
@@ -373,14 +368,7 @@ int wl1271_tm_cmd(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
 	if (!tb[WL1271_TM_ATTR_CMD_ID])
 		return -EINVAL;
 
-	nla_cmd = nla_get_u32(tb[WL1271_TM_ATTR_CMD_ID]);
-
-	/* Only SET_PLT_MODE is allowed in case of mode PLT_CHIP_AWAKE */
-	if (wl->plt_mode == PLT_CHIP_AWAKE &&
-	    nla_cmd != WL1271_TM_CMD_SET_PLT_MODE)
-		return -EOPNOTSUPP;
-
-	switch (nla_cmd) {
+	switch (nla_get_u32(tb[WL1271_TM_ATTR_CMD_ID])) {
 	case WL1271_TM_CMD_TEST:
 		return wl1271_tm_cmd_test(wl, tb);
 	case WL1271_TM_CMD_INTERROGATE:

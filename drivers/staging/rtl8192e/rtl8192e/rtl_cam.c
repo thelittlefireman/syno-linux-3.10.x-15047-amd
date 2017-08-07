@@ -2,7 +2,7 @@
  * Copyright(c) 2008 - 2010 Realtek Corporation. All rights reserved.
  *
  * Based on the r8180 driver, which is:
- * Copyright 2004-2005 Andrea Merello <andrea.merello@gmail.com>, et al.
+ * Copyright 2004-2005 Andrea Merello <andreamrl@tiscali.it>, et al.
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
  * published by the Free Software Foundation.
@@ -28,6 +28,7 @@
 #include "r8190P_rtl8256.h" /* RTL8225 Radio frontend */
 #include "r8192E_cmdpkt.h"
 
+extern int hwwep;
 void CamResetAllEntry(struct net_device *dev)
 {
 	u32 ulcommand = 0;
@@ -65,7 +66,6 @@ void EnableHWSecurityConfig8192(struct net_device *dev)
 		SECR_value |= SCR_RxUseDK;
 		SECR_value |= SCR_TxUseDK;
 	}
-
 
 	ieee->hwsec_active = 1;
 	if ((ieee->pHTInfo->IOTAction&HT_IOT_ACT_PURE_N_MODE) || !hwwep) {
@@ -132,7 +132,6 @@ void setKey(struct net_device *dev, u8 EntryNo, u8 KeyIndex, u16 KeyType,
 		usConfig |= BIT15 | (KeyType<<2);
 	else
 		usConfig |= BIT15 | (KeyType<<2) | KeyIndex;
-
 
 	for (i = 0; i < CAM_CONTENT_COUNT; i++) {
 		TargetCommand  = i + CAM_CONTENT_COUNT * EntryNo;
@@ -209,7 +208,6 @@ void CamRestoreAllEntry(struct net_device *dev)
 	};
 
 	RT_TRACE(COMP_SEC, "CamRestoreAllEntry:\n");
-
 
 	if ((priv->rtllib->pairwise_key_type == KEY_TYPE_WEP40) ||
 	    (priv->rtllib->pairwise_key_type == KEY_TYPE_WEP104)) {

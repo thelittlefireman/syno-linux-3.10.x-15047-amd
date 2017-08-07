@@ -29,6 +29,7 @@
 
 #include <linux/module.h>
 #include <linux/moduleparam.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/mutex.h>
 
@@ -1392,7 +1393,6 @@ BITC(x,27),BITC(x,26),BITC(x,25),BITC(x,24),\
 BITC(x,23),BITC(x,22),BITC(x,21),BITC(x,20),\
 BITC(x,19),BITC(x,18),BITC(x,17),BITC(x,16),\
 BIT_ARG16(x)
-
 
 #define IPW_DEBUG(level, fmt, args...) \
 do { if (ipw_debug_level & (level)) \

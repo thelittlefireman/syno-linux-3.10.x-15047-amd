@@ -195,7 +195,6 @@ static struct jffs2_tmp_dnode_info *jffs2_lookup_tn(struct rb_root *tn_root, uin
 	return tn;
 }
 
-
 static void jffs2_kill_tn(struct jffs2_sb_info *c, struct jffs2_tmp_dnode_info *tn)
 {
 	jffs2_mark_node_obsolete(c, tn->fn->raw);
@@ -543,13 +542,33 @@ static int jffs2_build_inode_fragtree(struct jffs2_sb_info *c,
 
 static void jffs2_free_tmp_dnode_info_list(struct rb_root *list)
 {
-	struct jffs2_tmp_dnode_info *tn, *next;
+	struct rb_node *this;
+	struct jffs2_tmp_dnode_info *tn;
 
-	rbtree_postorder_for_each_entry_safe(tn, next, list, rb) {
+	this = list->rb_node;
+
+	/* Now at bottom of tree */
+	while (this) {
+		if (this->rb_left)
+			this = this->rb_left;
+		else if (this->rb_right)
+			this = this->rb_right;
+		else {
+			tn = rb_entry(this, struct jffs2_tmp_dnode_info, rb);
 			jffs2_free_full_dnode(tn->fn);
 			jffs2_free_tmp_dnode_info(tn);
-	}
 
+			this = rb_parent(this);
+			if (!this)
+				break;
+
+			if (this->rb_left == &tn->rb)
+				this->rb_left = NULL;
+			else if (this->rb_right == &tn->rb)
+				this->rb_right = NULL;
+			else BUG();
+		}
+	}
 	*list = RB_ROOT;
 }
 
@@ -1225,7 +1244,6 @@ static int jffs2_do_read_inode_internal(struct jffs2_sb_info *c,
 			latest_node->ctime = latest_node->mtime = cpu_to_je32(rii.latest_mctime);
 		}
 		break;
-
 
 	case S_IFREG:
 		/* If it was a regular file, truncate it to the latest node's isize */

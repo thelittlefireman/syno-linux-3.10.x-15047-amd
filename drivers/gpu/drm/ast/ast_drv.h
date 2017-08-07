@@ -53,7 +53,6 @@
 #define PCI_CHIP_AST2100 0x2010
 #define PCI_CHIP_AST1180 0x1180
 
-
 enum ast_chip {
 	AST2000,
 	AST2100,
@@ -204,7 +203,6 @@ static inline void ast_open_key(struct ast_private *ast)
 #define AST_HWC_SIGNATURE_HOTSPOTX  0x14
 #define AST_HWC_SIGNATURE_HOTSPOTY  0x18
 
-
 struct ast_i2c_chan {
 	struct i2c_adapter adapter;
 	struct drm_device *dev;
@@ -296,6 +294,7 @@ int ast_framebuffer_init(struct drm_device *dev,
 int ast_fbdev_init(struct drm_device *dev);
 void ast_fbdev_fini(struct drm_device *dev);
 void ast_fbdev_set_suspend(struct drm_device *dev, int state);
+void ast_fbdev_set_base(struct ast_private *ast, unsigned long gpu_addr);
 
 struct ast_bo {
 	struct ttm_buffer_object bo;
@@ -313,7 +312,6 @@ ast_bo(struct ttm_buffer_object *bo)
 	return container_of(bo, struct ast_bo, bo);
 }
 
-
 #define to_ast_obj(x) container_of(x, struct ast_gem_object, base)
 
 #define AST_MM_ALIGN_SHIFT 4
@@ -322,7 +320,11 @@ ast_bo(struct ttm_buffer_object *bo)
 extern int ast_dumb_create(struct drm_file *file,
 			   struct drm_device *dev,
 			   struct drm_mode_create_dumb *args);
+extern int ast_dumb_destroy(struct drm_file *file,
+			    struct drm_device *dev,
+			    uint32_t handle);
 
+extern int ast_gem_init_object(struct drm_gem_object *obj);
 extern void ast_gem_free_object(struct drm_gem_object *obj);
 extern int ast_dumb_mmap_offset(struct drm_file *file,
 				struct drm_device *dev,
@@ -344,24 +346,8 @@ int ast_gem_create(struct drm_device *dev,
 int ast_bo_pin(struct ast_bo *bo, u32 pl_flag, u64 *gpu_addr);
 int ast_bo_unpin(struct ast_bo *bo);
 
-static inline int ast_bo_reserve(struct ast_bo *bo, bool no_wait)
-{
-	int ret;
-
-	ret = ttm_bo_reserve(&bo->bo, true, no_wait, false, 0);
-	if (ret) {
-		if (ret != -ERESTARTSYS && ret != -EBUSY)
-			DRM_ERROR("reserve failed %p\n", bo);
-		return ret;
-	}
-	return 0;
-}
-
-static inline void ast_bo_unreserve(struct ast_bo *bo)
-{
-	ttm_bo_unreserve(&bo->bo);
-}
-
+int ast_bo_reserve(struct ast_bo *bo, bool no_wait);
+void ast_bo_unreserve(struct ast_bo *bo);
 void ast_ttm_placement(struct ast_bo *bo, int domain);
 int ast_bo_push_sysram(struct ast_bo *bo);
 int ast_mmap(struct file *filp, struct vm_area_struct *vma);

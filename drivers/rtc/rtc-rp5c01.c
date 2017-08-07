@@ -14,7 +14,6 @@
 #include <linux/rtc.h>
 #include <linux/slab.h>
 
-
 enum {
 	RP5C01_1_SECOND		= 0x0,	/* MODE 00 */
 	RP5C01_10_SECOND	= 0x1,	/* MODE 00 */
@@ -58,7 +57,6 @@ enum {
 #define RP5C01_RESET_SECOND	(1 << 1)	/* reset divider stages for */
 						/* seconds or smaller units */
 #define RP5C01_RESET_ALARM	(1 << 0)	/* reset all alarm registers */
-
 
 struct rp5c01_priv {
 	u32 __iomem *regs;
@@ -152,7 +150,6 @@ static const struct rtc_class_ops rp5c01_rtc_ops = {
 	.read_time	= rp5c01_read_time,
 	.set_time	= rp5c01_set_time,
 };
-
 
 /*
  * The NVRAM is organized as 2 blocks of 13 nibbles of 4 bits.
@@ -251,15 +248,21 @@ static int __init rp5c01_rtc_probe(struct platform_device *dev)
 
 	rtc = devm_rtc_device_register(&dev->dev, "rtc-rp5c01", &rp5c01_rtc_ops,
 				  THIS_MODULE);
-	if (IS_ERR(rtc))
-		return PTR_ERR(rtc);
+	if (IS_ERR(rtc)) {
+		error = PTR_ERR(rtc);
+		goto out;
+	}
 	priv->rtc = rtc;
 
 	error = sysfs_create_bin_file(&dev->dev.kobj, &priv->nvram_attr);
 	if (error)
-		return error;
+		goto out;
 
 	return 0;
+
+out:
+	platform_set_drvdata(dev, NULL);
+	return error;
 }
 
 static int __exit rp5c01_rtc_remove(struct platform_device *dev)

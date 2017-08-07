@@ -92,7 +92,6 @@ MODULE_PARM_DESC(enable, "Enable ICE1724 soundcard.");
 module_param_array(model, charp, NULL, 0444);
 MODULE_PARM_DESC(model, "Use the given board model.");
 
-
 /* Both VT1720 and VT1724 have the same PCI IDs */
 static DEFINE_PCI_DEVICE_TABLE(snd_vt1724_ids) = {
 	{ PCI_VDEVICE(ICE, PCI_DEVICE_ID_VT1724), 0 },
@@ -100,7 +99,6 @@ static DEFINE_PCI_DEVICE_TABLE(snd_vt1724_ids) = {
 };
 
 MODULE_DEVICE_TABLE(pci, snd_vt1724_ids);
-
 
 static int PRO_RATE_LOCKED;
 static int PRO_RATE_RESET = 1;
@@ -146,7 +144,7 @@ static unsigned char snd_vt1724_ac97_ready(struct snd_ice1712 *ice)
 			continue;
 		return old_cmd;
 	}
-	dev_dbg(ice->card->dev, "snd_vt1724_ac97_ready: timeout\n");
+	snd_printd(KERN_ERR "snd_vt1724_ac97_ready: timeout\n");
 	return old_cmd;
 }
 
@@ -156,7 +154,7 @@ static int snd_vt1724_ac97_wait_bit(struct snd_ice1712 *ice, unsigned char bit)
 	for (tm = 0; tm < 0x10000; tm++)
 		if ((inb(ICEMT1724(ice, AC97_CMD)) & bit) == 0)
 			return 0;
-	dev_dbg(ice->card->dev, "snd_vt1724_ac97_wait_bit: timeout\n");
+	snd_printd(KERN_ERR "snd_vt1724_ac97_wait_bit: timeout\n");
 	return -EIO;
 }
 
@@ -190,7 +188,6 @@ static unsigned short snd_vt1724_ac97_read(struct snd_ac97 *ac97, unsigned short
 		return ~0;
 	return inw(ICEMT1724(ice, AC97_DATA));
 }
-
 
 /*
  * GPIO operations
@@ -408,7 +405,6 @@ static struct snd_rawmidi_ops vt1724_midi_input_ops = {
 	.trigger = vt1724_midi_input_trigger,
 };
 
-
 /*
  *  Interrupt handler
  */
@@ -430,10 +426,10 @@ static irqreturn_t snd_vt1724_interrupt(int irq, void *dev_id)
 		spin_lock(&ice->reg_lock);
 		if (++timeout > 10) {
 			status = inb(ICEREG1724(ice, IRQSTAT));
-			dev_err(ice->card->dev,
-				"Too long irq loop, status = 0x%x\n", status);
+			printk(KERN_ERR "ice1724: Too long irq loop, "
+			       "status = 0x%x\n", status);
 			if (status & VT1724_IRQ_MPU_TX) {
-				dev_err(ice->card->dev, "Disabling MPU_TX\n");
+				printk(KERN_ERR "ice1724: Disabling MPU_TX\n");
 				enable_midi_irq(ice, VT1724_IRQ_MPU_TX, 0);
 			}
 			spin_unlock(&ice->reg_lock);
@@ -801,7 +797,7 @@ static int snd_vt1724_playback_pro_prepare(struct snd_pcm_substream *substream)
 	spin_unlock_irq(&ice->reg_lock);
 
 	/*
-	dev_dbg(ice->card->dev, "pro prepare: ch = %d, addr = 0x%x, "
+	printk(KERN_DEBUG "pro prepare: ch = %d, addr = 0x%x, "
 	       "buffer = 0x%x, period = 0x%x\n",
 	       substream->runtime->channels,
 	       (unsigned int)substream->runtime->dma_addr,
@@ -821,13 +817,13 @@ static snd_pcm_uframes_t snd_vt1724_playback_pro_pointer(struct snd_pcm_substrea
 #if 0 /* read PLAYBACK_ADDR */
 	ptr = inl(ICEMT1724(ice, PLAYBACK_ADDR));
 	if (ptr < substream->runtime->dma_addr) {
-		dev_dbg(ice->card->dev, "invalid negative ptr\n");
+		snd_printd("ice1724: invalid negative ptr\n");
 		return 0;
 	}
 	ptr -= substream->runtime->dma_addr;
 	ptr = bytes_to_frames(substream->runtime, ptr);
 	if (ptr >= substream->runtime->buffer_size) {
-		dev_dbg(ice->card->dev, "invalid ptr %d (size=%d)\n",
+		snd_printd("ice1724: invalid ptr %d (size=%d)\n",
 			   (int)ptr, (int)substream->runtime->period_size);
 		return 0;
 	}
@@ -840,7 +836,7 @@ static snd_pcm_uframes_t snd_vt1724_playback_pro_pointer(struct snd_pcm_substrea
 	else if (ptr <= substream->runtime->buffer_size)
 		ptr = substream->runtime->buffer_size - ptr;
 	else {
-		dev_dbg(ice->card->dev, "invalid ptr %d (size=%d)\n",
+		snd_printd("ice1724: invalid ptr %d (size=%d)\n",
 			   (int)ptr, (int)substream->runtime->buffer_size);
 		ptr = 0;
 	}
@@ -884,7 +880,7 @@ static snd_pcm_uframes_t snd_vt1724_pcm_pointer(struct snd_pcm_substream *substr
 	else if (ptr <= substream->runtime->buffer_size)
 		ptr = substream->runtime->buffer_size - ptr;
 	else {
-		dev_dbg(ice->card->dev, "invalid ptr %d (size=%d)\n",
+		snd_printd("ice1724: invalid ptr %d (size=%d)\n",
 			   (int)ptr, (int)substream->runtime->buffer_size);
 		ptr = 0;
 	}
@@ -1031,7 +1027,6 @@ static void constrain_rate_if_locked(struct snd_pcm_substream *substream)
 	}
 }
 
-
 /* multi-channel playback needs alignment 8x32bit regardless of the channels
  * actually used
  */
@@ -1166,7 +1161,6 @@ static int snd_vt1724_pcm_profi(struct snd_ice1712 *ice, int device)
 
 	return 0;
 }
-
 
 /*
  * SPDIF PCM
@@ -1314,7 +1308,6 @@ static struct snd_pcm_ops snd_vt1724_capture_spdif_ops = {
 	.pointer =	snd_vt1724_pcm_pointer,
 };
 
-
 static int snd_vt1724_pcm_spdif(struct snd_ice1712 *ice, int device)
 {
 	char *name;
@@ -1364,7 +1357,6 @@ static int snd_vt1724_pcm_spdif(struct snd_ice1712 *ice, int device)
 
 	return 0;
 }
-
 
 /*
  * independent surround PCMs
@@ -1448,7 +1440,6 @@ static struct snd_pcm_ops snd_vt1724_playback_indep_ops = {
 	.pointer =	snd_vt1724_pcm_pointer,
 };
 
-
 static int snd_vt1724_pcm_indep(struct snd_ice1712 *ice, int device)
 {
 	struct snd_pcm *pcm;
@@ -1479,7 +1470,6 @@ static int snd_vt1724_pcm_indep(struct snd_ice1712 *ice, int device)
 	return 0;
 }
 
-
 /*
  *  Mixer section
  */
@@ -1508,8 +1498,7 @@ static int snd_vt1724_ac97_mixer(struct snd_ice1712 *ice)
 		ac97.private_data = ice;
 		err = snd_ac97_mixer(pbus, &ac97, &ice->ac97);
 		if (err < 0)
-			dev_warn(ice->card->dev,
-				 "cannot initialize pro ac97, skipped\n");
+			printk(KERN_WARNING "ice1712: cannot initialize pro ac97, skipped\n");
 		else
 			return 0;
 	}
@@ -1802,7 +1791,6 @@ static struct snd_kcontrol_new snd_vt1724_spdif_switch =
 	.put =		snd_vt1724_spdif_sw_put
 };
 
-
 #if 0 /* NOT USED YET */
 /*
  * GPIO access from extern
@@ -1920,7 +1908,6 @@ static int stdclock_set_spdif_clock(struct snd_ice1712 *ice, int type)
 	return 0;
 }
 
-
 static int snd_vt1724_pro_internal_clock_put(struct snd_kcontrol *kcontrol,
 					     struct snd_ctl_elem_value *ucontrol)
 {
@@ -2035,7 +2022,6 @@ static struct snd_kcontrol_new snd_vt1724_pro_rate_reset = {
 	.get = snd_vt1724_pro_rate_reset_get,
 	.put = snd_vt1724_pro_rate_reset_put
 };
-
 
 /*
  * routing
@@ -2168,7 +2154,6 @@ static struct snd_kcontrol_new snd_vt1724_mixer_pro_spdif_route = {
 	.count = 2,
 };
 
-
 static int snd_vt1724_pro_peak_info(struct snd_kcontrol *kcontrol,
 				    struct snd_ctl_elem_info *uinfo)
 {
@@ -2209,7 +2194,6 @@ static struct snd_kcontrol_new snd_vt1724_mixer_pro_peak = {
 
 static struct snd_ice1712_card_info no_matched;
 
-
 /*
   ooAoo cards with no controls
 */
@@ -2231,7 +2215,6 @@ static unsigned char ooaoo_sq210_eeprom[] = {
 					  and GPIO15 always zero */
 	[ICE_EEP2_GPIO_STATE2] = 0x00, /* inputs */
 };
-
 
 static struct snd_ice1712_card_info snd_vt1724_ooaoo_cards[] = {
 	{
@@ -2262,7 +2245,6 @@ static struct snd_ice1712_card_info *card_tables[] = {
 	NULL,
 };
 
-
 /*
  */
 
@@ -2272,7 +2254,7 @@ static void wait_i2c_busy(struct snd_ice1712 *ice)
 	while ((inb(ICEREG1724(ice, I2C_CTRL)) & VT1724_I2C_BUSY) && t--)
 		;
 	if (t == -1)
-		dev_err(ice->card->dev, "i2c busy timeout\n");
+		printk(KERN_ERR "ice1724: i2c busy timeout\n");
 }
 
 unsigned char snd_vt1724_read_i2c(struct snd_ice1712 *ice,
@@ -2288,7 +2270,7 @@ unsigned char snd_vt1724_read_i2c(struct snd_ice1712 *ice,
 	val = inb(ICEREG1724(ice, I2C_DATA));
 	mutex_unlock(&ice->i2c_mutex);
 	/*
-	dev_dbg(ice->card->dev, "i2c_read: [0x%x,0x%x] = 0x%x\n", dev, addr, val);
+	printk(KERN_DEBUG "i2c_read: [0x%x,0x%x] = 0x%x\n", dev, addr, val);
 	*/
 	return val;
 }
@@ -2299,7 +2281,7 @@ void snd_vt1724_write_i2c(struct snd_ice1712 *ice,
 	mutex_lock(&ice->i2c_mutex);
 	wait_i2c_busy(ice);
 	/*
-	dev_dbg(ice->card->dev, "i2c_write: [0x%x,0x%x] = 0x%x\n", dev, addr, data);
+	printk(KERN_DEBUG "i2c_write: [0x%x,0x%x] = 0x%x\n", dev, addr, data);
 	*/
 	outb(addr, ICEREG1724(ice, I2C_BYTE_ADDR));
 	outb(data, ICEREG1724(ice, I2C_DATA));
@@ -2336,8 +2318,7 @@ static int snd_vt1724_read_eeprom(struct snd_ice1712 *ice,
 				((unsigned int)swab16(vendor) << 16) | swab16(device);
 			if (ice->eeprom.subvendor == 0 ||
 			    ice->eeprom.subvendor == (unsigned int)-1) {
-				dev_err(ice->card->dev,
-					"No valid ID is found\n");
+				printk(KERN_ERR "ice1724: No valid ID is found\n");
 				return -ENXIO;
 			}
 		}
@@ -2346,8 +2327,7 @@ static int snd_vt1724_read_eeprom(struct snd_ice1712 *ice,
 		for (c = *tbl; c->name; c++) {
 			if (modelname && c->model &&
 			    !strcmp(modelname, c->model)) {
-				dev_info(ice->card->dev,
-					 "Using board model %s\n",
+				printk(KERN_INFO "ice1724: Using board model %s\n",
 				       c->name);
 				ice->eeprom.subvendor = c->subvendor;
 			} else if (c->subvendor != ice->eeprom.subvendor)
@@ -2356,14 +2336,14 @@ static int snd_vt1724_read_eeprom(struct snd_ice1712 *ice,
 			if (!c->eeprom_size || !c->eeprom_data)
 				goto found;
 			/* if the EEPROM is given by the driver, use it */
-			dev_dbg(ice->card->dev, "using the defined eeprom..\n");
+			snd_printdd("using the defined eeprom..\n");
 			ice->eeprom.version = 2;
 			ice->eeprom.size = c->eeprom_size + 6;
 			memcpy(ice->eeprom.data, c->eeprom_data, c->eeprom_size);
 			goto read_skipped;
 		}
 	}
-	dev_warn(ice->card->dev, "No matching model found for ID 0x%x\n",
+	printk(KERN_WARNING "ice1724: No matching model found for ID 0x%x\n",
 	       ice->eeprom.subvendor);
 #ifdef CONFIG_PM_SLEEP
 	/* assume AC97-only card which can suspend without additional code */
@@ -2375,13 +2355,13 @@ static int snd_vt1724_read_eeprom(struct snd_ice1712 *ice,
 	if (ice->eeprom.size < 6)
 		ice->eeprom.size = 32;
 	else if (ice->eeprom.size > 32) {
-		dev_err(ice->card->dev, "Invalid EEPROM (size = %i)\n",
+		printk(KERN_ERR "ice1724: Invalid EEPROM (size = %i)\n",
 		       ice->eeprom.size);
 		return -EIO;
 	}
 	ice->eeprom.version = snd_vt1724_read_i2c(ice, dev, 0x05);
 	if (ice->eeprom.version != 1 && ice->eeprom.version != 2)
-		dev_warn(ice->card->dev, "Invalid EEPROM version %i\n",
+		printk(KERN_WARNING "ice1724: Invalid EEPROM version %i\n",
 		       ice->eeprom.version);
 	size = ice->eeprom.size - 6;
 	for (i = 0; i < size; i++)
@@ -2394,8 +2374,6 @@ static int snd_vt1724_read_eeprom(struct snd_ice1712 *ice,
 
 	return 0;
 }
-
-
 
 static void snd_vt1724_chip_reset(struct snd_ice1712 *ice)
 {
@@ -2473,7 +2451,6 @@ static int snd_vt1724_spdif_build_controls(struct snd_ice1712 *ice)
 #endif
 	return 0;
 }
-
 
 static int snd_vt1724_build_controls(struct snd_ice1712 *ice)
 {
@@ -2589,7 +2566,7 @@ static int snd_vt1724_create(struct snd_card *card,
 
 	if (request_irq(pci->irq, snd_vt1724_interrupt,
 			IRQF_SHARED, KBUILD_MODNAME, ice)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
+		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_vt1724_free(ice);
 		return -EIO;
 	}
@@ -2612,10 +2589,11 @@ static int snd_vt1724_create(struct snd_card *card,
 		return err;
 	}
 
+	snd_card_set_dev(card, &pci->dev);
+
 	*r_ice1712 = ice;
 	return 0;
 }
-
 
 /*
  *
@@ -2639,8 +2617,7 @@ static int snd_vt1724_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	err = snd_card_new(&pci->dev, index[dev], id[dev], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0)
 		return err;
 
@@ -2802,6 +2779,7 @@ static void snd_vt1724_remove(struct pci_dev *pci)
 	if (ice->card_info && ice->card_info->chip_exit)
 		ice->card_info->chip_exit(ice);
 	snd_card_free(card);
+	pci_set_drvdata(pci, NULL);
 }
 
 #ifdef CONFIG_PM_SLEEP

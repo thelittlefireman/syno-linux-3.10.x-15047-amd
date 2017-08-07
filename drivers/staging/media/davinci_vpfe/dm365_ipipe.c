@@ -1009,7 +1009,7 @@ static int ipipe_validate_yee_params(struct vpfe_ipipe_yee *yee)
 	    yee->es_ofst_grad > YEE_THR_MASK)
 		return -EINVAL;
 
-	for (i = 0; i < VPFE_IPIPE_MAX_SIZE_YEE_LUT; i++)
+	for (i = 0; i < VPFE_IPIPE_MAX_SIZE_YEE_LUT ; i++)
 		if (yee->table[i] > YEE_ENTRY_MASK)
 			return -EINVAL;
 
@@ -1751,10 +1751,10 @@ static const struct media_entity_operations ipipe_media_ops = {
  */
 void vpfe_ipipe_unregister_entities(struct vpfe_ipipe_device *vpfe_ipipe)
 {
-	/* unregister subdev */
-	v4l2_device_unregister_subdev(&vpfe_ipipe->subdev);
 	/* cleanup entity */
 	media_entity_cleanup(&vpfe_ipipe->subdev.entity);
+	/* unregister subdev */
+	v4l2_device_unregister_subdev(&vpfe_ipipe->subdev);
 }
 
 /*
@@ -1835,7 +1835,6 @@ vpfe_ipipe_init(struct vpfe_ipipe_device *ipipe, struct platform_device *pdev)
 	v4l2_ctrl_new_std(&ipipe->ctrls, &ipipe_ctrl_ops,
 			  V4L2_CID_CONTRAST, 0,
 			  IPIPE_CONTRAST_HIGH, 1, 16);
-
 
 	v4l2_ctrl_handler_setup(&ipipe->ctrls);
 	sd->ctrl_handler = &ipipe->ctrls;

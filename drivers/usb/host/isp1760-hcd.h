@@ -110,7 +110,6 @@ struct slotinfo {
 	unsigned long timestamp;
 };
 
-
 typedef void (packet_enqueue)(struct usb_hcd *hcd, struct isp1760_qh *qh,
 		struct isp1760_qtd *qtd);
 

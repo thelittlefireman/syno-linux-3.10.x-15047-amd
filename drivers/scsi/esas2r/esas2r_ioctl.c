@@ -325,7 +325,6 @@ static u8 handle_smp_ioctl(struct esas2r_adapter *a, struct atto_ioctl_smp *si)
 	return handle_buffered_ioctl(&bi);
 }
 
-
 /* CSMI ioctl support */
 static void esas2r_csmi_ioctl_tunnel_comp_cb(struct esas2r_adapter *a,
 					     struct esas2r_request *rq)
@@ -347,7 +346,7 @@ static bool csmi_ioctl_tunnel(struct esas2r_adapter *a,
 {
 	struct atto_vda_ioctl_req *ioctl = &rq->vrq->ioctl;
 
-	if (test_bit(AF_DEGRADED_MODE, &a->flags))
+	if (a->flags & AF_DEGRADED_MODE)
 		return false;
 
 	esas2r_sgc_init(sgc, a, rq, rq->vrq->ioctl.sge);
@@ -415,7 +414,7 @@ static int csmi_ioctl_callback(struct esas2r_adapter *a,
 		lun = tm->lun;
 	}
 
-	if (path > 0) {
+	if (path > 0 || tid > ESAS2R_MAX_ID) {
 		rq->func_rsp.ioctl_rsp.csmi.csmi_status = cpu_to_le32(
 			CSMI_STS_INV_PARAM);
 		return false;
@@ -463,7 +462,7 @@ static int csmi_ioctl_callback(struct esas2r_adapter *a,
 		gcc->bios_minor_rev = LOBYTE(HIWORD(a->flash_ver));
 		gcc->bios_build_rev = LOWORD(a->flash_ver);
 
-		if (test_bit(AF2_THUNDERLINK, &a->flags2))
+		if (a->flags2 & AF2_THUNDERLINK)
 			gcc->cntlr_flags = CSMI_CNTLRF_SAS_HBA
 					   | CSMI_CNTLRF_SATA_HBA;
 		else
@@ -485,7 +484,7 @@ static int csmi_ioctl_callback(struct esas2r_adapter *a,
 	{
 		struct atto_csmi_get_cntlr_sts *gcs = &ioctl_csmi->cntlr_sts;
 
-		if (test_bit(AF_DEGRADED_MODE, &a->flags))
+		if (a->flags & AF_DEGRADED_MODE)
 			gcs->status = CSMI_CNTLR_STS_FAILED;
 		else
 			gcs->status = CSMI_CNTLR_STS_GOOD;
@@ -602,7 +601,6 @@ static int csmi_ioctl_callback(struct esas2r_adapter *a,
 	return false;
 }
 
-
 static void csmi_ioctl_done_callback(struct esas2r_adapter *a,
 				     struct esas2r_request *rq, void *context)
 {
@@ -641,7 +639,6 @@ static void csmi_ioctl_done_callback(struct esas2r_adapter *a,
 
 	ci->status = le32_to_cpu(rq->func_rsp.ioctl_rsp.csmi.csmi_status);
 }
-
 
 static u8 handle_csmi_ioctl(struct esas2r_adapter *a, struct atto_csmi *ci)
 {
@@ -819,10 +816,10 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 
 		gai->adap_type = ATTO_GAI_AT_ESASRAID2;
 
-		if (test_bit(AF2_THUNDERLINK, &a->flags2))
+		if (a->flags2 & AF2_THUNDERLINK)
 			gai->adap_type = ATTO_GAI_AT_TLSASHBA;
 
-		if (test_bit(AF_DEGRADED_MODE, &a->flags))
+		if (a->flags & AF_DEGRADED_MODE)
 			gai->adap_flags |= ATTO_GAI_AF_DEGRADED;
 
 		gai->adap_flags |= ATTO_GAI_AF_SPT_SUPP |
@@ -938,7 +935,7 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 				u32 total_len = ESAS2R_FWCOREDUMP_SZ;
 
 				/* Size is zero if a core dump isn't present */
-				if (!test_bit(AF2_COREDUMP_SAVED, &a->flags2))
+				if (!(a->flags2 & AF2_COREDUMP_SAVED))
 					total_len = 0;
 
 				if (len > total_len)
@@ -960,7 +957,8 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 				memset(a->fw_coredump_buff, 0,
 				       ESAS2R_FWCOREDUMP_SZ);
 
-				clear_bit(AF2_COREDUMP_SAVED, &a->flags2);
+				esas2r_lock_clear_flags(&a->flags2,
+							AF2_COREDUMP_SAVED);
 			} else if (trc->trace_func != ATTO_TRC_TF_GET_INFO) {
 				hi->status = ATTO_STS_UNSUPPORTED;
 				break;
@@ -972,7 +970,7 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 			trc->total_length = ESAS2R_FWCOREDUMP_SZ;
 
 			/* Return zero length buffer if core dump not present */
-			if (!test_bit(AF2_COREDUMP_SAVED, &a->flags2))
+			if (!(a->flags2 & AF2_COREDUMP_SAVED))
 				trc->total_length = 0;
 		} else {
 			hi->status = ATTO_STS_UNSUPPORTED;
@@ -1046,7 +1044,6 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 				cpu_to_le32(FCP_CMND_TA_ORDRD_Q);
 		else if (spt->flags & ATTO_SPTF_HEAD_OF_Q)
 			rq->vrq->scsi.flags |= cpu_to_le32(FCP_CMND_TA_HEAD_Q);
-
 
 		if (!esas2r_build_sg_list(a, rq, sgc)) {
 			hi->status = ATTO_STS_OUT_OF_RSRC;
@@ -1139,15 +1136,15 @@ static int hba_ioctl_callback(struct esas2r_adapter *a,
 			break;
 		}
 
-		if (test_bit(AF_CHPRST_NEEDED, &a->flags))
+		if (a->flags & AF_CHPRST_NEEDED)
 			ac->adap_state = ATTO_AC_AS_RST_SCHED;
-		else if (test_bit(AF_CHPRST_PENDING, &a->flags))
+		else if (a->flags & AF_CHPRST_PENDING)
 			ac->adap_state = ATTO_AC_AS_RST_IN_PROG;
-		else if (test_bit(AF_DISC_PENDING, &a->flags))
+		else if (a->flags & AF_DISC_PENDING)
 			ac->adap_state = ATTO_AC_AS_RST_DISC;
-		else if (test_bit(AF_DISABLED, &a->flags))
+		else if (a->flags & AF_DISABLED)
 			ac->adap_state = ATTO_AC_AS_DISABLED;
-		else if (test_bit(AF_DEGRADED_MODE, &a->flags))
+		else if (a->flags & AF_DEGRADED_MODE)
 			ac->adap_state = ATTO_AC_AS_DEGRADED;
 		else
 			ac->adap_state = ATTO_AC_AS_OK;
@@ -1249,7 +1246,6 @@ u8 handle_hba_ioctl(struct esas2r_adapter *a,
 	return handle_buffered_ioctl(&bi);
 }
 
-
 int esas2r_write_params(struct esas2r_adapter *a, struct esas2r_request *rq,
 			struct esas2r_sas_nvram *data)
 {
@@ -1271,7 +1267,6 @@ int esas2r_write_params(struct esas2r_adapter *a, struct esas2r_request *rq,
 	}
 	return result;
 }
-
 
 /* This function only cares about ATTO-specific ioctls (atto_express_ioctl) */
 int esas2r_ioctl_handler(void *hostdata, int cmd, void __user *arg)
@@ -1488,9 +1483,6 @@ int esas2r_ioctl_handler(void *hostdata, int cmd, void __user *arg)
 					      ioctl->data.ioctl_vda.data_length);
 		}
 
-
-
-
 		break;
 
 	case EXPRESS_IOCTL_GET_MOD_INFO:
@@ -1612,7 +1604,6 @@ int esas2r_read_fw(struct esas2r_adapter *a, char *buf, long off, int count)
 			if (a->firmware.header.action == FI_ACT_UP) {
 				if (!allocate_fw_buffers(a, length))
 					return -ENOMEM;
-
 
 				/* copy header over */
 

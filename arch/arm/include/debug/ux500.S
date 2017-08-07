@@ -9,7 +9,6 @@
  *
  */
 
-
 #if CONFIG_UX500_DEBUG_UART > 2
 #error Invalid Ux500 debug UART
 #endif
@@ -45,4 +44,4 @@
 	ldr	\rv, =UART_VIRT_BASE		@ yes, virtual address
 	.endm
 
-#include <debug/pl01x.S>
+#include <asm/hardware/debug-pl01x.S>

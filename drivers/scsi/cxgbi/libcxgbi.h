@@ -411,7 +411,6 @@ static inline struct sk_buff *alloc_wr(int wrlen, int dlen, gfp_t gfp)
 	return skb;
 }
 
-
 /*
  * The number of WRs needed for an skb depends on the number of fragments
  * in the skb and whether it has any payload in its main body.  This maps the
@@ -658,11 +657,11 @@ static inline u32 cxgbi_tag_nonrsvd_bits(struct cxgbi_tag_format *tformat,
 static inline void *cxgbi_alloc_big_mem(unsigned int size,
 					gfp_t gfp)
 {
-	void *p = kzalloc(size, gfp | __GFP_NOWARN);
-
+	void *p = kmalloc(size, gfp);
 	if (!p)
-		p = vzalloc(size);
-
+		p = vmalloc(size);
+	if (p)
+		memset(p, 0, size);
 	return p;
 }
 

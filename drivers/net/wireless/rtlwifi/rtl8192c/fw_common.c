@@ -774,7 +774,6 @@ void rtl92c_set_fw_rsvdpagepkt(struct ieee80211_hw *hw, bool dl_finished)
 		      "rtl92c_set_fw_rsvdpagepkt(): HW_VAR_SET_TX_CMD: ALL",
 		      u1RsvdPageLoc, 3);
 
-
 	skb = dev_alloc_skb(totalpacketlen);
 	if (!skb)
 		return;

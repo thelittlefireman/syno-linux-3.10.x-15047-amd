@@ -136,7 +136,6 @@ static void wf_start_thread(void)
 	}
 }
 
-
 static void wf_stop_thread(void)
 {
 	if (wf_thread)
@@ -290,11 +289,9 @@ void wf_put_control(struct wf_control *ct)
 }
 EXPORT_SYMBOL_GPL(wf_put_control);
 
-
 /*
  * Sensors
  */
-
 
 static void wf_sensor_release(struct kref *kref)
 {
@@ -403,7 +400,6 @@ void wf_put_sensor(struct wf_sensor *sr)
 }
 EXPORT_SYMBOL_GPL(wf_put_sensor);
 
-
 /*
  * Client & notification
  */
@@ -435,7 +431,7 @@ int wf_unregister_client(struct notifier_block *nb)
 {
 	mutex_lock(&wf_lock);
 	blocking_notifier_chain_unregister(&wf_client_list, nb);
-	wf_client_count++;
+	wf_client_count--;
 	if (wf_client_count == 0)
 		wf_stop_thread();
 	mutex_unlock(&wf_lock);
@@ -497,11 +493,9 @@ static void __exit windfarm_core_exit(void)
 	platform_device_unregister(&wf_platform_device);
 }
 
-
 module_init(windfarm_core_init);
 module_exit(windfarm_core_exit);
 
 MODULE_AUTHOR("Benjamin Herrenschmidt <benh@kernel.crashing.org>");
 MODULE_DESCRIPTION("Core component of PowerMac thermal control");
 MODULE_LICENSE("GPL");
-

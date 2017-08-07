@@ -20,7 +20,6 @@
 
 #include <asm/uaccess.h>
 
-
 struct timer_list_iter {
 	int cpu;
 	bool second_pass;

@@ -19,6 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -61,7 +62,6 @@ static int sl82c105_pre_reset(struct ata_link *link, unsigned long deadline)
 		return -ENOENT;
 	return ata_sff_prereset(link, deadline);
 }
-
 
 /**
  *	sl82c105_configure_piomode	-	set chip PIO timing
@@ -340,7 +340,7 @@ static int sl82c105_init_one(struct pci_dev *dev, const struct pci_device_id *id
 #ifdef CONFIG_PM
 static int sl82c105_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

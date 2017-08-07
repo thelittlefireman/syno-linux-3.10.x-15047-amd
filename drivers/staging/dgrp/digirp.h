@@ -36,7 +36,6 @@ struct link_struct {
 #define DIGI_GETLINK	_IOW('e', 103, struct link_struct)	/* Get link parameters */
 #define DIGI_SETLINK	_IOW('e', 104, struct link_struct)	/* Set link parameters */
 
-
 /************************************************************************
  * This module provides application access to special Digi
  * serial line enhancements which are not standard UNIX(tm) features.
@@ -66,13 +65,11 @@ struct	digiflow_struct {
 #define DIGI_422	0x4000		/* Change parallel port to input */
 #define DIGI_RTS_TOGGLE	0x8000		/* Support RTS Toggle		 */
 
-
 /************************************************************************
  * Values associated with transparent print
  ************************************************************************/
 #define DIGI_PLEN	8		/* String length */
 #define	DIGI_TSIZ	10		/* Terminal string len */
-
 
 /************************************************************************
  * Structure used with ioctl commands for DIGI parameters.
@@ -124,6 +121,5 @@ struct digi_struct {
 
 #define	DIGI_GEDELAY	_IOR('d', 246, int)	/* Get edelay */
 #define	DIGI_SEDELAY	_IOW('d', 247, int)	/* Get edelay */
-
 
 #endif /* _DIGIDRP_H */

@@ -98,7 +98,7 @@ static int stac9460_dac_mute(struct snd_ice1712 *ice, int idx,
 	new = (~mute << 7 & 0x80) | (old & ~0x80);
 	change = (new != old);
 	if (change)
-		/* dev_dbg(ice->card->dev, "Volume register 0x%02x: 0x%02x\n", idx, new);*/
+		/*printk ("Volume register 0x%02x: 0x%02x\n", idx, new);*/
 		stac9460_put(ice, idx, new);
 	return change;
 }
@@ -133,7 +133,7 @@ static int stac9460_dac_mute_put(struct snd_kcontrol *kcontrol, struct snd_ctl_e
 	/* due to possible conflicts with stac9460_set_rate_val, mutexing */
 	mutex_lock(&spec->mute_mutex);
 	/*
-	dev_dbg(ice->card->dev, "Mute put: reg 0x%02x, ctrl value: 0x%02x\n", idx,
+	printk(KERN_DEBUG "Mute put: reg 0x%02x, ctrl value: 0x%02x\n", idx,
 	       ucontrol->value.integer.value[0]);
 	*/
 	change = stac9460_dac_mute(ice, idx, ucontrol->value.integer.value[0]);
@@ -187,7 +187,7 @@ static int stac9460_dac_vol_put(struct snd_kcontrol *kcontrol, struct snd_ctl_el
 	if (change) {
 		ovol =  (0x7f - nvol) | (tmp & 0x80);
 		/*
-		dev_dbg(ice->card->dev, "DAC Volume: reg 0x%02x: 0x%02x\n",
+		printk(KERN_DEBUG "DAC Volume: reg 0x%02x: 0x%02x\n",
 		       idx, ovol);
 		*/
 		stac9460_put(ice, idx, (0x7f - nvol) | (tmp & 0x80));
@@ -295,7 +295,6 @@ static int stac9460_mic_sw_info(struct snd_kcontrol *kcontrol,
         return 0;
 }
 
-
 static int stac9460_mic_sw_get(struct snd_kcontrol *kcontrol,
 	       		struct snd_ctl_elem_value *ucontrol)
 {
@@ -348,7 +347,7 @@ static void stac9460_set_rate_val(struct snd_ice1712 *ice, unsigned int rate)
 	for (idx = 0; idx < 7 ; ++idx)
 		changed[idx] = stac9460_dac_mute(ice,
 				STAC946X_MASTER_VOLUME + idx, 0);
-	/*dev_dbg(ice->card->dev, "Rate change: %d, new MC: 0x%02x\n", rate, new);*/
+	/*printk(KERN_DEBUG "Rate change: %d, new MC: 0x%02x\n", rate, new);*/
 	stac9460_put(ice, STAC946X_MASTER_CLOCKING, new);
 	udelay(10);
 	/* unmuting - only originally unmuted dacs -
@@ -359,7 +358,6 @@ static void stac9460_set_rate_val(struct snd_ice1712 *ice, unsigned int rate)
 	}
 	mutex_unlock(&spec->mute_mutex);
 }
-
 
 static const DECLARE_TLV_DB_SCALE(db_scale_dac, -19125, 75, 0);
 static const DECLARE_TLV_DB_SCALE(db_scale_adc, 0, 150, 0);
@@ -557,7 +555,6 @@ static unsigned char prodigy192_ak4114_read(void *private_data,
 	return data;
 }
 
-
 static int ak4114_input_sw_info(struct snd_kcontrol *kcontrol,
 	       			struct snd_ctl_elem_info *uinfo)
 {
@@ -571,7 +568,6 @@ static int ak4114_input_sw_info(struct snd_kcontrol *kcontrol,
 	strcpy(uinfo->value.enumerated.name, texts[uinfo->value.enumerated.item]);
         return 0;
 }
-
 
 static int ak4114_input_sw_get(struct snd_kcontrol *kcontrol,
 	       		struct snd_ctl_elem_value *ucontrol)
@@ -605,7 +601,6 @@ static int ak4114_input_sw_put(struct snd_kcontrol *kcontrol,
 	return change;
 }
 
-
 static struct snd_kcontrol_new ak4114_controls[] = {
 	{
 		.iface = SNDRV_CTL_ELEM_IFACE_MIXER,
@@ -616,7 +611,6 @@ static struct snd_kcontrol_new ak4114_controls[] = {
 
 	}
 };
-
 
 static int prodigy192_ak4114_init(struct snd_ice1712 *ice)
 {
@@ -662,14 +656,12 @@ static void stac9460_proc_regs_read(struct snd_info_entry *entry,
 	}
 }
 
-
 static void stac9460_proc_init(struct snd_ice1712 *ice)
 {
 	struct snd_info_entry *entry;
 	if (!snd_card_proc_new(ice->card, "stac9460_codec", &entry))
 		snd_info_set_text_ops(entry, ice, stac9460_proc_regs_read);
 }
-
 
 static int prodigy192_add_controls(struct snd_ice1712 *ice)
 {
@@ -768,16 +760,14 @@ static int prodigy192_init(struct snd_ice1712 *ice)
 		/* from this moment if err = 0 then
 		 * spec->ak4114 should not be null
 		 */
-		dev_dbg(ice->card->dev,
-			"AK4114 initialized with status %d\n", err);
+		snd_printdd("AK4114 initialized with status %d\n", err);
 	} else
-		dev_dbg(ice->card->dev, "AK4114 not found\n");
+		snd_printdd("AK4114 not found\n");
 	if (err < 0)
 		return err;
 
 	return 0;
 }
-
 
 /*
  * Aureon boards don't provide the EEPROM data except for the vendor IDs.
@@ -805,7 +795,6 @@ static unsigned char prodigy71_eeprom[] = {
 					 * 1 = SPDIF-OUT from ice1724
 					 */
 };
-
 
 /* entry point */
 struct snd_ice1712_card_info snd_vt1724_prodigy192_cards[] = {

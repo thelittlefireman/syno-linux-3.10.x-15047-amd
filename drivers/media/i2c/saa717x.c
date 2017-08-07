@@ -315,7 +315,6 @@ static u32 reg_init_initialize[] =
 	0x454, 0x0425b9, /* Sound Easy programming(reset) */
 	0x454, 0x042539, /* Sound Easy programming(reset) */
 
-
 	/**** common setting( of DVD play, including scaler commands) ****/
 	0x042, 0x003, /* Data path configuration for VBI (TASK A) */
 
@@ -450,7 +449,6 @@ static u32 reg_init_initialize[] =
 	0x464, 0x000,
 	0x46c, 0xbbbb10,
 	0x470, 0x101010,
-
 
 	0x478, 0x000,
 	0x474, 0x018,
@@ -688,7 +686,6 @@ static u32 reg_set_audio_template[4][2] =
 	}
 };
 
-
 /* Get detected audio flags (from saa7134 driver) */
 static void get_inf_dev_status(struct v4l2_subdev *sd,
 		int *dual_flag, int *stereo_flag)
@@ -722,7 +719,6 @@ static void get_inf_dev_status(struct v4l2_subdev *sd,
 		[0x13 ... 0x1e] = "unknown",
 		[0x1f] = "??? [in progress]",
 	};
-
 
 	*dual_flag = *stereo_flag = 0;
 
@@ -977,6 +973,12 @@ static int saa717x_s_video_routing(struct v4l2_subdev *sd,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int saa717x_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *reg)
 {
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	if (!v4l2_chip_match_i2c_client(client, &reg->match))
+		return -EINVAL;
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
 	reg->val = saa717x_read(sd, reg->reg);
 	reg->size = 1;
 	return 0;
@@ -984,9 +986,14 @@ static int saa717x_g_register(struct v4l2_subdev *sd, struct v4l2_dbg_register *
 
 static int saa717x_s_register(struct v4l2_subdev *sd, const struct v4l2_dbg_register *reg)
 {
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	u16 addr = reg->reg & 0xffff;
 	u8 val = reg->val & 0xff;
 
+	if (!v4l2_chip_match_i2c_client(client, &reg->match))
+		return -EINVAL;
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
 	saa717x_write(sd, addr, val);
 	return 0;
 }
@@ -1234,7 +1241,6 @@ static const struct v4l2_subdev_ops saa717x_ops = {
 
 /* ----------------------------------------------------------------------- */
 
-
 /* i2c implementation */
 
 /* ----------------------------------------------------------------------- */
@@ -1251,7 +1257,7 @@ static int saa717x_probe(struct i2c_client *client,
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_SMBUS_BYTE_DATA))
 		return -EIO;
 
-	decoder = devm_kzalloc(&client->dev, sizeof(*decoder), GFP_KERNEL);
+	decoder = kzalloc(sizeof(struct saa717x_state), GFP_KERNEL);
 	if (decoder == NULL)
 		return -ENOMEM;
 
@@ -1265,6 +1271,7 @@ static int saa717x_probe(struct i2c_client *client,
 		id = saa717x_read(sd, 0x5a0);
 	if (id != 0xc2 && id != 0x32 && id != 0xf2 && id != 0x6c) {
 		v4l2_dbg(1, debug, sd, "saa717x not found (id=%02x)\n", id);
+		kfree(decoder);
 		return -ENODEV;
 	}
 	if (id == 0xc2)
@@ -1304,6 +1311,7 @@ static int saa717x_probe(struct i2c_client *client,
 		int err = hdl->error;
 
 		v4l2_ctrl_handler_free(hdl);
+		kfree(decoder);
 		return err;
 	}
 
@@ -1340,6 +1348,7 @@ static int saa717x_remove(struct i2c_client *client)
 
 	v4l2_device_unregister_subdev(sd);
 	v4l2_ctrl_handler_free(sd->ctrl_handler);
+	kfree(to_state(sd));
 	return 0;
 }
 

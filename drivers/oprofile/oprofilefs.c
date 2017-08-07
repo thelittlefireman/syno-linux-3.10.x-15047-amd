@@ -35,18 +35,15 @@ static struct inode *oprofilefs_get_inode(struct super_block *sb, int mode)
 	return inode;
 }
 
-
 static const struct super_operations s_ops = {
 	.statfs		= simple_statfs,
 	.drop_inode 	= generic_delete_inode,
 };
 
-
 ssize_t oprofilefs_str_to_user(char const *str, char __user *buf, size_t count, loff_t *offset)
 {
 	return simple_read_from_buffer(buf, count, offset, str, strlen(str));
 }
-
 
 #define TMPBUFSIZE 50
 
@@ -58,7 +55,6 @@ ssize_t oprofilefs_ulong_to_user(unsigned long val, char __user *buf, size_t cou
 		maxlen = TMPBUFSIZE;
 	return simple_read_from_buffer(buf, count, offset, tmpbuf, maxlen);
 }
-
 
 /*
  * Note: If oprofilefs_ulong_from_user() returns 0, then *val remains
@@ -89,13 +85,11 @@ int oprofilefs_ulong_from_user(unsigned long *val, char const __user *buf, size_
 	return count;
 }
 
-
 static ssize_t ulong_read_file(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
 	unsigned long *val = file->private_data;
 	return oprofilefs_ulong_to_user(*val, buf, count, offset);
 }
-
 
 static ssize_t ulong_write_file(struct file *file, char const __user *buf, size_t count, loff_t *offset)
 {
@@ -116,7 +110,6 @@ static ssize_t ulong_write_file(struct file *file, char const __user *buf, size_
 	return count;
 }
 
-
 static const struct file_operations ulong_fops = {
 	.read		= ulong_read_file,
 	.write		= ulong_write_file,
@@ -124,16 +117,15 @@ static const struct file_operations ulong_fops = {
 	.llseek		= default_llseek,
 };
 
-
 static const struct file_operations ulong_ro_fops = {
 	.read		= ulong_read_file,
 	.open		= simple_open,
 	.llseek		= default_llseek,
 };
 
-
-static int __oprofilefs_create_file(struct dentry *root, char const *name,
-	const struct file_operations *fops, int perm, void *priv)
+static int __oprofilefs_create_file(struct super_block *sb,
+	struct dentry *root, char const *name, const struct file_operations *fops,
+	int perm, void *priv)
 {
 	struct dentry *dentry;
 	struct inode *inode;
@@ -144,7 +136,7 @@ static int __oprofilefs_create_file(struct dentry *root, char const *name,
 		mutex_unlock(&root->d_inode->i_mutex);
 		return -ENOMEM;
 	}
-	inode = oprofilefs_get_inode(root->d_sb, S_IFREG | perm);
+	inode = oprofilefs_get_inode(sb, S_IFREG | perm);
 	if (!inode) {
 		dput(dentry);
 		mutex_unlock(&root->d_inode->i_mutex);
@@ -157,22 +149,19 @@ static int __oprofilefs_create_file(struct dentry *root, char const *name,
 	return 0;
 }
 
-
-int oprofilefs_create_ulong(struct dentry *root,
+int oprofilefs_create_ulong(struct super_block *sb, struct dentry *root,
 	char const *name, unsigned long *val)
 {
-	return __oprofilefs_create_file(root, name,
+	return __oprofilefs_create_file(sb, root, name,
 					&ulong_fops, 0644, val);
 }
 
-
-int oprofilefs_create_ro_ulong(struct dentry *root,
+int oprofilefs_create_ro_ulong(struct super_block *sb, struct dentry *root,
 	char const *name, unsigned long *val)
 {
-	return __oprofilefs_create_file(root, name,
+	return __oprofilefs_create_file(sb, root, name,
 					&ulong_ro_fops, 0444, val);
 }
-
 
 static ssize_t atomic_read_file(struct file *file, char __user *buf, size_t count, loff_t *offset)
 {
@@ -180,60 +169,55 @@ static ssize_t atomic_read_file(struct file *file, char __user *buf, size_t coun
 	return oprofilefs_ulong_to_user(atomic_read(val), buf, count, offset);
 }
 
-
 static const struct file_operations atomic_ro_fops = {
 	.read		= atomic_read_file,
 	.open		= simple_open,
 	.llseek		= default_llseek,
 };
 
-
-int oprofilefs_create_ro_atomic(struct dentry *root,
+int oprofilefs_create_ro_atomic(struct super_block *sb, struct dentry *root,
 	char const *name, atomic_t *val)
 {
-	return __oprofilefs_create_file(root, name,
+	return __oprofilefs_create_file(sb, root, name,
 					&atomic_ro_fops, 0444, val);
 }
 
-
-int oprofilefs_create_file(struct dentry *root,
+int oprofilefs_create_file(struct super_block *sb, struct dentry *root,
 	char const *name, const struct file_operations *fops)
 {
-	return __oprofilefs_create_file(root, name, fops, 0644, NULL);
+	return __oprofilefs_create_file(sb, root, name, fops, 0644, NULL);
 }
 
-
-int oprofilefs_create_file_perm(struct dentry *root,
+int oprofilefs_create_file_perm(struct super_block *sb, struct dentry *root,
 	char const *name, const struct file_operations *fops, int perm)
 {
-	return __oprofilefs_create_file(root, name, fops, perm, NULL);
+	return __oprofilefs_create_file(sb, root, name, fops, perm, NULL);
 }
 
-
-struct dentry *oprofilefs_mkdir(struct dentry *parent, char const *name)
+struct dentry *oprofilefs_mkdir(struct super_block *sb,
+	struct dentry *root, char const *name)
 {
 	struct dentry *dentry;
 	struct inode *inode;
 
-	mutex_lock(&parent->d_inode->i_mutex);
-	dentry = d_alloc_name(parent, name);
+	mutex_lock(&root->d_inode->i_mutex);
+	dentry = d_alloc_name(root, name);
 	if (!dentry) {
-		mutex_unlock(&parent->d_inode->i_mutex);
+		mutex_unlock(&root->d_inode->i_mutex);
 		return NULL;
 	}
-	inode = oprofilefs_get_inode(parent->d_sb, S_IFDIR | 0755);
+	inode = oprofilefs_get_inode(sb, S_IFDIR | 0755);
 	if (!inode) {
 		dput(dentry);
-		mutex_unlock(&parent->d_inode->i_mutex);
+		mutex_unlock(&root->d_inode->i_mutex);
 		return NULL;
 	}
 	inode->i_op = &simple_dir_inode_operations;
 	inode->i_fop = &simple_dir_operations;
 	d_add(dentry, inode);
-	mutex_unlock(&parent->d_inode->i_mutex);
+	mutex_unlock(&root->d_inode->i_mutex);
 	return dentry;
 }
-
 
 static int oprofilefs_fill_super(struct super_block *sb, void *data, int silent)
 {
@@ -254,19 +238,17 @@ static int oprofilefs_fill_super(struct super_block *sb, void *data, int silent)
 	if (!sb->s_root)
 		return -ENOMEM;
 
-	oprofile_create_files(sb->s_root);
+	oprofile_create_files(sb, sb->s_root);
 
 	// FIXME: verify kill_litter_super removes our dentries
 	return 0;
 }
-
 
 static struct dentry *oprofilefs_mount(struct file_system_type *fs_type,
 	int flags, const char *dev_name, void *data)
 {
 	return mount_single(fs_type, flags, data, oprofilefs_fill_super);
 }
-
 
 static struct file_system_type oprofilefs_type = {
 	.owner		= THIS_MODULE,
@@ -276,12 +258,10 @@ static struct file_system_type oprofilefs_type = {
 };
 MODULE_ALIAS_FS("oprofilefs");
 
-
 int __init oprofilefs_register(void)
 {
 	return register_filesystem(&oprofilefs_type);
 }
-
 
 void __exit oprofilefs_unregister(void)
 {

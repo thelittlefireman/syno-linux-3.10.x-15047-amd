@@ -41,7 +41,6 @@
 #include <asm/synch.h>
 #include "head_booke.h"
 
-
 /* As with the other PowerPC ports, it is expected that when code
  * execution begins here, the following registers contain valid, yet
  * optional, information:
@@ -784,6 +783,16 @@ _GLOBAL(__fixup_440A_mcheck)
 	sync
 	blr
 
+/*
+ * extern void giveup_fpu(struct task_struct *prev)
+ *
+ * The 44x core does not have an FPU.
+ */
+#ifndef CONFIG_PPC_FPU
+_GLOBAL(giveup_fpu)
+	blr
+#endif
+
 _GLOBAL(set_context)
 
 #ifdef CONFIG_BDI_SWITCH
@@ -991,7 +1000,6 @@ skpinv:	addi	r4,r4,1				/* Increment */
 	SET_IVOR(15, DebugCrit);
 
 	b	head_start_common
-
 
 #ifdef CONFIG_PPC_47x
 

@@ -76,7 +76,6 @@ static inline void pgd_free(struct mm_struct *mm, pgd_t *pgd)
 	free_pages((unsigned long)pgd, __get_order_pgd());
 }
 
-
 /*
  * With software-only page-tables, addr-split for traversal is tweakable and
  * that directly governs how big tables would be at each level.
@@ -105,16 +104,11 @@ static inline pgtable_t
 pte_alloc_one(struct mm_struct *mm, unsigned long address)
 {
 	pgtable_t pte_pg;
-	struct page *page;
 
 	pte_pg = __get_free_pages(GFP_KERNEL | __GFP_REPEAT, __get_order_pte());
-	if (!pte_pg)
-		return 0;
-	memzero((void *)pte_pg, PTRS_PER_PTE * 4);
-	page = virt_to_page(pte_pg);
-	if (!pgtable_page_ctor(page)) {
-		__free_page(page);
-		return 0;
+	if (pte_pg) {
+		memzero((void *)pte_pg, PTRS_PER_PTE * 4);
+		pgtable_page_ctor(virt_to_page(pte_pg));
 	}
 
 	return pte_pg;

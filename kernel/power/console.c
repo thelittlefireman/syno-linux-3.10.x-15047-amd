@@ -9,7 +9,6 @@
 #include <linux/kbd_kern.h>
 #include <linux/vt.h>
 #include <linux/module.h>
-#include <linux/slab.h>
 #include "power.h"
 
 #define SUSPEND_CONSOLE	(MAX_NR_CONSOLES-1)
@@ -25,7 +24,6 @@ struct pm_vt_switch {
 };
 
 static LIST_HEAD(pm_vt_switch_list);
-
 
 /**
  * pm_vt_switch_required - indicate VT switch at suspend requirements
@@ -82,7 +80,6 @@ void pm_vt_switch_unregister(struct device *dev)
 	list_for_each_entry(tmp, &pm_vt_switch_list, head) {
 		if (tmp->dev == dev) {
 			list_del(&tmp->head);
-			kfree(tmp);
 			break;
 		}
 	}

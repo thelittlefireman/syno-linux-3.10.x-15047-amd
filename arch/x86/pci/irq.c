@@ -83,8 +83,6 @@ static inline struct irq_routing_table *pirq_check_routing_table(u8 *addr)
 	return NULL;
 }
 
-
-
 /*
  *  Search 0xf0000 -- 0xfffff for the PCI IRQ Routing Table.
  */
@@ -136,9 +134,13 @@ static void __init pirq_peer_trick(void)
 		busmap[e->bus] = 1;
 	}
 	for (i = 1; i < 256; i++) {
+		int node;
 		if (!busmap[i] || pci_find_bus(0, i))
 			continue;
-		pcibios_scan_root(i);
+		node = get_mp_bus_to_node(i);
+		if (pci_scan_bus_on_node(i, &pci_root_ops, node))
+			printk(KERN_INFO "PCI: Discovered primary peer "
+			       "bus %02x [IRQ]\n", i);
 	}
 	pcibios_last_bus = -1;
 }
@@ -417,7 +419,6 @@ static int pirq_sis_set(struct pci_dev *router, struct pci_dev *dev, int pirq, i
 	return 1;
 }
 
-
 /*
  * VLSI: nibble offset 0x74 - educated guess due to routing table and
  *       config space of VLSI 82C534 PCI-bridge/router (1004:0102)
@@ -677,7 +678,6 @@ static __init int vlsi_router_probe(struct irq_router *r, struct pci_dev *router
 	return 0;
 }
 
-
 static __init int serverworks_router_probe(struct irq_router *r,
 		struct pci_dev *router, u16 device)
 {
@@ -807,7 +807,6 @@ static __initdata struct irq_router_handler pirq_routers[] = {
 };
 static struct irq_router pirq_router;
 static struct pci_dev *pirq_router_dev;
-
 
 /*
  *	FIXME: should we have an option to say "generic for

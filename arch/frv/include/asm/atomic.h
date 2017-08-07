@@ -201,5 +201,4 @@ static __inline__ int __atomic_add_unless(atomic_t *v, int a, int u)
 	return c;
 }
 
-
 #endif /* _ASM_ATOMIC_H */

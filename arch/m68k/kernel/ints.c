@@ -10,9 +10,9 @@
 #include <linux/types.h>
 #include <linux/sched.h>
 #include <linux/interrupt.h>
+#include <linux/kernel_stat.h>
 #include <linux/errno.h>
 #include <linux/init.h>
-#include <linux/irq.h>
 
 #include <asm/setup.h>
 #include <asm/irq.h>
@@ -58,6 +58,12 @@ void __init init_IRQ(void)
 {
 	int i;
 
+	/* assembly irq entry code relies on this... */
+	if (HARDIRQ_MASK != 0x00ff0000) {
+		extern void hardirq_mask_is_broken(void);
+		hardirq_mask_is_broken();
+	}
+
 	for (i = IRQ_AUTO_1; i <= IRQ_AUTO_7; i++)
 		irq_set_chip_and_handler(i, &auto_irq_chip, handle_simple_irq);
 
@@ -95,7 +101,7 @@ void __init m68k_setup_user_interrupt(unsigned int vec, unsigned int cnt)
 	BUG_ON(IRQ_USER + cnt > NR_IRQS);
 	m68k_first_user_vec = vec;
 	for (i = 0; i < cnt; i++)
-		irq_set_chip_and_handler(i, &user_irq_chip, handle_simple_irq);
+		irq_set_chip(IRQ_USER + i, &user_irq_chip);
 	*user_irqvec_fixup = vec - IRQ_USER;
 	flush_icache();
 }
@@ -149,7 +155,6 @@ void m68k_irq_shutdown(struct irq_data *data)
 		vectors[m68k_first_user_vec + irq - IRQ_USER] = bad_inthandler;
 }
 
-
 unsigned int irq_canonicalize(unsigned int irq)
 {
 #ifdef CONFIG_Q40
@@ -160,7 +165,6 @@ unsigned int irq_canonicalize(unsigned int irq)
 }
 
 EXPORT_SYMBOL(irq_canonicalize);
-
 
 asmlinkage void handle_badint(struct pt_regs *regs)
 {

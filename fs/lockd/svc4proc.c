@@ -421,7 +421,7 @@ nlm4svc_proc_sm_notify(struct svc_rqst *rqstp, struct nlm_reboot *argp,
 		return rpc_system_err;
 	}
 
-	nlm_host_rebooted(argp);
+	nlm_host_rebooted(SVC_NET(rqstp), argp);
 	return rpc_success;
 }
 
@@ -440,7 +440,6 @@ nlm4svc_proc_granted_res(struct svc_rqst *rqstp, struct nlm_res  *argp,
         nlmsvc_grant_reply(&argp->cookie, argp->status);
         return rpc_success;
 }
-
 
 /*
  * NLM Server procedures.

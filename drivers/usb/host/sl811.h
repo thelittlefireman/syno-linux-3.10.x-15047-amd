@@ -23,7 +23,6 @@
 #define SL811_PERIPH_EP2	0x20
 #define SL811_PERIPH_EP3	0x30
 
-
 /* TRANSFER REGISTERS:  host and peripheral sides are similar
  * except for the control models (master vs slave).
  */
@@ -59,7 +58,6 @@
 #	define	SL_DATA1	0xb0
 #define SL11H_XFERCNTREG	4	/* read */
 #define SL11H_DEVADDRREG	4	/* write */
-
 
 /* CONTROL REGISTERS:  host and peripheral are very different.
  */
@@ -99,7 +97,6 @@
 
 #define SL811HS_CTL2_INIT	(SL811HS_CTL2MASK_HOST | 0x2e)
 
-
 /* DATA BUFFERS: registers from 0x10..0xff are for data buffers;
  * that's 240 bytes, which we'll split evenly between A and B sides.
  * Only ISO can use more than 64 bytes per packet.
@@ -122,7 +119,7 @@ struct sl811 {
 	void __iomem		*addr_reg;
 	void __iomem		*data_reg;
 	struct sl811_platform_data	*board;
-	struct dentry 		*debug_file;
+	struct proc_dir_entry	*pde;
 
 	unsigned long		stat_insrmv;
 	unsigned long		stat_wake;
@@ -242,8 +239,24 @@ sl811_read_buf(struct sl811 *sl811, int addr, void *buf, size_t count)
 
 /*-------------------------------------------------------------------------*/
 
+#ifdef DEBUG
+#define DBG(stuff...)		printk(KERN_DEBUG "sl811: " stuff)
+#else
+#define DBG(stuff...)		do{}while(0)
+#endif
+
+#ifdef VERBOSE
+#    define VDBG		DBG
+#else
+#    define VDBG(stuff...)	do{}while(0)
+#endif
+
 #ifdef PACKET_TRACE
-#    define PACKET		pr_debug("sl811: "stuff)
+#    define PACKET		VDBG
 #else
 #    define PACKET(stuff...)	do{}while(0)
 #endif
+
+#define ERR(stuff...)		printk(KERN_ERR "sl811: " stuff)
+#define WARNING(stuff...)	printk(KERN_WARNING "sl811: " stuff)
+#define INFO(stuff...)		printk(KERN_INFO "sl811: " stuff)

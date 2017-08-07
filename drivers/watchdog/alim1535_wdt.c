@@ -283,7 +283,6 @@ static int ali_release(struct inode *inode, struct file *file)
  *	Notifier for system down
  */
 
-
 static int ali_notify_sys(struct notifier_block *this,
 					unsigned long code, void *unused)
 {
@@ -301,7 +300,7 @@ static int ali_notify_sys(struct notifier_block *this,
  *	want to register another driver on the same PCI id.
  */
 
-static const struct pci_device_id ali_pci_tbl[] __used = {
+static DEFINE_PCI_DEVICE_TABLE(ali_pci_tbl) __used = {
 	{ PCI_VENDOR_ID_AL, 0x1533, PCI_ANY_ID, PCI_ANY_ID,},
 	{ PCI_VENDOR_ID_AL, 0x1535, PCI_ANY_ID, PCI_ANY_ID,},
 	{ 0, },
@@ -452,3 +451,4 @@ module_exit(watchdog_exit);
 MODULE_AUTHOR("Alan Cox");
 MODULE_DESCRIPTION("ALi M1535 PMU Watchdog Timer driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

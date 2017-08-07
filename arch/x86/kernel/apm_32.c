@@ -392,7 +392,7 @@ static struct cpuidle_device apm_cpuidle_device;
 /*
  * Local variables
  */
-__visible struct {
+static struct {
 	unsigned long	offset;
 	unsigned short	segment;
 } apm_bios_entry;
@@ -1941,7 +1941,6 @@ static struct miscdevice apm_device = {
 	"apm_bios",
 	&apm_bios_fops
 };
-
 
 /* Simple "print if true" callback */
 static int __init print_if_true(const struct dmi_system_id *d)

@@ -33,7 +33,7 @@
 #include <linux/input/sparse-keymap.h>
 #include <linux/dmi.h>
 #include <linux/fb.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_bus.h>
 
 #include "asus-wmi.h"
 
@@ -262,7 +262,6 @@ static struct asus_wmi_driver asus_wmi_driver = {
 	.probe = eeepc_wmi_probe,
 	.detect_quirks = eeepc_wmi_quirks,
 };
-
 
 static int __init eeepc_wmi_init(void)
 {

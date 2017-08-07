@@ -23,20 +23,18 @@ struct xfs_dinode;
 struct xfs_imap;
 struct xfs_mount;
 struct xfs_trans;
-struct xfs_btree_cur;
 
-/* Move inodes in clusters of this size */
+/*
+ * Allocation parameters for inode allocation.
+ */
+#define	XFS_IALLOC_INODES(mp)	(mp)->m_ialloc_inos
+#define	XFS_IALLOC_BLOCKS(mp)	(mp)->m_ialloc_blks
+
+/*
+ * Move inodes in clusters of this size.
+ */
 #define	XFS_INODE_BIG_CLUSTER_SIZE	8192
-
-/* Calculate and return the number of filesystem blocks per inode cluster */
-static inline int
-xfs_icluster_size_fsb(
-	struct xfs_mount	*mp)
-{
-	if (mp->m_sb.sb_blocksize >= mp->m_inode_cluster_size)
-		return 1;
-	return mp->m_inode_cluster_size >> mp->m_sb.sb_blocklog;
-}
+#define	XFS_INODE_CLUSTER_SIZE(mp)	(mp)->m_inode_cluster_size
 
 /*
  * Make an inode pointer out of the buffer/offset.
@@ -44,7 +42,7 @@ xfs_icluster_size_fsb(
 static inline struct xfs_dinode *
 xfs_make_iptr(struct xfs_mount *mp, struct xfs_buf *b, int o)
 {
-	return (struct xfs_dinode *)
+	return (xfs_dinode_t *)
 		(xfs_buf_offset(b, o << (mp)->m_sb.sb_inodelog));
 }
 
@@ -152,12 +150,6 @@ int xfs_inobt_lookup(struct xfs_btree_cur *cur, xfs_agino_t ino,
 int xfs_inobt_get_rec(struct xfs_btree_cur *cur,
 		xfs_inobt_rec_incore_t *rec, int *stat);
 
-/*
- * Inode chunk initialisation routine
- */
-int xfs_ialloc_inode_init(struct xfs_mount *mp, struct xfs_trans *tp,
-			  struct list_head *buffer_list,
-			  xfs_agnumber_t agno, xfs_agblock_t agbno,
-			  xfs_agblock_t length, unsigned int gen);
+extern const struct xfs_buf_ops xfs_agi_buf_ops;
 
 #endif	/* __XFS_IALLOC_H__ */

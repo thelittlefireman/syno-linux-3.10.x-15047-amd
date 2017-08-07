@@ -85,7 +85,6 @@ static char *serial_version = "4.30";
 
 #include <asm/setup.h>
 
-
 #include <asm/irq.h>
 
 #include <asm/amigahw.h>
@@ -123,7 +122,6 @@ static void change_speed(struct tty_struct *tty, struct serial_state *info,
 		struct ktermios *old);
 static void rs_wait_until_sent(struct tty_struct *tty, int timeout);
 
-
 static struct serial_state rs_table[1];
 
 #define NR_PORTS ARRAY_SIZE(rs_table)
@@ -131,7 +129,6 @@ static struct serial_state rs_table[1];
 #include <asm/uaccess.h>
 
 #define serial_isroot()	(capable(CAP_SYS_ADMIN))
-
 
 static inline int serial_paranoia_check(struct serial_state *info,
 					char *name, const char *routine)
@@ -650,7 +647,6 @@ static void shutdown(struct tty_struct *tty, struct serial_state *info)
 	local_irq_restore(flags);
 }
 
-
 /*
  * This routine is called to set the UART divisor registers to match
  * the specified baud rate for a serial port.
@@ -1114,7 +1110,6 @@ check_and_exit:
 	return retval;
 }
 
-
 /*
  * get_lsr_info - get line status register info
  *
@@ -1140,7 +1135,6 @@ static int get_lsr_info(struct serial_state *info, unsigned int __user *value)
 		return -EFAULT;
 	return 0;
 }
-
 
 static int rs_tiocmget(struct tty_struct *tty)
 {
@@ -1248,8 +1242,6 @@ static int rs_ioctl(struct tty_struct *tty,
 	struct async_icount cprev, cnow;	/* kernel counter temps */
 	void __user *argp = (void __user *)arg;
 	unsigned long flags;
-	DEFINE_WAIT(wait);
-	int ret;
 
 	if (serial_paranoia_check(info, tty->name, "rs_ioctl"))
 		return -ENODEV;
@@ -1290,33 +1282,25 @@ static int rs_ioctl(struct tty_struct *tty,
 			cprev = info->icount;
 			local_irq_restore(flags);
 			while (1) {
-				prepare_to_wait(&info->tport.delta_msr_wait,
-						&wait, TASK_INTERRUPTIBLE);
+				interruptible_sleep_on(&info->tport.delta_msr_wait);
+				/* see if a signal did it */
+				if (signal_pending(current))
+					return -ERESTARTSYS;
 				local_irq_save(flags);
 				cnow = info->icount; /* atomic copy */
 				local_irq_restore(flags);
 				if (cnow.rng == cprev.rng && cnow.dsr == cprev.dsr && 
-				    cnow.dcd == cprev.dcd && cnow.cts == cprev.cts) {
-					ret = -EIO; /* no change => error */
-					break;
-				}
+				    cnow.dcd == cprev.dcd && cnow.cts == cprev.cts)
+					return -EIO; /* no change => error */
 				if ( ((arg & TIOCM_RNG) && (cnow.rng != cprev.rng)) ||
 				     ((arg & TIOCM_DSR) && (cnow.dsr != cprev.dsr)) ||
 				     ((arg & TIOCM_CD)  && (cnow.dcd != cprev.dcd)) ||
 				     ((arg & TIOCM_CTS) && (cnow.cts != cprev.cts)) ) {
-					ret = 0;
-					break;
-				}
-				schedule();
-				/* see if a signal did it */
-				if (signal_pending(current)) {
-					ret = -ERESTARTSYS;
-					break;
+					return 0;
 				}
 				cprev = cnow;
 			}
-			finish_wait(&info->tport.delta_msr_wait, &wait);
-			return ret;
+			/* NOTREACHED */
 
 		case TIOCSERGWILD:
 		case TIOCSERSWILD:
@@ -1633,7 +1617,6 @@ static void show_serial_version(void)
  	printk(KERN_INFO "%s version %s\n", serial_name, serial_version);
 }
 
-
 static const struct tty_operations serial_ops = {
 	.open = rs_open,
 	.close = rs_close,
@@ -1795,6 +1778,8 @@ static int __exit amiga_serial_remove(struct platform_device *pdev)
 	free_irq(IRQ_AMIGA_TBE, state);
 	free_irq(IRQ_AMIGA_RBF, state);
 
+	platform_set_drvdata(pdev, NULL);
+
 	return error;
 }
 
@@ -1807,7 +1792,6 @@ static struct platform_driver amiga_serial_driver = {
 };
 
 module_platform_driver_probe(amiga_serial_driver, amiga_serial_probe);
-
 
 #if defined(CONFIG_SERIAL_CONSOLE) && !defined(MODULE)
 
@@ -1865,9 +1849,6 @@ static struct console sercons = {
  */
 static int __init amiserial_console_init(void)
 {
-	if (!MACH_IS_AMIGA)
-		return -ENODEV;
-
 	register_console(&sercons);
 	return 0;
 }

@@ -129,7 +129,6 @@ static struct rtable *do_output_route4(struct net *net, __be32 daddr,
 
 	memset(&fl4, 0, sizeof(fl4));
 	fl4.daddr = daddr;
-	fl4.saddr = (rt_mode & IP_VS_RT_MODE_CONNECT) ? *saddr : 0;
 	fl4.flowi4_flags = (rt_mode & IP_VS_RT_MODE_KNOWN_NH) ?
 			   FLOWI_FLAG_KNOWN_NH : 0;
 
@@ -473,7 +472,6 @@ err_unreach:
 }
 #endif
 
-
 /* return NF_ACCEPT to allow forwarding or other NF_xxx on error */
 static inline int ip_vs_tunnel_xmit_prepare(struct sk_buff *skb,
 					    struct ip_vs_conn *cp)
@@ -528,7 +526,6 @@ static inline int ip_vs_send_or_cont(int pf, struct sk_buff *skb,
 	return ret;
 }
 
-
 /*
  *      NULL transmitter (do nothing except return NF_ACCEPT)
  */
@@ -539,7 +536,6 @@ ip_vs_null_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
 	/* we do not touch skb and do not need pskb ptr */
 	return ip_vs_send_or_cont(NFPROTO_IPV4, skb, cp, 1);
 }
-
 
 /*
  *      Bypass transmitter
@@ -790,7 +786,6 @@ tx_error:
 }
 #endif
 
-
 /*
  *   IP Tunneling transmitter
  *
@@ -883,7 +878,7 @@ ip_vs_tunnel_xmit(struct sk_buff *skb, struct ip_vs_conn *cp,
 	iph->daddr		=	cp->daddr.ip;
 	iph->saddr		=	saddr;
 	iph->ttl		=	old_iph->ttl;
-	ip_select_ident(skb, &rt->dst, NULL);
+	ip_select_ident(skb, NULL);
 
 	/* Another hack: avoid icmp_send in ip_fragment */
 	skb->local_df = 1;
@@ -967,8 +962,8 @@ ip_vs_tunnel_xmit_v6(struct sk_buff *skb, struct ip_vs_conn *cp,
 	iph->nexthdr		=	IPPROTO_IPV6;
 	iph->payload_len	=	old_iph->payload_len;
 	be16_add_cpu(&iph->payload_len, sizeof(*old_iph));
-	iph->priority		=	old_iph->priority;
 	memset(&iph->flow_lbl, 0, sizeof(iph->flow_lbl));
+	ipv6_change_dsfield(iph, 0, ipv6_get_dsfield(old_iph));
 	iph->daddr = cp->daddr.in6;
 	iph->saddr = saddr;
 	iph->hop_limit		=	old_iph->hop_limit;
@@ -994,7 +989,6 @@ tx_error:
 	return NF_STOLEN;
 }
 #endif
-
 
 /*
  *      Direct Routing transmitter
@@ -1075,7 +1069,6 @@ tx_error:
 	return NF_STOLEN;
 }
 #endif
-
 
 /*
  *	ICMP packet transmitter

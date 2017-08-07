@@ -185,10 +185,6 @@
 #define BTTV_BOARD_PV183                   0x9f
 #define BTTV_BOARD_TVT_TD3116		   0xa0
 #define BTTV_BOARD_APOSONIC_WDVR           0xa1
-#define BTTV_BOARD_ADLINK_MPG24            0xa2
-#define BTTV_BOARD_BT848_CAP_14            0xa3
-#define BTTV_BOARD_CYBERVISION_CV06        0xa4
-#define BTTV_BOARD_KWORLD_VSTREAM_XPERT    0xa5
 
 /* more card-specific defines */
 #define PT2254_L_CHANNEL 0x10
@@ -236,7 +232,6 @@ struct tvcard {
 #define PLL_NONE 0
 #define PLL_28   1
 #define PLL_35   2
-#define PLL_14   3
 
 	/* i2c audio flags */
 	unsigned int no_msp34xx:1;
@@ -322,9 +317,6 @@ extern int bttv_read_gpio(unsigned int card, unsigned long *data);
 extern int bttv_write_gpio(unsigned int card,
 			   unsigned long mask, unsigned long data);
 
-
-
-
 /* ---------------------------------------------------------- */
 /* sysfs/driver-moded based gpio access interface             */
 
@@ -356,7 +348,6 @@ void bttv_gpio_bits(struct bttv_core *core, u32 mask, u32 bits);
 #define gpio_read()            bttv_gpio_read(&btv->c)
 #define gpio_write(value)      bttv_gpio_write(&btv->c, value)
 #define gpio_bits(mask,bits)   bttv_gpio_bits(&btv->c, mask, bits)
-
 
 /* ---------------------------------------------------------- */
 /* i2c                                                        */

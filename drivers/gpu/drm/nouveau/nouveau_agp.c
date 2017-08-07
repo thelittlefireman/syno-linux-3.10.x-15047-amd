@@ -11,28 +11,10 @@ MODULE_PARM_DESC(agpmode, "AGP mode (0 to disable AGP)");
 static int nouveau_agpmode = -1;
 module_param_named(agpmode, nouveau_agpmode, int, 0400);
 
-struct nouveau_agpmode_quirk {
-	u16 hostbridge_vendor;
-	u16 hostbridge_device;
-	u16 chip_vendor;
-	u16 chip_device;
-	int mode;
-};
-
-static struct nouveau_agpmode_quirk nouveau_agpmode_quirk_list[] = {
-	/* VIA Apollo PRO133x / GeForce FX 5600 Ultra, max agpmode 2, fdo #20341 */
-	{ PCI_VENDOR_ID_VIA, 0x0691, PCI_VENDOR_ID_NVIDIA, 0x0311, 2 },
-
-	{},
-};
-
 static unsigned long
-get_agp_mode(struct nouveau_drm *drm, const struct drm_agp_info *info)
+get_agp_mode(struct nouveau_drm *drm, unsigned long mode)
 {
 	struct nouveau_device *device = nv_device(drm->device);
-	struct nouveau_agpmode_quirk *quirk = nouveau_agpmode_quirk_list;
-	int agpmode = nouveau_agpmode;
-	unsigned long mode = info->mode;
 
 	/*
 	 * FW seems to be broken on nv18, it makes the card lock up
@@ -42,27 +24,11 @@ get_agp_mode(struct nouveau_drm *drm, const struct drm_agp_info *info)
 		mode &= ~PCI_AGP_COMMAND_FW;
 
 	/*
-	 * Go through the quirks list and adjust the agpmode accordingly.
-	 */
-	while (agpmode == -1 && quirk->hostbridge_vendor) {
-		if (info->id_vendor == quirk->hostbridge_vendor &&
-		    info->id_device == quirk->hostbridge_device &&
-		    device->pdev->vendor == quirk->chip_vendor &&
-		    device->pdev->device == quirk->chip_device) {
-			agpmode = quirk->mode;
-			nv_info(device, "Forcing agp mode to %dX. Use agpmode to override.\n",
-				agpmode);
-			break;
-		}
-		++quirk;
-	}
-
-	/*
 	 * AGP mode set in the command line.
 	 */
-	if (agpmode > 0) {
+	if (nouveau_agpmode > 0) {
 		bool agpv3 = mode & 0x8;
-		int rate = agpv3 ? agpmode / 4 : agpmode;
+		int rate = agpv3 ? nouveau_agpmode / 4 : nouveau_agpmode;
 
 		mode = (mode & ~0x7) | (rate & 0x7);
 	}
@@ -75,7 +41,7 @@ nouveau_agp_enabled(struct nouveau_drm *drm)
 {
 	struct drm_device *dev = drm->dev;
 
-	if (!dev->pdev || !drm_pci_device_is_agp(dev) || !dev->agp)
+	if (!drm_pci_device_is_agp(dev) || !dev->agp)
 		return false;
 
 	if (drm->agp.stat == UNKNOWN) {
@@ -124,14 +90,13 @@ nouveau_agp_reset(struct nouveau_drm *drm)
 		if (ret)
 			return;
 
-		mode.mode  = get_agp_mode(drm, &info);
+		mode.mode  = get_agp_mode(drm, info.mode);
 		mode.mode &= ~PCI_AGP_COMMAND_FW;
 
 		ret = drm_agp_enable(dev, mode);
 		if (ret)
 			return;
 	}
-
 
 	/* clear busmaster bit, and disable AGP */
 	save[0] = nv_mask(device, NV04_PBUS_PCI_NV_1, 0x00000004, 0x00000000);
@@ -173,7 +138,7 @@ nouveau_agp_init(struct nouveau_drm *drm)
 	}
 
 	/* see agp.h for the AGPSTAT_* modes available */
-	mode.mode = get_agp_mode(drm, &info);
+	mode.mode = get_agp_mode(drm, info.mode);
 
 	ret = drm_agp_enable(dev, mode);
 	if (ret) {

@@ -8,6 +8,7 @@
 #include <linux/delay.h>
 #include <linux/kernel.h>
 #include <linux/spinlock.h>
+#include <linux/init.h>
 #include <linux/io.h>
 #include <linux/errno.h>
 

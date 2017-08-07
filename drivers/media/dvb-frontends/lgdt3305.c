@@ -726,7 +726,6 @@ static int lgdt3304_set_parameters(struct dvb_frontend *fe)
 		return -EINVAL;
 	}
 
-
 	ret = lgdt3305_spectral_inversion(state, p,
 					  state->cfg->spectral_inversion
 					  ? 1 : 0);
@@ -1176,7 +1175,6 @@ static struct dvb_frontend_ops lgdt3304_ops = {
 	},
 	.i2c_gate_ctrl        = lgdt3305_i2c_gate_ctrl,
 	.init                 = lgdt3305_init,
-	.sleep                = lgdt3305_sleep,
 	.set_frontend         = lgdt3304_set_parameters,
 	.get_frontend         = lgdt3305_get_frontend,
 	.get_tune_settings    = lgdt3305_get_tune_settings,

@@ -31,7 +31,6 @@
 #include <linux/videodev2.h>
 #include <linux/module.h>
 #include <media/v4l2-dev.h>
-#include <media/v4l2-device.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-ioctl.h>
 
@@ -149,8 +148,6 @@ static struct v4l2_format pvr_format [] = {
 		}
 	}
 };
-
-
 
 /*
  * This is part of Video 4 Linux API. These procedures handle ioctl() calls.
@@ -801,6 +798,36 @@ static int pvr2_log_status(struct file *file, void *priv)
 	return 0;
 }
 
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+static int pvr2_g_register(struct file *file, void *priv, struct v4l2_dbg_register *req)
+{
+	struct pvr2_v4l2_fh *fh = file->private_data;
+	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
+	u64 val;
+	int ret;
+
+	ret = pvr2_hdw_register_access(
+			hdw, &req->match, req->reg,
+			0, &val);
+	req->val = val;
+	return ret;
+}
+
+static int pvr2_s_register(struct file *file, void *priv, const struct v4l2_dbg_register *req)
+{
+	struct pvr2_v4l2_fh *fh = file->private_data;
+	struct pvr2_hdw *hdw = fh->channel.mc_head->hdw;
+	u64 val;
+	int ret;
+
+	val = req->val;
+	ret = pvr2_hdw_register_access(
+			hdw, &req->match, req->reg,
+			1, &val);
+	return ret;
+}
+#endif
+
 static const struct v4l2_ioctl_ops pvr2_ioctl_ops = {
 	.vidioc_querycap		    = pvr2_querycap,
 	.vidioc_g_priority		    = pvr2_g_priority,
@@ -835,6 +862,10 @@ static const struct v4l2_ioctl_ops pvr2_ioctl_ops = {
 	.vidioc_g_ext_ctrls		    = pvr2_g_ext_ctrls,
 	.vidioc_s_ext_ctrls		    = pvr2_s_ext_ctrls,
 	.vidioc_try_ext_ctrls		    = pvr2_try_ext_ctrls,
+#ifdef CONFIG_VIDEO_ADV_DEBUG
+	.vidioc_g_register		    = pvr2_g_register,
+	.vidioc_s_register		    = pvr2_s_register,
+#endif
 };
 
 static void pvr2_v4l2_dev_destroy(struct pvr2_v4l2_dev *dip)
@@ -867,15 +898,13 @@ static void pvr2_v4l2_dev_destroy(struct pvr2_v4l2_dev *dip)
 
 }
 
-
 static void pvr2_v4l2_dev_disassociate_parent(struct pvr2_v4l2_dev *dip)
 {
 	if (!dip) return;
-	if (!dip->devbase.v4l2_dev->dev) return;
-	dip->devbase.v4l2_dev->dev = NULL;
+	if (!dip->devbase.parent) return;
+	dip->devbase.parent = NULL;
 	device_move(&dip->devbase.dev, NULL, DPM_ORDER_NONE);
 }
-
 
 static void pvr2_v4l2_destroy_no_lock(struct pvr2_v4l2 *vp)
 {
@@ -893,14 +922,12 @@ static void pvr2_v4l2_destroy_no_lock(struct pvr2_v4l2 *vp)
 	kfree(vp);
 }
 
-
 static void pvr2_video_device_release(struct video_device *vdev)
 {
 	struct pvr2_v4l2_dev *dev;
 	dev = container_of(vdev,struct pvr2_v4l2_dev,devbase);
 	kfree(dev);
 }
-
 
 static void pvr2_v4l2_internal_check(struct pvr2_channel *chp)
 {
@@ -912,7 +939,6 @@ static void pvr2_v4l2_internal_check(struct pvr2_channel *chp)
 	if (vp->vfirst) return;
 	pvr2_v4l2_destroy_no_lock(vp);
 }
-
 
 static long pvr2_v4l2_ioctl(struct file *file,
 			   unsigned int cmd, unsigned long arg)
@@ -970,7 +996,6 @@ static long pvr2_v4l2_ioctl(struct file *file,
 
 }
 
-
 static int pvr2_v4l2_release(struct file *file)
 {
 	struct pvr2_v4l2_fh *fhp = file->private_data;
@@ -1017,7 +1042,6 @@ static int pvr2_v4l2_release(struct file *file)
 	}
 	return 0;
 }
-
 
 static int pvr2_v4l2_open(struct file *file)
 {
@@ -1116,7 +1140,6 @@ static int pvr2_v4l2_open(struct file *file)
 	return 0;
 }
 
-
 static void pvr2_v4l2_notify(struct pvr2_v4l2_fh *fhp)
 {
 	wake_up(&fhp->wait_data);
@@ -1156,7 +1179,6 @@ static int pvr2_v4l2_iosetup(struct pvr2_v4l2_fh *fh)
 	if ((ret = pvr2_hdw_set_streaming(hdw,!0)) < 0) return ret;
 	return pvr2_ioread_set_enabled(fh->rhp,!0);
 }
-
 
 static ssize_t pvr2_v4l2_read(struct file *file,
 			      char __user *buff, size_t count, loff_t *ppos)
@@ -1219,7 +1241,6 @@ static ssize_t pvr2_v4l2_read(struct file *file,
 	return ret;
 }
 
-
 static unsigned int pvr2_v4l2_poll(struct file *file, poll_table *wait)
 {
 	unsigned int mask = 0;
@@ -1245,7 +1266,6 @@ static unsigned int pvr2_v4l2_poll(struct file *file, poll_table *wait)
 	return mask;
 }
 
-
 static const struct v4l2_file_operations vdev_fops = {
 	.owner      = THIS_MODULE,
 	.open       = pvr2_v4l2_open,
@@ -1255,16 +1275,15 @@ static const struct v4l2_file_operations vdev_fops = {
 	.poll       = pvr2_v4l2_poll,
 };
 
-
 static struct video_device vdev_template = {
 	.fops       = &vdev_fops,
 };
-
 
 static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 			       struct pvr2_v4l2 *vp,
 			       int v4l_type)
 {
+	struct usb_device *usbdev;
 	int mindevnum;
 	int unit_number;
 	struct pvr2_hdw *hdw;
@@ -1272,6 +1291,7 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	dip->v4lp = vp;
 
 	hdw = vp->channel.mc_head->hdw;
+	usbdev = pvr2_hdw_get_dev(hdw);
 	dip->v4l_type = v4l_type;
 	switch (v4l_type) {
 	case VFL_TYPE_GRABBER:
@@ -1320,7 +1340,7 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	if (nr_ptr && (unit_number >= 0) && (unit_number < PVR_NUM)) {
 		mindevnum = nr_ptr[unit_number];
 	}
-	pvr2_hdw_set_v4l2_dev(hdw, &dip->devbase);
+	dip->devbase.parent = &usbdev->dev;
 	if ((video_register_device(&dip->devbase,
 				   dip->v4l_type, mindevnum) < 0) &&
 	    (video_register_device(&dip->devbase,
@@ -1336,7 +1356,6 @@ static void pvr2_v4l2_dev_init(struct pvr2_v4l2_dev *dip,
 	pvr2_hdw_v4l_store_minor_number(hdw,
 					dip->minor_type,dip->devbase.minor);
 }
-
 
 struct pvr2_v4l2 *pvr2_v4l2_create(struct pvr2_context *mnp)
 {

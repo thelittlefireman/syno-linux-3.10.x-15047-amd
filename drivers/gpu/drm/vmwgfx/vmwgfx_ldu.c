@@ -27,7 +27,6 @@
 
 #include "vmwgfx_kms.h"
 
-
 #define vmw_crtc_to_ldu(x) \
 	container_of(x, struct vmw_legacy_display_unit, base.crtc)
 #define vmw_encoder_to_ldu(x) \
@@ -59,7 +58,6 @@ static void vmw_ldu_destroy(struct vmw_legacy_display_unit *ldu)
 	vmw_display_unit_cleanup(&ldu->base);
 	kfree(ldu);
 }
-
 
 /*
  * Legacy Display Unit CRTC functions
@@ -93,7 +91,7 @@ static int vmw_ldu_commit_list(struct vmw_private *dev_priv)
 
 		if (crtc == NULL)
 			return 0;
-		fb = entry->base.crtc.primary->fb;
+		fb = entry->base.crtc.fb;
 
 		return vmw_kms_write_svga(dev_priv, w, h, fb->pitches[0],
 					  fb->bits_per_pixel, fb->depth);
@@ -101,7 +99,7 @@ static int vmw_ldu_commit_list(struct vmw_private *dev_priv)
 
 	if (!list_empty(&lds->active)) {
 		entry = list_entry(lds->active.next, typeof(*entry), active);
-		fb = entry->base.crtc.primary->fb;
+		fb = entry->base.crtc.fb;
 
 		vmw_kms_write_svga(dev_priv, fb->width, fb->height, fb->pitches[0],
 				   fb->bits_per_pixel, fb->depth);
@@ -129,7 +127,6 @@ static int vmw_ldu_commit_list(struct vmw_private *dev_priv)
 	BUG_ON(i != lds->num_active);
 
 	lds->last_num_active = lds->num_active;
-
 
 	/* Find the first du with a cursor. */
 	list_for_each_entry(entry, &lds->active, active) {
@@ -259,14 +256,12 @@ static int vmw_ldu_crtc_set_config(struct drm_mode_set *set)
 
 		connector->encoder = NULL;
 		encoder->crtc = NULL;
-		crtc->primary->fb = NULL;
-		crtc->enabled = false;
+		crtc->fb = NULL;
 
 		vmw_ldu_del_active(dev_priv, ldu);
 
 		return vmw_ldu_commit_list(dev_priv);
 	}
-
 
 	/* we now know we want to set a mode */
 	mode = set->mode;
@@ -280,13 +275,12 @@ static int vmw_ldu_crtc_set_config(struct drm_mode_set *set)
 
 	vmw_fb_off(dev_priv);
 
-	crtc->primary->fb = fb;
+	crtc->fb = fb;
 	encoder->crtc = crtc;
 	connector->encoder = encoder;
 	crtc->x = set->x;
 	crtc->y = set->y;
 	crtc->mode = *mode;
-	crtc->enabled = true;
 
 	vmw_ldu_add_active(dev_priv, ldu, vfb);
 
@@ -302,7 +296,6 @@ static struct drm_crtc_funcs vmw_legacy_crtc_funcs = {
 	.destroy = vmw_ldu_crtc_destroy,
 	.set_config = vmw_ldu_crtc_set_config,
 };
-
 
 /*
  * Legacy Display Unit encoder functions
@@ -370,8 +363,6 @@ static int vmw_ldu_init(struct vmw_private *dev_priv, unsigned unit)
 	drm_mode_connector_attach_encoder(connector, encoder);
 	encoder->possible_crtcs = (1 << unit);
 	encoder->possible_clones = 0;
-
-	(void) drm_sysfs_connector_add(connector);
 
 	drm_crtc_init(dev, crtc, &vmw_legacy_crtc_funcs);
 

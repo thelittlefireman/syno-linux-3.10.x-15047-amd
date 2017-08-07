@@ -58,7 +58,6 @@ err:
 	return;
 }
 
-
 static void gpio_system_reset(void)
 {
 	if (gpio_is_valid(handle))
@@ -67,11 +66,7 @@ static void gpio_system_reset(void)
 		pr_notice("Reset GPIO unavailable - halting!\n");
 }
 #else
-static void gpio_system_reset(void)
-{
-	pr_notice("No reset GPIO present - halting!\n");
-}
-
+#define gpio_system_reset() do {} while (0)
 void of_platform_reset_gpio_probe(void)
 {
 	return;

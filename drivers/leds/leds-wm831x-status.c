@@ -10,6 +10,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/leds.h>
@@ -18,7 +19,6 @@
 #include <linux/mfd/wm831x/pdata.h>
 #include <linux/mfd/wm831x/status.h>
 #include <linux/module.h>
-
 
 struct wm831x_status {
 	struct led_classdev cdev;
@@ -240,13 +240,13 @@ static int wm831x_status_probe(struct platform_device *pdev)
 			       GFP_KERNEL);
 	if (!drvdata)
 		return -ENOMEM;
-	platform_set_drvdata(pdev, drvdata);
+	dev_set_drvdata(&pdev->dev, drvdata);
 
 	drvdata->wm831x = wm831x;
 	drvdata->reg = res->start;
 
-	if (dev_get_platdata(wm831x->dev))
-		chip_pdata = dev_get_platdata(wm831x->dev);
+	if (wm831x->dev->platform_data)
+		chip_pdata = wm831x->dev->platform_data;
 	else
 		chip_pdata = NULL;
 

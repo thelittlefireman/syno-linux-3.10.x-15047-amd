@@ -13,6 +13,7 @@
 #include <linux/regmap.h>
 #include <linux/i2c.h>
 #include <linux/module.h>
+#include <linux/init.h>
 
 static int regmap_i2c_write(void *context, const void *data, size_t count)
 {

@@ -22,7 +22,6 @@
 #include <linux/iio/triggered_buffer.h>
 #include <linux/iio/gyro/itg3200.h>
 
-
 static int itg3200_read_all_channels(struct i2c_client *i2c, __be16 *buf)
 {
 	u8 tx = 0x80 | ITG3200_REG_TEMP_OUT_H;
@@ -55,8 +54,11 @@ static irqreturn_t itg3200_trigger_handler(int irq, void *p)
 	if (ret < 0)
 		goto error_ret;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, buf, pf->timestamp);
+	if (indio_dev->scan_timestamp)
+		memcpy(buf + indio_dev->scan_bytes - sizeof(s64),
+				&pf->timestamp, sizeof(pf->timestamp));
 
+	iio_push_to_buffers(indio_dev, (u8 *)buf);
 	iio_trigger_notify_done(indio_dev->trig);
 
 error_ret:
@@ -73,7 +75,6 @@ void itg3200_buffer_unconfigure(struct iio_dev *indio_dev)
 {
 	iio_triggered_buffer_cleanup(indio_dev);
 }
-
 
 static int itg3200_data_rdy_trigger_set_state(struct iio_trigger *trig,
 		bool state)
@@ -123,7 +124,6 @@ int itg3200_probe_trigger(struct iio_dev *indio_dev)
 	if (ret)
 		goto error_free_trig;
 
-
 	st->trig->dev.parent = &st->i2c->dev;
 	st->trig->ops = &itg3200_trigger_ops;
 	iio_trigger_set_drvdata(st->trig, indio_dev);
@@ -132,7 +132,7 @@ int itg3200_probe_trigger(struct iio_dev *indio_dev)
 		goto error_free_irq;
 
 	/* select default trigger */
-	indio_dev->trig = st->trig;
+	indio_dev->trig = iio_trigger_get(st->trig);
 
 	return 0;
 

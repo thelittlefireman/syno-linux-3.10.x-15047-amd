@@ -33,13 +33,12 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/io.h>
 
+#include <plat/regs-serial.h>
 #include <mach/regs-clock.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-irq.h>
-#include <mach/gpio-samsung.h>
 
 #include <asm/mach/time.h>
 
@@ -136,7 +135,6 @@ void s3c_pm_configure_extint(void)
 	}
 }
 
-
 void s3c_pm_restore_core(void)
 {
 	s3c_pm_do_restore_core(core_save, ARRAY_SIZE(core_save));
@@ -148,4 +146,3 @@ void s3c_pm_save_core(void)
 	s3c_pm_do_save(misc_save, ARRAY_SIZE(misc_save));
 	s3c_pm_do_save(core_save, ARRAY_SIZE(core_save));
 }
-

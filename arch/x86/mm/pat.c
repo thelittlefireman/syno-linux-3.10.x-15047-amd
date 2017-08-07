@@ -54,7 +54,6 @@ static inline void pat_disable(const char *reason)
 }
 #endif
 
-
 int pat_debug_enable;
 
 static int __init pat_debug_setup(char *str)
@@ -386,7 +385,6 @@ int free_memtype(u64 start, u64 end)
 
 	return 0;
 }
-
 
 /**
  * lookup_memtype - Looksup the memory type for a physical address

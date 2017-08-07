@@ -649,9 +649,9 @@ static int dib9000_risc_debug_buf(struct dib9000_state *state, u16 * data, u8 si
 	b[2 * (size - 2) - 1] = '\0';	/* Bullet proof the buffer */
 	if (*b == '~') {
 		b++;
-		dprintk("%s", b);
+		dprintk(b);
 	} else
-		dprintk("RISC%d: %d.%04d %s", state->fe_id, ts / 10000, ts % 10000, *b ? b : "<empty>");
+		dprintk("RISC%d: %d.%04d %s", state->fe_id, ts / 10000, ts % 10000, *b ? b : "<emtpy>");
 	return 1;
 }
 
@@ -1197,7 +1197,6 @@ static int dib9000_fw_get_channel(struct dvb_frontend *fe)
 	dib9000_risc_mem_read(state, FE_MM_R_CHANNEL_UNION,
 			state->i2c_read_buffer, sizeof(struct dibDVBTChannel));
 	ch = (struct dibDVBTChannel *)state->i2c_read_buffer;
-
 
 	switch (ch->spectrum_inversion & 0x7) {
 	case 1:

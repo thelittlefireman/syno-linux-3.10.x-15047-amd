@@ -105,7 +105,6 @@ s8 sme_set_bssid_list_scan(void *pcore_data, void *pscan_para);
 /* OID_802_11_RELOAD_DEFAULTS */
 s8 sme_set_reload_defaults(void *pcore_data, u8 reload_type);
 
-
 /*------------------------- non-standard ----------------------------------*/
 s8 sme_get_connect_status(void *pcore_data, u8 *pstatus);
 /*--------------------------------------------------------------------------*/
@@ -124,8 +123,6 @@ void sme_remove_default_key(void *pcore_data, int index);
 void sme_remove_mapping_key(void *pcore_data, u8 *pmac_addr);
 void sme_clear_all_mapping_key(void *pcore_data);
 void sme_clear_all_default_key(void *pcore_data);
-
-
 
 s8 sme_set_preamble_mode(void *pcore_data, u8 mode);
 s8 sme_get_preamble_mode(void *pcore_data, u8 *mode);
@@ -187,5 +184,3 @@ static const u32 PowerDbToMw[] = {
 };
 
 #endif /* __SME_API_H__ */
-
-

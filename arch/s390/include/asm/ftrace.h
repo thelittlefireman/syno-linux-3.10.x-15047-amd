@@ -9,7 +9,6 @@ struct dyn_arch_ftrace { };
 
 #define MCOUNT_ADDR ((long)_mcount)
 
-
 static inline unsigned long ftrace_call_adjust(unsigned long addr)
 {
 	return addr;

@@ -117,7 +117,6 @@ int read_ext_dsp_data(struct bridge_dev_context *dev_ctxt,
 			ul_ext_end = ul_trace_sec_end;
 		}
 
-
 		if (ul_ext_end < ul_ext_base)
 			status = -EPERM;
 

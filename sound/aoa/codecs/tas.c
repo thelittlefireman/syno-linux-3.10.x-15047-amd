@@ -80,7 +80,6 @@ MODULE_DESCRIPTION("tas codec driver for snd-aoa");
 
 #define PFX "snd-aoa-codec-tas: "
 
-
 struct tas {
 	struct aoa_codec	codec;
 	struct i2c_client	*i2c;
@@ -826,7 +825,7 @@ static int tas_init_codec(struct aoa_codec *codec)
 		return -ENODEV;
 	}
 
-	if (aoa_snd_device_new(SNDRV_DEV_CODEC, tas, &ops)) {
+	if (aoa_snd_device_new(SNDRV_DEV_LOWLEVEL, tas, &ops)) {
 		printk(KERN_ERR PFX "failed to create tas snd device!\n");
 		return -ENODEV;
 	}
@@ -881,7 +880,6 @@ static void tas_exit_codec(struct aoa_codec *codec)
 		return;
 	tas->codec.soundbus_dev->detach_codec(tas->codec.soundbus_dev, tas);
 }
-
 
 static int tas_i2c_probe(struct i2c_client *client,
 			 const struct i2c_device_id *id)

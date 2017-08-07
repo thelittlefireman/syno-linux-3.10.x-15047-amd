@@ -384,7 +384,6 @@ out_mem:
 	sp->dev->stats.rx_dropped++;
 }
 
-
 /* ----------------------------------------------------------------------- */
 
 /*
@@ -549,7 +548,6 @@ static void resync_tnc(unsigned long channel)
 	sp->tty->ops->write(sp->tty, &sp->led_state, 1);
 	sp->tty->ops->write(sp->tty, &resync_cmd, 1);
 
-
 	/* Start resync timer again -- the TNC might be still absent */
 
 	del_timer(&sp->resync_t);
@@ -662,8 +660,7 @@ static int sixpack_open(struct tty_struct *tty)
 	tty->receive_room = 65536;
 
 	/* Now we're ready to register. */
-	err = register_netdev(dev);
-	if (err)
+	if (register_netdev(dev))
 		goto out_free;
 
 	tnc_init(sp);
@@ -680,7 +677,6 @@ out_free:
 out:
 	return err;
 }
-
 
 /*
  * Close down a 6pack channel.

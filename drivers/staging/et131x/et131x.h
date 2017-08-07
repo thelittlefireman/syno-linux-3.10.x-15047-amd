@@ -187,7 +187,6 @@ struct global_regs {				/* Location: */
 	u32 watchdog_timer;			/*  0x0038 */
 };
 
-
 /* START OF TXDMA REGISTER ADDRESS MAP */
 
 /*
@@ -293,7 +292,6 @@ struct txdma_regs {			/* Location: */
 };
 
 /* END OF TXDMA REGISTER ADDRESS MAP */
-
 
 /* START OF RXDMA REGISTER ADDRESS MAP */
 
@@ -551,7 +549,6 @@ struct rxdma_regs {					/* Location: */
 };
 
 /* END OF RXDMA REGISTER ADDRESS MAP */
-
 
 /* START OF TXMAC REGISTER ADDRESS MAP */
 
@@ -1450,7 +1447,6 @@ struct mmc_regs {		/* Location: */
 
 /* END OF MMC REGISTER ADDRESS MAP */
 
-
 /*
  * JAGCore Address Mapping
  */
@@ -1668,3 +1664,42 @@ struct address_map {
 #define LED_100TX_SHIFT			4
 
 /* MI Register 29 - 31: Reserved Reg(0x1D - 0x1E) */
+
+/* Defines for PHY access routines */
+
+/* Define bit operation flags */
+#define TRUEPHY_BIT_CLEAR               0
+#define TRUEPHY_BIT_SET                 1
+#define TRUEPHY_BIT_READ                2
+
+/* Define read/write operation flags */
+#ifndef TRUEPHY_READ
+#define TRUEPHY_READ                    0
+#define TRUEPHY_WRITE                   1
+#define TRUEPHY_MASK                    2
+#endif
+
+/* Define master/slave configuration values */
+#define TRUEPHY_CFG_SLAVE               0
+#define TRUEPHY_CFG_MASTER              1
+
+/* Define MDI/MDI-X settings */
+#define TRUEPHY_MDI                     0
+#define TRUEPHY_MDIX                    1
+#define TRUEPHY_AUTO_MDI_MDIX           2
+
+/* Define 10Base-T link polarities */
+#define TRUEPHY_POLARITY_NORMAL         0
+#define TRUEPHY_POLARITY_INVERTED       1
+
+/* Define auto-negotiation results */
+#define TRUEPHY_ANEG_NOT_COMPLETE       0
+#define TRUEPHY_ANEG_COMPLETE           1
+#define TRUEPHY_ANEG_DISABLED           2
+
+/* Define duplex advertisement flags */
+#define TRUEPHY_ADV_DUPLEX_NONE         0x00
+#define TRUEPHY_ADV_DUPLEX_FULL         0x01
+#define TRUEPHY_ADV_DUPLEX_HALF         0x02
+#define TRUEPHY_ADV_DUPLEX_BOTH     \
+	(TRUEPHY_ADV_DUPLEX_FULL | TRUEPHY_ADV_DUPLEX_HALF)

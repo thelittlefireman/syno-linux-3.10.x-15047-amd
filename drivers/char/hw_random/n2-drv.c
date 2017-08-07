@@ -7,6 +7,7 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/preempt.h>
@@ -243,7 +244,6 @@ static int n2rng_generic_read_diag_data(struct n2rng *np,
 			return -ENODEV;
 	}
 }
-
 
 static int n2rng_generic_write_control(struct n2rng *np,
 				       unsigned long control_ra,
@@ -520,7 +520,6 @@ static int n2rng_control_selftest(struct n2rng *np, unsigned long unit)
 			       RNG_CTL_LFSR |
 			       ((SELFTEST_TICKS - 2) << RNG_CTL_WAIT_SHIFT));
 
-
 	err = n2rng_entropy_diag_read(np, unit, np->test_control,
 				      HV_RNG_STATE_HEALTHCHECK,
 				      np->test_buffer,
@@ -699,7 +698,7 @@ static int n2rng_probe(struct platform_device *op)
 	if (err)
 		goto out_free_units;
 
-	platform_set_drvdata(op, np);
+	dev_set_drvdata(&op->dev, np);
 
 	schedule_delayed_work(&np->work, 0);
 
@@ -720,7 +719,7 @@ out:
 
 static int n2rng_remove(struct platform_device *op)
 {
-	struct n2rng *np = platform_get_drvdata(op);
+	struct n2rng *np = dev_get_drvdata(&op->dev);
 
 	np->flags |= N2RNG_FLAG_SHUTDOWN;
 
@@ -734,6 +733,8 @@ static int n2rng_remove(struct platform_device *op)
 	np->units = NULL;
 
 	kfree(np);
+
+	dev_set_drvdata(&op->dev, NULL);
 
 	return 0;
 }

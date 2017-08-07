@@ -22,7 +22,8 @@ int smp_call_function_single(int cpu, void (*func) (void *info), void *info,
 }
 EXPORT_SYMBOL(smp_call_function_single);
 
-int smp_call_function_single_async(int cpu, struct call_single_data *csd)
+int __smp_call_function_single(int cpu, struct call_single_data *csd,
+			       int wait)
 {
 	unsigned long flags;
 
@@ -31,7 +32,7 @@ int smp_call_function_single_async(int cpu, struct call_single_data *csd)
 	local_irq_restore(flags);
 	return 0;
 }
-EXPORT_SYMBOL(smp_call_function_single_async);
+EXPORT_SYMBOL(__smp_call_function_single);
 
 int on_each_cpu(smp_call_func_t func, void *info, int wait)
 {

@@ -182,7 +182,6 @@ struct sep_dma_resource {
 	struct scatterlist *dst_sg;
 };
 
-
 /* command struct for translating rar handle to bus address
    and setting it at predefined location */
 struct rar_hndl_to_bus_struct {
@@ -251,7 +250,6 @@ struct sep_private_data {
 	struct sep_call_status call_status;
 	struct sep_dma_context *dma_ctx;
 };
-
 
 /* Functions used by sep_crypto */
 

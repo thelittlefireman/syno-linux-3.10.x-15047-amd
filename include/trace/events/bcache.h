@@ -6,9 +6,11 @@
 
 #include <linux/tracepoint.h>
 
+struct search;
+
 DECLARE_EVENT_CLASS(bcache_request,
-	TP_PROTO(struct bcache_device *d, struct bio *bio),
-	TP_ARGS(d, bio),
+	TP_PROTO(struct search *s, struct bio *bio),
+	TP_ARGS(s, bio),
 
 	TP_STRUCT__entry(
 		__field(dev_t,		dev			)
@@ -22,12 +24,12 @@ DECLARE_EVENT_CLASS(bcache_request,
 
 	TP_fast_assign(
 		__entry->dev		= bio->bi_bdev->bd_dev;
-		__entry->orig_major	= d->disk->major;
-		__entry->orig_minor	= d->disk->first_minor;
-		__entry->sector		= bio->bi_iter.bi_sector;
-		__entry->orig_sector	= bio->bi_iter.bi_sector - 16;
-		__entry->nr_sector	= bio->bi_iter.bi_size >> 9;
-		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_iter.bi_size);
+		__entry->orig_major	= s->d->disk->major;
+		__entry->orig_minor	= s->d->disk->first_minor;
+		__entry->sector		= bio->bi_sector;
+		__entry->orig_sector	= bio->bi_sector - 16;
+		__entry->nr_sector	= bio->bi_size >> 9;
+		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_size);
 	),
 
 	TP_printk("%d,%d %s %llu + %u (from %d,%d @ %llu)",
@@ -77,13 +79,13 @@ DECLARE_EVENT_CLASS(btree_node,
 /* request.c */
 
 DEFINE_EVENT(bcache_request, bcache_request_start,
-	TP_PROTO(struct bcache_device *d, struct bio *bio),
-	TP_ARGS(d, bio)
+	TP_PROTO(struct search *s, struct bio *bio),
+	TP_ARGS(s, bio)
 );
 
 DEFINE_EVENT(bcache_request, bcache_request_end,
-	TP_PROTO(struct bcache_device *d, struct bio *bio),
-	TP_ARGS(d, bio)
+	TP_PROTO(struct search *s, struct bio *bio),
+	TP_ARGS(s, bio)
 );
 
 DECLARE_EVENT_CLASS(bcache_bio,
@@ -99,9 +101,9 @@ DECLARE_EVENT_CLASS(bcache_bio,
 
 	TP_fast_assign(
 		__entry->dev		= bio->bi_bdev->bd_dev;
-		__entry->sector		= bio->bi_iter.bi_sector;
-		__entry->nr_sector	= bio->bi_iter.bi_size >> 9;
-		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_iter.bi_size);
+		__entry->sector		= bio->bi_sector;
+		__entry->nr_sector	= bio->bi_size >> 9;
+		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_size);
 	),
 
 	TP_printk("%d,%d  %s %llu + %u",
@@ -134,9 +136,9 @@ TRACE_EVENT(bcache_read,
 
 	TP_fast_assign(
 		__entry->dev		= bio->bi_bdev->bd_dev;
-		__entry->sector		= bio->bi_iter.bi_sector;
-		__entry->nr_sector	= bio->bi_iter.bi_size >> 9;
-		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_iter.bi_size);
+		__entry->sector		= bio->bi_sector;
+		__entry->nr_sector	= bio->bi_size >> 9;
+		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_size);
 		__entry->cache_hit = hit;
 		__entry->bypass = bypass;
 	),
@@ -162,9 +164,9 @@ TRACE_EVENT(bcache_write,
 
 	TP_fast_assign(
 		__entry->dev		= bio->bi_bdev->bd_dev;
-		__entry->sector		= bio->bi_iter.bi_sector;
-		__entry->nr_sector	= bio->bi_iter.bi_size >> 9;
-		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_iter.bi_size);
+		__entry->sector		= bio->bi_sector;
+		__entry->nr_sector	= bio->bi_size >> 9;
+		blk_fill_rwbs(__entry->rwbs, bio->bi_rw, bio->bi_size);
 		__entry->writeback = writeback;
 		__entry->bypass = bypass;
 	),
@@ -247,7 +249,7 @@ TRACE_EVENT(bcache_btree_write,
 	TP_fast_assign(
 		__entry->bucket	= PTR_BUCKET_NR(b->c, &b->key, 0);
 		__entry->block	= b->written;
-		__entry->keys	= b->keys.set[b->keys.nsets].data->keys;
+		__entry->keys	= b->sets[b->nsets].data->keys;
 	),
 
 	TP_printk("bucket %zu", __entry->bucket)
@@ -368,97 +370,50 @@ DEFINE_EVENT(btree_node, bcache_btree_set_root,
 	TP_ARGS(b)
 );
 
-TRACE_EVENT(bcache_keyscan,
-	TP_PROTO(unsigned nr_found,
-		 unsigned start_inode, uint64_t start_offset,
-		 unsigned end_inode, uint64_t end_offset),
-	TP_ARGS(nr_found,
-		start_inode, start_offset,
-		end_inode, end_offset),
-
-	TP_STRUCT__entry(
-		__field(__u32,	nr_found			)
-		__field(__u32,	start_inode			)
-		__field(__u64,	start_offset			)
-		__field(__u32,	end_inode			)
-		__field(__u64,	end_offset			)
-	),
-
-	TP_fast_assign(
-		__entry->nr_found	= nr_found;
-		__entry->start_inode	= start_inode;
-		__entry->start_offset	= start_offset;
-		__entry->end_inode	= end_inode;
-		__entry->end_offset	= end_offset;
-	),
-
-	TP_printk("found %u keys from %u:%llu to %u:%llu", __entry->nr_found,
-		  __entry->start_inode, __entry->start_offset,
-		  __entry->end_inode, __entry->end_offset)
-);
-
 /* Allocator */
 
-TRACE_EVENT(bcache_invalidate,
-	TP_PROTO(struct cache *ca, size_t bucket),
-	TP_ARGS(ca, bucket),
+TRACE_EVENT(bcache_alloc_invalidate,
+	TP_PROTO(struct cache *ca),
+	TP_ARGS(ca),
 
 	TP_STRUCT__entry(
-		__field(unsigned,	sectors			)
-		__field(dev_t,		dev			)
-		__field(__u64,		offset			)
+		__field(unsigned,	free			)
+		__field(unsigned,	free_inc		)
+		__field(unsigned,	free_inc_size		)
+		__field(unsigned,	unused			)
 	),
 
 	TP_fast_assign(
-		__entry->dev		= ca->bdev->bd_dev;
-		__entry->offset		= bucket << ca->set->bucket_bits;
-		__entry->sectors	= GC_SECTORS_USED(&ca->buckets[bucket]);
+		__entry->free		= fifo_used(&ca->free);
+		__entry->free_inc	= fifo_used(&ca->free_inc);
+		__entry->free_inc_size	= ca->free_inc.size;
+		__entry->unused		= fifo_used(&ca->unused);
 	),
 
-	TP_printk("invalidated %u sectors at %d,%d sector=%llu",
-		  __entry->sectors, MAJOR(__entry->dev),
-		  MINOR(__entry->dev), __entry->offset)
-);
-
-TRACE_EVENT(bcache_alloc,
-	TP_PROTO(struct cache *ca, size_t bucket),
-	TP_ARGS(ca, bucket),
-
-	TP_STRUCT__entry(
-		__field(dev_t,		dev			)
-		__field(__u64,		offset			)
-	),
-
-	TP_fast_assign(
-		__entry->dev		= ca->bdev->bd_dev;
-		__entry->offset		= bucket << ca->set->bucket_bits;
-	),
-
-	TP_printk("allocated %d,%d sector=%llu", MAJOR(__entry->dev),
-		  MINOR(__entry->dev), __entry->offset)
+	TP_printk("free %u free_inc %u/%u unused %u", __entry->free,
+		  __entry->free_inc, __entry->free_inc_size, __entry->unused)
 );
 
 TRACE_EVENT(bcache_alloc_fail,
-	TP_PROTO(struct cache *ca, unsigned reserve),
-	TP_ARGS(ca, reserve),
+	TP_PROTO(struct cache *ca),
+	TP_ARGS(ca),
 
 	TP_STRUCT__entry(
-		__field(dev_t,		dev			)
 		__field(unsigned,	free			)
 		__field(unsigned,	free_inc		)
+		__field(unsigned,	unused			)
 		__field(unsigned,	blocked			)
 	),
 
 	TP_fast_assign(
-		__entry->dev		= ca->bdev->bd_dev;
-		__entry->free		= fifo_used(&ca->free[reserve]);
+		__entry->free		= fifo_used(&ca->free);
 		__entry->free_inc	= fifo_used(&ca->free_inc);
+		__entry->unused		= fifo_used(&ca->unused);
 		__entry->blocked	= atomic_read(&ca->set->prio_blocked);
 	),
 
-	TP_printk("alloc fail %d,%d free %u free_inc %u blocked %u",
-		  MAJOR(__entry->dev), MINOR(__entry->dev), __entry->free,
-		  __entry->free_inc, __entry->blocked)
+	TP_printk("free %u free_inc %u unused %u blocked %u", __entry->free,
+		  __entry->free_inc, __entry->unused, __entry->blocked)
 );
 
 /* Background writeback */

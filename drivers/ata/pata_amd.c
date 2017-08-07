@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -181,7 +182,6 @@ static void amd_fifo_setup(struct ata_port *ap)
 	static const u8 fifobit[2] = { 0xC0, 0x30};
 	u8 fifo = fifobit[ap->port_no];
 	u8 r;
-
 
 	ata_for_each_dev(adev, &ap->link, ENABLED) {
 		if (adev->class == ATA_DEV_ATAPI)
@@ -577,7 +577,7 @@ static int amd_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 #ifdef CONFIG_PM
 static int amd_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

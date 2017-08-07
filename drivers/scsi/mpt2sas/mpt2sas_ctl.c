@@ -3,7 +3,7 @@
  * controllers
  *
  * This code is based on drivers/scsi/mpt2sas/mpt2_ctl.c
- * Copyright (C) 2007-2013  LSI Corporation
+ * Copyright (C) 2007-2012  LSI Corporation
  *  (mailto:DL-MPTFusionLinux@lsi.com)
  *
  * This program is free software; you can redistribute it and/or
@@ -397,22 +397,18 @@ mpt2sas_ctl_add_to_event_log(struct MPT2SAS_ADAPTER *ioc,
  * This function merely adds a new work task into ioc->firmware_event_thread.
  * The tasks are worked from _firmware_event_work in user context.
  *
- * Returns void.
+ * Return 1 meaning mf should be freed from _base_interrupt
+ *        0 means the mf is freed from this function.
  */
-void
+u8
 mpt2sas_ctl_event_callback(struct MPT2SAS_ADAPTER *ioc, u8 msix_index,
 	u32 reply)
 {
 	Mpi2EventNotificationReply_t *mpi_reply;
 
 	mpi_reply = mpt2sas_base_get_reply_virt_addr(ioc, reply);
-	if (unlikely(!mpi_reply)) {
-		printk(MPT2SAS_ERR_FMT "mpi_reply not valid at %s:%d/%s()!\n",
-		    ioc->name, __FILE__, __LINE__, __func__);
-		return;
-	}
 	mpt2sas_ctl_add_to_event_log(ioc, mpi_reply);
-	return;
+	return 1;
 }
 
 /**
@@ -2094,7 +2090,6 @@ _ctl_diag_read_buffer(struct MPT2SAS_ADAPTER *ioc, void __user *arg)
 	return rc;
 }
 
-
 #ifdef CONFIG_COMPAT
 /**
  * _ctl_compat_mpt_command - convert 32bit pointers to 64bit.
@@ -2634,7 +2629,6 @@ _ctl_fwfault_debug_store(struct device *cdev,
 static DEVICE_ATTR(fwfault_debug, S_IRUGO | S_IWUSR,
     _ctl_fwfault_debug_show, _ctl_fwfault_debug_store);
 
-
 /**
  * _ctl_ioc_reset_count_show - ioc reset count
  * @cdev - pointer to embedded class device
@@ -3073,4 +3067,3 @@ mpt2sas_ctl_exit(void)
 	}
 	misc_deregister(&ctl_dev);
 }
-

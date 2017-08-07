@@ -12,7 +12,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307, USA.
  */
 
 #include <linux/interrupt.h>
@@ -21,6 +22,7 @@
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -950,7 +952,6 @@ static const struct net_device_ops pch_can_netdev_ops = {
 	.ndo_open		= pch_can_open,
 	.ndo_stop		= pch_close,
 	.ndo_start_xmit		= pch_xmit,
-	.ndo_change_mtu		= can_change_mtu,
 };
 
 static void pch_can_remove(struct pci_dev *pdev)
@@ -963,6 +964,7 @@ static void pch_can_remove(struct pci_dev *pdev)
 		pci_disable_msi(priv->dev);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 	pch_can_reset(priv);
 	pci_iounmap(pdev, priv->regs);
 	free_candev(priv->ndev);

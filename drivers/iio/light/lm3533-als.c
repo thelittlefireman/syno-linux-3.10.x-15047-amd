@@ -26,7 +26,6 @@
 
 #include <linux/mfd/lm3533.h>
 
-
 #define LM3533_ALS_RESISTOR_MIN			1
 #define LM3533_ALS_RESISTOR_MAX			127
 #define LM3533_ALS_CHANNEL_CURRENT_MAX		2
@@ -50,7 +49,6 @@
 
 #define LM3533_ALS_FLAG_INT_ENABLED		1
 
-
 struct lm3533_als {
 	struct lm3533 *lm3533;
 	struct platform_device *pdev;
@@ -61,7 +59,6 @@ struct lm3533_als {
 	atomic_t zone;
 	struct mutex thresh_mutex;
 };
-
 
 static int lm3533_als_get_adc(struct iio_dev *indio_dev, bool average,
 								int *adc)
@@ -847,7 +844,7 @@ static int lm3533_als_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(*als));
+	indio_dev = iio_device_alloc(sizeof(*als));
 	if (!indio_dev)
 		return -ENOMEM;
 
@@ -870,7 +867,7 @@ static int lm3533_als_probe(struct platform_device *pdev)
 	if (als->irq) {
 		ret = lm3533_als_setup_irq(als, indio_dev);
 		if (ret)
-			return ret;
+			goto err_free_dev;
 	}
 
 	ret = lm3533_als_setup(als, pdata);
@@ -894,6 +891,8 @@ err_disable:
 err_free_irq:
 	if (als->irq)
 		free_irq(als->irq, indio_dev);
+err_free_dev:
+	iio_device_free(indio_dev);
 
 	return ret;
 }
@@ -908,6 +907,7 @@ static int lm3533_als_remove(struct platform_device *pdev)
 	lm3533_als_disable(als);
 	if (als->irq)
 		free_irq(als->irq, indio_dev);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

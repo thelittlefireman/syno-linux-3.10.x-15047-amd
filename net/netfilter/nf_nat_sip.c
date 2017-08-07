@@ -20,14 +20,12 @@
 #include <net/netfilter/nf_nat_helper.h>
 #include <net/netfilter/nf_conntrack_helper.h>
 #include <net/netfilter/nf_conntrack_expect.h>
-#include <net/netfilter/nf_conntrack_seqadj.h>
 #include <linux/netfilter/nf_conntrack_sip.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Christian Hentschel <chentschel@arnet.com.ar>");
 MODULE_DESCRIPTION("SIP NAT helper");
 MODULE_ALIAS("ip_nat_sip");
-
 
 static unsigned int mangle_packet(struct sk_buff *skb, unsigned int protoff,
 				  unsigned int dataoff,
@@ -309,7 +307,7 @@ static void nf_nat_sip_seq_adjust(struct sk_buff *skb, unsigned int protoff,
 		return;
 
 	th = (struct tcphdr *)(skb->data + protoff);
-	nf_ct_seqadj_set(ct, ctinfo, th->seq, off);
+	nf_nat_set_seq_adjust(ct, ctinfo, th->seq, off);
 }
 
 /* Handles expected signalling connections and media streams */
@@ -625,26 +623,33 @@ static struct nf_ct_helper_expectfn sip_nat = {
 
 static void __exit nf_nat_sip_fini(void)
 {
-	RCU_INIT_POINTER(nf_nat_sip_hooks, NULL);
-
+	RCU_INIT_POINTER(nf_nat_sip_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sip_seq_adjust_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sip_expect_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sdp_addr_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sdp_port_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sdp_session_hook, NULL);
+	RCU_INIT_POINTER(nf_nat_sdp_media_hook, NULL);
 	nf_ct_helper_expectfn_unregister(&sip_nat);
 	synchronize_rcu();
 }
 
-static const struct nf_nat_sip_hooks sip_hooks = {
-	.msg		= nf_nat_sip,
-	.seq_adjust	= nf_nat_sip_seq_adjust,
-	.expect		= nf_nat_sip_expect,
-	.sdp_addr	= nf_nat_sdp_addr,
-	.sdp_port	= nf_nat_sdp_port,
-	.sdp_session	= nf_nat_sdp_session,
-	.sdp_media	= nf_nat_sdp_media,
-};
-
 static int __init nf_nat_sip_init(void)
 {
-	BUG_ON(nf_nat_sip_hooks != NULL);
-	RCU_INIT_POINTER(nf_nat_sip_hooks, &sip_hooks);
+	BUG_ON(nf_nat_sip_hook != NULL);
+	BUG_ON(nf_nat_sip_seq_adjust_hook != NULL);
+	BUG_ON(nf_nat_sip_expect_hook != NULL);
+	BUG_ON(nf_nat_sdp_addr_hook != NULL);
+	BUG_ON(nf_nat_sdp_port_hook != NULL);
+	BUG_ON(nf_nat_sdp_session_hook != NULL);
+	BUG_ON(nf_nat_sdp_media_hook != NULL);
+	RCU_INIT_POINTER(nf_nat_sip_hook, nf_nat_sip);
+	RCU_INIT_POINTER(nf_nat_sip_seq_adjust_hook, nf_nat_sip_seq_adjust);
+	RCU_INIT_POINTER(nf_nat_sip_expect_hook, nf_nat_sip_expect);
+	RCU_INIT_POINTER(nf_nat_sdp_addr_hook, nf_nat_sdp_addr);
+	RCU_INIT_POINTER(nf_nat_sdp_port_hook, nf_nat_sdp_port);
+	RCU_INIT_POINTER(nf_nat_sdp_session_hook, nf_nat_sdp_session);
+	RCU_INIT_POINTER(nf_nat_sdp_media_hook, nf_nat_sdp_media);
 	nf_ct_helper_expectfn_register(&sip_nat);
 	return 0;
 }

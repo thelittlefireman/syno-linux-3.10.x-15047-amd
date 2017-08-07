@@ -182,7 +182,6 @@ static int mid_read_temp(struct thermal_zone_device *tzd, unsigned long *temp)
 	int ret;
 	unsigned long curr_temp;
 
-
 	addr = td_info->chnl_addr;
 
 	/* Enable the msic for conversion before reading */
@@ -542,6 +541,7 @@ static int mid_thermal_remove(struct platform_device *pdev)
 	}
 
 	kfree(pinfo);
+	platform_set_drvdata(pdev, NULL);
 
 	/* Stop the ADC */
 	return configure_adc(0);

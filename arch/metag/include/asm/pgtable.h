@@ -240,7 +240,6 @@ static inline pte_t pte_mkhuge(pte_t pte)    { return pte; }
 #define pgprot_noncached(prot)						\
 	__pgprot(pgprot_val(prot) & ~_PAGE_CACHEABLE)
 
-
 /*
  * Conversion functions: convert a page and protection to a page entry,
  * and a page entry and page directory to the page they refer to.
@@ -332,6 +331,9 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
 #define pgoff_to_pte(x)		__pte(((x) << 10) | _PAGE_FILE)
 
 #define kern_addr_valid(addr)	(1)
+
+#define io_remap_pfn_range(vma, vaddr, pfn, size, prot)		\
+	remap_pfn_range(vma, vaddr, pfn, size, prot)
 
 /*
  * No page table caches to initialise

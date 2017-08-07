@@ -36,6 +36,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -68,8 +69,6 @@ static int triflex_prereset(struct ata_link *link, unsigned long deadline)
 	return ata_sff_prereset(link, deadline);
 }
 
-
-
 /**
  *	triflex_load_timing		-	timing configuration
  *	@ap: ATA interface
@@ -89,7 +88,6 @@ static void triflex_load_timing(struct ata_port *ap, struct ata_device *adev, in
 	u32 triflex_timing, old_triflex_timing;
 	int channel_offset = ap->port_no ? 0x74: 0x70;
 	unsigned int is_slave	= (adev->devno != 0);
-
 
 	pci_read_config_dword(pdev, channel_offset, &old_triflex_timing);
 	triflex_timing = old_triflex_timing;
@@ -210,7 +208,7 @@ static const struct pci_device_id triflex[] = {
 #ifdef CONFIG_PM
 static int triflex_ata_pci_device_suspend(struct pci_dev *pdev, pm_message_t mesg)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc = 0;
 
 	rc = ata_host_suspend(host, mesg);

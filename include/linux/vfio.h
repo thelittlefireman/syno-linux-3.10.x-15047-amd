@@ -11,7 +11,6 @@
 #ifndef VFIO_H
 #define VFIO_H
 
-
 #include <linux/iommu.h>
 #include <linux/mm.h>
 #include <uapi/linux/vfio.h>
@@ -89,14 +88,5 @@ extern void vfio_unregister_iommu_driver(
 #define offsetofend(TYPE, MEMBER) ({				\
 	TYPE tmp;						\
 	offsetof(TYPE, MEMBER) + sizeof(tmp.MEMBER); })		\
-
-/*
- * External user API
- */
-extern struct vfio_group *vfio_group_get_external_user(struct file *filep);
-extern void vfio_group_put_external_user(struct vfio_group *group);
-extern int vfio_external_user_iommu_id(struct vfio_group *group);
-extern long vfio_external_check_extension(struct vfio_group *group,
-					  unsigned long arg);
 
 #endif /* VFIO_H */

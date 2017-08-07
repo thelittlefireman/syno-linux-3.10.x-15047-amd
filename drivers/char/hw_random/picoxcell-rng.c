@@ -33,7 +33,7 @@
 
 static void __iomem *rng_base;
 static struct clk *rng_clk;
-static struct device *rng_dev;
+struct device *rng_dev;
 
 static inline u32 picoxcell_trng_read_csr(void)
 {
@@ -104,11 +104,24 @@ static int picoxcell_trng_probe(struct platform_device *pdev)
 	int ret;
 	struct resource *mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 
-	rng_base = devm_ioremap_resource(&pdev->dev, mem);
-	if (IS_ERR(rng_base))
-		return PTR_ERR(rng_base);
+	if (!mem) {
+		dev_warn(&pdev->dev, "no memory resource\n");
+		return -ENOMEM;
+	}
 
-	rng_clk = devm_clk_get(&pdev->dev, NULL);
+	if (!devm_request_mem_region(&pdev->dev, mem->start, resource_size(mem),
+				     "picoxcell_trng")) {
+		dev_warn(&pdev->dev, "unable to request io mem\n");
+		return -EBUSY;
+	}
+
+	rng_base = devm_ioremap(&pdev->dev, mem->start, resource_size(mem));
+	if (!rng_base) {
+		dev_warn(&pdev->dev, "unable to remap io mem\n");
+		return -ENOMEM;
+	}
+
+	rng_clk = clk_get(&pdev->dev, NULL);
 	if (IS_ERR(rng_clk)) {
 		dev_warn(&pdev->dev, "no clk\n");
 		return PTR_ERR(rng_clk);
@@ -117,7 +130,7 @@ static int picoxcell_trng_probe(struct platform_device *pdev)
 	ret = clk_enable(rng_clk);
 	if (ret) {
 		dev_warn(&pdev->dev, "unable to enable clk\n");
-		return ret;
+		goto err_enable;
 	}
 
 	picoxcell_trng_start();
@@ -132,6 +145,9 @@ static int picoxcell_trng_probe(struct platform_device *pdev)
 
 err_register:
 	clk_disable(rng_clk);
+err_enable:
+	clk_put(rng_clk);
+
 	return ret;
 }
 
@@ -139,6 +155,7 @@ static int picoxcell_trng_remove(struct platform_device *pdev)
 {
 	hwrng_unregister(&picoxcell_trng);
 	clk_disable(rng_clk);
+	clk_put(rng_clk);
 
 	return 0;
 }

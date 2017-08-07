@@ -35,7 +35,6 @@
 #include <linux/device.h>
 #include <linux/cdev.h>
 
-#include <media/rc-core.h>
 #include <media/lirc.h>
 #include <media/lirc_dev.h>
 
@@ -151,7 +150,6 @@ static int lirc_thread(void *irctl)
 
 	return 0;
 }
-
 
 static const struct file_operations lirc_dev_fops = {
 	.owner		= THIS_MODULE,
@@ -468,12 +466,6 @@ int lirc_dev_fop_open(struct inode *inode, struct file *file)
 		goto error;
 	}
 
-	if (ir->d.rdev) {
-		retval = rc_open(ir->d.rdev);
-		if (retval)
-			goto error;
-	}
-
 	cdev = ir->cdev;
 	if (try_module_get(cdev->owner)) {
 		ir->open++;
@@ -517,9 +509,6 @@ int lirc_dev_fop_close(struct inode *inode, struct file *file)
 	dev_dbg(ir->d.dev, LOGHEAD "close called\n", ir->d.name, ir->d.minor);
 
 	WARN_ON(mutex_lock_killable(&lirc_dev_lock));
-
-	if (ir->d.rdev)
-		rc_close(ir->d.rdev);
 
 	ir->open--;
 	if (ir->attached) {
@@ -766,7 +755,6 @@ void *lirc_get_pdata(struct file *file)
 }
 EXPORT_SYMBOL(lirc_get_pdata);
 
-
 ssize_t lirc_dev_fop_write(struct file *file, const char __user *buffer,
 			   size_t length, loff_t *ppos)
 {
@@ -785,7 +773,6 @@ ssize_t lirc_dev_fop_write(struct file *file, const char __user *buffer,
 	return -EINVAL;
 }
 EXPORT_SYMBOL(lirc_dev_fop_write);
-
 
 static int __init lirc_dev_init(void)
 {
@@ -806,15 +793,12 @@ static int __init lirc_dev_init(void)
 		goto error;
 	}
 
-
 	printk(KERN_INFO "lirc_dev: IR Remote Control driver registered, "
 	       "major %d \n", MAJOR(lirc_base_dev));
 
 error:
 	return retval;
 }
-
-
 
 static void __exit lirc_dev_exit(void)
 {

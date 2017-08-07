@@ -26,7 +26,6 @@
 #include <syslog.h>
 
 #include "usbip_common.h"
-#include "usbip_network.h"
 #include "usbip.h"
 
 static int usbip_help(int argc, char *argv[]);
@@ -35,7 +34,7 @@ static int usbip_version(int argc, char *argv[]);
 static const char usbip_version_string[] = PACKAGE_STRING;
 
 static const char usbip_usage_string[] =
-	"usbip [--debug] [--log] [--tcp-port PORT] [version]\n"
+	"usbip [--debug] [--log] [version]\n"
 	"             [help] <command> <args>\n";
 
 static void usbip_usage(void)
@@ -93,12 +92,6 @@ static const struct command cmds[] = {
 		.help  = "Unbind device from " USBIP_HOST_DRV_NAME ".ko",
 		.usage = usbip_unbind_usage
 	},
-	{
-		.name  = "port",
-		.fn    = usbip_port_show,
-		.help  = "Show imported USB devices",
-		.usage = NULL
-	},
 	{ NULL, NULL, NULL, NULL }
 };
 
@@ -145,10 +138,9 @@ static int run_command(const struct command *cmd, int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	static const struct option opts[] = {
-		{ "debug",    no_argument,       NULL, 'd' },
-		{ "log",      no_argument,       NULL, 'l' },
-		{ "tcp-port", required_argument, NULL, 't' },
-		{ NULL,       0,                 NULL,  0  }
+		{ "debug", no_argument, NULL, 'd' },
+		{ "log",   no_argument, NULL, 'l' },
+		{ NULL,    0,           NULL,  0  }
 	};
 
 	char *cmd;
@@ -158,7 +150,7 @@ int main(int argc, char *argv[])
 	usbip_use_stderr = 1;
 	opterr = 0;
 	for (;;) {
-		opt = getopt_long(argc, argv, "+dlt:", opts, NULL);
+		opt = getopt_long(argc, argv, "+d", opts, NULL);
 
 		if (opt == -1)
 			break;
@@ -170,9 +162,6 @@ int main(int argc, char *argv[])
 		case 'l':
 			usbip_use_syslog = 1;
 			openlog("", LOG_PID, LOG_USER);
-			break;
-		case 't':
-			usbip_setup_port_number(optarg);
 			break;
 		case '?':
 			printf("usbip: invalid option\n");

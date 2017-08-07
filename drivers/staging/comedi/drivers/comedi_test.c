@@ -21,7 +21,12 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
-*/
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+************************************************************************/
 /*
 Driver: comedi_test
 Description: generates fake waveforms
@@ -45,7 +50,6 @@ zero volts).
 
 */
 
-#include <linux/module.h>
 #include "../comedidev.h"
 
 #include <asm/div64.h>
@@ -74,10 +78,11 @@ static const int nano_per_micro = 1000;
 
 /* fake analog input ranges */
 static const struct comedi_lrange waveform_ai_ranges = {
-	2, {
-		BIP_RANGE(10),
-		BIP_RANGE(5)
-	}
+	2,
+	{
+	 BIP_RANGE(10),
+	 BIP_RANGE(5),
+	 }
 };
 
 static unsigned short fake_sawtooth(struct comedi_device *dev,
@@ -185,6 +190,7 @@ static void waveform_ai_interrupt(unsigned long arg)
 	    (devpriv->usec_remainder + elapsed_time) / devpriv->scan_period;
 	devpriv->usec_remainder =
 	    (devpriv->usec_remainder + elapsed_time) % devpriv->scan_period;
+	async->events = 0;
 
 	if (cmd->stop_src == TRIG_COUNT) {
 		unsigned int remaining = cmd->stop_arg - devpriv->ai_count;
@@ -317,8 +323,12 @@ static int waveform_ai_cmd(struct comedi_device *dev,
 
 	if (cmd->convert_src == TRIG_NOW)
 		devpriv->convert_period = 0;
-	else	/* TRIG_TIMER */
+	else if (cmd->convert_src == TRIG_TIMER)
 		devpriv->convert_period = cmd->convert_arg / nano_per_micro;
+	else {
+		comedi_error(dev, "bug setting conversion period");
+		return -1;
+	}
 
 	do_gettimeofday(&devpriv->last);
 	devpriv->usec_current = devpriv->last.tv_usec % devpriv->usec_period;
@@ -374,9 +384,10 @@ static int waveform_attach(struct comedi_device *dev,
 	int i;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	/* set default amplitude and period */
 	if (amplitude <= 0)

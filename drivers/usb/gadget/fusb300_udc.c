@@ -22,7 +22,7 @@
 
 MODULE_DESCRIPTION("FUSB300  USB gadget driver");
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Yuan-Hsin Chen, Feng-Hsin Chiang <john453@faraday-tech.com>");
+MODULE_AUTHOR("Yuan Hsin Chen <yhchen@faraday-tech.com>");
 MODULE_ALIAS("platform:fusb300_udc");
 
 #define DRIVER_VERSION	"20 October 2010"
@@ -53,7 +53,6 @@ static void fusb300_disable_bit(struct fusb300 *fusb300, u32 offset,
 	reg &= ~value;
 	iowrite32(reg, fusb300->reg + offset);
 }
-
 
 static void fusb300_ep_setting(struct fusb300_ep *ep,
 			       struct fusb300_ep_info info)
@@ -557,7 +556,7 @@ static void fusb300_set_cxdone(struct fusb300 *fusb300)
 }
 
 /* read data from cx fifo */
-static void fusb300_rdcxf(struct fusb300 *fusb300,
+void fusb300_rdcxf(struct fusb300 *fusb300,
 		   u8 *buffer, u32 length)
 {
 	int i = 0;
@@ -1005,7 +1004,6 @@ static void check_device_mode(struct fusb300 *fusb300)
 	printk(KERN_INFO "dev_mode = %d\n", (reg & FUSB300_GCR_DEVEN_MSK));
 }
 
-
 static void fusb300_ep0out(struct fusb300 *fusb300)
 {
 	struct fusb300_ep *ep = fusb300->ep[0];
@@ -1214,7 +1212,6 @@ static irqreturn_t fusb300_irq(int irq, void *_fusb300)
 	if (int_grp1 & FUSB300_IGR1_CX_CMDEND_INT)
 		printk(KERN_INFO "fusb300_cmdend\n");
 
-
 	if (int_grp1 & FUSB300_IGR1_CX_OUT_INT) {
 		printk(KERN_INFO "fusb300_cxout\n");
 		fusb300_ep0out(fusb300);
@@ -1347,7 +1344,7 @@ static const struct usb_gadget_ops fusb300_gadget_ops = {
 
 static int __exit fusb300_remove(struct platform_device *pdev)
 {
-	struct fusb300 *fusb300 = platform_get_drvdata(pdev);
+	struct fusb300 *fusb300 = dev_get_drvdata(&pdev->dev);
 
 	usb_del_gadget_udc(&fusb300->gadget);
 	iounmap(fusb300->reg);
@@ -1416,7 +1413,7 @@ static int __init fusb300_probe(struct platform_device *pdev)
 
 	spin_lock_init(&fusb300->lock);
 
-	platform_set_drvdata(pdev, fusb300);
+	dev_set_drvdata(&pdev->dev, fusb300);
 
 	fusb300->gadget.ops = &fusb300_gadget_ops;
 
@@ -1452,9 +1449,9 @@ static int __init fusb300_probe(struct platform_device *pdev)
 		INIT_LIST_HEAD(&ep->queue);
 		ep->ep.name = fusb300_ep_name[i];
 		ep->ep.ops = &fusb300_ep_ops;
-		usb_ep_set_maxpacket_limit(&ep->ep, HS_BULK_MAX_PACKET_SIZE);
+		ep->ep.maxpacket = HS_BULK_MAX_PACKET_SIZE;
 	}
-	usb_ep_set_maxpacket_limit(&fusb300->ep[0]->ep, HS_CTL_MAX_PACKET_SIZE);
+	fusb300->ep[0]->ep.maxpacket = HS_CTL_MAX_PACKET_SIZE;
 	fusb300->ep[0]->epnum = 0;
 	fusb300->gadget.ep0 = &fusb300->ep[0]->ep;
 	INIT_LIST_HEAD(&fusb300->gadget.ep0->ep_list);

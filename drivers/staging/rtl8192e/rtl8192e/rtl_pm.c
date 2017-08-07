@@ -28,7 +28,6 @@ int rtl8192E_save_state(struct pci_dev *dev, pm_message_t state)
 	return -EAGAIN;
 }
 
-
 int rtl8192E_suspend(struct pci_dev *pdev, pm_message_t state)
 {
 	struct net_device *dev = pci_get_drvdata(pdev);
@@ -124,11 +123,9 @@ out:
 	return 0;
 }
 
-
 int rtl8192E_enable_wake(struct pci_dev *dev, pm_message_t state, int enable)
 {
 	printk(KERN_NOTICE "r8192E enable wake call (state %u, enable %d).\n",
 	       state.event, enable);
 	return -EAGAIN;
 }
-

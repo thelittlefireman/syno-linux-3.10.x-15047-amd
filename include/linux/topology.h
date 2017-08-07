@@ -106,8 +106,6 @@ int arch_update_cpu_topology(void);
 	.last_balance		= jiffies,				\
 	.balance_interval	= 1,					\
 	.smt_gain		= 1178,	/* 15% */			\
-	.max_newidle_lb_cost	= 0,					\
-	.next_decay_max_lb_cost	= jiffies,				\
 }
 #endif
 #endif /* CONFIG_SCHED_SMT */
@@ -137,8 +135,6 @@ int arch_update_cpu_topology(void);
 				,					\
 	.last_balance		= jiffies,				\
 	.balance_interval	= 1,					\
-	.max_newidle_lb_cost	= 0,					\
-	.next_decay_max_lb_cost	= jiffies,				\
 }
 #endif
 #endif /* CONFIG_SCHED_MC */
@@ -170,8 +166,6 @@ int arch_update_cpu_topology(void);
 				,					\
 	.last_balance		= jiffies,				\
 	.balance_interval	= 1,					\
-	.max_newidle_lb_cost	= 0,					\
-	.next_decay_max_lb_cost	= jiffies,				\
 }
 #endif
 
@@ -188,7 +182,7 @@ DECLARE_PER_CPU(int, numa_node);
 /* Returns the number of the current Node. */
 static inline int numa_node_id(void)
 {
-	return raw_cpu_read(numa_node);
+	return __this_cpu_read(numa_node);
 }
 #endif
 
@@ -245,7 +239,7 @@ static inline void set_numa_mem(int node)
 /* Returns the number of the nearest Node with memory */
 static inline int numa_mem_id(void)
 {
-	return raw_cpu_read(_numa_mem_);
+	return __this_cpu_read(_numa_mem_);
 }
 #endif
 

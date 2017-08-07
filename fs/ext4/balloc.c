@@ -184,7 +184,6 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
 	struct ext4_sb_info *sbi = EXT4_SB(sb);
 	ext4_fsblk_t start, tmp;
 	int flex_bg = 0;
-	struct ext4_group_info *grp;
 
 	J_ASSERT_BH(bh, buffer_locked(bh));
 
@@ -192,9 +191,11 @@ void ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
 	 * essentially implementing a per-group read-only flag. */
 	if (!ext4_group_desc_csum_verify(sb, block_group, gdp)) {
 		ext4_error(sb, "Checksum bad for group %u", block_group);
-		grp = ext4_get_group_info(sb, block_group);
-		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
-		set_bit(EXT4_GROUP_INFO_IBITMAP_CORRUPT_BIT, &grp->bb_state);
+		ext4_free_group_clusters_set(sb, gdp, 0);
+		ext4_free_inodes_set(sb, gdp, 0);
+		ext4_itable_unused_set(sb, gdp, 0);
+		memset(bh->b_data, 0xff, sb->s_blocksize);
+		ext4_block_bitmap_csum_set(sb, block_group, gdp, bh);
 		return;
 	}
 	memset(bh->b_data, 0, sb->s_blocksize);
@@ -304,7 +305,7 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
  */
 static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
 					    struct ext4_group_desc *desc,
-					    ext4_group_t block_group,
+					    unsigned int block_group,
 					    struct buffer_head *bh)
 {
 	ext4_grpblk_t offset;
@@ -351,11 +352,10 @@ static ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *sb,
 
 void ext4_validate_block_bitmap(struct super_block *sb,
 			       struct ext4_group_desc *desc,
-			       ext4_group_t block_group,
+			       unsigned int block_group,
 			       struct buffer_head *bh)
 {
 	ext4_fsblk_t	blk;
-	struct ext4_group_info *grp = ext4_get_group_info(sb, block_group);
 
 	if (buffer_verified(bh))
 		return;
@@ -366,14 +366,12 @@ void ext4_validate_block_bitmap(struct super_block *sb,
 		ext4_unlock_group(sb, block_group);
 		ext4_error(sb, "bg %u: block %llu: invalid block bitmap",
 			   block_group, blk);
-		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
 		return;
 	}
 	if (unlikely(!ext4_block_bitmap_csum_verify(sb, block_group,
 			desc, bh))) {
 		ext4_unlock_group(sb, block_group);
 		ext4_error(sb, "bg %u: bad block bitmap checksum", block_group);
-		set_bit(EXT4_GROUP_INFO_BBITMAP_CORRUPT_BIT, &grp->bb_state);
 		return;
 	}
 	set_buffer_verified(bh);
@@ -447,10 +445,7 @@ ext4_read_block_bitmap_nowait(struct super_block *sb, ext4_group_t block_group)
 	return bh;
 verify:
 	ext4_validate_block_bitmap(sb, desc, block_group, bh);
-	if (buffer_verified(bh))
-		return bh;
-	put_bh(bh);
-	return NULL;
+	return bh;
 }
 
 /* Returns 0 on success, 1 on error */
@@ -474,8 +469,7 @@ int ext4_wait_block_bitmap(struct super_block *sb, ext4_group_t block_group,
 	clear_buffer_new(bh);
 	/* Panic or remount fs read-only if block bitmap is invalid */
 	ext4_validate_block_bitmap(sb, desc, block_group, bh);
-	/* ...but check for error just in case errors=continue. */
-	return !buffer_verified(bh);
+	return 0;
 }
 
 struct buffer_head *
@@ -620,7 +614,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
 	if (!(*errp) &&
 	    ext4_test_inode_state(inode, EXT4_STATE_DELALLOC_RESERVED)) {
 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
 		dquot_alloc_block_nofail(inode,
 				EXT4_C2B(EXT4_SB(inode->i_sb), ar.len));
@@ -640,7 +633,6 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 	struct ext4_group_desc *gdp;
 	ext4_group_t i;
 	ext4_group_t ngroups = ext4_get_groups_count(sb);
-	struct ext4_group_info *grp;
 #ifdef EXT4FS_DEBUG
 	struct ext4_super_block *es;
 	ext4_fsblk_t bitmap_count;
@@ -656,18 +648,14 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 		gdp = ext4_get_group_desc(sb, i, NULL);
 		if (!gdp)
 			continue;
-		grp = NULL;
-		if (EXT4_SB(sb)->s_group_info)
-			grp = ext4_get_group_info(sb, i);
-		if (!grp || !EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-			desc_count += ext4_free_group_clusters(sb, gdp);
+		desc_count += ext4_free_group_clusters(sb, gdp);
 		brelse(bitmap_bh);
 		bitmap_bh = ext4_read_block_bitmap(sb, i);
 		if (bitmap_bh == NULL)
 			continue;
 
 		x = ext4_count_free(bitmap_bh->b_data,
-				    EXT4_CLUSTERS_PER_GROUP(sb) / 8);
+				    EXT4_BLOCKS_PER_GROUP(sb) / 8);
 		printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
 			i, ext4_free_group_clusters(sb, gdp), x);
 		bitmap_count += x;
@@ -684,11 +672,7 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 		gdp = ext4_get_group_desc(sb, i, NULL);
 		if (!gdp)
 			continue;
-		grp = NULL;
-		if (EXT4_SB(sb)->s_group_info)
-			grp = ext4_get_group_info(sb, i);
-		if (!grp || !EXT4_MB_GRP_BBITMAP_CORRUPT(grp))
-			desc_count += ext4_free_group_clusters(sb, gdp);
+		desc_count += ext4_free_group_clusters(sb, gdp);
 	}
 
 	return desc_count;
@@ -697,15 +681,11 @@ ext4_fsblk_t ext4_count_free_clusters(struct super_block *sb)
 
 static inline int test_root(ext4_group_t a, int b)
 {
-	while (1) {
-		if (a < b)
-			return 0;
-		if (a == b)
-			return 1;
-		if ((a % b) != 0)
-			return 0;
-		a = a / b;
-	}
+	int num = b;
+
+	while (a > num)
+		num *= b;
+	return num == a;
 }
 
 static int ext4_group_sparse(ext4_group_t group)
@@ -854,4 +834,3 @@ ext4_fsblk_t ext4_inode_to_goal_block(struct inode *inode)
 		colour = (current->pid % 16) * ((last_block - bg_start) / 16);
 	return bg_start + colour;
 }
-

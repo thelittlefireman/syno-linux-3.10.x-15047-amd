@@ -35,7 +35,6 @@
 #include <sound/mpu401.h>
 #include <sound/initval.h>
 
-
 MODULE_AUTHOR("Chris Rankin");
 MODULE_DESCRIPTION("ENSONIQ SoundScape driver");
 MODULE_LICENSE("GPL");
@@ -96,7 +95,6 @@ static struct pnp_card_device_id sscape_pnpids[] = {
 MODULE_DEVICE_TABLE(pnp_card, sscape_pnpids);
 #endif
 
-
 #define HOST_CTRL_IO(i)  ((i) + 2)
 #define HOST_DATA_IO(i)  ((i) + 3)
 #define ODIE_ADDR_IO(i)  ((i) + 4)
@@ -133,7 +131,6 @@ enum GA_REG {
 
 #define DMA_8BIT  0x80
 
-
 enum card_type {
 	MEDIA_FX,	/* Sequoia S-1000 */
 	SSCAPE,		/* Sequoia S-2000 */
@@ -154,7 +151,6 @@ struct soundscape {
 };
 
 #define INVALID_IRQ  ((unsigned)-1)
-
 
 static inline struct soundscape *get_card_soundscape(struct snd_card *c)
 {
@@ -306,7 +302,6 @@ static int host_write_ctrl_unsafe(unsigned io_base, unsigned char data,
 
 	return err;
 }
-
 
 /*
  * Check that the MIDI subsystem is operational. If it isn't,
@@ -838,7 +833,6 @@ static int create_mpu401(struct snd_card *card, int devnum,
 	return err;
 }
 
-
 /*
  * Create an AD1845 PCM subdevice on the SoundScape. The AD1845
  * is very much like a CS4231, with a few extra bits. We will
@@ -931,7 +925,6 @@ static int create_ad1845(struct snd_card *card, unsigned port,
 _error:
 	return err;
 }
-
 
 /*
  * Create an ALSA soundcard entry for the SoundScape, using
@@ -1142,7 +1135,6 @@ _release_region:
 	return err;
 }
 
-
 static int snd_sscape_match(struct device *pdev, unsigned int i)
 {
 	/*
@@ -1169,8 +1161,8 @@ static int snd_sscape_probe(struct device *pdev, unsigned int dev)
 	struct soundscape *sscape;
 	int ret;
 
-	ret = snd_card_new(pdev, index[dev], id[dev], THIS_MODULE,
-			   sizeof(struct soundscape), &card);
+	ret = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct soundscape), &card);
 	if (ret < 0)
 		return ret;
 
@@ -1178,6 +1170,7 @@ static int snd_sscape_probe(struct device *pdev, unsigned int dev)
 	sscape->type = SSCAPE;
 
 	dma[dev] &= 0x03;
+	snd_card_set_dev(card, pdev);
 
 	ret = create_sscape(dev, card);
 	if (ret < 0)
@@ -1199,6 +1192,7 @@ _release_card:
 static int snd_sscape_remove(struct device *devptr, unsigned int dev)
 {
 	snd_card_free(dev_get_drvdata(devptr));
+	dev_set_drvdata(devptr, NULL);
 	return 0;
 }
 
@@ -1221,7 +1215,6 @@ static inline int get_next_autoindex(int i)
 		++i;
 	return i;
 }
-
 
 static int sscape_pnp_detect(struct pnp_card_link *pcard,
 			     const struct pnp_card_device_id *pid)
@@ -1258,9 +1251,8 @@ static int sscape_pnp_detect(struct pnp_card_link *pcard,
 	 * Create a new ALSA sound card entry, in anticipation
 	 * of detecting our hardware ...
 	 */
-	ret = snd_card_new(&pcard->card->dev,
-			   index[idx], id[idx], THIS_MODULE,
-			   sizeof(struct soundscape), &card);
+	ret = snd_card_create(index[idx], id[idx], THIS_MODULE,
+			      sizeof(struct soundscape), &card);
 	if (ret < 0)
 		return ret;
 
@@ -1288,6 +1280,7 @@ static int sscape_pnp_detect(struct pnp_card_link *pcard,
 		wss_port[idx] = pnp_port_start(dev, 1);
 		dma2[idx] = pnp_dma(dev, 1);
 	}
+	snd_card_set_dev(card, &pcard->card->dev);
 
 	ret = create_sscape(idx, card);
 	if (ret < 0)

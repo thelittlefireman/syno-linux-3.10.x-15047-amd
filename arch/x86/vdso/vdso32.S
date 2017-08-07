@@ -1,9 +1,22 @@
-#include <asm/vdso.h>
+#include <linux/init.h>
 
-DEFINE_VDSO_IMAGE(vdso32_int80, "arch/x86/vdso/vdso32-int80.so")
+__INITDATA
 
+	.globl vdso32_int80_start, vdso32_int80_end
+vdso32_int80_start:
+	.incbin "arch/x86/vdso/vdso32-int80.so"
+vdso32_int80_end:
+
+	.globl vdso32_syscall_start, vdso32_syscall_end
+vdso32_syscall_start:
 #ifdef CONFIG_COMPAT
-DEFINE_VDSO_IMAGE(vdso32_syscall, "arch/x86/vdso/vdso32-syscall.so")
+	.incbin "arch/x86/vdso/vdso32-syscall.so"
 #endif
+vdso32_syscall_end:
 
-DEFINE_VDSO_IMAGE(vdso32_sysenter, "arch/x86/vdso/vdso32-sysenter.so")
+	.globl vdso32_sysenter_start, vdso32_sysenter_end
+vdso32_sysenter_start:
+	.incbin "arch/x86/vdso/vdso32-sysenter.so"
+vdso32_sysenter_end:
+
+__FINIT

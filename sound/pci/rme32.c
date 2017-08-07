@@ -68,7 +68,6 @@
  * ****************************************************************************
  */
 
-
 #include <linux/delay.h>
 #include <linux/gfp.h>
 #include <linux/init.h>
@@ -189,7 +188,6 @@ MODULE_SUPPORTED_DEVICE("{{RME,Digi32}," "{RME,Digi32/8}," "{RME,Digi32 PRO}}");
 #define RME32_328_REVISION_NEW 101
 #define RME32_PRO_REVISION_WITH_8412 192
 #define RME32_PRO_REVISION_WITH_8414 150
-
 
 struct rme32 {
 	spinlock_t lock;
@@ -822,7 +820,6 @@ static irqreturn_t snd_rme32_interrupt(int irq, void *dev_id)
 
 static unsigned int period_bytes[] = { RME32_BLOCK_SIZE };
 
-
 static struct snd_pcm_hw_constraint_list hw_constraints_period_bytes = {
 	.count = ARRAY_SIZE(period_bytes),
 	.list = period_bytes,
@@ -1136,7 +1133,6 @@ snd_rme32_capture_pointer(struct snd_pcm_substream *substream)
 	return snd_rme32_pcm_byteptr(rme32) >> rme32->capture_frlog;
 }
 
-
 /* ack and pointer callbacks for fullduplex mode */
 static void snd_rme32_pb_trans_copy(struct snd_pcm_substream *substream,
 				    struct snd_pcm_indirect *rec, size_t bytes)
@@ -1349,15 +1345,14 @@ static int snd_rme32_create(struct rme32 *rme32)
 
 	rme32->iobase = ioremap_nocache(rme32->port, RME32_IO_SIZE);
 	if (!rme32->iobase) {
-		dev_err(rme32->card->dev,
-			"unable to remap memory region 0x%lx-0x%lx\n",
+		snd_printk(KERN_ERR "unable to remap memory region 0x%lx-0x%lx\n",
 			   rme32->port, rme32->port + RME32_IO_SIZE - 1);
 		return -ENOMEM;
 	}
 
 	if (request_irq(pci->irq, snd_rme32_interrupt, IRQF_SHARED,
 			KBUILD_MODNAME, rme32)) {
-		dev_err(rme32->card->dev, "unable to grab IRQ %d\n", pci->irq);
+		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		return -EBUSY;
 	}
 	rme32->irq = pci->irq;
@@ -1422,7 +1417,6 @@ static int snd_rme32_create(struct rme32 *rme32)
 		}
 	}
 
-
 	rme32->playback_periodsize = 0;
 	rme32->capture_periodsize = 0;
 
@@ -1440,7 +1434,6 @@ static int snd_rme32_create(struct rme32 *rme32)
 		RME32_WCR_INP_0 | /* input select */
 		RME32_WCR_MUTE;	 /* muting on */
 	writel(rme32->wcreg, rme32->iobase + RME32_IO_CONTROL_REGISTER);
-
 
 	/* init switch interface */
 	if ((err = snd_rme32_create_switches(rme32->card, rme32)) < 0) {
@@ -1939,14 +1932,15 @@ snd_rme32_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 		return -ENOENT;
 	}
 
-	err = snd_card_new(&pci->dev, index[dev], id[dev], THIS_MODULE,
-			   sizeof(struct rme32), &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct rme32), &card);
 	if (err < 0)
 		return err;
 	card->private_free = snd_rme32_card_free;
 	rme32 = (struct rme32 *) card->private_data;
 	rme32->card = card;
 	rme32->pci = pci;
+	snd_card_set_dev(card, &pci->dev);
         if (fullduplex[dev])
 		rme32->fullduplex_mode = 1;
 	if ((err = snd_rme32_create(rme32)) < 0) {
@@ -1981,6 +1975,7 @@ snd_rme32_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 static void snd_rme32_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
+	pci_set_drvdata(pci, NULL);
 }
 
 static struct pci_driver rme32_driver = {

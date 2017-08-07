@@ -86,7 +86,6 @@ static unsigned int control_cpu; /* The cpu assigned to collect stat and update
 				  */
 static bool clamping;
 
-
 static struct task_struct * __percpu *powerclamp_thread;
 static struct thermal_cooling_device *cooling_dev;
 static unsigned long *cpu_clamping_mask;  /* bit map for tracking per cpu
@@ -123,7 +122,6 @@ static struct kernel_param_ops duration_ops = {
 	.set = duration_set,
 	.get = param_get_int,
 };
-
 
 module_param_cb(duration, &duration_ops, &duration, 0644);
 MODULE_PARM_DESC(duration, "forced idle time for each attempt in msec.");
@@ -204,15 +202,6 @@ static void find_target_mwait(void)
 	target_mwait = (highest_cstate << MWAIT_SUBSTATE_SIZE) |
 		(highest_subcstate - 1);
 
-}
-
-static bool has_pkg_state_counter(void)
-{
-	u64 tmp;
-	return !rdmsrl_safe(MSR_PKG_C2_RESIDENCY, &tmp) ||
-	       !rdmsrl_safe(MSR_PKG_C3_RESIDENCY, &tmp) ||
-	       !rdmsrl_safe(MSR_PKG_C6_RESIDENCY, &tmp) ||
-	       !rdmsrl_safe(MSR_PKG_C7_RESIDENCY, &tmp);
 }
 
 static u64 pkg_state_counter(void)
@@ -447,12 +436,14 @@ static int clamp_thread(void *arg)
 			 */
 			local_touch_nmi();
 			stop_critical_timings();
-			mwait_idle_with_hints(eax, ecx);
+			__monitor((void *)&current_thread_info()->flags, 0, 0);
+			cpu_relax(); /* allow HT sibling to run */
+			__mwait(eax, ecx);
 			start_critical_timings();
 			atomic_inc(&idle_wakeup_counter);
 		}
 		tick_nohz_idle_exit();
-		preempt_enable();
+		preempt_enable_no_resched();
 	}
 	del_timer_sync(&wakeup_timer);
 	clear_bit(cpunr, cpu_clamping_mask);
@@ -507,7 +498,7 @@ static int start_power_clamp(void)
 	struct task_struct *thread;
 
 	/* check if pkg cstate counter is completely 0, abort in this case */
-	if (!has_pkg_state_counter()) {
+	if (!pkg_state_counter()) {
 		pr_err("pkg cstate counter not functional, abort\n");
 		return -EINVAL;
 	}
@@ -682,11 +673,6 @@ static const struct x86_cpu_id intel_powerclamp_ids[] = {
 	{ X86_VENDOR_INTEL, 6, 0x2e},
 	{ X86_VENDOR_INTEL, 6, 0x2f},
 	{ X86_VENDOR_INTEL, 6, 0x3a},
-	{ X86_VENDOR_INTEL, 6, 0x3c},
-	{ X86_VENDOR_INTEL, 6, 0x3e},
-	{ X86_VENDOR_INTEL, 6, 0x3f},
-	{ X86_VENDOR_INTEL, 6, 0x45},
-	{ X86_VENDOR_INTEL, 6, 0x46},
 	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, intel_powerclamp_ids);
@@ -770,39 +756,21 @@ static int powerclamp_init(void)
 	/* probe cpu features and ids here */
 	retval = powerclamp_probe();
 	if (retval)
-		goto exit_free;
-
+		return retval;
 	/* set default limit, maybe adjusted during runtime based on feedback */
 	window_size = 2;
 	register_hotcpu_notifier(&powerclamp_cpu_notifier);
-
 	powerclamp_thread = alloc_percpu(struct task_struct *);
-	if (!powerclamp_thread) {
-		retval = -ENOMEM;
-		goto exit_unregister;
-	}
-
 	cooling_dev = thermal_cooling_device_register("intel_powerclamp", NULL,
 						&powerclamp_cooling_ops);
-	if (IS_ERR(cooling_dev)) {
-		retval = -ENODEV;
-		goto exit_free_thread;
-	}
+	if (IS_ERR(cooling_dev))
+		return -ENODEV;
 
 	if (!duration)
 		duration = jiffies_to_msecs(DEFAULT_DURATION_JIFFIES);
-
 	powerclamp_create_debug_files();
 
 	return 0;
-
-exit_free_thread:
-	free_percpu(powerclamp_thread);
-exit_unregister:
-	unregister_hotcpu_notifier(&powerclamp_cpu_notifier);
-exit_free:
-	kfree(cpu_clamping_mask);
-	return retval;
 }
 module_init(powerclamp_init);
 

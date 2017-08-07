@@ -312,7 +312,6 @@ static int sis630e_get_mac_addr(struct pci_dev *pci_dev,
 	return 1;
 }
 
-
 /**
  *	sis635_get_mac_addr - Get MAC address for SIS635 model
  *	@pci_dev: the sis900 pci device
@@ -576,6 +575,7 @@ err_unmap_tx:
 err_out_unmap:
 	pci_iounmap(pci_dev, ioaddr);
 err_out_cleardev:
+	pci_set_drvdata(pci_dev, NULL);
 	pci_release_regions(pci_dev);
  err_out:
 	free_netdev(net_dev);
@@ -770,7 +770,6 @@ static u16 sis900_default_phy(struct net_device * net_dev)
 	return status;
 }
 
-
 /**
  * 	sis900_set_capability - set the media capability of network adapter.
  *	@net_dev : the net device to probe for
@@ -796,7 +795,6 @@ static void sis900_set_capability(struct net_device *net_dev, struct mii_phy *ph
 
 	mdio_write(net_dev, phy->phy_addr, MII_ANADV, cap);
 }
-
 
 /* Delay between EEPROM clock transitions. */
 #define eeprom_delay()	sr32(mear)
@@ -976,7 +974,6 @@ static void mdio_write(struct net_device *net_dev, int phy_id, int location,
 	}
 	sw32(mear, 0x00);
 }
-
 
 /**
  *	sis900_reset_phy - reset sis900 mii phy.
@@ -1308,8 +1305,22 @@ static void sis900_timer(unsigned long data)
 	struct sis900_private *sis_priv = netdev_priv(net_dev);
 	struct mii_phy *mii_phy = sis_priv->mii;
 	static const int next_tick = 5*HZ;
-	int speed = 0, duplex = 0;
 	u16 status;
+
+	if (!sis_priv->autong_complete){
+		int uninitialized_var(speed), duplex = 0;
+
+		sis900_read_mode(net_dev, &speed, &duplex);
+		if (duplex){
+			sis900_set_mode(sis_priv, speed, duplex);
+			sis630_set_eq(net_dev, sis_priv->chipset_rev);
+			netif_start_queue(net_dev);
+		}
+
+		sis_priv->timer.expires = jiffies + HZ;
+		add_timer(&sis_priv->timer);
+		return;
+	}
 
 	status = mdio_read(net_dev, sis_priv->cur_phy, MII_STATUS);
 	status = mdio_read(net_dev, sis_priv->cur_phy, MII_STATUS);
@@ -1321,15 +1332,9 @@ static void sis900_timer(unsigned long data)
 		status = sis900_default_phy(net_dev);
 		mii_phy = sis_priv->mii;
 
-		if (status & MII_STAT_LINK) {
-			WARN_ON(!(status & MII_STAT_AUTO_DONE));
-
-			sis900_read_mode(net_dev, &speed, &duplex);
-			if (duplex) {
-				sis900_set_mode(sis_priv, speed, duplex);
-				sis630_set_eq(net_dev, sis_priv->chipset_rev);
-				netif_carrier_on(net_dev);
-			}
+		if (status & MII_STAT_LINK){
+			sis900_check_mode(net_dev, mii_phy);
+			netif_carrier_on(net_dev);
 		}
 	} else {
 	/* Link ON -> OFF */
@@ -1468,7 +1473,6 @@ static void sis900_auto_negotiate(struct net_device *net_dev, int phy_addr)
 	sis_priv->autong_complete = 0;
 }
 
-
 /**
  *	sis900_read_mode - read media mode for sis900 internal phy
  *	@net_dev: the net device to read mode for
@@ -1603,6 +1607,12 @@ sis900_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	unsigned int  index_cur_tx, index_dirty_tx;
 	unsigned int  count_dirty_tx;
 
+	/* Don't transmit data before the complete of auto-negotiation */
+	if(!sis_priv->autong_complete){
+		netif_stop_queue(net_dev);
+		return NETDEV_TX_BUSY;
+	}
+
 	spin_lock_irqsave(&sis_priv->lock, flags);
 
 	/* Calculate the next Tx descriptor entry. */
@@ -1614,7 +1624,7 @@ sis900_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 		skb->data, skb->len, PCI_DMA_TODEVICE);
 	if (unlikely(pci_dma_mapping_error(sis_priv->pci_dev,
 		sis_priv->tx_ring[entry].bufptr))) {
-			dev_kfree_skb_any(skb);
+			dev_kfree_skb(skb);
 			sis_priv->tx_skbuff[entry] = NULL;
 			net_dev->stats.tx_dropped++;
 			spin_unlock_irqrestore(&sis_priv->lock, flags);
@@ -1708,7 +1718,7 @@ static irqreturn_t sis900_interrupt(int irq, void *dev_instance)
 
 	if(netif_msg_intr(sis_priv))
 		printk(KERN_DEBUG "%s: exiting interrupt, "
-		       "interrupt status = %#8.8x\n",
+		       "interrupt status = 0x%#8.8x.\n",
 		       net_dev->name, sr32(isr));
 
 	spin_unlock (&sis_priv->lock);
@@ -2426,6 +2436,7 @@ static void sis900_remove(struct pci_dev *pci_dev)
 	pci_iounmap(pci_dev, sis_priv->ioaddr);
 	free_netdev(net_dev);
 	pci_release_regions(pci_dev);
+	pci_set_drvdata(pci_dev, NULL);
 }
 
 #ifdef CONFIG_PM
@@ -2514,4 +2525,3 @@ static void __exit sis900_cleanup_module(void)
 
 module_init(sis900_init_module);
 module_exit(sis900_cleanup_module);
-

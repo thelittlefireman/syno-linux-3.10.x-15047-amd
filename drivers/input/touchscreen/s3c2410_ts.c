@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/gpio.h>
 #include <linux/input.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
@@ -250,7 +251,7 @@ static int s3c2410ts_probe(struct platform_device *pdev)
 
 	ts.dev = dev;
 
-	info = dev_get_platdata(&pdev->dev);
+	info = pdev->dev.platform_data;
 	if (!info) {
 		dev_err(dev, "no platform data, cannot attach\n");
 		return -EINVAL;
@@ -391,7 +392,7 @@ static int s3c2410ts_suspend(struct device *dev)
 static int s3c2410ts_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	struct s3c2410_ts_mach_info *info = dev_get_platdata(&pdev->dev);
+	struct s3c2410_ts_mach_info *info = pdev->dev.platform_data;
 
 	clk_enable(ts.clock);
 	enable_irq(ts.irq_tc);

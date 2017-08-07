@@ -87,7 +87,6 @@ struct hwarc {
 	void *rd_buffer;		/* NEEP read buffer */
 };
 
-
 /* Beacon received notification (WUSB 1.0 [8.6.3.2]) */
 struct uwb_rc_evt_beacon_WUSB_0100 {
 	struct uwb_rceb rceb;
@@ -156,7 +155,6 @@ int hwarc_filter_evt_beacon_WUSB_0100(struct uwb_rc *rc,
 	return 1;  /* calling function will free memory */
 }
 
-
 /* DRP Availability change notification (WUSB 1.0 [8.6.3.8]) */
 struct uwb_rc_evt_drp_avail_WUSB_0100 {
 	struct uwb_rceb rceb;
@@ -182,7 +180,6 @@ int hwarc_filter_evt_drp_avail_WUSB_0100(struct uwb_rc *rc,
 	struct uwb_ie_hdr *ie_hdr;
 	size_t bytes_left, ielength;
 	struct device *dev = &rc->uwb_dev.dev;
-
 
 	da = container_of(*header, struct uwb_rc_evt_drp_avail_WUSB_0100, rceb);
 	bytes_left = buf_size;
@@ -222,7 +219,6 @@ int hwarc_filter_evt_drp_avail_WUSB_0100(struct uwb_rc *rc,
 	*new_size = sizeof(*newda);
 	return 1; /* calling function will free memory */
 }
-
 
 /* DRP notification (WUSB 1.0 [8.6.3.9]) */
 struct uwb_rc_evt_drp_WUSB_0100 {
@@ -287,7 +283,6 @@ int hwarc_filter_evt_drp_WUSB_0100(struct uwb_rc *rc,
 	return 1; /* calling function will free memory */
 }
 
-
 /* Scan Command (WUSB 1.0 [8.6.2.5]) */
 struct uwb_rc_cmd_scan_WUSB_0100 {
 	struct uwb_rccb rccb;
@@ -320,7 +315,6 @@ int hwarc_filter_cmd_scan_WUSB_0100(struct uwb_rc *rc,
 	*size -= 2;
 	return 0;
 }
-
 
 /* SET DRP IE command (WUSB 1.0 [8.6.2.7]) */
 struct uwb_rc_cmd_set_drp_ie_WUSB_0100 {
@@ -366,7 +360,6 @@ int hwarc_filter_cmd_set_drp_ie_WUSB_0100(struct uwb_rc *rc,
 	return 1; /* calling function will free memory */
 }
 
-
 /**
  * Filter data from WHCI driver to WUSB device
  *
@@ -409,7 +402,6 @@ int hwarc_filter_cmd_WUSB_0100(struct uwb_rc *rc, struct uwb_rccb **header,
 	return result;
 }
 
-
 /**
  * Filter data from WHCI driver to WUSB device
  *
@@ -429,7 +421,6 @@ int hwarc_filter_cmd(struct uwb_rc *rc, struct uwb_rccb **header,
 		result = hwarc_filter_cmd_WUSB_0100(rc, header, size);
 	return result;
 }
-
 
 /**
  * Compute return value as sum of incoming value and value at given offset
@@ -464,13 +455,11 @@ out:
 	return size;
 }
 
-
 /* Beacon slot change notification (WUSB 1.0 [8.6.3.5]) */
 struct uwb_rc_evt_bp_slot_change_WUSB_0100 {
 	struct uwb_rceb rceb;
 	u8 bSlotNumber;
 } __attribute__((packed));
-
 
 /**
  * Filter data from WUSB device to WHCI driver
@@ -586,7 +575,6 @@ int hwarc_filter_event(struct uwb_rc *rc, struct uwb_rceb **header,
 	return result;
 }
 
-
 /**
  * Execute an UWB RC command on HWA
  *
@@ -611,16 +599,7 @@ static
 int hwarc_reset(struct uwb_rc *uwb_rc)
 {
 	struct hwarc *hwarc = uwb_rc->priv;
-	int result;
-
-	/* device lock must be held when calling usb_reset_device. */
-	result = usb_lock_device_for_reset(hwarc->usb_dev, NULL);
-	if (result >= 0) {
-		result = usb_reset_device(hwarc->usb_dev);
-		usb_unlock_device(hwarc->usb_dev);
-	}
-
-	return result;
+	return usb_reset_device(hwarc->usb_dev);
 }
 
 /**
@@ -718,14 +697,11 @@ static int hwarc_neep_init(struct uwb_rc *rc)
 
 error_neep_submit:
 	usb_free_urb(hwarc->neep_urb);
-	hwarc->neep_urb = NULL;
 error_urb_alloc:
 	free_page((unsigned long)hwarc->rd_buffer);
-	hwarc->rd_buffer = NULL;
 error_rd_buffer:
 	return -ENOMEM;
 }
-
 
 /** Clean up all the notification endpoint resources */
 static void hwarc_neep_release(struct uwb_rc *rc)
@@ -734,10 +710,7 @@ static void hwarc_neep_release(struct uwb_rc *rc)
 
 	usb_kill_urb(hwarc->neep_urb);
 	usb_free_urb(hwarc->neep_urb);
-	hwarc->neep_urb = NULL;
-
 	free_page((unsigned long)hwarc->rd_buffer);
-	hwarc->rd_buffer = NULL;
 }
 
 /**
@@ -913,12 +886,6 @@ static const struct usb_device_id hwarc_id_table[] = {
 	  .driver_info = WUSB_QUIRK_WHCI_CMD_EVT },
 	/* Intel i1480 (using firmware 1.3PA2-20070828) */
 	{ USB_DEVICE_AND_INTERFACE_INFO(0x8086, 0x0c3b, 0xe0, 0x01, 0x02),
-	  .driver_info = WUSB_QUIRK_WHCI_CMD_EVT },
-	/* Alereon 5310 */
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x13dc, 0x5310, 0xe0, 0x01, 0x02),
-	  .driver_info = WUSB_QUIRK_WHCI_CMD_EVT },
-	/* Alereon 5611 */
-	{ USB_DEVICE_AND_INTERFACE_INFO(0x13dc, 0x5611, 0xe0, 0x01, 0x02),
 	  .driver_info = WUSB_QUIRK_WHCI_CMD_EVT },
 	/* Generic match for the Radio Control interface */
 	{ USB_INTERFACE_INFO(0xe0, 0x01, 0x02), },

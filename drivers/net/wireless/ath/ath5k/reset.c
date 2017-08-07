@@ -34,7 +34,6 @@
 #include "reg.h"
 #include "debug.h"
 
-
 /**
  * DOC: Reset function and helpers
  *
@@ -42,7 +41,6 @@
  * to a working state and ready to receive. We also handle routines
  * that don't fit on other places such as clock, sleep and power control
  */
-
 
 /******************\
 * Helper functions *
@@ -81,7 +79,6 @@ ath5k_hw_register_timeout(struct ath5k_hw *ah, u32 reg, u32 flag, u32 val,
 
 	return (i <= 0) ? -EAGAIN : 0;
 }
-
 
 /*************************\
 * Clock related functions *
@@ -377,7 +374,6 @@ ath5k_hw_set_sleep_clock(struct ath5k_hw *ah, bool enable)
 	}
 }
 
-
 /*********************\
 * Reset/Sleep control *
 \*********************/
@@ -478,7 +474,7 @@ ath5k_hw_wisoc_reset(struct ath5k_hw *ah, u32 flags)
 	regval = ioread32(reg);
 	iowrite32(regval | val, reg);
 	regval = ioread32(reg);
-	usleep_range(100, 150);
+	udelay(100);	/* NB: should be atomic */
 
 	/* Bring BB/MAC out of reset */
 	iowrite32(regval & ~val, reg);
@@ -828,7 +824,6 @@ ath5k_hw_nic_wakeup(struct ath5k_hw *ah, struct ieee80211_channel *channel)
 	return 0;
 }
 
-
 /**************************************\
 * Post-initvals register modifications *
 \**************************************/
@@ -860,8 +855,6 @@ ath5k_hw_tweak_initval_settings(struct ath5k_hw *ah,
 				AR5K_PHY_ADC_CTL_PWD_DAC_OFF |
 				AR5K_PHY_ADC_CTL_PWD_ADC_OFF),
 				AR5K_PHY_ADC_CTL);
-
-
 
 		/* Disable barker RSSI threshold */
 		AR5K_REG_DISABLE_BITS(ah, AR5K_PHY_DAG_CCK_CTL,
@@ -1122,7 +1115,6 @@ ath5k_hw_commit_eeprom_settings(struct ath5k_hw *ah,
 		ath5k_hw_reg_write(ah, 0, AR5K_PHY_HEAVY_CLIP_ENABLE);
 }
 
-
 /*********************\
 * Main reset function *
 \*********************/
@@ -1275,13 +1267,11 @@ ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 		}
 	}
 
-
 	/*GPIOs*/
 	s_led[0] = ath5k_hw_reg_read(ah, AR5K_PCICFG) &
 					AR5K_PCICFG_LEDSTATE;
 	s_led[1] = ath5k_hw_reg_read(ah, AR5K_GPIOCR);
 	s_led[2] = ath5k_hw_reg_read(ah, AR5K_GPIODO);
-
 
 	/*
 	 * Since we are going to write rf buffer
@@ -1323,7 +1313,6 @@ ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 
 	/* Commit values from EEPROM */
 	ath5k_hw_commit_eeprom_settings(ah, channel);
-
 
 	/*
 	 * Restore saved values
@@ -1375,12 +1364,10 @@ ath5k_hw_reset(struct ath5k_hw *ah, enum nl80211_iftype op_mode,
 	if (ret)
 		return ret;
 
-
 	/*
 	 * Initialize DMA/Interrupts
 	 */
 	ath5k_hw_dma_init(ah);
-
 
 	/*
 	 * Enable 32KHz clock function for AR5212+ chips

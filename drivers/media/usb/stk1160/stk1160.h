@@ -143,7 +143,6 @@ struct stk1160 {
 	int num_alt;
 
 	struct stk1160_isoc_ctl isoc_ctl;
-	char urb_buf[255];	 /* urb control msg buffer */
 
 	/* frame properties */
 	int width;		  /* current frame width */
@@ -207,4 +206,3 @@ int stk1160_ac97_unregister(struct stk1160 *dev);
 static inline int stk1160_ac97_register(struct stk1160 *dev) { return 0; }
 static inline int stk1160_ac97_unregister(struct stk1160 *dev) { return 0; }
 #endif
-

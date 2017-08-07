@@ -189,7 +189,6 @@ static struct platform_pwm_backlight_data income_backlight_data = {
 	.max_brightness	= 0x3ff,
 	.dft_brightness	= 0x1ff,
 	.pwm_period_ns	= 1000000,
-	.enable_gpio	= -1,
 };
 
 static struct platform_device income_backlight = {
@@ -221,4 +220,3 @@ void __init colibri_pxa270_income_boardinit(void)
 	income_lcd_init();
 	income_pwm_init();
 }
-

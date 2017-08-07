@@ -21,7 +21,6 @@
 #include <linux/gpio.h>
 #include <linux/string.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 
@@ -38,7 +37,7 @@
 
 //#include <asm/debug-ll.h>
 #include <mach/regs-gpio.h>
-#include <mach/gpio-samsung.h>
+#include <plat/regs-serial.h>
 #include <linux/platform_data/i2c-s3c2410.h>
 
 #include <plat/gpio-cfg.h>

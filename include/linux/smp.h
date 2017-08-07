@@ -11,13 +11,12 @@
 #include <linux/list.h>
 #include <linux/cpumask.h>
 #include <linux/init.h>
-#include <linux/llist.h>
 
 extern void cpu_idle(void);
 
 typedef void (*smp_call_func_t)(void *info);
 struct call_single_data {
-	struct llist_node llist;
+	struct list_head list;
 	smp_call_func_t func;
 	void *info;
 	u16 flags;
@@ -50,7 +49,7 @@ void on_each_cpu_cond(bool (*cond_func)(int cpu, void *info),
 		smp_call_func_t func, void *info, bool wait,
 		gfp_t gfp_flags);
 
-int smp_call_function_single_async(int cpu, struct call_single_data *csd);
+int __smp_call_function_single(int cpu, struct call_single_data *csd, int wait);
 
 #ifdef CONFIG_SMP
 
@@ -74,7 +73,6 @@ extern void smp_send_stop(void);
  * sends a 'reschedule' event to another CPU:
  */
 extern void smp_send_reschedule(int cpu);
-
 
 /*
  * Prepare machine for booting other CPUs.
@@ -106,10 +104,14 @@ void kick_all_cpus_sync(void);
 /*
  * Generic and arch helpers
  */
+#ifdef CONFIG_USE_GENERIC_SMP_HELPERS
 void __init call_function_init(void);
 void generic_smp_call_function_single_interrupt(void);
 #define generic_smp_call_function_interrupt \
 	generic_smp_call_function_single_interrupt
+#else
+static inline void call_function_init(void) { }
+#endif
 
 /*
  * Mark the boot cpu "online" so that it can call console drivers in

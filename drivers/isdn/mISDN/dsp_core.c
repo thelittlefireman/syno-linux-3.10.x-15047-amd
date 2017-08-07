@@ -288,10 +288,8 @@ dsp_control_req(struct dsp *dsp, struct mISDNhead *hh, struct sk_buff *skb)
 	u8 *data;
 	int len;
 
-	if (skb->len < sizeof(int)) {
+	if (skb->len < sizeof(int))
 		printk(KERN_ERR "%s: PH_CONTROL message too short\n", __func__);
-		return -EINVAL;
-	}
 	cont = *((int *)skb->data);
 	len = skb->len - sizeof(int);
 	data = skb->data + sizeof(int);
@@ -1109,7 +1107,6 @@ dspcreate(struct channel_req *crq)
 	return 0;
 }
 
-
 static struct Bprotocol DSP = {
 	.Bprotocols = (1 << (ISDN_P_B_L2DSP & ISDN_P_B_MASK))
 	| (1 << (ISDN_P_B_L2DSPHDLC & ISDN_P_B_MASK)),
@@ -1213,7 +1210,6 @@ static int __init dsp_init(void)
 
 	return 0;
 }
-
 
 static void __exit dsp_cleanup(void)
 {

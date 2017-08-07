@@ -75,7 +75,7 @@ static int r300_emit_cliprects(drm_radeon_private_t *dev_priv,
 		OUT_RING(CP_PACKET0(R300_RE_CLIPRECT_TL_0, nr * 2 - 1));
 
 		for (i = 0; i < nr; ++i) {
-			if (copy_from_user
+			if (DRM_COPY_FROM_USER
 			    (&box, &cmdbuf->boxes[n + i], sizeof(box))) {
 				DRM_ERROR("copy cliprect faulted\n");
 				return -EFAULT;
@@ -537,7 +537,6 @@ static __inline__ int r300_emit_bitblt_multi(drm_radeon_private_t *dev_priv,
 	int count, ret;
 	RING_LOCALS;
 
-
 	count = (*cmd & RADEON_CP_PACKET_COUNT_MASK) >> 16;
 
 	if (*cmd & 0x8000) {
@@ -928,12 +927,12 @@ static int r300_scratch(drm_radeon_private_t *dev_priv,
 		buf_idx = drm_buffer_pointer_to_dword(cmdbuf->buffer, 0);
 		*buf_idx *= 2; /* 8 bytes per buf */
 
-		if (copy_to_user(ref_age_base + *buf_idx,
+		if (DRM_COPY_TO_USER(ref_age_base + *buf_idx,
 				&dev_priv->scratch_ages[header.scratch.reg],
 				sizeof(u32)))
 			return -EINVAL;
 
-		if (copy_from_user(&h_pending,
+		if (DRM_COPY_FROM_USER(&h_pending,
 				ref_age_base + *buf_idx + 1,
 				sizeof(u32)))
 			return -EINVAL;
@@ -943,7 +942,7 @@ static int r300_scratch(drm_radeon_private_t *dev_priv,
 
 		h_pending--;
 
-		if (copy_to_user(ref_age_base + *buf_idx + 1,
+		if (DRM_COPY_TO_USER(ref_age_base + *buf_idx + 1,
 					&h_pending,
 					sizeof(u32)))
 			return -EINVAL;
@@ -1002,7 +1001,6 @@ static inline int r300_emit_r500fp(drm_radeon_private_t *dev_priv,
 
 	return 0;
 }
-
 
 /**
  * Parses and validates a user-supplied command buffer and emits appropriate

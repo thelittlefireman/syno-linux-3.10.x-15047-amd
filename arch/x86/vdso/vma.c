@@ -16,22 +16,20 @@
 #include <asm/vdso.h>
 #include <asm/page.h>
 
-#if defined(CONFIG_X86_64)
 unsigned int __read_mostly vdso_enabled = 1;
 
-DECLARE_VDSO_IMAGE(vdso);
+extern char vdso_start[], vdso_end[];
 extern unsigned short vdso_sync_cpuid;
+
+extern struct page *vdso_pages[];
 static unsigned vdso_size;
 
 #ifdef CONFIG_X86_X32_ABI
-DECLARE_VDSO_IMAGE(vdsox32);
+extern char vdsox32_start[], vdsox32_end[];
+extern struct page *vdsox32_pages[];
 static unsigned vdsox32_size;
-#endif
-#endif
 
-#if defined(CONFIG_X86_32) || defined(CONFIG_X86_X32_ABI) || \
-	defined(CONFIG_COMPAT)
-void __init patch_vdso32(void *vdso, size_t len)
+static void __init patch_vdsox32(void *vdso, size_t len)
 {
 	Elf32_Ehdr *hdr = vdso;
 	Elf32_Shdr *sechdrs, *alt_sec = 0;
@@ -54,7 +52,7 @@ void __init patch_vdso32(void *vdso, size_t len)
 	}
 
 	/* If we get here, it's probably a bug. */
-	pr_warning("patch_vdso32: .altinstructions not found\n");
+	pr_warning("patch_vdsox32: .altinstructions not found\n");
 	return;  /* nothing to patch */
 
 found:
@@ -63,7 +61,6 @@ found:
 }
 #endif
 
-#if defined(CONFIG_X86_64)
 static void __init patch_vdso64(void *vdso, size_t len)
 {
 	Elf64_Ehdr *hdr = vdso;
@@ -107,7 +104,7 @@ static int __init init_vdso(void)
 		vdso_pages[i] = virt_to_page(vdso_start + i*PAGE_SIZE);
 
 #ifdef CONFIG_X86_X32_ABI
-	patch_vdso32(vdsox32_start, vdsox32_end - vdsox32_start);
+	patch_vdsox32(vdsox32_start, vdsox32_end - vdsox32_start);
 	npages = (vdsox32_end - vdsox32_start + PAGE_SIZE - 1) / PAGE_SIZE;
 	vdsox32_size = npages << PAGE_SHIFT;
 	for (i = 0; i < npages; i++)
@@ -120,30 +117,45 @@ subsys_initcall(init_vdso);
 
 struct linux_binprm;
 
-/* Put the vdso above the (randomized) stack with another randomized offset.
-   This way there is no hole in the middle of address space.
-   To save memory make sure it is still in the same PTE as the stack top.
-   This doesn't give that many random bits */
+/*
+ * Put the vdso above the (randomized) stack with another randomized
+ * offset.  This way there is no hole in the middle of address space.
+ * To save memory make sure it is still in the same PTE as the stack
+ * top.  This doesn't give that many random bits.
+ *
+ * Note that this algorithm is imperfect: the distribution of the vdso
+ * start address within a PMD is biased toward the end.
+ *
+ * Only used for the 64-bit and x32 vdsos.
+ */
 static unsigned long vdso_addr(unsigned long start, unsigned len)
 {
 	unsigned long addr, end;
 	unsigned offset;
-	end = (start + PMD_SIZE - 1) & PMD_MASK;
+
+	/*
+	 * Round up the start address.  It can start out unaligned as a result
+	 * of stack start randomization.
+	 */
+	start = PAGE_ALIGN(start);
+
+	/* Round the lowest possible end address up to a PMD boundary. */
+	end = (start + len + PMD_SIZE - 1) & PMD_MASK;
 	if (end >= TASK_SIZE_MAX)
 		end = TASK_SIZE_MAX;
 	end -= len;
-	/* This loses some more bits than a modulo, but is cheaper */
-	offset = get_random_int() & (PTRS_PER_PTE - 1);
-	addr = start + (offset << PAGE_SHIFT);
-	if (addr >= end)
-		addr = end;
+
+	if (end > start) {
+		offset = get_random_int() % (((end - start) >> PAGE_SHIFT) + 1);
+		addr = start + (offset << PAGE_SHIFT);
+	} else {
+		addr = start;
+	}
 
 	/*
-	 * page-align it here so that get_unmapped_area doesn't
-	 * align it wrongfully again to the next page. addr can come in 4K
-	 * unaligned here as a result of stack start randomization.
+	 * Forcibly align the final address in case we have a hardware
+	 * issue that requires alignment for performance reasons.
 	 */
-	addr = PAGE_ALIGN(addr);
 	addr = align_vdso_addr(addr);
 
 	return addr;
@@ -207,4 +219,3 @@ static __init int vdso_setup(char *s)
 	return 0;
 }
 __setup("vdso=", vdso_setup);
-#endif

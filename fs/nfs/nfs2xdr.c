@@ -88,7 +88,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
 		func, xdr->end - xdr->p);
 }
 
-
 /*
  * Encode/decode NFSv2 basic data types
  *
@@ -554,7 +553,6 @@ out:
 out_default:
 	return nfs_stat_to_errno(status);
 }
-
 
 /*
  * NFSv2 XDR encode functions
@@ -1046,7 +1044,6 @@ out:
 out_default:
 	return nfs_stat_to_errno(status);
 }
-
 
 /*
  * We need to translate between nfs status return values and

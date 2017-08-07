@@ -233,8 +233,6 @@
 
 #ifndef __ASSEMBLY__
 
-#include <linux/serial_core.h>
-
 /* configuration structure for per-machine configurations for the
  * serial port
  *
@@ -259,4 +257,3 @@ struct s3c2410_uartcfg {
 #endif /* __ASSEMBLY__ */
 
 #endif /* __ASM_ARM_REGS_SERIAL_H */
-

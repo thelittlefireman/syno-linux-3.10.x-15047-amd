@@ -155,11 +155,10 @@ static int send_cmd(struct gspca_dev *gspca_dev, uint16_t cmd, void *cmdbuf,
 	do {
 		actual_len = kinect_read(udev, ibuf, 0x200);
 	} while (actual_len == 0);
-	PDEBUG(D_USBO, "Control reply: %d", actual_len);
+	PDEBUG(D_USBO, "Control reply: %d", res);
 	if (actual_len < sizeof(*rhdr)) {
-		pr_err("send_cmd: Input control transfer failed (%d)\n",
-		       actual_len);
-		return actual_len < 0 ? actual_len : -EREMOTEIO;
+		pr_err("send_cmd: Input control transfer failed (%d)\n", res);
+		return res;
 	}
 	actual_len -= sizeof(*rhdr);
 
@@ -290,7 +289,6 @@ static int sd_start(struct gspca_dev *gspca_dev)
 		fps_val = 0x1e;
 	else
 		fps_val = 0x0f;
-
 
 	/* turn off IR-reset function */
 	write_register(gspca_dev, 0x105, 0x00);

@@ -246,7 +246,6 @@ static int udl_crtc_write_mode_to_hw(struct drm_crtc *crtc)
 	return retval;
 }
 
-
 static void udl_crtc_dpms(struct drm_crtc *crtc, int mode)
 {
 	struct drm_device *dev = crtc->dev;
@@ -310,7 +309,7 @@ static int udl_crtc_mode_set(struct drm_crtc *crtc,
 
 {
 	struct drm_device *dev = crtc->dev;
-	struct udl_framebuffer *ufb = to_udl_fb(crtc->primary->fb);
+	struct udl_framebuffer *ufb = to_udl_fb(crtc->fb);
 	struct udl_device *udl = dev->dev_private;
 	char *buf;
 	char *wrptr;
@@ -351,7 +350,6 @@ static int udl_crtc_mode_set(struct drm_crtc *crtc,
 	return 0;
 }
 
-
 static void udl_crtc_disable(struct drm_crtc *crtc)
 {
 	udl_crtc_dpms(crtc, DRM_MODE_DPMS_OFF);
@@ -361,6 +359,10 @@ static void udl_crtc_destroy(struct drm_crtc *crtc)
 {
 	drm_crtc_cleanup(crtc);
 	kfree(crtc);
+}
+
+static void udl_load_lut(struct drm_crtc *crtc)
+{
 }
 
 static void udl_crtc_prepare(struct drm_crtc *crtc)
@@ -379,6 +381,7 @@ static struct drm_crtc_helper_funcs udl_helper_funcs = {
 	.prepare = udl_crtc_prepare,
 	.commit = udl_crtc_commit,
 	.disable = udl_crtc_disable,
+	.load_lut = udl_load_lut,
 };
 
 static const struct drm_crtc_funcs udl_crtc_funcs = {

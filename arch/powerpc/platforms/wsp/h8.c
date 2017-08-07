@@ -10,7 +10,6 @@
 #include <linux/kernel.h>
 #include <linux/of.h>
 #include <linux/io.h>
-#include <linux/of_address.h>
 
 #include "wsp.h"
 
@@ -18,7 +17,6 @@
  * The UART connection to the H8 is over ttyS1 which is just a 16550.
  * We assume that FW has it setup right and no one messes with it.
  */
-
 
 static u8 __iomem *h8;
 
@@ -70,7 +68,6 @@ static void wsp_h8_terminal_cmd(const char *cmd, int sz)
 	for (;;)
 		continue;
 }
-
 
 void wsp_h8_restart(char *cmd)
 {

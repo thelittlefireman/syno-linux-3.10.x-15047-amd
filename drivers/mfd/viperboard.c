@@ -29,7 +29,6 @@
 
 #include <linux/usb.h>
 
-
 static const struct usb_device_id vprbrd_table[] = {
 	{ USB_DEVICE(0x2058, 0x1005) },   /* Nano River Technologies */
 	{ }                               /* Terminating entry */
@@ -37,7 +36,7 @@ static const struct usb_device_id vprbrd_table[] = {
 
 MODULE_DEVICE_TABLE(usb, vprbrd_table);
 
-static const struct mfd_cell vprbrd_devs[] = {
+static struct mfd_cell vprbrd_devs[] = {
 	{
 		.name = "viperboard-gpio",
 	},

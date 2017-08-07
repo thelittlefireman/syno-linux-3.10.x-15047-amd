@@ -13,7 +13,6 @@
  * Some ideas are from omap-sham.c drivers.
  */
 
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -30,7 +29,6 @@
 #include <linux/irq.h>
 #include <linux/scatterlist.h>
 #include <linux/dma-mapping.h>
-#include <linux/of_device.h>
 #include <linux/delay.h>
 #include <linux/crypto.h>
 #include <linux/cryptohash.h>
@@ -1264,29 +1262,32 @@ static int atmel_sha_dma_init(struct atmel_sha_dev *dd,
 	int err = -ENOMEM;
 	dma_cap_mask_t mask_in;
 
-	/* Try to grab DMA channel */
-	dma_cap_zero(mask_in);
-	dma_cap_set(DMA_SLAVE, mask_in);
+	if (pdata && pdata->dma_slave->rxdata.dma_dev) {
+		/* Try to grab DMA channel */
+		dma_cap_zero(mask_in);
+		dma_cap_set(DMA_SLAVE, mask_in);
 
-	dd->dma_lch_in.chan = dma_request_slave_channel_compat(mask_in,
-			atmel_sha_filter, &pdata->dma_slave->rxdata, dd->dev, "tx");
-	if (!dd->dma_lch_in.chan) {
-		dev_warn(dd->dev, "no DMA channel available\n");
-		return err;
+		dd->dma_lch_in.chan = dma_request_channel(mask_in,
+				atmel_sha_filter, &pdata->dma_slave->rxdata);
+
+		if (!dd->dma_lch_in.chan)
+			return err;
+
+		dd->dma_lch_in.dma_conf.direction = DMA_MEM_TO_DEV;
+		dd->dma_lch_in.dma_conf.dst_addr = dd->phys_base +
+			SHA_REG_DIN(0);
+		dd->dma_lch_in.dma_conf.src_maxburst = 1;
+		dd->dma_lch_in.dma_conf.src_addr_width =
+			DMA_SLAVE_BUSWIDTH_4_BYTES;
+		dd->dma_lch_in.dma_conf.dst_maxburst = 1;
+		dd->dma_lch_in.dma_conf.dst_addr_width =
+			DMA_SLAVE_BUSWIDTH_4_BYTES;
+		dd->dma_lch_in.dma_conf.device_fc = false;
+
+		return 0;
 	}
 
-	dd->dma_lch_in.dma_conf.direction = DMA_MEM_TO_DEV;
-	dd->dma_lch_in.dma_conf.dst_addr = dd->phys_base +
-		SHA_REG_DIN(0);
-	dd->dma_lch_in.dma_conf.src_maxburst = 1;
-	dd->dma_lch_in.dma_conf.src_addr_width =
-		DMA_SLAVE_BUSWIDTH_4_BYTES;
-	dd->dma_lch_in.dma_conf.dst_maxburst = 1;
-	dd->dma_lch_in.dma_conf.dst_addr_width =
-		DMA_SLAVE_BUSWIDTH_4_BYTES;
-	dd->dma_lch_in.dma_conf.device_fc = false;
-
-	return 0;
+	return -ENODEV;
 }
 
 static void atmel_sha_dma_cleanup(struct atmel_sha_dev *dd)
@@ -1323,48 +1324,6 @@ static void atmel_sha_get_cap(struct atmel_sha_dev *dd)
 		break;
 	}
 }
-
-#if defined(CONFIG_OF)
-static const struct of_device_id atmel_sha_dt_ids[] = {
-	{ .compatible = "atmel,at91sam9g46-sha" },
-	{ /* sentinel */ }
-};
-
-MODULE_DEVICE_TABLE(of, atmel_sha_dt_ids);
-
-static struct crypto_platform_data *atmel_sha_of_init(struct platform_device *pdev)
-{
-	struct device_node *np = pdev->dev.of_node;
-	struct crypto_platform_data *pdata;
-
-	if (!np) {
-		dev_err(&pdev->dev, "device node not found\n");
-		return ERR_PTR(-EINVAL);
-	}
-
-	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
-	if (!pdata) {
-		dev_err(&pdev->dev, "could not allocate memory for pdata\n");
-		return ERR_PTR(-ENOMEM);
-	}
-
-	pdata->dma_slave = devm_kzalloc(&pdev->dev,
-					sizeof(*(pdata->dma_slave)),
-					GFP_KERNEL);
-	if (!pdata->dma_slave) {
-		dev_err(&pdev->dev, "could not allocate memory for dma_slave\n");
-		devm_kfree(&pdev->dev, pdata);
-		return ERR_PTR(-ENOMEM);
-	}
-
-	return pdata;
-}
-#else /* CONFIG_OF */
-static inline struct crypto_platform_data *atmel_sha_of_init(struct platform_device *dev)
-{
-	return ERR_PTR(-EINVAL);
-}
-#endif
 
 static int atmel_sha_probe(struct platform_device *pdev)
 {
@@ -1442,23 +1401,13 @@ static int atmel_sha_probe(struct platform_device *pdev)
 	if (sha_dd->caps.has_dma) {
 		pdata = pdev->dev.platform_data;
 		if (!pdata) {
-			pdata = atmel_sha_of_init(pdev);
-			if (IS_ERR(pdata)) {
-				dev_err(&pdev->dev, "platform data not available\n");
-				err = PTR_ERR(pdata);
-				goto err_pdata;
-			}
-		}
-		if (!pdata->dma_slave) {
+			dev_err(&pdev->dev, "platform data not available\n");
 			err = -ENXIO;
 			goto err_pdata;
 		}
 		err = atmel_sha_dma_init(sha_dd, pdata);
 		if (err)
 			goto err_sha_dma;
-
-		dev_info(dev, "using %s for DMA transfers\n",
-				dma_chan_name(sha_dd->dma_lch_in.chan));
 	}
 
 	spin_lock(&atmel_sha.lock);
@@ -1469,9 +1418,7 @@ static int atmel_sha_probe(struct platform_device *pdev)
 	if (err)
 		goto err_algs;
 
-	dev_info(dev, "Atmel SHA1/SHA256%s%s\n",
-			sha_dd->caps.has_sha224 ? "/SHA224" : "",
-			sha_dd->caps.has_sha_384_512 ? "/SHA384/SHA512" : "");
+	dev_info(dev, "Atmel SHA1/SHA256\n");
 
 	return 0;
 
@@ -1535,7 +1482,6 @@ static struct platform_driver atmel_sha_driver = {
 	.driver		= {
 		.name	= "atmel_sha",
 		.owner	= THIS_MODULE,
-		.of_match_table	= of_match_ptr(atmel_sha_dt_ids),
 	},
 };
 

@@ -54,7 +54,6 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 				__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
 #endif
 
-
 static unsigned long ks8695wdt_busy;
 static DEFINE_SPINLOCK(ks8695_lock);
 
@@ -323,4 +322,5 @@ module_exit(ks8695_wdt_exit);
 MODULE_AUTHOR("Andrew Victor");
 MODULE_DESCRIPTION("Watchdog driver for KS8695");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_ALIAS("platform:ks8695_wdt");

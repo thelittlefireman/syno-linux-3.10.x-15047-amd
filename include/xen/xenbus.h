@@ -59,7 +59,6 @@ struct xenbus_watch
 			 const char **vec, unsigned int len);
 };
 
-
 /* A xenbus device. */
 struct xenbus_device {
 	const char *devicetype;
@@ -207,6 +206,7 @@ int xenbus_unmap_ring(struct xenbus_device *dev,
 		      grant_handle_t handle, void *vaddr);
 
 int xenbus_alloc_evtchn(struct xenbus_device *dev, int *port);
+int xenbus_bind_evtchn(struct xenbus_device *dev, int remote_port, int *port);
 int xenbus_free_evtchn(struct xenbus_device *dev, int port);
 
 enum xenbus_state xenbus_read_driver_state(const char *path);

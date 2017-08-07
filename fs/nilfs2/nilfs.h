@@ -141,7 +141,6 @@ enum {
  * @ti_save: Backup of journal_info field of task_struct
  * @ti_flags: Flags
  * @ti_count: Nest level
- * @ti_garbage:	List of inode to be put when releasing semaphore
  */
 struct nilfs_transaction_info {
 	u32			ti_magic;
@@ -150,7 +149,6 @@ struct nilfs_transaction_info {
 				   one of other filesystems has a bug. */
 	unsigned short		ti_flags;
 	unsigned short		ti_count;
-	struct list_head	ti_garbage;
 };
 
 /* ti_magic */
@@ -163,7 +161,6 @@ struct nilfs_transaction_info {
 #define NILFS_TI_GC		0x0004	/* GC context */
 #define NILFS_TI_COMMIT		0x0008	/* Change happened or not */
 #define NILFS_TI_WRITER		0x0010	/* Constructor context */
-
 
 int nilfs_transaction_begin(struct super_block *,
 			    struct nilfs_transaction_info *, int);
@@ -335,6 +332,5 @@ extern const struct inode_operations nilfs_symlink_inode_operations;
  * filesystem type
  */
 extern struct file_system_type nilfs_fs_type;
-
 
 #endif	/* _NILFS_H */

@@ -67,23 +67,22 @@ void PSvEnablePowerSaving(struct vnt_private *pDevice, u16 wListenInterval)
 	/* set period of power up before TBTT */
 	MACvWriteWord(pDevice, MAC_REG_PWBT, C_PWBT);
 
-	if (pDevice->op_mode != NL80211_IFTYPE_ADHOC) {
+	if (pDevice->eOPMode != OP_MODE_ADHOC) {
 		/* set AID */
 		MACvWriteWord(pDevice, MAC_REG_AIDATIM, wAID);
+	} else {
+		/* set ATIM Window */
+		/* MACvWriteATIMW(pDevice->PortOffset, pMgmt->wCurrATIMWindow); */
 	}
 
-	/* Warren:06-18-2004,the sequence must follow
-	 * PSEN->AUTOSLEEP->GO2DOZE
-	 */
+	/* Warren:06-18-2004,the sequence must follow PSEN->AUTOSLEEP->GO2DOZE */
 	/* enable power saving hw function */
 	MACvRegBitsOn(pDevice, MAC_REG_PSCTL, PSCTL_PSEN);
 
 	/* Set AutoSleep */
 	MACvRegBitsOn(pDevice, MAC_REG_PSCFG, PSCFG_AUTOSLEEP);
 
-	/* Warren:MUST turn on this once before turn on AUTOSLEEP ,or the
-	 * AUTOSLEEP doesn't work
-	 */
+	/* Warren:MUST turn on this once before turn on AUTOSLEEP ,or the AUTOSLEEP doesn't work */
 	MACvRegBitsOn(pDevice, MAC_REG_PSCTL, PSCTL_GO2DOZE);
 
 	if (wListenInterval >= 2) {
@@ -106,10 +105,8 @@ void PSvEnablePowerSaving(struct vnt_private *pDevice, u16 wListenInterval)
 
 	pDevice->bEnablePSMode = true;
 
-	/* We don't send null pkt in ad hoc mode
-	 * since beacon will handle this.
-	 */
-	if (pDevice->op_mode == NL80211_IFTYPE_STATION)
+	/* We don't send null pkt in ad hoc mode since beacon will handle this. */
+	if (pDevice->eOPMode == OP_MODE_INFRASTRUCTURE)
 		PSbSendNullPacket(pDevice);
 
 	pDevice->bPWBitOn = true;
@@ -140,7 +137,7 @@ void PSvDisablePowerSaving(struct vnt_private *pDevice)
 	MACvRegBitsOn(pDevice, MAC_REG_PSCTL, PSCTL_ALBCN);
 	pDevice->bEnablePSMode = false;
 
-	if (pDevice->op_mode == NL80211_IFTYPE_STATION)
+	if (pDevice->eOPMode == OP_MODE_INFRASTRUCTURE)
 		PSbSendNullPacket(pDevice);
 
 	pDevice->bPWBitOn = false;
@@ -229,19 +226,16 @@ void PSvSendPSPOLL(struct vnt_private *pDevice)
 			WLAN_SET_FC_PWRMGT(0)
 		));
 
-	pTxPacket->p80211Header->sA2.wDurationID =
-		pMgmt->wCurrAID | BIT14 | BIT15;
-	memcpy(pTxPacket->p80211Header->sA2.abyAddr1, pMgmt->abyCurrBSSID,
-		WLAN_ADDR_LEN);
-	memcpy(pTxPacket->p80211Header->sA2.abyAddr2, pMgmt->abyMACAddr,
-		WLAN_ADDR_LEN);
+	pTxPacket->p80211Header->sA2.wDurationID = pMgmt->wCurrAID | BIT14 | BIT15;
+	memcpy(pTxPacket->p80211Header->sA2.abyAddr1, pMgmt->abyCurrBSSID, WLAN_ADDR_LEN);
+	memcpy(pTxPacket->p80211Header->sA2.abyAddr2, pMgmt->abyMACAddr, WLAN_ADDR_LEN);
 	pTxPacket->cbMPDULen = WLAN_HDR_ADDR2_LEN;
 	pTxPacket->cbPayloadLen = 0;
 
 	/* log failure if sending failed */
-	if (csMgmt_xmit(pDevice, pTxPacket) != CMD_STATUS_PENDING)
-		DBG_PRT(MSG_LEVEL_DEBUG,
-			KERN_INFO "Send PS-Poll packet failed..\n");
+	if (csMgmt_xmit(pDevice, pTxPacket) != CMD_STATUS_PENDING) {
+		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "Send PS-Poll packet failed..\n");
+	}
 }
 
 /*
@@ -263,8 +257,10 @@ int PSbSendNullPacket(struct vnt_private *pDevice)
 	if (pDevice->bLinkPass == false)
 		return false;
 
-	if (pDevice->bEnablePSMode == false && pDevice->tx_trigger == false)
-		return false;
+	if ((pDevice->bEnablePSMode == false) &&
+		(pDevice->fTxDataInSleep == false)) {
+			return false;
+	}
 
 	memset(pMgmt->pbyPSPacketPool, 0, sizeof(struct vnt_tx_mgmt)
 		+ WLAN_NULLDATA_FR_MAXLEN);
@@ -273,7 +269,7 @@ int PSbSendNullPacket(struct vnt_private *pDevice)
 		+ sizeof(struct vnt_tx_mgmt));
 
 	flags = WLAN_SET_FC_FTYPE(WLAN_TYPE_DATA) |
-			WLAN_SET_FC_FSTYPE(WLAN_FSTYPE_NULL);
+                        WLAN_SET_FC_FSTYPE(WLAN_FSTYPE_NULL);
 
 	if (pDevice->bEnablePSMode)
 		flags |= WLAN_SET_FC_PWRMGT(1);
@@ -283,21 +279,16 @@ int PSbSendNullPacket(struct vnt_private *pDevice)
 	pTxPacket->p80211Header->sA3.wFrameCtl = cpu_to_le16(flags);
 
 	if (pMgmt->eCurrMode != WMAC_MODE_IBSS_STA)
-		pTxPacket->p80211Header->sA3.wFrameCtl |=
-			cpu_to_le16((u16)WLAN_SET_FC_TODS(1));
+		pTxPacket->p80211Header->sA3.wFrameCtl |= cpu_to_le16((u16)WLAN_SET_FC_TODS(1));
 
-	memcpy(pTxPacket->p80211Header->sA3.abyAddr1, pMgmt->abyCurrBSSID,
-		WLAN_ADDR_LEN);
-	memcpy(pTxPacket->p80211Header->sA3.abyAddr2, pMgmt->abyMACAddr,
-		WLAN_ADDR_LEN);
-	memcpy(pTxPacket->p80211Header->sA3.abyAddr3, pMgmt->abyCurrBSSID,
-		WLAN_BSSID_LEN);
+	memcpy(pTxPacket->p80211Header->sA3.abyAddr1, pMgmt->abyCurrBSSID, WLAN_ADDR_LEN);
+	memcpy(pTxPacket->p80211Header->sA3.abyAddr2, pMgmt->abyMACAddr, WLAN_ADDR_LEN);
+	memcpy(pTxPacket->p80211Header->sA3.abyAddr3, pMgmt->abyCurrBSSID, WLAN_BSSID_LEN);
 	pTxPacket->cbMPDULen = WLAN_HDR_ADDR3_LEN;
 	pTxPacket->cbPayloadLen = 0;
 	/* log error if sending failed */
 	if (csMgmt_xmit(pDevice, pTxPacket) != CMD_STATUS_PENDING) {
-		DBG_PRT(MSG_LEVEL_DEBUG,
-			KERN_INFO "Send Null Packet failed !\n");
+		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "Send Null Packet failed !\n");
 		return false;
 	}
 	return true;
@@ -336,4 +327,3 @@ int PSbIsNextTBTTWakeUp(struct vnt_private *pDevice)
 	}
 	return bWakeUp;
 }
-

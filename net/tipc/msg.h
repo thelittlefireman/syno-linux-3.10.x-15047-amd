@@ -77,11 +77,9 @@
 
 #define TIPC_MEDIA_ADDR_OFFSET	5
 
-
 struct tipc_msg {
 	__be32 hdr[15];
 };
-
 
 static inline u32 msg_word(struct tipc_msg *m, u32 pos)
 {
@@ -208,7 +206,6 @@ static inline void msg_set_size(struct tipc_msg *m, u32 sz)
 	m->hdr[0] = htonl((msg_word(m, 0) & ~0x1ffff) | sz);
 }
 
-
 /*
  * Word 1
  */
@@ -281,7 +278,6 @@ static inline void msg_set_bcast_ack(struct tipc_msg *m, u32 n)
 {
 	msg_set_bits(m, 1, 0, 0xffff, n);
 }
-
 
 /*
  * Word 2
@@ -482,7 +478,6 @@ static inline struct tipc_msg *msg_get_wrapped(struct tipc_msg *m)
 #define DSC_REQ_MSG		0
 #define DSC_RESP_MSG		1
 
-
 /*
  * Word 1
  */
@@ -505,7 +500,6 @@ static inline void msg_set_node_sig(struct tipc_msg *m, u32 n)
 {
 	msg_set_bits(m, 1, 0, 0xffff, n);
 }
-
 
 /*
  * Word 2
@@ -540,7 +534,6 @@ static inline void msg_set_bcgap_to(struct tipc_msg *m, u32 n)
 	msg_set_bits(m, 2, 0, 0xffff, n);
 }
 
-
 /*
  * Word 4
  */
@@ -554,11 +547,15 @@ static inline void msg_set_last_bcast(struct tipc_msg *m, u32 n)
 	msg_set_bits(m, 4, 16, 0xffff, n);
 }
 
+static inline u32 msg_fragm_no(struct tipc_msg *m)
+{
+	return msg_bits(m, 4, 16, 0xffff);
+}
+
 static inline void msg_set_fragm_no(struct tipc_msg *m, u32 n)
 {
 	msg_set_bits(m, 4, 16, 0xffff, n);
 }
-
 
 static inline u32 msg_next_sent(struct tipc_msg *m)
 {
@@ -568,6 +565,11 @@ static inline u32 msg_next_sent(struct tipc_msg *m)
 static inline void msg_set_next_sent(struct tipc_msg *m, u32 n)
 {
 	msg_set_bits(m, 4, 0, 0xffff, n);
+}
+
+static inline u32 msg_long_msgno(struct tipc_msg *m)
+{
+	return msg_bits(m, 4, 0, 0xffff);
 }
 
 static inline void msg_set_long_msgno(struct tipc_msg *m, u32 n)
@@ -707,8 +709,9 @@ static inline void msg_set_link_tolerance(struct tipc_msg *m, u32 n)
 }
 
 u32 tipc_msg_tot_importance(struct tipc_msg *m);
-void tipc_msg_init(struct tipc_msg *m, u32 user, u32 type, u32 hsize,
-		   u32 destnode);
+void tipc_msg_init(struct tipc_msg *m, u32 user, u32 type,
+			    u32 hsize, u32 destnode);
 int tipc_msg_build(struct tipc_msg *hdr, struct iovec const *msg_sect,
-		   unsigned int len, int max_size, struct sk_buff **buf);
+		   u32 num_sect, unsigned int total_len,
+			    int max_size, int usrmem, struct sk_buff **buf);
 #endif

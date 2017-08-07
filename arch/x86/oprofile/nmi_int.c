@@ -60,7 +60,6 @@ u64 op_x86_get_ctrl(struct op_x86_model_spec const *model,
 	return val;
 }
 
-
 static int profile_exceptions_notify(unsigned int val, struct pt_regs *regs)
 {
 	if (ctr_running)
@@ -245,7 +244,6 @@ static void nmi_cpu_switch(void *dummy)
 	nmi_cpu_start(NULL);
 }
 
-
 /*
  * Quick check to see if multiplexing is necessary.
  * The check should be sufficient since counters are used
@@ -403,7 +401,7 @@ static void nmi_cpu_down(void *dummy)
 		nmi_cpu_shutdown(dummy);
 }
 
-static int nmi_create_files(struct dentry *root)
+static int nmi_create_files(struct super_block *sb, struct dentry *root)
 {
 	unsigned int i;
 
@@ -420,14 +418,14 @@ static int nmi_create_files(struct dentry *root)
 			continue;
 
 		snprintf(buf,  sizeof(buf), "%d", i);
-		dir = oprofilefs_mkdir(root, buf);
-		oprofilefs_create_ulong(dir, "enabled", &counter_config[i].enabled);
-		oprofilefs_create_ulong(dir, "event", &counter_config[i].event);
-		oprofilefs_create_ulong(dir, "count", &counter_config[i].count);
-		oprofilefs_create_ulong(dir, "unit_mask", &counter_config[i].unit_mask);
-		oprofilefs_create_ulong(dir, "kernel", &counter_config[i].kernel);
-		oprofilefs_create_ulong(dir, "user", &counter_config[i].user);
-		oprofilefs_create_ulong(dir, "extra", &counter_config[i].extra);
+		dir = oprofilefs_mkdir(sb, root, buf);
+		oprofilefs_create_ulong(sb, dir, "enabled", &counter_config[i].enabled);
+		oprofilefs_create_ulong(sb, dir, "event", &counter_config[i].event);
+		oprofilefs_create_ulong(sb, dir, "count", &counter_config[i].count);
+		oprofilefs_create_ulong(sb, dir, "unit_mask", &counter_config[i].unit_mask);
+		oprofilefs_create_ulong(sb, dir, "kernel", &counter_config[i].kernel);
+		oprofilefs_create_ulong(sb, dir, "user", &counter_config[i].user);
+		oprofilefs_create_ulong(sb, dir, "extra", &counter_config[i].extra);
 	}
 
 	return 0;
@@ -494,18 +492,13 @@ static int nmi_setup(void)
 	if (err)
 		goto fail;
 
-	cpu_notifier_register_begin();
-
-	/* Use get/put_online_cpus() to protect 'nmi_enabled' */
 	get_online_cpus();
+	register_cpu_notifier(&oprofile_cpu_nb);
 	nmi_enabled = 1;
 	/* make nmi_enabled visible to the nmi handler: */
 	smp_mb();
 	on_each_cpu(nmi_cpu_setup, NULL, 1);
-	__register_cpu_notifier(&oprofile_cpu_nb);
 	put_online_cpus();
-
-	cpu_notifier_register_done();
 
 	return 0;
 fail:
@@ -517,18 +510,12 @@ static void nmi_shutdown(void)
 {
 	struct op_msrs *msrs;
 
-	cpu_notifier_register_begin();
-
-	/* Use get/put_online_cpus() to protect 'nmi_enabled' & 'ctr_running' */
 	get_online_cpus();
+	unregister_cpu_notifier(&oprofile_cpu_nb);
 	on_each_cpu(nmi_cpu_shutdown, NULL, 1);
 	nmi_enabled = 0;
 	ctr_running = 0;
-	__unregister_cpu_notifier(&oprofile_cpu_nb);
 	put_online_cpus();
-
-	cpu_notifier_register_done();
-
 	/* make variables visible to the nmi handler: */
 	smp_mb();
 	unregister_nmi_handler(NMI_LOCAL, "oprofile");

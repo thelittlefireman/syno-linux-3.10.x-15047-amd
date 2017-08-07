@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -234,7 +236,6 @@ free_template:
 	return err;
 }
 
-
 int
 nx_fw_cmd_set_mtu(struct netxen_adapter *adapter, int mtu)
 {
@@ -377,7 +378,6 @@ nx_fw_cmd_create_rx_ctx(struct netxen_adapter *adapter)
 			"Failed to create rx ctx in firmware%d\n", err);
 		goto out_free_rsp;
 	}
-
 
 	prsp_rds = ((nx_cardrsp_rds_ring_t *)
 			 &prsp->data[le32_to_cpu(prsp->rds_ring_offset)]);
@@ -718,7 +718,6 @@ netxen_init_old_ctx(struct netxen_adapter *adapter)
 	hwctx->cmd_ring_addr = cpu_to_le64(tx_ring->phys_addr);
 	hwctx->cmd_ring_size = cpu_to_le32(tx_ring->num_desc);
 
-
 	for (ring = 0; ring < adapter->max_rds_rings; ring++) {
 		rds_ring = &recv_ctx->rds_rings[ring];
 
@@ -846,7 +845,6 @@ int netxen_alloc_hw_resources(struct netxen_adapter *adapter)
 		}
 	}
 
-
 	if (!NX_IS_REVISION_P2(adapter->ahw.revision_id)) {
 		if (test_and_set_bit(__NX_FW_ATTACHED, &adapter->state))
 			goto done;
@@ -940,4 +938,3 @@ done:
 		}
 	}
 }
-

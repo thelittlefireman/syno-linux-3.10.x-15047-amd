@@ -21,11 +21,9 @@
 #include <mach/at91rm9200.h>
 #include <mach/at91rm9200_mc.h>
 #include <mach/at91_ramc.h>
-#include <mach/hardware.h>
 
 #include "board.h"
 #include "generic.h"
-
 
 /* --------------------------------------------------------------------
  *  USB Host
@@ -80,7 +78,6 @@ void __init at91_add_device_usbh(struct at91_usbh_data *data)
 void __init at91_add_device_usbh(struct at91_usbh_data *data) {}
 #endif
 
-
 /* --------------------------------------------------------------------
  *  USB Device (Gadget)
  * -------------------------------------------------------------------- */
@@ -129,7 +126,6 @@ void __init at91_add_device_udc(struct at91_udc_data *data)
 #else
 void __init at91_add_device_udc(struct at91_udc_data *data) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  Ethernet
@@ -203,7 +199,6 @@ void __init at91_add_device_eth(struct macb_platform_data *data)
 #else
 void __init at91_add_device_eth(struct macb_platform_data *data) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  Compact Flash / PCMCIA
@@ -289,7 +284,6 @@ void __init at91_add_device_cf(struct at91_cf_data *data)
 #else
 void __init at91_add_device_cf(struct at91_cf_data *data) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  MMC / SD
@@ -389,7 +383,6 @@ void __init at91_add_device_mci(short mmc_id, struct mci_platform_data *data)
 void __init at91_add_device_mci(short mmc_id, struct mci_platform_data *data) {}
 #endif
 
-
 /* --------------------------------------------------------------------
  *  NAND / SmartMedia
  * -------------------------------------------------------------------- */
@@ -457,7 +450,6 @@ void __init at91_add_device_nand(struct atmel_nand_data *data)
 #else
 void __init at91_add_device_nand(struct atmel_nand_data *data) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  TWI (i2c)
@@ -534,7 +526,6 @@ void __init at91_add_device_i2c(struct i2c_board_info *devices, int nr_devices)
 void __init at91_add_device_i2c(struct i2c_board_info *devices, int nr_devices) {}
 #endif
 
-
 /* --------------------------------------------------------------------
  *  SPI
  * -------------------------------------------------------------------- */
@@ -589,7 +580,6 @@ void __init at91_add_device_spi(struct spi_board_info *devices, int nr_devices)
 		else
 			at91_set_gpio_output(cs_pin, 1);
 
-
 		/* pass chip-select pin to driver */
 		devices[i].controller_data = (void *) cs_pin;
 	}
@@ -600,7 +590,6 @@ void __init at91_add_device_spi(struct spi_board_info *devices, int nr_devices)
 #else
 void __init at91_add_device_spi(struct spi_board_info *devices, int nr_devices) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  Timer/Counter blocks
@@ -677,7 +666,6 @@ static void __init at91_add_device_tc(void)
 static void __init at91_add_device_tc(void) { }
 #endif
 
-
 /* --------------------------------------------------------------------
  *  RTC
  * -------------------------------------------------------------------- */
@@ -711,7 +699,6 @@ static void __init at91_add_device_rtc(void)
 static void __init at91_add_device_rtc(void) {}
 #endif
 
-
 /* --------------------------------------------------------------------
  *  Watchdog
  * -------------------------------------------------------------------- */
@@ -730,7 +717,6 @@ static void __init at91_add_device_watchdog(void)
 #else
 static void __init at91_add_device_watchdog(void) {}
 #endif
-
 
 /* --------------------------------------------------------------------
  *  SSC -- Synchronous Serial Controller
@@ -901,7 +887,6 @@ void __init at91_add_device_ssc(unsigned id, unsigned pins)
 void __init at91_add_device_ssc(unsigned id, unsigned pins) {}
 #endif
 
-
 /* --------------------------------------------------------------------
  *  UART
  * -------------------------------------------------------------------- */
@@ -923,7 +908,6 @@ static struct resource dbgu_resources[] = {
 static struct atmel_uart_data dbgu_data = {
 	.use_dma_tx	= 0,
 	.use_dma_rx	= 0,		/* DBGU not capable of receive DMA */
-	.rts_gpio	= -EINVAL,
 };
 
 static u64 dbgu_dmamask = DMA_BIT_MASK(32);
@@ -962,7 +946,6 @@ static struct resource uart0_resources[] = {
 static struct atmel_uart_data uart0_data = {
 	.use_dma_tx	= 1,
 	.use_dma_rx	= 1,
-	.rts_gpio	= -EINVAL,
 };
 
 static u64 uart0_dmamask = DMA_BIT_MASK(32);
@@ -990,10 +973,9 @@ static inline void configure_usart0_pins(unsigned pins)
 	if (pins & ATMEL_UART_RTS) {
 		/*
 		 * AT91RM9200 Errata #39 - RTS0 is not internally connected to PA21.
-		 * We need to drive the pin manually. The serial driver will driver
-		 * this to high when initializing.
+		 *  We need to drive the pin manually.  Default is off (RTS is active low).
 		 */
-		uart0_data.rts_gpio = AT91_PIN_PA21;
+		at91_set_gpio_output(AT91_PIN_PA21, 1);
 	}
 }
 
@@ -1013,7 +995,6 @@ static struct resource uart1_resources[] = {
 static struct atmel_uart_data uart1_data = {
 	.use_dma_tx	= 1,
 	.use_dma_rx	= 1,
-	.rts_gpio	= -EINVAL,
 };
 
 static u64 uart1_dmamask = DMA_BIT_MASK(32);
@@ -1065,7 +1046,6 @@ static struct resource uart2_resources[] = {
 static struct atmel_uart_data uart2_data = {
 	.use_dma_tx	= 1,
 	.use_dma_rx	= 1,
-	.rts_gpio	= -EINVAL,
 };
 
 static u64 uart2_dmamask = DMA_BIT_MASK(32);
@@ -1109,7 +1089,6 @@ static struct resource uart3_resources[] = {
 static struct atmel_uart_data uart3_data = {
 	.use_dma_tx	= 1,
 	.use_dma_rx	= 1,
-	.rts_gpio	= -EINVAL,
 };
 
 static u64 uart3_dmamask = DMA_BIT_MASK(32);
@@ -1188,7 +1167,6 @@ void __init at91_add_device_serial(void)
 void __init at91_register_uart(unsigned id, unsigned portnr, unsigned pins) {}
 void __init at91_add_device_serial(void) {}
 #endif
-
 
 /* -------------------------------------------------------------------- */
 

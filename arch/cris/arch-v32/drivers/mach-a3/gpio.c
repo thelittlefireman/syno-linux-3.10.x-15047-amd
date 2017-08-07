@@ -100,7 +100,6 @@ static int gpio_leds_ioctl(unsigned int cmd, unsigned long arg);
 static int gpio_pwm_ioctl(struct gpio_private *priv, unsigned int cmd,
 	unsigned long arg);
 
-
 /* linked list of alarms to check for */
 
 static struct gpio_private *alarmlist;
@@ -335,7 +334,6 @@ static void gpio_write_byte(struct gpio_private *priv, unsigned long *port,
 			gpio_write_bit(port, data, i, priv->clk_mask,
 				priv->data_mask);
 }
-
 
 static ssize_t gpio_write(struct file *file, const char __user *buf,
 	size_t count, loff_t *off)
@@ -978,7 +976,7 @@ static int __init gpio_init(void)
 	CRIS_LED_DISK_WRITE(0);
 
 	int res2 = request_irq(GIO_INTR_VECT, gpio_interrupt,
-		IRQF_SHARED, "gpio", &alarmlist);
+		IRQF_SHARED | IRQF_DISABLED, "gpio", &alarmlist);
 	if (res2) {
 		printk(KERN_ERR "err: irq for gpio\n");
 		return res2;

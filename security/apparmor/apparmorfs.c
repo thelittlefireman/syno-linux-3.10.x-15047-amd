@@ -26,7 +26,6 @@
 #include "include/apparmorfs.h"
 #include "include/audit.h"
 #include "include/context.h"
-#include "include/crypto.h"
 #include "include/policy.h"
 #include "include/resource.h"
 
@@ -111,7 +110,6 @@ static char *aa_simple_write_to_buffer(int op, const char __user *userbuf,
 
 	return data;
 }
-
 
 /* .load file hook fn to load policy */
 static ssize_t profile_load(struct file *f, const char __user *buf, size_t size,
@@ -224,6 +222,7 @@ const struct file_operations aa_fs_seq_file_ops = {
 	.release	= single_release,
 };
 
+/** Base file system setup **/
 static int aa_fs_seq_profile_open(struct inode *inode, struct file *file,
 				  int (*show)(struct seq_file *, void *))
 {
@@ -318,34 +317,6 @@ static const struct file_operations aa_fs_profattach_fops = {
 	.read		= seq_read,
 	.llseek		= seq_lseek,
 	.release	= aa_fs_seq_profile_release,
-};
-
-static int aa_fs_seq_hash_show(struct seq_file *seq, void *v)
-{
-	struct aa_replacedby *r = seq->private;
-	struct aa_profile *profile = aa_get_profile_rcu(&r->profile);
-	unsigned int i, size = aa_hash_size();
-
-	if (profile->hash) {
-		for (i = 0; i < size; i++)
-			seq_printf(seq, "%.2x", profile->hash[i]);
-		seq_puts(seq, "\n");
-	}
-
-	return 0;
-}
-
-static int aa_fs_seq_hash_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, aa_fs_seq_hash_show, inode->i_private);
-}
-
-static const struct file_operations aa_fs_seq_hash_fops = {
-	.owner		= THIS_MODULE,
-	.open		= aa_fs_seq_hash_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
 };
 
 /** fns to setup dynamic per profile/namespace files **/
@@ -449,14 +420,6 @@ int __aa_fs_profile_mkdir(struct aa_profile *profile, struct dentry *parent)
 		goto fail;
 	profile->dents[AAFS_PROF_ATTACH] = dent;
 
-	if (profile->hash) {
-		dent = create_profile_file(dir, "sha1", profile,
-					   &aa_fs_seq_hash_fops);
-		if (IS_ERR(dent))
-			goto fail;
-		profile->dents[AAFS_PROF_HASH] = dent;
-	}
-
 	list_for_each_entry(child, &profile->base.profiles, base.list) {
 		error = __aa_fs_profile_mkdir(child, prof_child_dir(profile));
 		if (error)
@@ -549,7 +512,6 @@ fail2:
 	return error;
 }
 
-
 #define list_entry_next(pos, member) \
 	list_entry(pos->member.next, typeof(*pos), member)
 #define list_entry_is_head(pos, head, member) (&pos->member == (head))
@@ -580,13 +542,15 @@ static struct aa_namespace *__next_namespace(struct aa_namespace *root,
 
 	/* check if the next ns is a sibling, parent, gp, .. */
 	parent = ns->parent;
-	while (ns != root) {
+	while (parent) {
 		mutex_unlock(&ns->lock);
 		next = list_entry_next(ns, base.list);
 		if (!list_entry_is_head(next, &parent->sub_ns, base.list)) {
 			mutex_lock(&next->lock);
 			return next;
 		}
+		if (parent == root)
+			return NULL;
 		ns = parent;
 		parent = parent->parent;
 	}
@@ -686,7 +650,6 @@ static void *p_start(struct seq_file *f, loff_t *pos)
 	loff_t l = *pos;
 	f->private = aa_get_namespace(root);
 
-
 	/* find the first profile */
 	mutex_lock(&root->lock);
 	profile = __first_profile(root, root);
@@ -781,7 +744,6 @@ static const struct file_operations aa_fs_profiles_fops = {
 	.release = profiles_release,
 };
 
-
 /** Base file system setup **/
 static struct aa_fs_entry aa_fs_entry_file[] = {
 	AA_FS_FILE_STRING("mask", "create read write exec append mmap_exec " \
@@ -797,6 +759,17 @@ static struct aa_fs_entry aa_fs_entry_domain[] = {
 	{ }
 };
 
+static struct aa_fs_entry aa_fs_entry_mount[] = {
+	AA_FS_FILE_STRING("mask", "mount umount"),
+	{ }
+};
+
+static struct aa_fs_entry aa_fs_entry_namespaces[] = {
+	AA_FS_FILE_BOOLEAN("profile",           1),
+	AA_FS_FILE_BOOLEAN("pivot_root",        1),
+	{ }
+};
+
 static struct aa_fs_entry aa_fs_entry_policy[] = {
 	AA_FS_FILE_BOOLEAN("set_load",          1),
 	{}
@@ -806,9 +779,11 @@ static struct aa_fs_entry aa_fs_entry_features[] = {
 	AA_FS_DIR("policy",			aa_fs_entry_policy),
 	AA_FS_DIR("domain",			aa_fs_entry_domain),
 	AA_FS_DIR("file",			aa_fs_entry_file),
+	AA_FS_DIR("network",                    aa_fs_entry_network),
+	AA_FS_DIR("mount",                      aa_fs_entry_mount),
+	AA_FS_DIR("namespaces",                 aa_fs_entry_namespaces),
 	AA_FS_FILE_U64("capability",		VFS_CAP_FLAGS_MASK),
 	AA_FS_DIR("rlimit",			aa_fs_entry_rlimit),
-	AA_FS_DIR("caps",			aa_fs_entry_caps),
 	{ }
 };
 

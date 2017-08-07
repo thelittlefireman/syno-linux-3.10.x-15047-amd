@@ -116,8 +116,6 @@ struct kimage {
 #endif
 };
 
-
-
 /* kexec interface functions */
 extern void machine_kexec(struct kimage *image);
 extern int machine_kexec_prepare(struct kimage *image);
@@ -127,6 +125,12 @@ extern asmlinkage long sys_kexec_load(unsigned long entry,
 					struct kexec_segment __user *segments,
 					unsigned long flags);
 extern int kernel_kexec(void);
+#ifdef CONFIG_COMPAT
+extern asmlinkage long compat_sys_kexec_load(unsigned long entry,
+				unsigned long nr_segments,
+				struct compat_kexec_segment __user *segments,
+				unsigned long flags);
+#endif
 extern struct page *kimage_alloc_control_pages(struct kimage *image,
 						unsigned int order);
 extern void crash_kexec(struct pt_regs *);
@@ -164,7 +168,6 @@ unsigned long paddr_vmcoreinfo_note(void);
 
 extern struct kimage *kexec_image;
 extern struct kimage *kexec_crash_image;
-extern int kexec_load_disabled;
 
 #ifndef kexec_flush_icache_page
 #define kexec_flush_icache_page(page)

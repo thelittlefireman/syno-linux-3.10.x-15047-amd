@@ -76,5 +76,4 @@ struct  seminfo {
 #define SEMMAP  SEMMNS          /* # of entries in semaphore map */
 #define SEMUSZ  20		/* sizeof struct sem_undo */
 
-
 #endif /* _UAPI_LINUX_SEM_H */

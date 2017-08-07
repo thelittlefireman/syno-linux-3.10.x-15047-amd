@@ -22,5 +22,4 @@ struct sock_extended_err {
 
 #define SO_EE_OFFENDER(ee)	((struct sockaddr*)((ee)+1))
 
-
 #endif /* _UAPI_LINUX_ERRQUEUE_H */

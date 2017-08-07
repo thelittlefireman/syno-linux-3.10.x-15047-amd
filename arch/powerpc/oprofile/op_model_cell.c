@@ -16,6 +16,7 @@
 
 #include <linux/cpufreq.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
 #include <linux/oprofile.h>
@@ -598,7 +599,6 @@ static void spu_evnt_swap(unsigned long data)
 	int ret;
 	u32 interrupt_mask;
 
-
 	/* enable interrupts on cntr 0 */
 	interrupt_mask = CBE_PM_CTR_OVERFLOW_INTR(0);
 
@@ -837,7 +837,6 @@ static int cell_reg_setup_ppu(struct op_counter_config *ctr,
 	return 0;
 }
 
-
 /* This function is called once for all cpus combined */
 static int cell_reg_setup(struct op_counter_config *ctr,
 			struct op_system_config *sys, int num_ctrs)
@@ -893,8 +892,6 @@ static int cell_reg_setup(struct op_counter_config *ctr,
 
 	return ret;
 }
-
-
 
 /* This function is called once for each cpu */
 static int cell_cpu_setup(struct op_counter_config *cntr)
@@ -1121,7 +1118,8 @@ oprof_cpufreq_notify(struct notifier_block *nb, unsigned long val, void *data)
 	int ret = 0;
 	struct cpufreq_freqs *frq = data;
 	if ((val == CPUFREQ_PRECHANGE && frq->old < frq->new) ||
-	    (val == CPUFREQ_POSTCHANGE && frq->old > frq->new))
+	    (val == CPUFREQ_POSTCHANGE && frq->old > frq->new) ||
+	    (val == CPUFREQ_RESUMECHANGE || val == CPUFREQ_SUSPENDCHANGE))
 		set_spu_profiling_frequency(frq->new, spu_cycle_reset);
 	return ret;
 }
@@ -1307,7 +1305,6 @@ static int cell_global_start_spu_cycles(struct op_counter_config *ctr)
 			goto out;
 		}
 
-
 		subfunc = 2;	/* 2 - activate SPU tracing, 3 - deactivate */
 
 		/* start profiling */
@@ -1454,7 +1451,6 @@ static int cell_global_start(struct op_counter_config *ctr)
 	else
 		return cell_global_start_ppu(ctr);
 }
-
 
 /* The SPU interrupt handler
  *

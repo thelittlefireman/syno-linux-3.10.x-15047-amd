@@ -63,7 +63,6 @@ struct logger_log {
 
 static LIST_HEAD(log_list);
 
-
 /**
  * struct logger_reader - a logging device open for reading
  * @log:	The associated log
@@ -88,7 +87,6 @@ static size_t logger_offset(struct logger_log *log, size_t n)
 {
 	return n & (log->size - 1);
 }
-
 
 /*
  * file_get_log - Given a file structure, return the associated log
@@ -481,7 +479,7 @@ static ssize_t logger_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	header.sec = now.tv_sec;
 	header.nsec = now.tv_nsec;
 	header.euid = current_euid();
-	header.len = min_t(size_t, iocb->ki_nbytes, LOGGER_ENTRY_MAX_PAYLOAD);
+	header.len = min_t(size_t, iocb->ki_left, LOGGER_ENTRY_MAX_PAYLOAD);
 	header.hdr_size = sizeof(struct logger_entry);
 
 	/* null writes succeed, return zero */
@@ -698,7 +696,7 @@ static long logger_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = -EBADF;
 			break;
 		}
-		if (!(in_egroup_p(file_inode(file)->i_gid) ||
+		if (!(in_egroup_p(file->f_dentry->d_inode->i_gid) ||
 				capable(CAP_SYSLOG))) {
 			ret = -EPERM;
 			break;
@@ -841,7 +839,6 @@ static void __exit logger_exit(void)
 		kfree(current_log);
 	}
 }
-
 
 device_initcall(logger_init);
 module_exit(logger_exit);

@@ -188,9 +188,23 @@ static loff_t vcs_lseek(struct file *file, loff_t offset, int orig)
 	console_unlock();
 	if (size < 0)
 		return size;
-	return fixed_size_llseek(file, offset, orig, size);
+	switch (orig) {
+		default:
+			return -EINVAL;
+		case 2:
+			offset += size;
+			break;
+		case 1:
+			offset += file->f_pos;
+		case 0:
+			break;
+	}
+	if (offset < 0 || offset > size) {
+		return -EINVAL;
+	}
+	file->f_pos = offset;
+	return file->f_pos;
 }
-
 
 static ssize_t
 vcs_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)

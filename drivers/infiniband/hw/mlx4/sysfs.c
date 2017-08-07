@@ -393,7 +393,6 @@ struct mlx4_port {
 	int		       slave;
 };
 
-
 static void mlx4_port_release(struct kobject *kobj)
 {
 	struct mlx4_port *p = container_of(kobj, struct mlx4_port, kobj);
@@ -563,6 +562,8 @@ static int add_port(struct mlx4_ib_dev *dev, int port_num, int slave)
 	struct mlx4_port *p;
 	int i;
 	int ret;
+	int is_eth = rdma_port_get_link_layer(&dev->ib_dev, port_num) ==
+			IB_LINK_LAYER_ETHERNET;
 
 	p = kzalloc(sizeof *p, GFP_KERNEL);
 	if (!p)
@@ -580,12 +581,11 @@ static int add_port(struct mlx4_ib_dev *dev, int port_num, int slave)
 
 	p->pkey_group.name  = "pkey_idx";
 	p->pkey_group.attrs =
-		alloc_group_attrs(show_port_pkey, store_port_pkey,
+		alloc_group_attrs(show_port_pkey,
+				  is_eth ? NULL : store_port_pkey,
 				  dev->dev->caps.pkey_table_len[port_num]);
-	if (!p->pkey_group.attrs) {
-		ret = -ENOMEM;
+	if (!p->pkey_group.attrs)
 		goto err_alloc;
-	}
 
 	ret = sysfs_create_group(&p->kobj, &p->pkey_group);
 	if (ret)
@@ -593,10 +593,8 @@ static int add_port(struct mlx4_ib_dev *dev, int port_num, int slave)
 
 	p->gid_group.name  = "gid_idx";
 	p->gid_group.attrs = alloc_group_attrs(show_port_gid_idx, NULL, 1);
-	if (!p->gid_group.attrs) {
-		ret = -ENOMEM;
+	if (!p->gid_group.attrs)
 		goto err_free_pkey;
-	}
 
 	ret = sysfs_create_group(&p->kobj, &p->gid_group);
 	if (ret)
@@ -627,7 +625,6 @@ static int register_one_pkey_tree(struct mlx4_ib_dev *dev, int slave)
 	int port;
 	struct kobject *p, *t;
 	struct mlx4_port *mport;
-	struct mlx4_active_ports actv_ports;
 
 	get_name(dev, name, slave, sizeof name);
 
@@ -650,11 +647,7 @@ static int register_one_pkey_tree(struct mlx4_ib_dev *dev, int slave)
 		goto err_ports;
 	}
 
-	actv_ports = mlx4_get_active_ports(dev->dev, slave);
-
 	for (port = 1; port <= dev->dev->caps.num_ports; ++port) {
-		if (!test_bit(port - 1, actv_ports.ports))
-			continue;
 		err = add_port(dev, port, slave);
 		if (err)
 			goto err_add;

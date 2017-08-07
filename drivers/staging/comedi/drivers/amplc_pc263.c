@@ -16,6 +16,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 /*
 Driver: amplc_pc263
@@ -33,7 +38,6 @@ connected to a reed-relay. Relay contacts are closed when output is 1.
 The state of the outputs can be read.
 */
 
-#include <linux/module.h>
 #include "../comedidev.h"
 
 #define PC263_DRIVER_NAME	"amplc_pc263"
@@ -57,12 +61,16 @@ static const struct pc263_board pc263_boards[] = {
 
 static int pc263_do_insn_bits(struct comedi_device *dev,
 			      struct comedi_subdevice *s,
-			      struct comedi_insn *insn,
-			      unsigned int *data)
+			      struct comedi_insn *insn, unsigned int *data)
 {
-	if (comedi_dio_update_state(s, data)) {
-		outb(s->state & 0xff, dev->iobase);
-		outb((s->state >> 8) & 0xff, dev->iobase + 1);
+	/* The insn data is a mask in data[0] and the new data
+	 * in data[1], each channel cooresponding to a bit. */
+	if (data[0]) {
+		s->state &= ~data[0];
+		s->state |= data[0] & data[1];
+		/* Write out the new digital output lines */
+		outb(s->state & 0xFF, dev->iobase);
+		outb(s->state >> 8, dev->iobase + 1);
 	}
 
 	data[1] = s->state;
@@ -94,6 +102,8 @@ static int pc263_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 	/* read initial relay state */
 	s->state = inb(dev->iobase) | (inb(dev->iobase + 1) << 8);
 
+	dev_info(dev->class_dev, "%s (base %#lx) attached\n", dev->board_name,
+		 dev->iobase);
 	return 0;
 }
 

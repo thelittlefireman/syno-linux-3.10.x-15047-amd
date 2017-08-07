@@ -27,9 +27,9 @@
 #include <linux/types.h>
 #include <linux/i2c.h>
 #include <linux/i2c-algo-bit.h>
+#include <linux/init.h>
 #include <linux/io.h>
 #include <asm/hydra.h>
-
 
 #define HYDRA_CPD_PD0	0x00000001	/* CachePD lines */
 #define HYDRA_CPD_PD1	0x00000002
@@ -104,7 +104,7 @@ static struct i2c_adapter hydra_adap = {
 	.algo_data	= &hydra_bit_data,
 };
 
-static const struct pci_device_id hydra_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(hydra_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_APPLE, PCI_DEVICE_ID_APPLE_HYDRA) },
 	{ 0, }
 };
@@ -146,7 +146,6 @@ static void hydra_remove(struct pci_dev *dev)
 	release_mem_region(pci_resource_start(dev, 0)+
 			   offsetof(struct Hydra, CachePD), 4);
 }
-
 
 static struct pci_driver hydra_driver = {
 	.name		= "hydra_smbus",

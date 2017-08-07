@@ -12,7 +12,6 @@
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/i2c.h>
 #include <linux/device.h>
 
@@ -24,6 +23,7 @@
 #include <mach/map.h>
 #include <mach/regs-clock.h>
 
+#include <plat/regs-serial.h>
 #include <plat/devs.h>
 #include <plat/cpu.h>
 #include <linux/platform_data/ata-samsung_cf.h>

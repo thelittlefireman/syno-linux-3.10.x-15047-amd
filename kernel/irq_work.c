@@ -18,7 +18,6 @@
 #include <linux/notifier.h>
 #include <asm/processor.h>
 
-
 static DEFINE_PER_CPU(struct llist_head, irq_work_list);
 static DEFINE_PER_CPU(int, irq_work_raised);
 
@@ -61,11 +60,11 @@ void __weak arch_irq_work_raise(void)
  *
  * Can be re-enqueued while the callback is still in progress.
  */
-bool irq_work_queue(struct irq_work *work)
+void irq_work_queue(struct irq_work *work)
 {
 	/* Only queue if not already pending */
 	if (!irq_work_claim(work))
-		return false;
+		return;
 
 	/* Queue the entry and raise the IPI if needed. */
 	preempt_disable();
@@ -83,8 +82,6 @@ bool irq_work_queue(struct irq_work *work)
 	}
 
 	preempt_enable();
-
-	return true;
 }
 EXPORT_SYMBOL_GPL(irq_work_queue);
 
@@ -108,7 +105,6 @@ static void __irq_work_run(void)
 	struct irq_work *work;
 	struct llist_head *this_list;
 	struct llist_node *llnode;
-
 
 	/*
 	 * Reset the "raised" state right before we check the list because

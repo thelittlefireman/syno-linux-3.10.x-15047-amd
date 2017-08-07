@@ -514,7 +514,6 @@ static struct ptp_clock_info ptp_pch_caps = {
 	.name		= "PCH timer",
 	.max_adj	= 50000000,
 	.n_ext_ts	= N_EXT_TS,
-	.n_pins		= 0,
 	.pps		= 0,
 	.adjfreq	= ptp_pch_adjfreq,
 	.adjtime	= ptp_pch_adjtime,
@@ -522,7 +521,6 @@ static struct ptp_clock_info ptp_pch_caps = {
 	.settime	= ptp_pch_settime,
 	.enable		= ptp_pch_enable,
 };
-
 
 #ifdef CONFIG_PM
 static s32 pch_suspend(struct pci_dev *pdev, pm_message_t state)

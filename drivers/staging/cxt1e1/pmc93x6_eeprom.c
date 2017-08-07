@@ -34,6 +34,12 @@
 #define FALSE  0
 #endif
 
+#ifdef SBE_INCLUDE_SYMBOLS
+#define STATIC
+#else
+#define STATIC  static
+#endif
+
 /*------------------------------------------------------------------------
  *      EEPROM address definitions
  *------------------------------------------------------------------------
@@ -46,7 +52,6 @@
 #define EE_MFG      (long)0     /* Index to manufacturing record */
 #define EE_FIRST    0x28        /* Index to start testing at */
 #define EE_LIMIT    128         /* Index to end testing at */
-
 
 /*  Bit Ordering for Instructions
 **
@@ -68,13 +73,11 @@
 #define LC46A_MAX_OPS   10      /* Number of bits in Instruction */
 #define NUM_OF_BITS     8       /* Number of bits in data */
 
-
 /* EEPROM signal bits */
 #define EPROM_ACTIVE_OUT_BIT    0x0001  /* Out data bit */
 #define EPROM_ACTIVE_IN_BIT     0x0002  /* In data bit */
 #define ACTIVE_IN_BIT_SHIFT     0x0001  /* Shift In data bit to LSB */
 #define EPROM_ENCS              0x0004  /* Set EEPROM CS during operation */
-
 
 /*------------------------------------------------------------------------
  *      The ByteReverse table is used to reverses the 8 bits within a byte
@@ -84,13 +87,12 @@
 static unsigned char ByteReverse[256];
 static int  ByteReverseBuilt = FALSE;
 
-
 /*------------------------------------------------------------------------
  *      mfg_template - initial serial EEPROM data structure
  *------------------------------------------------------------------------
  */
 
-static u8 mfg_template[sizeof(FLD_TYPE2)] =
+short       mfg_template[sizeof (FLD_TYPE2)] =
 {
     PROM_FORMAT_TYPE2,          /* type; */
     0x00, 0x1A,                 /* length[2]; */
@@ -104,7 +106,6 @@ static u8 mfg_template[sizeof(FLD_TYPE2)] =
     0x00, 0x00, 0x00, 0x00,     /* HeatRunErrors[4]; */
 };
 
-
 /*------------------------------------------------------------------------
  *      BuildByteReverse - build the 8-bit reverse table
  *------------------------------------------------------------------------
@@ -113,7 +114,7 @@ static u8 mfg_template[sizeof(FLD_TYPE2)] =
  *      (the MSB becomes the LSB etc.).
  */
 
-static void
+STATIC void
 BuildByteReverse (void)
 {
     long        half;           /* Used to build by powers to 2 */
@@ -128,13 +129,12 @@ BuildByteReverse (void)
     ByteReverseBuilt = TRUE;
 }
 
-
 /*------------------------------------------------------------------------
  *      eeprom_delay - small delay for EEPROM timing
  *------------------------------------------------------------------------
  */
 
-static void
+STATIC void
 eeprom_delay (void)
 {
     int         timeout;
@@ -144,7 +144,6 @@ eeprom_delay (void)
         OS_uwait_dummy ();
     }
 }
-
 
 /*------------------------------------------------------------------------
  *      eeprom_put_byte - Send a byte to the EEPROM serially
@@ -169,7 +168,6 @@ eeprom_put_byte (long addr, long data, int count)
         pci_write_32 ((u_int32_t *) addr, output);      /* Output it */
     }
 }
-
 
 /*------------------------------------------------------------------------
  *      eeprom_get_byte - Receive a byte from the EEPROM serially
@@ -209,7 +207,6 @@ eeprom_get_byte (long addr)
     return data;
 }
 
-
 /*------------------------------------------------------------------------
  *      disable_pmc_eeprom - Disable writes to the EEPROM
  *------------------------------------------------------------------------
@@ -217,7 +214,7 @@ eeprom_get_byte (long addr)
  *      Issue the EEPROM command to disable writes.
  */
 
-static void
+STATIC void
 disable_pmc_eeprom (long addr)
 {
     eeprom_put_byte (addr, EPROM_EWDS, SIZE_ADDR_OP);
@@ -226,7 +223,6 @@ disable_pmc_eeprom (long addr)
                                                  * from EEPROM */
 }
 
-
 /*------------------------------------------------------------------------
  *      enable_pmc_eeprom - Enable writes to the EEPROM
  *------------------------------------------------------------------------
@@ -234,7 +230,7 @@ disable_pmc_eeprom (long addr)
  *      Issue the EEPROM command to enable writes.
  */
 
-static void
+STATIC void
 enable_pmc_eeprom (long addr)
 {
     eeprom_put_byte (addr, EPROM_EWEN, SIZE_ADDR_OP);
@@ -242,7 +238,6 @@ enable_pmc_eeprom (long addr)
     pci_write_32 ((u_int32_t *) addr, 0);       /* this removes Chip Select
                                                  * from EEPROM */
 }
-
 
 /*------------------------------------------------------------------------
  *      pmc_eeprom_read - EEPROM location read
@@ -279,7 +274,6 @@ pmc_eeprom_read (long addr, long mem_offset)
 
     return (data & 0x000000FF);
 }
-
 
 /*------------------------------------------------------------------------
  *      pmc_eeprom_write - EEPROM location write
@@ -354,7 +348,6 @@ pmc_eeprom_write (long addr, long mem_offset, u_int32_t data)
     return (0);
 }
 
-
 /*------------------------------------------------------------------------
  *      pmcGetBuffValue - read the specified value from buffer
  *------------------------------------------------------------------------
@@ -375,7 +368,6 @@ pmcGetBuffValue (char *ptr, int size)
     return value;
 }
 
-
 /*------------------------------------------------------------------------
  *      pmcSetBuffValue - save the specified value to buffer
  *------------------------------------------------------------------------
@@ -393,7 +385,6 @@ pmcSetBuffValue (char *ptr, long value, int size)
     }
 }
 
-
 /*------------------------------------------------------------------------
  *      pmc_eeprom_read_buffer - read EEPROM data into specified buffer
  *------------------------------------------------------------------------
@@ -405,7 +396,6 @@ pmc_eeprom_read_buffer (long addr, long mem_offset, char *dest_ptr, int size)
     while (--size >= 0)
         *dest_ptr++ = (char) pmc_eeprom_read (addr, mem_offset++);
 }
-
 
 /*------------------------------------------------------------------------
  *      pmc_eeprom_write_buffer - write EEPROM data from specified buffer
@@ -422,7 +412,6 @@ pmc_eeprom_write_buffer (long addr, long mem_offset, char *dest_ptr, int size)
 
     disable_pmc_eeprom (addr);
 }
-
 
 /*------------------------------------------------------------------------
  *      pmcCalcCrc - calculate the CRC for the serial EEPROM structure
@@ -474,7 +463,6 @@ pmcCalcCrc_T02 (void *bufp)
     return crc;
 }
 
-
 /*------------------------------------------------------------------------
  *      pmc_init_seeprom - initialize the serial EEPROM structure
  *------------------------------------------------------------------------
@@ -491,11 +479,13 @@ pmc_init_seeprom (u_int32_t addr, u_int32_t serialNum)
     PROMFORMAT  buffer;         /* Memory image of structure */
     u_int32_t   crc;            /* CRC of structure */
     time_t      createTime;
+    int         i;
 
     createTime = get_seconds ();
 
     /* use template data */
-    memcpy(&buffer.fldType2, mfg_template, sizeof(buffer.fldType2));
+    for (i = 0; i < sizeof (FLD_TYPE2); ++i)
+        buffer.bytes[i] = mfg_template[i];
 
     /* Update serial number field in buffer */
     pmcSetBuffValue (&buffer.fldType2.Serial[3], serialNum, 3);
@@ -515,7 +505,6 @@ pmc_init_seeprom (u_int32_t addr, u_int32_t serialNum)
     /* Write structure to serial EEPROM */
     pmc_eeprom_write_buffer (addr, EE_MFG, (char *) &buffer, sizeof (FLD_TYPE2));
 }
-
 
 char
 pmc_verify_cksum (void *bufp)
@@ -543,6 +532,5 @@ pmc_verify_cksum (void *bufp)
 
     return PROM_FORMAT_Unk;         /* failed to validate */
 }
-
 
 /*** End-of-File ***/

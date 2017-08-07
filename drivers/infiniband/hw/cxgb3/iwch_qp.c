@@ -291,7 +291,6 @@ static int build_zero_stag_recv(struct iwch_qp *qhp, union t3_wr *wqe,
 	u32 pbl_addr;
 	u32 pbl_offset;
 
-
 	/*
 	 * The T3 HW requires the PBL in the HW recv descriptor to reference
 	 * a PBL entry.  So we allocate the max needed PBL memory here and pass
@@ -809,7 +808,6 @@ static void __flush_qp(struct iwch_qp *qhp, struct iwch_cq *rchp,
 	int count;
 	int flushed;
 
-
 	PDBG("%s qhp %p rchp %p schp %p\n", __func__, qhp, rchp, schp);
 	/* take a ref on the qhp since we must release the lock */
 	atomic_inc(&qhp->refcnt);
@@ -875,7 +873,6 @@ static void flush_qp(struct iwch_qp *qhp)
 	__flush_qp(qhp, rchp, schp);
 }
 
-
 /*
  * Return count of RECV WRs posted
  */
@@ -883,8 +880,7 @@ u16 iwch_rqes_posted(struct iwch_qp *qhp)
 {
 	union t3_wr *wqe = qhp->wq.queue;
 	u16 count = 0;
-
-	while (count < USHRT_MAX && fw_riwrh_opcode((struct fw_riwrh *)wqe) == T3_WR_RCV) {
+	while ((count+1) != 0 && fw_riwrh_opcode((struct fw_riwrh *)wqe) == T3_WR_RCV) {
 		count++;
 		wqe++;
 	}

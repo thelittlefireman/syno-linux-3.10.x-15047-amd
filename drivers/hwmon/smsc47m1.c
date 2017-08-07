@@ -7,7 +7,7 @@
  * Super-I/O chips.
  *
  * Copyright (C) 2002 Mark D. Studebaker <mdsxyz123@yahoo.com>
- * Copyright (C) 2004-2007 Jean Delvare <jdelvare@suse.de>
+ * Copyright (C) 2004-2007 Jean Delvare <khali@linux-fr.org>
  * Ported to Linux 2.6 by Gabriele Gorla <gorlik@yahoo.com>
  *			and Jean Delvare
  *
@@ -141,7 +141,6 @@ struct smsc47m1_sio_data {
 	enum chips type;
 	u8 activate;		/* Remember initial device state */
 };
-
 
 static int __exit smsc47m1_remove(struct platform_device *pdev);
 static struct smsc47m1_data *smsc47m1_update_device(struct device *dev,
@@ -668,7 +667,7 @@ static void smsc47m1_remove_files(struct device *dev)
 static int __init smsc47m1_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct smsc47m1_sio_data *sio_data = dev_get_platdata(dev);
+	struct smsc47m1_sio_data *sio_data = dev->platform_data;
 	struct smsc47m1_data *data;
 	struct resource *res;
 	int err;
@@ -940,7 +939,7 @@ exit_device:
 static void __exit sm_smsc47m1_exit(void)
 {
 	platform_driver_unregister(&smsc47m1_driver);
-	smsc47m1_restore(dev_get_platdata(&pdev->dev));
+	smsc47m1_restore(pdev->dev.platform_data);
 	platform_device_unregister(pdev);
 }
 

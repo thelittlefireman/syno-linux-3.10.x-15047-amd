@@ -56,6 +56,7 @@
 /*
  *	SOL_IP control messages.
  */
+#define PKTINFO_SKB_CB(__skb) ((struct in_pktinfo *)((__skb)->cb))
 
 static void ip_cmsg_recv_pktinfo(struct msghdr *msg, struct sk_buff *skb)
 {
@@ -85,7 +86,6 @@ static void ip_cmsg_recv_opts(struct msghdr *msg, struct sk_buff *skb)
 	put_cmsg(msg, SOL_IP, IP_RECVOPTS, IPCB(skb)->opt.optlen,
 		 ip_hdr(skb) + 1);
 }
-
 
 static void ip_cmsg_recv_retopts(struct msghdr *msg, struct sk_buff *skb)
 {
@@ -186,31 +186,14 @@ void ip_cmsg_recv(struct msghdr *msg, struct sk_buff *skb)
 }
 EXPORT_SYMBOL(ip_cmsg_recv);
 
-int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
-		 bool allow_ipv6)
+int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc)
 {
-	int err, val;
+	int err;
 	struct cmsghdr *cmsg;
 
 	for (cmsg = CMSG_FIRSTHDR(msg); cmsg; cmsg = CMSG_NXTHDR(msg, cmsg)) {
 		if (!CMSG_OK(msg, cmsg))
 			return -EINVAL;
-#if defined(CONFIG_IPV6)
-		if (allow_ipv6 &&
-		    cmsg->cmsg_level == SOL_IPV6 &&
-		    cmsg->cmsg_type == IPV6_PKTINFO) {
-			struct in6_pktinfo *src_info;
-
-			if (cmsg->cmsg_len < CMSG_LEN(sizeof(*src_info)))
-				return -EINVAL;
-			src_info = (struct in6_pktinfo *)CMSG_DATA(cmsg);
-			if (!ipv6_addr_v4mapped(&src_info->ipi6_addr))
-				return -EINVAL;
-			ipc->oif = src_info->ipi6_ifindex;
-			ipc->addr = src_info->ipi6_addr.s6_addr32[3];
-			continue;
-		}
-#endif
 		if (cmsg->cmsg_level != SOL_IP)
 			continue;
 		switch (cmsg->cmsg_type) {
@@ -231,31 +214,12 @@ int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
 			ipc->addr = info->ipi_spec_dst.s_addr;
 			break;
 		}
-		case IP_TTL:
-			if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
-				return -EINVAL;
-			val = *(int *)CMSG_DATA(cmsg);
-			if (val < 1 || val > 255)
-				return -EINVAL;
-			ipc->ttl = val;
-			break;
-		case IP_TOS:
-			if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
-				return -EINVAL;
-			val = *(int *)CMSG_DATA(cmsg);
-			if (val < 0 || val > 255)
-				return -EINVAL;
-			ipc->tos = val;
-			ipc->priority = rt_tos2priority(ipc->tos);
-			break;
-
 		default:
 			return -EINVAL;
 		}
 	}
 	return 0;
 }
-
 
 /* Special input handler for packets caught by router alert option.
    They are selected only by protocol field, and then processed likely
@@ -269,7 +233,6 @@ int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
  */
 struct ip_ra_chain __rcu *ip_ra_chain;
 static DEFINE_SPINLOCK(ip_ra_lock);
-
 
 static void ip_ra_destroy_rcu(struct rcu_head *head)
 {
@@ -406,7 +369,7 @@ int ip_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 {
 	struct sock_exterr_skb *serr;
 	struct sk_buff *skb, *skb2;
-	DECLARE_SOCKADDR(struct sockaddr_in *, sin, msg->msg_name);
+	struct sockaddr_in *sin;
 	struct {
 		struct sock_extended_err ee;
 		struct sockaddr_in	 offender;
@@ -432,6 +395,7 @@ int ip_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 
 	serr = SKB_EXT_ERR(skb);
 
+	sin = (struct sockaddr_in *)msg->msg_name;
 	if (sin) {
 		sin->sin_family = AF_INET;
 		sin->sin_addr.s_addr = *(__be32 *)(skb_network_header(skb) +
@@ -443,15 +407,11 @@ int ip_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 
 	memcpy(&errhdr.ee, &serr->ee, sizeof(struct sock_extended_err));
 	sin = &errhdr.offender;
-	sin->sin_family = AF_UNSPEC;
+	memset(sin, 0, sizeof(*sin));
 	if (serr->ee.ee_origin == SO_EE_ORIGIN_ICMP) {
-		struct inet_sock *inet = inet_sk(sk);
-
 		sin->sin_family = AF_INET;
 		sin->sin_addr.s_addr = ip_hdr(skb)->saddr;
-		sin->sin_port = 0;
-		memset(&sin->sin_zero, 0, sizeof(sin->sin_zero));
-		if (inet->cmsg_flags)
+		if (inet_sk(sk)->cmsg_flags)
 			ip_cmsg_recv(msg, skb);
 	}
 
@@ -478,7 +438,6 @@ out_free_skb:
 out:
 	return err;
 }
-
 
 /*
  *	Socket option code for IP. This is the end of the line after any
@@ -643,7 +602,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 		inet->nodefrag = val ? 1 : 0;
 		break;
 	case IP_MTU_DISCOVER:
-		if (val < IP_PMTUDISC_DONT || val > IP_PMTUDISC_OMIT)
+		if (val < IP_PMTUDISC_DONT || val > IP_PMTUDISC_PROBE)
 			goto e_inval;
 		inet->pmtudisc = val;
 		break;
@@ -740,7 +699,6 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 				mreq.imr_ifindex = dev->ifindex;
 		} else
 			dev = dev_get_by_index(sock_net(sk), mreq.imr_ifindex);
-
 
 		err = -EADDRNOTAVAIL;
 		if (!dev)
@@ -1066,15 +1024,13 @@ e_inval:
  *
  * To support IP_CMSG_PKTINFO option, we store rt_iif and specific
  * destination in skb->cb[] before dst drop.
- * This way, receiver doesn't make cache line misses to read rtable.
+ * This way, receiver doesnt make cache line misses to read rtable.
  */
-void ipv4_pktinfo_prepare(const struct sock *sk, struct sk_buff *skb)
+void ipv4_pktinfo_prepare(struct sk_buff *skb)
 {
 	struct in_pktinfo *pktinfo = PKTINFO_SKB_CB(skb);
-	bool prepare = (inet_sk(sk)->cmsg_flags & IP_CMSG_PKTINFO) ||
-		       ipv6_sk_rxinfo(sk);
 
-	if (prepare && skb_rtable(skb)) {
+	if (skb_rtable(skb)) {
 		pktinfo->ipi_ifindex = inet_iif(skb);
 		pktinfo->ipi_spec_dst.s_addr = fib_compute_spec_dst(skb);
 	} else {

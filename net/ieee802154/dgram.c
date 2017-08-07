@@ -73,10 +73,10 @@ static int dgram_init(struct sock *sk)
 {
 	struct dgram_sock *ro = dgram_sk(sk);
 
-	ro->dst_addr.mode = IEEE802154_ADDR_LONG;
-	ro->dst_addr.pan_id = cpu_to_le16(IEEE802154_PANID_BROADCAST);
+	ro->dst_addr.addr_type = IEEE802154_ADDR_LONG;
+	ro->dst_addr.pan_id = 0xffff;
 	ro->want_ack = 1;
-	memset(&ro->dst_addr.extended_addr, 0xff, IEEE802154_ADDR_LEN);
+	memset(&ro->dst_addr.hwaddr, 0xff, sizeof(ro->dst_addr.hwaddr));
 	return 0;
 }
 
@@ -88,7 +88,6 @@ static void dgram_close(struct sock *sk, long timeout)
 static int dgram_bind(struct sock *sk, struct sockaddr *uaddr, int len)
 {
 	struct sockaddr_ieee802154 *addr = (struct sockaddr_ieee802154 *)uaddr;
-	struct ieee802154_addr haddr;
 	struct dgram_sock *ro = dgram_sk(sk);
 	int err = -EINVAL;
 	struct net_device *dev;
@@ -103,8 +102,7 @@ static int dgram_bind(struct sock *sk, struct sockaddr *uaddr, int len)
 	if (addr->family != AF_IEEE802154)
 		goto out;
 
-	ieee802154_addr_from_sa(&haddr, &addr->addr);
-	dev = ieee802154_get_dev(sock_net(sk), &haddr);
+	dev = ieee802154_get_dev(sock_net(sk), &addr->addr);
 	if (!dev) {
 		err = -ENODEV;
 		goto out;
@@ -115,7 +113,7 @@ static int dgram_bind(struct sock *sk, struct sockaddr *uaddr, int len)
 		goto out_put;
 	}
 
-	ro->src_addr = haddr;
+	memcpy(&ro->src_addr, &addr->addr, sizeof(struct ieee802154_addr));
 
 	ro->bound = 1;
 	err = 0;
@@ -151,7 +149,8 @@ static int dgram_ioctl(struct sock *sk, int cmd, unsigned long arg)
 			 * of this packet since that is all
 			 * that will be read.
 			 */
-			amount = skb->len - ieee802154_hdr_length(skb);
+			/* FIXME: parse the header for more correct value */
+			amount = skb->len - (3+8+8);
 		}
 		spin_unlock_bh(&sk->sk_receive_queue.lock);
 		return put_user(amount, (int __user *)arg);
@@ -182,7 +181,7 @@ static int dgram_connect(struct sock *sk, struct sockaddr *uaddr,
 		goto out;
 	}
 
-	ieee802154_addr_from_sa(&ro->dst_addr, &addr->addr);
+	memcpy(&ro->dst_addr, &addr->addr, sizeof(struct ieee802154_addr));
 
 out:
 	release_sock(sk);
@@ -195,8 +194,8 @@ static int dgram_disconnect(struct sock *sk, int flags)
 
 	lock_sock(sk);
 
-	ro->dst_addr.mode = IEEE802154_ADDR_LONG;
-	memset(&ro->dst_addr.extended_addr, 0xff, IEEE802154_ADDR_LEN);
+	ro->dst_addr.addr_type = IEEE802154_ADDR_LONG;
+	memset(&ro->dst_addr.hwaddr, 0xff, sizeof(ro->dst_addr.hwaddr));
 
 	release_sock(sk);
 
@@ -233,7 +232,7 @@ static int dgram_sendmsg(struct kiocb *iocb, struct sock *sk,
 
 	if (size > mtu) {
 		pr_debug("size = %Zu, mtu = %u\n", size, mtu);
-		err = -EMSGSIZE;
+		err = -EINVAL;
 		goto out_dev;
 	}
 
@@ -292,7 +291,9 @@ static int dgram_recvmsg(struct kiocb *iocb, struct sock *sk,
 	size_t copied = 0;
 	int err = -EOPNOTSUPP;
 	struct sk_buff *skb;
-	DECLARE_SOCKADDR(struct sockaddr_ieee802154 *, saddr, msg->msg_name);
+	struct sockaddr_ieee802154 *saddr;
+
+	saddr = (struct sockaddr_ieee802154 *)msg->msg_name;
 
 	skb = skb_recv_datagram(sk, flags, noblock, &err);
 	if (!skb)
@@ -313,7 +314,7 @@ static int dgram_recvmsg(struct kiocb *iocb, struct sock *sk,
 
 	if (saddr) {
 		saddr->family = AF_IEEE802154;
-		ieee802154_addr_to_sa(&saddr->addr, &mac_cb(skb)->source);
+		saddr->addr = mac_cb(skb)->sa;
 		*addr_len = sizeof(*saddr);
 	}
 
@@ -329,10 +330,6 @@ out:
 
 static int dgram_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
-	skb = skb_share_check(skb, GFP_ATOMIC);
-	if (!skb)
-		return NET_RX_DROP;
-
 	if (sock_queue_rcv_skb(sk, skb) < 0) {
 		kfree_skb(skb);
 		return NET_RX_DROP;
@@ -341,43 +338,40 @@ static int dgram_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	return NET_RX_SUCCESS;
 }
 
-static inline bool
-ieee802154_match_sock(__le64 hw_addr, __le16 pan_id, __le16 short_addr,
-		      struct dgram_sock *ro)
+static inline int ieee802154_match_sock(u8 *hw_addr, u16 pan_id,
+		u16 short_addr, struct dgram_sock *ro)
 {
 	if (!ro->bound)
-		return true;
+		return 1;
 
-	if (ro->src_addr.mode == IEEE802154_ADDR_LONG &&
-	    hw_addr == ro->src_addr.extended_addr)
-		return true;
+	if (ro->src_addr.addr_type == IEEE802154_ADDR_LONG &&
+	    !memcmp(ro->src_addr.hwaddr, hw_addr, IEEE802154_ADDR_LEN))
+		return 1;
 
-	if (ro->src_addr.mode == IEEE802154_ADDR_SHORT &&
-	    pan_id == ro->src_addr.pan_id &&
-	    short_addr == ro->src_addr.short_addr)
-		return true;
+	if (ro->src_addr.addr_type == IEEE802154_ADDR_SHORT &&
+		     pan_id == ro->src_addr.pan_id &&
+		     short_addr == ro->src_addr.short_addr)
+		return 1;
 
-	return false;
+	return 0;
 }
 
 int ieee802154_dgram_deliver(struct net_device *dev, struct sk_buff *skb)
 {
 	struct sock *sk, *prev = NULL;
 	int ret = NET_RX_SUCCESS;
-	__le16 pan_id, short_addr;
-	__le64 hw_addr;
+	u16 pan_id, short_addr;
 
 	/* Data frame processing */
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
 
 	pan_id = ieee802154_mlme_ops(dev)->get_pan_id(dev);
 	short_addr = ieee802154_mlme_ops(dev)->get_short_addr(dev);
-	hw_addr = ieee802154_devaddr_from_raw(dev->dev_addr);
 
 	read_lock(&dgram_lock);
 	sk_for_each(sk, &dgram_head) {
-		if (ieee802154_match_sock(hw_addr, pan_id, short_addr,
-					  dgram_sk(sk))) {
+		if (ieee802154_match_sock(dev->dev_addr, pan_id, short_addr,
+					dgram_sk(sk))) {
 			if (prev) {
 				struct sk_buff *clone;
 				clone = skb_clone(skb, GFP_ATOMIC);
@@ -475,4 +469,3 @@ struct proto ieee802154_dgram_prot = {
 	.getsockopt	= dgram_getsockopt,
 	.setsockopt	= dgram_setsockopt,
 };
-

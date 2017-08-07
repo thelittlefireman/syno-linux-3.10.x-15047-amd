@@ -61,11 +61,9 @@ MODULE_FIRMWARE("radeon/RV730_me.bin");
 MODULE_FIRMWARE("radeon/RV710_pfp.bin");
 MODULE_FIRMWARE("radeon/RV710_me.bin");
 
-
 int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
 			unsigned family, u32 *ib, int *l);
 void r600_cs_legacy_init(void);
-
 
 # define ATI_PCIGART_PAGE_SIZE		4096	/**< PCI GART page size */
 # define ATI_PCIGART_PAGE_MASK		(~(ATI_PCIGART_PAGE_SIZE-1))
@@ -1091,7 +1089,6 @@ static void r600_gfx_init(struct drm_device *dev,
 							R600_S7_X(0x7) |
 							R600_S7_Y(0x8)));
 
-
 	switch (dev_priv->flags & RADEON_FAMILY_MASK) {
 	case CHIP_R600:
 	case CHIP_RV630:
@@ -1796,7 +1793,6 @@ static void r600_cp_init_ring_buffer(struct drm_device *dev,
 	mdelay(15);
 	RADEON_WRITE(R600_GRBM_SOFT_RESET, 0);
 
-
 	/* Set ring buffer size */
 #ifdef __BIG_ENDIAN
 	RADEON_WRITE(R600_CP_RB_CNTL,
@@ -2200,13 +2196,13 @@ int r600_do_init_cp(struct drm_device *dev, drm_radeon_init_t *init,
 	dev_priv->ring.end = ((u32 *) dev_priv->cp_ring->handle
 			      + init->ring_size / sizeof(u32));
 	dev_priv->ring.size = init->ring_size;
-	dev_priv->ring.size_l2qw = order_base_2(init->ring_size / 8);
+	dev_priv->ring.size_l2qw = drm_order(init->ring_size / 8);
 
 	dev_priv->ring.rptr_update = /* init->rptr_update */ 4096;
-	dev_priv->ring.rptr_update_l2qw = order_base_2(/* init->rptr_update */ 4096 / 8);
+	dev_priv->ring.rptr_update_l2qw = drm_order(/* init->rptr_update */ 4096 / 8);
 
 	dev_priv->ring.fetch_size = /* init->fetch_size */ 32;
-	dev_priv->ring.fetch_size_l2ow = order_base_2(/* init->fetch_size */ 32 / 16);
+	dev_priv->ring.fetch_size_l2ow = drm_order(/* init->fetch_size */ 32 / 16);
 
 	dev_priv->ring.tail_mask = (dev_priv->ring.size / sizeof(u32)) - 1;
 
@@ -2391,7 +2387,6 @@ int r600_cp_dispatch_indirect(struct drm_device *dev,
 		DRM_DEBUG("dwords:%d\n", dwords);
 		DRM_DEBUG("offset 0x%lx\n", offset);
 
-
 		/* Indirect buffer data must be a multiple of 16 dwords.
 		 * pad the data with a Type-2 CP packet.
 		 */
@@ -2515,7 +2510,7 @@ int r600_cp_dispatch_texture(struct drm_device *dev,
 		buf = radeon_freelist_get(dev);
 		if (!buf) {
 			DRM_DEBUG("EAGAIN\n");
-			if (copy_to_user(tex->image, image, sizeof(*image)))
+			if (DRM_COPY_TO_USER(tex->image, image, sizeof(*image)))
 				return -EFAULT;
 			return -EAGAIN;
 		}
@@ -2528,7 +2523,7 @@ int r600_cp_dispatch_texture(struct drm_device *dev,
 		buffer =
 		    (u32 *) ((char *)dev->agp_buffer_map->handle + buf->offset);
 
-		if (copy_from_user(buffer, data, pass_size)) {
+		if (DRM_COPY_FROM_USER(buffer, data, pass_size)) {
 			DRM_ERROR("EFAULT on pad, %d bytes\n", pass_size);
 			return -EFAULT;
 		}

@@ -683,7 +683,6 @@ void __init s5p6450_register_clocks(void)
 	for (ptr = 0; ptr < ARRAY_SIZE(sysclks); ptr++)
 		s3c_register_clksrc(sysclks[ptr], 1);
 
-
 	s3c24xx_register_clocks(clk_cdev, ARRAY_SIZE(clk_cdev));
 	for (cnt = 0; cnt < ARRAY_SIZE(clk_cdev); cnt++)
 		s3c_disable_clocks(clk_cdev[cnt], 1);
@@ -698,4 +697,6 @@ void __init s5p6450_register_clocks(void)
 	clkdev_add_table(s5p6450_clk_lookup, ARRAY_SIZE(s5p6450_clk_lookup));
 
 	s3c24xx_register_clock(&dummy_apb_pclk);
+
+	s3c_pwmclk_init();
 }

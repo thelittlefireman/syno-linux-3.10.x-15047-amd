@@ -86,8 +86,6 @@
 #define GPIO_MINOR_LAST_REAL GPIO_MINOR_LAST_PWM
 #endif
 
-
-
 /* supported ioctl _IOC_NR's */
 
 #define IO_READBITS  0x1  /* read and return current port bits (obsolete) */

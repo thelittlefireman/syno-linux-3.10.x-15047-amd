@@ -27,7 +27,6 @@ MODULE_AUTHOR("Alan Hourihane <alanh@fairlite.demon.co.uk> / Kars de Jong <jongk
 MODULE_DESCRIPTION("Amiga Zorro NCR53C710 driver");
 MODULE_LICENSE("GPL");
 
-
 static struct scsi_host_template zorro7xx_scsi_driver_template = {
 	.proc_name	= "zorro7xx",
 	.this_id	= 7,
@@ -104,7 +103,7 @@ static int zorro7xx_init_one(struct zorro_dev *z,
 	if (ioaddr > 0x01000000)
 		hostdata->base = ioremap(ioaddr, zorro_resource_len(z));
 	else
-		hostdata->base = ZTWO_VADDR(ioaddr);
+		hostdata->base = (void __iomem *)ZTWO_VADDR(ioaddr);
 
 	hostdata->clock = 50;
 	hostdata->chip710 = 1;

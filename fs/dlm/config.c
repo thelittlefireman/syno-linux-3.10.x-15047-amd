@@ -138,9 +138,8 @@ static ssize_t cluster_cluster_name_read(struct dlm_cluster *cl, char *buf)
 static ssize_t cluster_cluster_name_write(struct dlm_cluster *cl,
 					  const char *buf, size_t len)
 {
-	strlcpy(dlm_config.ci_cluster_name, buf,
-				sizeof(dlm_config.ci_cluster_name));
-	strlcpy(cl->cl_cluster_name, buf, sizeof(cl->cl_cluster_name));
+	strncpy(dlm_config.ci_cluster_name, buf, DLM_LOCKSPACE_LEN);
+	strncpy(cl->cl_cluster_name, buf, DLM_LOCKSPACE_LEN);
 	return len;
 }
 
@@ -787,7 +786,6 @@ static ssize_t comm_addr_list_read(struct dlm_comm *cm, char *buf)
 	/* Taken from ip6_addr_string() defined in lib/vsprintf.c */
 	char buf0[sizeof("AF_INET6	xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:255.255.255.255\n")];
 	
-
 	/* Derived from SIMPLE_ATTR_SIZE of fs/configfs/file.c */
 	allowance = 4096;
 	buf[0] = '\0';
@@ -1023,4 +1021,3 @@ struct dlm_config_info dlm_config = {
 	.ci_recover_callbacks = DEFAULT_RECOVER_CALLBACKS,
 	.ci_cluster_name = DEFAULT_CLUSTER_NAME
 };
-

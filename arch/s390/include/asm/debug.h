@@ -107,11 +107,6 @@ void debug_set_level(debug_info_t* id, int new_level);
 void debug_set_critical(void);
 void debug_stop_all(void);
 
-static inline bool debug_level_enabled(debug_info_t* id, int level)
-{
-	return level <= id->level;
-}
-
 static inline debug_entry_t*
 debug_event(debug_info_t* id, int level, void* data, int length)
 {
@@ -153,7 +148,6 @@ debug_text_event(debug_info_t* id, int level, const char* txt)
 extern debug_entry_t *
 debug_sprintf_event(debug_info_t* id,int level,char *string,...)
 	__attribute__ ((format(printf, 3, 4)));
-
 
 static inline debug_entry_t*
 debug_exception(debug_info_t* id, int level, void* data, int length)

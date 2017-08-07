@@ -42,6 +42,7 @@
 #include <linux/wireless.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/io.h>
 #include <linux/semaphore.h>
 #include <net/iw_handler.h>
@@ -52,7 +53,6 @@
 #define SCAN_ITEM_SIZE 768
 #define MAX_CUSTOM_LEN 64
 #define RATE_COUNT 4
-
 
 static const u32 rtl8180_rates[] = {1000000, 2000000, 5500000, 11000000,
 		       6000000, 9000000, 12000000, 18000000,
@@ -819,7 +819,7 @@ static int r871x_wx_set_pmkid(struct net_device *dev,
 			intReturn = true;
 		blInserted = false;
 		/* overwrite PMKID */
-		for (j = 0; j < NUM_PMKID_CACHE; j++) {
+		for (j = 0 ; j < NUM_PMKID_CACHE; j++) {
 			if (!memcmp(psecuritypriv->PMKIDList[j].Bssid,
 			    strIssueBssid, ETH_ALEN)) {
 				/* BSSID is matched, the same AP => rewrite
@@ -844,7 +844,7 @@ static int r871x_wx_set_pmkid(struct net_device *dev,
 				PMKIDIndex].PMKID, pPMK->pmkid, IW_PMKID_LEN);
 			psecuritypriv->PMKIDList[psecuritypriv->PMKIDIndex].
 				bUsed = true;
-			psecuritypriv->PMKIDIndex++;
+			psecuritypriv->PMKIDIndex++ ;
 			if (psecuritypriv->PMKIDIndex == NUM_PMKID_CACHE)
 				psecuritypriv->PMKIDIndex = 0;
 		}
@@ -999,8 +999,12 @@ static int r871x_wx_set_priv(struct net_device *dev,
 		sprintf(ext, "LINKSPEED %d", mbps);
 	} else if (0 == strcasecmp(ext, "MACADDR")) {
 		/*Return mac address of the station */
-		/* Macaddr = xx:xx:xx:xx:xx:xx */
-		sprintf(ext, "MACADDR = %pM", dev->dev_addr);
+		/*Macaddr = xx.xx.xx.xx.xx.xx */
+		sprintf(ext,
+			"MACADDR = %02x.%02x.%02x.%02x.%02x.%02x",
+			*(dev->dev_addr), *(dev->dev_addr+1),
+			*(dev->dev_addr+2), *(dev->dev_addr+3),
+			*(dev->dev_addr+4), *(dev->dev_addr+5));
 	} else if (0 == strcasecmp(ext, "SCAN-ACTIVE")) {
 		/*Set scan type to active */
 		/*OK if successful */
@@ -1597,7 +1601,7 @@ static int r8711_wx_set_enc(struct net_device *dev,
 		wep.Length = wep.KeyLength +
 			     FIELD_OFFSET(struct NDIS_802_11_WEP, KeyMaterial);
 	} else {
-		wep.KeyLength = 0;
+		wep.KeyLength = 0 ;
 		if (keyindex_provided == 1) { /* set key_id only, no given
 					       * KeyMaterial(erq->length==0).*/
 			padapter->securitypriv.PrivacyKeyIndex = key;
@@ -1879,7 +1883,7 @@ static int r8711_wx_write32(struct net_device *dev,
 	u32 data32;
 
 	get_user(addr, (u32 __user *)wrqu->data.pointer);
-	data32 = ((u32)wrqu->data.length<<16) | (u32)wrqu->data.flags;
+	data32 = ((u32)wrqu->data.length<<16) | (u32)wrqu->data.flags ;
 	r8712_write32(padapter, addr, data32);
 	return 0;
 }

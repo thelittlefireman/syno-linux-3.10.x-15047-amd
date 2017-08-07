@@ -318,7 +318,6 @@ static __inline__ int __atomic_add_unless(atomic_t *v, int a, int u)
 	return c;
 }
 
-
 static inline void atomic_clear_mask(unsigned int mask, atomic_t *v)
 {
 #if XCHAL_HAVE_S32C1I

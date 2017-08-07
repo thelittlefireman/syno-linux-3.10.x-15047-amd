@@ -206,6 +206,7 @@
 #include <linux/eisa.h>
 #include <linux/errno.h>
 #include <linux/fddidevice.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/ioport.h>
 #include <linux/kernel.h>
@@ -239,6 +240,12 @@ static char version[] =
  * alignment for compatibility with old EISA boards.
  */
 #define NEW_SKB_SIZE (PI_RCV_DATA_K_SIZE_MAX+128)
+
+#ifdef CONFIG_PCI
+#define DFX_BUS_PCI(dev) (dev->bus == &pci_bus_type)
+#else
+#define DFX_BUS_PCI(dev) 0
+#endif
 
 #ifdef CONFIG_EISA
 #define DFX_BUS_EISA(dev) (dev->bus == &eisa_bus_type)
@@ -303,7 +310,6 @@ static void		dfx_xmt_flush(DFX_board_t *bp);
 static struct pci_driver dfx_pci_driver;
 static struct eisa_driver dfx_eisa_driver;
 static struct tc_driver dfx_tc_driver;
-
 
 /*
  * =======================
@@ -378,7 +384,6 @@ static void dfx_port_write_long(DFX_board_t *bp, int offset, u32 data)
 		dfx_outl(bp, offset, data);
 }
 
-
 static inline void dfx_readl(DFX_board_t *bp, int offset, u32 *data)
 {
 	mb();
@@ -401,7 +406,6 @@ static void dfx_port_read_long(DFX_board_t *bp, int offset, u32 *data)
 	else
 		dfx_inl(bp, offset, data);
 }
-
 
 /*
  * ================
@@ -429,7 +433,7 @@ static void dfx_port_read_long(DFX_board_t *bp, int offset, u32 *data)
 static void dfx_get_bars(struct device *bdev,
 			 resource_size_t *bar_start, resource_size_t *bar_len)
 {
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_eisa = DFX_BUS_EISA(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 	int dfx_use_mmio = DFX_MMIO || dfx_bus_tc;
@@ -511,7 +515,7 @@ static const struct net_device_ops dfx_netdev_ops = {
 static int dfx_register(struct device *bdev)
 {
 	static int version_disp;
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 	int dfx_use_mmio = DFX_MMIO || dfx_bus_tc;
 	const char *print_name = dev_name(bdev);
@@ -624,7 +628,6 @@ err_out:
 	return err;
 }
 
-
 /*
  * ================
  * = dfx_bus_init =
@@ -660,7 +663,7 @@ static void dfx_bus_init(struct net_device *dev)
 {
 	DFX_board_t *bp = netdev_priv(dev);
 	struct device *bdev = bp->bus_dev;
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_eisa = DFX_BUS_EISA(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 	int dfx_use_mmio = DFX_MMIO || dfx_bus_tc;
@@ -806,7 +809,7 @@ static void dfx_bus_uninit(struct net_device *dev)
 {
 	DFX_board_t *bp = netdev_priv(dev);
 	struct device *bdev = bp->bus_dev;
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_eisa = DFX_BUS_EISA(bdev);
 	u8 val;
 
@@ -827,7 +830,6 @@ static void dfx_bus_uninit(struct net_device *dev)
 		dfx_port_write_long(bp, PFI_K_REG_MODE_CTRL, 0);
 	}
 }
-
 
 /*
  * ========================
@@ -917,7 +919,6 @@ static void dfx_bus_config_check(DFX_board_t *bp)
 		}
 	}
 
-
 /*
  * ===================
  * = dfx_driver_init =
@@ -960,7 +961,7 @@ static int dfx_driver_init(struct net_device *dev, const char *print_name,
 {
 	DFX_board_t *bp = netdev_priv(dev);
 	struct device *bdev = bp->bus_dev;
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_eisa = DFX_BUS_EISA(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 	int dfx_use_mmio = DFX_MMIO || dfx_bus_tc;
@@ -1061,9 +1062,9 @@ static int dfx_driver_init(struct net_device *dev, const char *print_name,
 #endif
 					sizeof(PI_CONSUMER_BLOCK) +
 					(PI_ALIGN_K_DESC_BLK - 1);
-	bp->kmalloced = top_v = dma_zalloc_coherent(bp->bus_dev, alloc_size,
-						    &bp->kmalloced_dma,
-						    GFP_ATOMIC);
+	bp->kmalloced = top_v = dma_alloc_coherent(bp->bus_dev, alloc_size,
+						   &bp->kmalloced_dma,
+						   GFP_ATOMIC | __GFP_ZERO);
 	if (top_v == NULL)
 		return DFX_K_FAILURE;
 
@@ -1136,7 +1137,6 @@ static int dfx_driver_init(struct net_device *dev, const char *print_name,
 
 	return DFX_K_SUCCESS;
 }
-
 
 /*
  * =================
@@ -1337,7 +1337,6 @@ static int dfx_adap_init(DFX_board_t *bp, int get_buffers)
 	return DFX_K_SUCCESS;
 	}
 
-
 /*
  * ============
  * = dfx_open =
@@ -1425,7 +1424,6 @@ static int dfx_open(struct net_device *dev)
 	netif_start_queue(dev);
 	return 0;
 }
-
 
 /*
  * =============
@@ -1518,7 +1516,6 @@ static int dfx_close(struct net_device *dev)
 	return 0;
 }
 
-
 /*
  * ======================
  * = dfx_int_pr_halt_id =
@@ -1601,7 +1598,6 @@ static void dfx_int_pr_halt_id(DFX_board_t	*bp)
 			break;
 		}
 	}
-
 
 /*
  * ==========================
@@ -1754,7 +1750,6 @@ static void dfx_int_type_0_process(DFX_board_t	*bp)
 		}
 	}
 
-
 /*
  * ==================
  * = dfx_int_common =
@@ -1828,7 +1823,6 @@ static void dfx_int_common(struct net_device *dev)
 		dfx_int_type_0_process(bp);	/* process Type 0 interrupts */
 	}
 
-
 /*
  * =================
  * = dfx_interrupt =
@@ -1870,7 +1864,7 @@ static irqreturn_t dfx_interrupt(int irq, void *dev_id)
 	struct net_device *dev = dev_id;
 	DFX_board_t *bp = netdev_priv(dev);
 	struct device *bdev = bp->bus_dev;
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_eisa = DFX_BUS_EISA(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 
@@ -1948,7 +1942,6 @@ static irqreturn_t dfx_interrupt(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-
 
 /*
  * =====================
@@ -2136,7 +2129,6 @@ static struct net_device_stats *dfx_ctl_get_stats(struct net_device *dev)
 	return (struct net_device_stats *)&bp->stats;
 	}
 
-
 /*
  * ==============================
  * = dfx_ctl_set_multicast_list =
@@ -2256,7 +2248,6 @@ static void dfx_ctl_set_multicast_list(struct net_device *dev)
 		}
 	}
 
-
 /*
  * ===========================
  * = dfx_ctl_set_mac_address =
@@ -2346,7 +2337,6 @@ static int dfx_ctl_set_mac_address(struct net_device *dev, void *addr)
 	return 0;			/* always return zero */
 	}
 
-
 /*
  * ======================
  * = dfx_ctl_update_cam =
@@ -2431,7 +2421,6 @@ static int dfx_ctl_update_cam(DFX_board_t *bp)
 	return DFX_K_SUCCESS;
 	}
 
-
 /*
  * ==========================
  * = dfx_ctl_update_filters =
@@ -2496,7 +2485,6 @@ static int dfx_ctl_update_filters(DFX_board_t *bp)
 		return DFX_K_FAILURE;
 	return DFX_K_SUCCESS;
 	}
-
 
 /*
  * ======================
@@ -2618,7 +2606,6 @@ static int dfx_hw_dma_cmd_req(DFX_board_t *bp)
 	return DFX_K_SUCCESS;
 	}
 
-
 /*
  * ========================
  * = dfx_hw_port_ctrl_req =
@@ -2702,7 +2689,6 @@ static int dfx_hw_port_ctrl_req(
 	return DFX_K_SUCCESS;
 	}
 
-
 /*
  * =====================
  * = dfx_hw_adap_reset =
@@ -2756,7 +2742,6 @@ static void dfx_hw_adap_reset(
 	dfx_port_write_long(bp, PI_PDQ_K_REG_PORT_RESET, 0);
 	}
 
-
 /*
  * ========================
  * = dfx_hw_adap_state_rd =
@@ -2791,7 +2776,6 @@ static int dfx_hw_adap_state_rd(DFX_board_t *bp)
 	dfx_port_read_long(bp, PI_PDQ_K_REG_PORT_STATUS, &port_status);
 	return (port_status & PI_PSTATUS_M_STATE) >> PI_PSTATUS_V_STATE;
 	}
-
 
 /*
  * =====================
@@ -2859,7 +2843,6 @@ static void my_skb_align(struct sk_buff *skb, int n)
 
 	skb_reserve(skb, v - x);
 }
-
 
 /*
  * ================
@@ -2962,7 +2945,6 @@ static int dfx_rcv_init(DFX_board_t *bp, int get_buffers)
 	dfx_port_write_long(bp, PI_PDQ_K_REG_TYPE_2_PROD, bp->rcv_xmt_reg.lword);
 	return 0;
 	}
-
 
 /*
  * =========================
@@ -3111,7 +3093,6 @@ static void dfx_rcv_queue_process(
 		bp->rcv_xmt_reg.index.rcv_comp += 1;
 		}
 	}
-
 
 /*
  * =====================
@@ -3331,7 +3312,6 @@ static netdev_tx_t dfx_xmt_queue_pkt(struct sk_buff *skb,
 	return NETDEV_TX_OK;	/* packet queued to adapter */
 	}
 
-
 /*
  * ================
  * = dfx_xmt_done =
@@ -3409,7 +3389,6 @@ static int dfx_xmt_done(DFX_board_t *bp)
 		}
 	return freed;
 	}
-
 
 /*
  * =================
@@ -3572,7 +3551,7 @@ static void dfx_unregister(struct device *bdev)
 {
 	struct net_device *dev = dev_get_drvdata(bdev);
 	DFX_board_t *bp = netdev_priv(dev);
-	int dfx_bus_pci = dev_is_pci(bdev);
+	int dfx_bus_pci = DFX_BUS_PCI(bdev);
 	int dfx_bus_tc = DFX_BUS_TC(bdev);
 	int dfx_use_mmio = DFX_MMIO || dfx_bus_tc;
 	resource_size_t bar_start = 0;		/* pointer to port */
@@ -3606,7 +3585,6 @@ static void dfx_unregister(struct device *bdev)
 
 	free_netdev(dev);
 }
-
 
 static int __maybe_unused dfx_dev_register(struct device *);
 static int __maybe_unused dfx_dev_unregister(struct device *);
@@ -3698,7 +3676,6 @@ static int __maybe_unused dfx_dev_unregister(struct device *dev)
 	dfx_unregister(dev);
 	return 0;
 }
-
 
 static int dfx_init(void)
 {

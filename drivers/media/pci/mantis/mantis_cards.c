@@ -225,7 +225,6 @@ static int mantis_pci_probe(struct pci_dev *pdev,
 
 	return err;
 
-
 	dprintk(MANTIS_ERROR, 1, "ERROR: Mantis UART exit! <%d>", err);
 	mantis_uart_exit(mantis);
 
@@ -290,7 +289,18 @@ static struct pci_driver mantis_pci_driver = {
 	.remove		= mantis_pci_remove,
 };
 
-module_pci_driver(mantis_pci_driver);
+static int mantis_init(void)
+{
+	return pci_register_driver(&mantis_pci_driver);
+}
+
+static void mantis_exit(void)
+{
+	return pci_unregister_driver(&mantis_pci_driver);
+}
+
+module_init(mantis_init);
+module_exit(mantis_exit);
 
 MODULE_DESCRIPTION("MANTIS driver");
 MODULE_AUTHOR("Manu Abraham");

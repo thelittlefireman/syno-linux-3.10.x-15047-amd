@@ -20,7 +20,6 @@ extern const char bad_pmd_string[];
 
 #define pmd_alloc_one(mm,address)       ({ BUG(); ((pmd_t *)2); })
 
-
 static inline void pte_free_kernel(struct mm_struct *mm, pte_t *pte)
 {
         free_page((unsigned long) pte);
@@ -59,10 +58,7 @@ static inline pgtable_t pte_alloc_one(struct mm_struct *mm,
 		return NULL;
 
 	clear_highpage(page);
-	if (!pgtable_page_ctor(page)) {
-		__free_page(page);
-		return NULL;
-	}
+	pgtable_page_ctor(page);
 	return page;
 
 }

@@ -1,13 +1,17 @@
 /*
+ * include/asm-xtensa/tlbflush.h
+ *
  * This file is subject to the terms and conditions of the GNU General Public
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * Copyright (C) 2001 - 2013 Tensilica Inc.
+ * Copyright (C) 2001 - 2005 Tensilica Inc.
  */
 
 #ifndef _XTENSA_TLBFLUSH_H
 #define _XTENSA_TLBFLUSH_H
+
+#ifdef __KERNEL__
 
 #include <linux/stringify.h>
 #include <asm/processor.h>
@@ -30,37 +34,12 @@
  *  - flush_tlb_range(mm, start, end) flushes a range of pages
  */
 
-void local_flush_tlb_all(void);
-void local_flush_tlb_mm(struct mm_struct *mm);
-void local_flush_tlb_page(struct vm_area_struct *vma,
-		unsigned long page);
-void local_flush_tlb_range(struct vm_area_struct *vma,
-		unsigned long start, unsigned long end);
+extern void flush_tlb_all(void);
+extern void flush_tlb_mm(struct mm_struct*);
+extern void flush_tlb_page(struct vm_area_struct*,unsigned long);
+extern void flush_tlb_range(struct vm_area_struct*,unsigned long,unsigned long);
 
-#ifdef CONFIG_SMP
-
-void flush_tlb_all(void);
-void flush_tlb_mm(struct mm_struct *);
-void flush_tlb_page(struct vm_area_struct *, unsigned long);
-void flush_tlb_range(struct vm_area_struct *, unsigned long,
-		unsigned long);
-
-static inline void flush_tlb_kernel_range(unsigned long start,
-		unsigned long end)
-{
-	flush_tlb_all();
-}
-
-#else /* !CONFIG_SMP */
-
-#define flush_tlb_all()			   local_flush_tlb_all()
-#define flush_tlb_mm(mm)		   local_flush_tlb_mm(mm)
-#define flush_tlb_page(vma, page)	   local_flush_tlb_page(vma, page)
-#define flush_tlb_range(vma, vmaddr, end)  local_flush_tlb_range(vma, vmaddr, \
-								 end)
-#define flush_tlb_kernel_range(start, end) local_flush_tlb_all()
-
-#endif /* CONFIG_SMP */
+#define flush_tlb_kernel_range(start,end) flush_tlb_all()
 
 /* TLB operations. */
 
@@ -165,7 +144,6 @@ static inline void invalidate_dtlb_mapping (unsigned address)
 
 #define check_pgt_cache()	do { } while (0)
 
-
 /*
  * DO NOT USE THESE FUNCTIONS.  These instructions aren't part of the Xtensa
  * ISA and exist only for test purposes..
@@ -208,4 +186,5 @@ static inline unsigned long read_itlb_translation (int way)
 }
 
 #endif	/* __ASSEMBLY__ */
+#endif	/* __KERNEL__ */
 #endif	/* _XTENSA_TLBFLUSH_H */

@@ -1888,7 +1888,6 @@ static struct omap_clk omap2420_clks[] = {
 	CLK(NULL,	"cpufreq_ck",	&virt_prcm_set),
 };
 
-
 static const char *enable_init_clks[] = {
 	"apll96_ck",
 	"apll54_ck",

@@ -45,7 +45,6 @@
 #define SEP_TRACE_EVENT(branch)
 #endif
 
-
 /*
  * All trace headers should include tracepoint.h, until we finally
  * make it into a standard header.
@@ -147,11 +146,9 @@ TRACE_EVENT(sep_misc_event,
 	TP_printk("misc_event %s %d", __entry->name, __entry->branch)
 );
 
-
 #endif
 
 /***** NOTICE! The #if protection ends here. *****/
-
 
 /*
  * There are several ways I could have done this. If I left out the

@@ -46,7 +46,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 #define WATCHDOG_NAME "w83697ug/uf WDT"
 #define WATCHDOG_TIMEOUT 60		/* 60 sec default timeout */
 
@@ -395,3 +394,4 @@ module_exit(wdt_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Flemming Frandsen <ff@nrvissing.net>");
 MODULE_DESCRIPTION("w83697ug/uf WDT driver");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

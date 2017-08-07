@@ -76,7 +76,6 @@ static void radeon_legacy_rmx_mode_set(struct drm_crtc *crtc,
 		crtc_more_cntl |= RADEON_CRTC_H_CUTOFF_ACTIVE_EN;
 	}
 
-
 	fp_crtc_h_total_disp = ((((mode->crtc_htotal / 8) - 1) & 0x3ff)
 				| ((((mode->crtc_hdisplay / 8) - 1) & 0x1ff) << 16));
 
@@ -237,7 +236,6 @@ static void radeon_pll2_wait_for_read_update_complete(struct drm_device *dev)
 	struct radeon_device *rdev = dev->dev_private;
 	int i = 0;
 
-
 	/* FIXME: Certain revisions of R300 can't recover here.  Not sure of
 	   the cause yet, but this workaround will mask the problem for now.
 	   Other chips usually will pass at the very first test, so the
@@ -385,7 +383,7 @@ int radeon_crtc_do_set_base(struct drm_crtc *crtc,
 
 	DRM_DEBUG_KMS("\n");
 	/* no fb bound */
-	if (!atomic && !crtc->primary->fb) {
+	if (!atomic && !crtc->fb) {
 		DRM_DEBUG_KMS("No FB bound\n");
 		return 0;
 	}
@@ -395,8 +393,8 @@ int radeon_crtc_do_set_base(struct drm_crtc *crtc,
 		target_fb = fb;
 	}
 	else {
-		radeon_fb = to_radeon_framebuffer(crtc->primary->fb);
-		target_fb = crtc->primary->fb;
+		radeon_fb = to_radeon_framebuffer(crtc->fb);
+		target_fb = crtc->fb;
 	}
 
 	switch (target_fb->bits_per_pixel) {
@@ -444,7 +442,7 @@ retry:
 		 * We don't shutdown the display controller because new buffer
 		 * will end up in same spot.
 		 */
-		if (!atomic && fb && fb != crtc->primary->fb) {
+		if (!atomic && fb && fb != crtc->fb) {
 			struct radeon_bo *old_rbo;
 			unsigned long nsize, osize;
 
@@ -555,7 +553,7 @@ retry:
 	WREG32(RADEON_CRTC_OFFSET + radeon_crtc->crtc_offset, crtc_offset);
 	WREG32(RADEON_CRTC_PITCH + radeon_crtc->crtc_offset, crtc_pitch);
 
-	if (!atomic && fb && fb != crtc->primary->fb) {
+	if (!atomic && fb && fb != crtc->fb) {
 		radeon_fb = to_radeon_framebuffer(fb);
 		rbo = gem_to_radeon_bo(radeon_fb->obj);
 		r = radeon_bo_reserve(rbo, false);
@@ -599,7 +597,7 @@ static bool radeon_set_crtc_timing(struct drm_crtc *crtc, struct drm_display_mod
 		}
 	}
 
-	switch (crtc->primary->fb->bits_per_pixel) {
+	switch (crtc->fb->bits_per_pixel) {
 	case 8:
 		format = 2;
 		break;
@@ -917,7 +915,6 @@ static void radeon_set_pll(struct drm_crtc *crtc, struct drm_display_mode *mode)
 	} else {
 		uint32_t pixclks_cntl;
 
-
 		if (is_tv) {
 			pixclks_cntl = RREG32_PLL(RADEON_PIXCLKS_CNTL);
 			radeon_legacy_tv_adjust_pll1(encoder, &htotal_cntl, &pll_ref_div,
@@ -1084,26 +1081,6 @@ static void radeon_crtc_commit(struct drm_crtc *crtc)
 	}
 }
 
-static void radeon_crtc_disable(struct drm_crtc *crtc)
-{
-	radeon_crtc_dpms(crtc, DRM_MODE_DPMS_OFF);
-	if (crtc->primary->fb) {
-		int r;
-		struct radeon_framebuffer *radeon_fb;
-		struct radeon_bo *rbo;
-
-		radeon_fb = to_radeon_framebuffer(crtc->primary->fb);
-		rbo = gem_to_radeon_bo(radeon_fb->obj);
-		r = radeon_bo_reserve(rbo, false);
-		if (unlikely(r))
-			DRM_ERROR("failed to reserve rbo before unpin\n");
-		else {
-			radeon_bo_unpin(rbo);
-			radeon_bo_unreserve(rbo);
-		}
-	}
-}
-
 static const struct drm_crtc_helper_funcs legacy_helper_funcs = {
 	.dpms = radeon_crtc_dpms,
 	.mode_fixup = radeon_crtc_mode_fixup,
@@ -1113,9 +1090,7 @@ static const struct drm_crtc_helper_funcs legacy_helper_funcs = {
 	.prepare = radeon_crtc_prepare,
 	.commit = radeon_crtc_commit,
 	.load_lut = radeon_crtc_load_lut,
-	.disable = radeon_crtc_disable
 };
-
 
 void radeon_legacy_init_crtc(struct drm_device *dev,
 			       struct radeon_crtc *radeon_crtc)

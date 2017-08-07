@@ -207,7 +207,6 @@ static void stu300_irq_disable(struct stu300_dev *dev)
 	stu300_wr8(val, dev->virtbase + I2C_CR);
 }
 
-
 /*
  * Tells whether a certain event or events occurred in
  * response to a command. The events represent states in
@@ -486,7 +485,6 @@ static const struct stu300_clkset stu300_clktable[] = {
 	{ 100000000, 0xFFU },
 };
 
-
 static int stu300_set_clk(struct stu300_dev *dev, unsigned long clkrate)
 {
 
@@ -552,7 +550,6 @@ static int stu300_set_clk(struct stu300_dev *dev, unsigned long clkrate)
 	return 0;
 }
 
-
 static int stu300_init_hw(struct stu300_dev *dev)
 {
 	u32 dummy;
@@ -592,8 +589,6 @@ static int stu300_init_hw(struct stu300_dev *dev)
 
 	return 0;
 }
-
-
 
 /* Send slave address. */
 static int stu300_send_address(struct stu300_dev *dev,
@@ -741,7 +736,6 @@ static int stu300_xfer_msg(struct i2c_adapter *adap,
 		goto exit_disable;
 	}
 
-
 	if (msg->flags & I2C_M_RD) {
 		/* READ: we read the actual bytes one at a time */
 		for (i = 0; i < msg->len; i++) {
@@ -801,7 +795,7 @@ static int stu300_xfer_msg(struct i2c_adapter *adap,
 	/* Check that the bus is free, or wait until some timeout occurs */
 	ret = stu300_wait_while_busy(dev);
 	if (ret != 0) {
-		dev_err(&dev->pdev->dev, "timeout waiting for transfer "
+		dev_err(&dev->pdev->dev, "timout waiting for transfer "
 		       "to commence.\n");
 		goto exit_disable;
 	}
@@ -859,13 +853,15 @@ static const struct i2c_algorithm stu300_algo = {
 	.functionality	= stu300_func,
 };
 
-static int stu300_probe(struct platform_device *pdev)
+static int __init
+stu300_probe(struct platform_device *pdev)
 {
 	struct stu300_dev *dev;
 	struct i2c_adapter *adap;
 	struct resource *res;
 	int bus_nr;
 	int ret = 0;
+	char clk_name[] = "I2C0";
 
 	dev = devm_kzalloc(&pdev->dev, sizeof(struct stu300_dev), GFP_KERNEL);
 	if (!dev) {
@@ -874,7 +870,8 @@ static int stu300_probe(struct platform_device *pdev)
 	}
 
 	bus_nr = pdev->id;
-	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	clk_name[3] += (char)bus_nr;
+	dev->clk = devm_clk_get(&pdev->dev, clk_name);
 	if (IS_ERR(dev->clk)) {
 		dev_err(&pdev->dev, "could not retrieve i2c bus clock\n");
 		return PTR_ERR(dev->clk);
@@ -882,6 +879,9 @@ static int stu300_probe(struct platform_device *pdev)
 
 	dev->pdev = pdev;
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res)
+		return -ENOENT;
+
 	dev->virtbase = devm_ioremap_resource(&pdev->dev, res);
 	dev_dbg(&pdev->dev, "initialize bus device I2C%d on virtual "
 		"base %p\n", bus_nr, dev->virtbase);
@@ -911,13 +911,12 @@ static int stu300_probe(struct platform_device *pdev)
 	adap = &dev->adapter;
 	adap->owner = THIS_MODULE;
 	/* DDC class but actually often used for more generic I2C */
-	adap->class = I2C_CLASS_DDC | I2C_CLASS_DEPRECATED;
+	adap->class = I2C_CLASS_DDC;
 	strlcpy(adap->name, "ST Microelectronics DDC I2C adapter",
 		sizeof(adap->name));
 	adap->nr = bus_nr;
 	adap->algo = &stu300_algo;
 	adap->dev.parent = &pdev->dev;
-	adap->dev.of_node = pdev->dev.of_node;
 	i2c_set_adapdata(adap, dev);
 
 	/* i2c device drivers may be active on return from add_adapter() */
@@ -929,13 +928,10 @@ static int stu300_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, dev);
-	dev_info(&pdev->dev, "ST DDC I2C @ %p, irq %d\n",
-		 dev->virtbase, dev->irq);
-
 	return 0;
 }
 
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 static int stu300_suspend(struct device *device)
 {
 	struct stu300_dev *dev = dev_get_drvdata(device);
@@ -965,7 +961,8 @@ static SIMPLE_DEV_PM_OPS(stu300_pm, stu300_suspend, stu300_resume);
 #define STU300_I2C_PM	NULL
 #endif
 
-static int stu300_remove(struct platform_device *pdev)
+static int __exit
+stu300_remove(struct platform_device *pdev)
 {
 	struct stu300_dev *dev = platform_get_drvdata(pdev);
 
@@ -975,26 +972,19 @@ static int stu300_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id stu300_dt_match[] = {
-	{ .compatible = "st,ddci2c" },
-	{},
-};
-
 static struct platform_driver stu300_i2c_driver = {
 	.driver = {
 		.name	= NAME,
 		.owner	= THIS_MODULE,
 		.pm	= STU300_I2C_PM,
-		.of_match_table = stu300_dt_match,
 	},
-	.probe = stu300_probe,
-	.remove = stu300_remove,
+	.remove		= __exit_p(stu300_remove),
 
 };
 
 static int __init stu300_init(void)
 {
-	return platform_driver_register(&stu300_i2c_driver);
+	return platform_driver_probe(&stu300_i2c_driver, stu300_probe);
 }
 
 static void __exit stu300_exit(void)

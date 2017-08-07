@@ -67,4 +67,3 @@ int oz_are_elts_available(struct oz_elt_buf *buf);
 void oz_trim_elt_pool(struct oz_elt_buf *buf);
 
 #endif /* _OZELTBUF_H */
-

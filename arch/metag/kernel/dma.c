@@ -305,7 +305,9 @@ void dma_free_coherent(struct device *dev, size_t size,
 
 			if (pfn_valid(pfn)) {
 				struct page *page = pfn_to_page(pfn);
-				__free_reserved_page(page);
+				ClearPageReserved(page);
+
+				__free_page(page);
 				continue;
 			}
 		}
@@ -330,7 +332,6 @@ no_area:
 	dump_stack();
 }
 EXPORT_SYMBOL(dma_free_coherent);
-
 
 static int dma_mmap(struct device *dev, struct vm_area_struct *vma,
 		    void *cpu_addr, dma_addr_t dma_addr, size_t size)
@@ -360,7 +361,6 @@ static int dma_mmap(struct device *dev, struct vm_area_struct *vma,
 		}
 	}
 
-
 	return ret;
 }
 
@@ -380,9 +380,6 @@ int dma_mmap_writecombine(struct device *dev, struct vm_area_struct *vma,
 }
 EXPORT_SYMBOL(dma_mmap_writecombine);
 
-
-
-
 /*
  * Initialise the consistent memory allocation.
  */
@@ -399,6 +396,11 @@ static int __init dma_alloc_init(void)
 		pgd = pgd_offset(&init_mm, CONSISTENT_START);
 		pud = pud_alloc(&init_mm, pgd, CONSISTENT_START);
 		pmd = pmd_alloc(&init_mm, pud, CONSISTENT_START);
+		if (!pmd) {
+			pr_err("%s: no pmd tables\n", __func__);
+			ret = -ENOMEM;
+			break;
+		}
 		WARN_ON(!pmd_none(*pmd));
 
 		pte = pte_alloc_kernel(pmd, CONSISTENT_START);

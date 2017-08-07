@@ -57,7 +57,6 @@ static int amd64_insert_memory(struct agp_memory *mem, off_t pg_start, int type)
 	if (mask_type != 0)
 		return -EINVAL;
 
-
 	/* Make sure we can fit the range in the gatt table. */
 	/* FIXME: could wrap */
 	if (((unsigned long)pg_start + mem->page_count) > num_entries)
@@ -109,7 +108,6 @@ static struct aper_size_info_32 amd64_aperture_sizes[7] =
 	{1024, 262144, 8+(sizeof(long)/8), 1<<1 | 1<<3},
 	{2048, 524288, 9+(sizeof(long)/8), 1<<2 | 1<<3}
 };
-
 
 /*
  * Get the current Aperture size from the x86-64.
@@ -164,7 +162,6 @@ static u64 amd64_configure(struct pci_dev *hammer, u64 gatt_table)
 	return aper_base;
 }
 
-
 static const struct aper_size_info_32 amd_8151_sizes[7] =
 {
 	{2048, 524288, 9, 0x00000000 },	/* 0 0 0 0 0 0 */
@@ -193,7 +190,6 @@ static int amd_8151_configure(void)
 	return 0;
 }
 
-
 static void amd64_cleanup(void)
 {
 	u32 tmp;
@@ -210,7 +206,6 @@ static void amd64_cleanup(void)
 		pci_write_config_dword(dev, AMD64_GARTAPERTURECTL, tmp);
 	}
 }
-
 
 static const struct agp_bridge_driver amd_8151_driver = {
 	.owner			= THIS_MODULE,
@@ -269,6 +264,7 @@ static int agp_aperture_valid(u64 aper, u32 size)
  */
 static int fix_northbridge(struct pci_dev *nb, struct pci_dev *agp, u16 cap)
 {
+	u32 aper_low, aper_hi;
 	u64 aper, nb_aper;
 	int order = 0;
 	u32 nb_order, nb_base;
@@ -294,7 +290,9 @@ static int fix_northbridge(struct pci_dev *nb, struct pci_dev *agp, u16 cap)
 		apsize |= 0xf00;
 	order = 7 - hweight16(apsize);
 
-	aper = pci_bus_address(agp, AGP_APERTURE_BAR);
+	pci_read_config_dword(agp, 0x10, &aper_low);
+	pci_read_config_dword(agp, 0x14, &aper_hi);
+	aper = (aper_low & ~((1<<22)-1)) | ((u64)aper_hi << 32);
 
 	/*
 	 * On some sick chips APSIZE is 0. This means it wants 4G
@@ -375,7 +373,6 @@ static void amd8151_init(struct pci_dev *pdev, struct agp_bridge_data *bridge)
 	}
 }
 
-
 static const struct aper_size_info_32 uli_sizes[7] =
 {
 	{256, 65536, 6, 10},
@@ -435,7 +432,6 @@ put:
 	pci_dev_put(dev1);
 	return ret;
 }
-
 
 static const struct aper_size_info_32 nforce3_sizes[5] =
 {
@@ -732,7 +728,7 @@ static struct pci_device_id agp_amd64_pci_table[] = {
 
 MODULE_DEVICE_TABLE(pci, agp_amd64_pci_table);
 
-static const struct pci_device_id agp_amd64_pci_promisc_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(agp_amd64_pci_promisc_table) = {
 	{ PCI_DEVICE_CLASS(0, 0) },
 	{ }
 };
@@ -747,7 +743,6 @@ static struct pci_driver agp_amd64_pci_driver = {
 	.resume		= agp_amd64_resume,
 #endif
 };
-
 
 /* Not static due to IOMMU code calling it early. */
 int __init agp_amd64_init(void)

@@ -76,7 +76,6 @@ int file_write_dep(const char *name)
 	return 0;
 }
 
-
 /* Allocate initial growable string */
 struct gstr str_new(void)
 {
@@ -155,5 +154,3 @@ void *xcalloc(size_t nmemb, size_t size)
 	fprintf(stderr, "Out of memory.\n");
 	exit(1);
 }
-
-

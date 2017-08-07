@@ -264,8 +264,7 @@ static struct mtd_part_parser afs_parser = {
 
 static int __init afs_parser_init(void)
 {
-	register_mtd_parser(&afs_parser);
-	return 0;
+	return register_mtd_parser(&afs_parser);
 }
 
 static void __exit afs_parser_exit(void)
@@ -275,7 +274,6 @@ static void __exit afs_parser_exit(void)
 
 module_init(afs_parser_init);
 module_exit(afs_parser_exit);
-
 
 MODULE_AUTHOR("ARM Ltd");
 MODULE_DESCRIPTION("ARM Firmware Suite partition parser");

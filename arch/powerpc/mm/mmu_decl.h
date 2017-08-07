@@ -85,7 +85,6 @@ static inline void _tlbivax_bcast(unsigned long address, unsigned int pid,
 extern void hash_preload(struct mm_struct *mm, unsigned long ea,
 			 unsigned long access, unsigned long trap);
 
-
 extern void _tlbie(unsigned long address);
 extern void _tlbia(void);
 
@@ -148,8 +147,6 @@ extern unsigned long calc_cam_sz(unsigned long ram, unsigned long virt,
 extern void MMU_init_hw(void);
 extern unsigned long mmu_mapin_ram(unsigned long top);
 extern void adjust_total_lowmem(void);
-extern int switch_to_as1(void);
-extern void restore_to_as0(int esel, int offset, void *dt_ptr, int bootcpu);
 #endif
 extern void loadcam_entry(unsigned int index);
 

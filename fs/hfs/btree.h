@@ -76,7 +76,6 @@ struct hfs_find_data {
 	int entryoffset, entrylength;
 };
 
-
 /* btree.c */
 extern struct hfs_btree *hfs_btree_open(struct super_block *, u32, btree_keycmp);
 extern void hfs_btree_close(struct hfs_btree *);
@@ -120,7 +119,6 @@ extern int hfs_brec_find(struct hfs_find_data *);
 extern int hfs_brec_read(struct hfs_find_data *, void *, int);
 extern int hfs_brec_goto(struct hfs_find_data *, int);
 
-
 struct hfs_bnode_desc {
 	__be32 next;		/* (V) Number of the next node at this level */
 	__be32 prev;		/* (V) Number of the prev node at this level */
@@ -152,6 +150,11 @@ struct hfs_btree_header_rec {
 	__be32 attributes;	/* (F) attributes */
 	u32 reserved3[16];
 } __packed;
+
+#define HFS_NODE_INDEX	0x00	/* An internal (index) node */
+#define HFS_NODE_HEADER	0x01	/* The tree header node (node 0) */
+#define HFS_NODE_MAP		0x02	/* Holds part of the bitmap of used nodes */
+#define HFS_NODE_LEAF		0xFF	/* A leaf (ndNHeight==1) node */
 
 #define BTREE_ATTR_BADCLOSE	0x00000001	/* b-tree not closed properly. not
 						   used by hfsplus. */

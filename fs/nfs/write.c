@@ -31,8 +31,6 @@
 #include "fscache.h"
 #include "pnfs.h"
 
-#include "nfstrace.h"
-
 #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
 
 #define MIN_POOL_WRITE		(32)
@@ -863,7 +861,7 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
 			return 0;
 		l_ctx = req->wb_lock_context;
 		do_flush = req->wb_page != page || req->wb_context != ctx;
-		if (l_ctx && ctx->dentry->d_inode->i_flock != NULL) {
+		if (l_ctx) {
 			do_flush |= l_ctx->lockowner.l_owner != current->files
 				|| l_ctx->lockowner.l_pid != current->tgid;
 		}
@@ -876,73 +874,18 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
 }
 
 /*
- * Avoid buffered writes when a open context credential's key would
- * expire soon.
- *
- * Returns -EACCES if the key will expire within RPC_KEY_EXPIRE_FAIL.
- *
- * Return 0 and set a credential flag which triggers the inode to flush
- * and performs  NFS_FILE_SYNC writes if the key will expired within
- * RPC_KEY_EXPIRE_TIMEO.
- */
-int
-nfs_key_timeout_notify(struct file *filp, struct inode *inode)
-{
-	struct nfs_open_context *ctx = nfs_file_open_context(filp);
-	struct rpc_auth *auth = NFS_SERVER(inode)->client->cl_auth;
-
-	return rpcauth_key_timeout_notify(auth, ctx->cred);
-}
-
-/*
- * Test if the open context credential key is marked to expire soon.
- */
-bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx)
-{
-	return rpcauth_cred_key_to_expire(ctx->cred);
-}
-
-/*
  * If the page cache is marked as unsafe or invalid, then we can't rely on
  * the PageUptodate() flag. In this case, we will need to turn off
  * write optimisations that depend on the page contents being correct.
  */
 static bool nfs_write_pageuptodate(struct page *page, struct inode *inode)
 {
-	struct nfs_inode *nfsi = NFS_I(inode);
-
 	if (nfs_have_delegated_attributes(inode))
 		goto out;
-	if (nfsi->cache_validity & (NFS_INO_INVALID_DATA|NFS_INO_REVAL_PAGECACHE))
-		return false;
-	smp_rmb();
-	if (test_bit(NFS_INO_INVALIDATING, &nfsi->flags))
+	if (NFS_I(inode)->cache_validity & (NFS_INO_INVALID_DATA|NFS_INO_REVAL_PAGECACHE))
 		return false;
 out:
 	return PageUptodate(page) != 0;
-}
-
-/* If we know the page is up to date, and we're not using byte range locks (or
- * if we have the whole file locked for writing), it may be more efficient to
- * extend the write to cover the entire page in order to avoid fragmentation
- * inefficiencies.
- *
- * If the file is opened for synchronous writes then we can just skip the rest
- * of the checks.
- */
-static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
-{
-	if (file->f_flags & O_DSYNC)
-		return 0;
-	if (!nfs_write_pageuptodate(page, inode))
-		return 0;
-	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
-		return 1;
-	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
-			inode->i_flock->fl_end == OFFSET_MAX &&
-			inode->i_flock->fl_type != F_RDLCK))
-		return 1;
-	return 0;
 }
 
 /*
@@ -960,10 +903,19 @@ int nfs_updatepage(struct file *file, struct page *page,
 
 	nfs_inc_stats(inode, NFSIOS_VFSUPDATEPAGE);
 
-	dprintk("NFS:       nfs_updatepage(%pD2 %d@%lld)\n",
-		file, count, (long long)(page_file_offset(page) + offset));
+	dprintk("NFS:       nfs_updatepage(%s/%s %d@%lld)\n",
+		file->f_path.dentry->d_parent->d_name.name,
+		file->f_path.dentry->d_name.name, count,
+		(long long)(page_file_offset(page) + offset));
 
-	if (nfs_can_extend_write(file, page, inode)) {
+	/* If we're not using byte range locks, and we know the page
+	 * is up to date, it may be more efficient to extend the write
+	 * to cover the entire page in order to avoid fragmentation
+	 * inefficiencies.
+	 */
+	if (nfs_write_pageuptodate(page, inode) &&
+			inode->i_flock == NULL &&
+			!(file->f_flags & O_DSYNC)) {
 		count = max(count + offset, nfs_page_length(page));
 		offset = 0;
 	}
@@ -1019,15 +971,12 @@ int nfs_initiate_write(struct rpc_clnt *clnt,
 	NFS_PROTO(inode)->write_setup(data, &msg);
 
 	dprintk("NFS: %5u initiated write call "
-		"(req %s/%llu, %u bytes @ offset %llu)\n",
+		"(req %s/%lld, %u bytes @ offset %llu)\n",
 		data->task.tk_pid,
 		inode->i_sb->s_id,
-		(unsigned long long)NFS_FILEID(inode),
+		(long long)NFS_FILEID(inode),
 		data->args.count,
 		(unsigned long long)data->args.offset);
-
-	nfs4_state_protect_write(NFS_SERVER(inode)->nfs_client,
-				 &task_setup_data.rpc_client, &msg, data);
 
 	task = rpc_run_task(&task_setup_data);
 	if (IS_ERR(task)) {
@@ -1175,7 +1124,6 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
 	     desc->pg_count > wsize))
 		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
 
-
 	offset = 0;
 	nbytes = desc->pg_count;
 	do {
@@ -1297,14 +1245,12 @@ void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
 }
 EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
 
-
 void nfs_write_prepare(struct rpc_task *task, void *calldata)
 {
 	struct nfs_write_data *data = calldata;
-	int err;
-	err = NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
-	if (err)
-		rpc_exit(task, err);
+	NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
+	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+		rpc_exit(task, -EIO);
 }
 
 void nfs_commit_prepare(struct rpc_task *task, void *calldata)
@@ -1352,7 +1298,6 @@ static const struct rpc_call_ops nfs_write_common_ops = {
 	.rpc_call_done = nfs_writeback_done_common,
 	.rpc_release = nfs_writeback_release_common,
 };
-
 
 /*
  * This function is called when the WRITE call is complete.
@@ -1438,7 +1383,6 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
 	}
 }
 
-
 #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
 static int nfs_commit_set_lock(struct nfs_inode *nfsi, int may_wait)
 {
@@ -1494,9 +1438,6 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
 	NFS_PROTO(data->inode)->commit_setup(data, &msg);
 
 	dprintk("NFS: %5u initiated commit call\n", data->task.tk_pid);
-
-	nfs4_state_protect(NFS_SERVER(data->inode)->nfs_client,
-		NFS_SP4_MACH_CRED_COMMIT, &task_setup_data.rpc_client, &msg);
 
 	task = rpc_run_task(&task_setup_data);
 	if (IS_ERR(task))
@@ -1612,9 +1553,9 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
 		nfs_list_remove_request(req);
 		nfs_clear_page_commit(req->wb_page);
 
-		dprintk("NFS:       commit (%s/%llu %d@%lld)",
+		dprintk("NFS:       commit (%s/%lld %d@%lld)",
 			req->wb_context->dentry->d_sb->s_id,
-			(unsigned long long)NFS_FILEID(req->wb_context->dentry->d_inode),
+			(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
 			req->wb_bytes,
 			(long long)req_offset(req));
 		if (status < 0) {
@@ -1772,14 +1713,8 @@ int nfs_wb_all(struct inode *inode)
 		.range_start = 0,
 		.range_end = LLONG_MAX,
 	};
-	int ret;
 
-	trace_nfs_writeback_inode_enter(inode);
-
-	ret = sync_inode(inode, &wbc);
-
-	trace_nfs_writeback_inode_exit(inode, ret);
-	return ret;
+	return sync_inode(inode, &wbc);
 }
 EXPORT_SYMBOL_GPL(nfs_wb_all);
 
@@ -1827,8 +1762,6 @@ int nfs_wb_page(struct inode *inode, struct page *page)
 	};
 	int ret;
 
-	trace_nfs_writeback_page_enter(inode);
-
 	for (;;) {
 		wait_on_page_writeback(page);
 		if (clear_page_dirty_for_io(page)) {
@@ -1837,15 +1770,14 @@ int nfs_wb_page(struct inode *inode, struct page *page)
 				goto out_error;
 			continue;
 		}
-		ret = 0;
 		if (!PagePrivate(page))
 			break;
 		ret = nfs_commit_inode(inode, FLUSH_SYNC);
 		if (ret < 0)
 			goto out_error;
 	}
+	return 0;
 out_error:
-	trace_nfs_writeback_page_exit(inode, ret);
 	return ret;
 }
 
@@ -1935,4 +1867,3 @@ void nfs_destroy_writepagecache(void)
 	mempool_destroy(nfs_wdata_mempool);
 	kmem_cache_destroy(nfs_wdata_cachep);
 }
-

@@ -18,7 +18,6 @@
 #include <asm/segment.h>
 #endif
 
-
 /*
  * low level task data that entry.S needs immediate access to
  * - this struct should fit entirely inside of one cache line
@@ -43,6 +42,8 @@ struct thread_info {
 };
 
 #endif
+
+#define PREEMPT_ACTIVE		0x10000000
 
 /*
  * macros/functions for gaining access to the thread information structure

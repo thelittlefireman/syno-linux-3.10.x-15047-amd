@@ -58,7 +58,6 @@
 
 #include <sound/hwdep.h>
 
-
 static int usX2Y_usbpcm_urb_capt_retire(struct snd_usX2Y_substream *subs)
 {
 	struct urb	*urb = subs->completed_urb;
@@ -145,7 +144,6 @@ static int usX2Y_hwdep_urb_play_prepare(struct snd_usX2Y_substream *subs,
 	return 0;
 }
 
-
 static inline void usX2Y_usbpcm_urb_capt_iso_advance(struct snd_usX2Y_substream *subs,
 						     struct urb *urb)
 {
@@ -226,7 +224,6 @@ static inline int usX2Y_usbpcm_usbframe_complete(struct snd_usX2Y_substream *cap
 	return 0;
 }
 
-
 static void i_usX2Y_usbpcm_urb_complete(struct urb *urb)
 {
 	struct snd_usX2Y_substream *subs = urb->context;
@@ -260,7 +257,6 @@ static void i_usX2Y_usbpcm_urb_complete(struct urb *urb)
 		}
 	}
 }
-
 
 static void usX2Y_hwdep_urb_release(struct urb **urb)
 {
@@ -358,7 +354,7 @@ static int snd_usX2Y_usbpcm_hw_free(struct snd_pcm_substream *substream)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct snd_usX2Y_substream *subs = runtime->private_data,
 		*cap_subs2 = subs->usX2Y->subs[SNDRV_PCM_STREAM_CAPTURE + 2];
-	mutex_lock(&subs->usX2Y->pcm_mutex);
+	mutex_lock(&subs->usX2Y->prepare_mutex);
 	snd_printdd("snd_usX2Y_usbpcm_hw_free(%p)\n", substream);
 
 	if (SNDRV_PCM_STREAM_PLAYBACK == substream->stream) {
@@ -387,7 +383,7 @@ static int snd_usX2Y_usbpcm_hw_free(struct snd_pcm_substream *substream)
 				usX2Y_usbpcm_urbs_release(cap_subs2);
 		}
 	}
-	mutex_unlock(&subs->usX2Y->pcm_mutex);
+	mutex_unlock(&subs->usX2Y->prepare_mutex);
 	return snd_pcm_lib_free_pages(substream);
 }
 
@@ -493,7 +489,7 @@ static int snd_usX2Y_usbpcm_prepare(struct snd_pcm_substream *substream)
 		memset(usX2Y->hwdep_pcm_shm, 0, sizeof(struct snd_usX2Y_hwdep_pcm_shm));
 	}
 
-	mutex_lock(&usX2Y->pcm_mutex);
+	mutex_lock(&usX2Y->prepare_mutex);
 	usX2Y_subs_prepare(subs);
 // Start hardware streams
 // SyncStream first....
@@ -534,7 +530,7 @@ static int snd_usX2Y_usbpcm_prepare(struct snd_pcm_substream *substream)
 		usX2Y->hwdep_pcm_shm->capture_iso_start = -1;
 
  up_prepare_mutex:
-	mutex_unlock(&usX2Y->pcm_mutex);
+	mutex_unlock(&usX2Y->prepare_mutex);
 	return err;
 }
 
@@ -557,8 +553,6 @@ static struct snd_pcm_hardware snd_usX2Y_4c =
 	.fifo_size =              0
 };
 
-
-
 static int snd_usX2Y_usbpcm_open(struct snd_pcm_substream *substream)
 {
 	struct snd_usX2Y_substream	*subs = ((struct snd_usX2Y_substream **)
@@ -576,7 +570,6 @@ static int snd_usX2Y_usbpcm_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-
 static int snd_usX2Y_usbpcm_close(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -585,7 +578,6 @@ static int snd_usX2Y_usbpcm_close(struct snd_pcm_substream *substream)
 	subs->pcm_substream = NULL;
 	return 0;
 }
-
 
 static struct snd_pcm_ops snd_usX2Y_usbpcm_ops = 
 {
@@ -599,58 +591,77 @@ static struct snd_pcm_ops snd_usX2Y_usbpcm_ops =
 	.pointer =	snd_usX2Y_pcm_pointer,
 };
 
-
-static int usX2Y_pcms_busy_check(struct snd_card *card)
+static int usX2Y_pcms_lock_check(struct snd_card *card)
 {
-	struct usX2Ydev	*dev = usX2Y(card);
-	int i;
-
-	for (i = 0; i < dev->pcm_devs * 2; i++) {
-		struct snd_usX2Y_substream *subs = dev->subs[i];
-		if (subs && subs->pcm_substream &&
-		    SUBSTREAM_BUSY(subs->pcm_substream))
-			return -EBUSY;
+	struct list_head *list;
+	struct snd_device *dev;
+	struct snd_pcm *pcm;
+	int err = 0;
+	list_for_each(list, &card->devices) {
+		dev = snd_device(list);
+		if (dev->type != SNDRV_DEV_PCM)
+			continue;
+		pcm = dev->device_data;
+		mutex_lock(&pcm->open_mutex);
 	}
-	return 0;
+	list_for_each(list, &card->devices) {
+		int s;
+		dev = snd_device(list);
+		if (dev->type != SNDRV_DEV_PCM)
+			continue;
+		pcm = dev->device_data;
+		for (s = 0; s < 2; ++s) {
+			struct snd_pcm_substream *substream;
+			substream = pcm->streams[s].substream;
+			if (substream && SUBSTREAM_BUSY(substream))
+				err = -EBUSY;
+		}
+	}
+	return err;
+}
+
+static void usX2Y_pcms_unlock(struct snd_card *card)
+{
+	struct list_head *list;
+	struct snd_device *dev;
+	struct snd_pcm *pcm;
+	list_for_each(list, &card->devices) {
+		dev = snd_device(list);
+		if (dev->type != SNDRV_DEV_PCM)
+			continue;
+		pcm = dev->device_data;
+		mutex_unlock(&pcm->open_mutex);
+	}
 }
 
 static int snd_usX2Y_hwdep_pcm_open(struct snd_hwdep *hw, struct file *file)
 {
+	// we need to be the first 
 	struct snd_card *card = hw->card;
-	int err;
-
-	mutex_lock(&usX2Y(card)->pcm_mutex);
-	err = usX2Y_pcms_busy_check(card);
-	if (!err)
+	int err = usX2Y_pcms_lock_check(card);
+	if (0 == err)
 		usX2Y(card)->chip_status |= USX2Y_STAT_CHIP_MMAP_PCM_URBS;
-	mutex_unlock(&usX2Y(card)->pcm_mutex);
+	usX2Y_pcms_unlock(card);
 	return err;
 }
-
 
 static int snd_usX2Y_hwdep_pcm_release(struct snd_hwdep *hw, struct file *file)
 {
 	struct snd_card *card = hw->card;
-	int err;
-
-	mutex_lock(&usX2Y(card)->pcm_mutex);
-	err = usX2Y_pcms_busy_check(card);
-	if (!err)
+	int err = usX2Y_pcms_lock_check(card);
+	if (0 == err)
 		usX2Y(hw->card)->chip_status &= ~USX2Y_STAT_CHIP_MMAP_PCM_URBS;
-	mutex_unlock(&usX2Y(card)->pcm_mutex);
+	usX2Y_pcms_unlock(card);
 	return err;
 }
-
 
 static void snd_usX2Y_hwdep_pcm_vm_open(struct vm_area_struct *area)
 {
 }
 
-
 static void snd_usX2Y_hwdep_pcm_vm_close(struct vm_area_struct *area)
 {
 }
-
 
 static int snd_usX2Y_hwdep_pcm_vm_fault(struct vm_area_struct *area,
 					struct vm_fault *vmf)
@@ -665,13 +676,11 @@ static int snd_usX2Y_hwdep_pcm_vm_fault(struct vm_area_struct *area,
 	return 0;
 }
 
-
 static const struct vm_operations_struct snd_usX2Y_hwdep_pcm_vm_ops = {
 	.open = snd_usX2Y_hwdep_pcm_vm_open,
 	.close = snd_usX2Y_hwdep_pcm_vm_close,
 	.fault = snd_usX2Y_hwdep_pcm_vm_fault,
 };
-
 
 static int snd_usX2Y_hwdep_pcm_mmap(struct snd_hwdep * hw, struct file *filp, struct vm_area_struct *area)
 {
@@ -696,14 +705,12 @@ static int snd_usX2Y_hwdep_pcm_mmap(struct snd_hwdep * hw, struct file *filp, st
 	return 0;
 }
 
-
 static void snd_usX2Y_hwdep_pcm_private_free(struct snd_hwdep *hwdep)
 {
 	struct usX2Ydev *usX2Y = hwdep->private_data;
 	if (NULL != usX2Y->hwdep_pcm_shm)
 		snd_free_pages(usX2Y->hwdep_pcm_shm, sizeof(struct snd_usX2Y_hwdep_pcm_shm));
 }
-
 
 int usX2Y_hwdep_pcm_new(struct snd_card *card)
 {
@@ -747,7 +754,6 @@ int usX2Y_hwdep_pcm_new(struct snd_card *card)
 						     64*1024, 128*1024))) {
 		return err;
 	}
-
 
 	return 0;
 }

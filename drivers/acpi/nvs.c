@@ -12,8 +12,8 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
-
-#include "internal.h"
+#include <linux/acpi_io.h>
+#include <acpi/acpiosxf.h>
 
 /* ACPI NVS regions, APEI may use it */
 
@@ -62,7 +62,6 @@ int acpi_nvs_for_each_region(int (*func)(__u64 start, __u64 size, void *data),
 
 	return 0;
 }
-
 
 #ifdef CONFIG_ACPI_SLEEP
 /*

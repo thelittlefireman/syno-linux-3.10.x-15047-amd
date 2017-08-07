@@ -329,9 +329,7 @@ static int mixart_update_analog_audio_level(struct snd_mixart* chip, int is_capt
 
 	err = snd_mixart_send_msg(chip->mgr, &request, sizeof(resp), &resp);
 	if((err<0) || (resp.error_code)) {
-		dev_dbg(chip->card->dev,
-			"error MSG_PHYSICALIO_SET_LEVEL card(%d) is_capture(%d) error_code(%x)\n",
-			chip->chip_idx, is_capture, resp.error_code);
+		snd_printk(KERN_DEBUG "error MSG_PHYSICALIO_SET_LEVEL card(%d) is_capture(%d) error_code(%x)\n", chip->chip_idx, is_capture, resp.error_code);
 		return -EINVAL;
 	}
 	return 0;
@@ -719,7 +717,6 @@ static u32 mixart_digital_level[256] = {
 #define MIXART_DIGITAL_LEVEL_MAX   255    /*  18.0 dB */
 #define MIXART_DIGITAL_ZERO_LEVEL  219    /*  0.0 dB */
 
-
 int mixart_update_playback_stream_level(struct snd_mixart* chip, int is_aes, int idx)
 {
 	int err, i;
@@ -764,9 +761,7 @@ int mixart_update_playback_stream_level(struct snd_mixart* chip, int is_aes, int
 
 	err = snd_mixart_send_msg(chip->mgr, &request, sizeof(status), &status);
 	if((err<0) || status) {
-		dev_dbg(chip->card->dev,
-			"error MSG_STREAM_SET_OUT_STREAM_LEVEL card(%d) status(%x)\n",
-			chip->chip_idx, status);
+		snd_printk(KERN_DEBUG "error MSG_STREAM_SET_OUT_STREAM_LEVEL card(%d) status(%x)\n", chip->chip_idx, status);
 		return -EINVAL;
 	}
 	return 0;
@@ -809,14 +804,11 @@ int mixart_update_capture_stream_level(struct snd_mixart* chip, int is_aes)
 
 	err = snd_mixart_send_msg(chip->mgr, &request, sizeof(status), &status);
 	if((err<0) || status) {
-		dev_dbg(chip->card->dev,
-			"error MSG_STREAM_SET_IN_AUDIO_LEVEL card(%d) status(%x)\n",
-			chip->chip_idx, status);
+		snd_printk(KERN_DEBUG "error MSG_STREAM_SET_IN_AUDIO_LEVEL card(%d) status(%x)\n", chip->chip_idx, status);
 		return -EINVAL;
 	}
 	return 0;
 }
-
 
 /* shared */
 static int mixart_digital_vol_info(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_info *uinfo)
@@ -910,7 +902,6 @@ static struct snd_kcontrol_new snd_mixart_pcm_vol =
 	.tlv = { .p = db_scale_digital },
 };
 
-
 static int mixart_pcm_sw_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_mixart *chip = snd_kcontrol_chip(kcontrol);
@@ -983,9 +974,7 @@ static int mixart_update_monitoring(struct snd_mixart* chip, int channel)
 
 	err = snd_mixart_send_msg(chip->mgr, &request, sizeof(resp), &resp);
 	if((err<0) || resp) {
-		dev_dbg(chip->card->dev,
-			"error MSG_CONNECTOR_SET_OUT_AUDIO_LEVEL card(%d) resp(%x)\n",
-			chip->chip_idx, resp);
+		snd_printk(KERN_DEBUG "error MSG_CONNECTOR_SET_OUT_AUDIO_LEVEL card(%d) resp(%x)\n", chip->chip_idx, resp);
 		return -EINVAL;
 	}
 	return 0;
@@ -1099,7 +1088,6 @@ static struct snd_kcontrol_new mixart_control_monitor_sw = {
 	.put =          mixart_monitor_sw_put
 };
 
-
 static void mixart_reset_audio_levels(struct snd_mixart *chip)
 {
 	/* analog volumes can be set even if there is no pipe */
@@ -1110,7 +1098,6 @@ static void mixart_reset_audio_levels(struct snd_mixart *chip)
 	}
 	return;
 }
-
 
 int snd_mixart_create_mixer(struct mixart_mgr *mgr)
 {

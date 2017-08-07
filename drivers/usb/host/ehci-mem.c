@@ -63,7 +63,6 @@ static inline void ehci_qtd_free (struct ehci_hcd *ehci, struct ehci_qtd *qtd)
 	dma_pool_free (ehci->qtd_pool, qtd, qtd->qtd_dma);
 }
 
-
 static void qh_destroy(struct ehci_hcd *ehci, struct ehci_qh *qh)
 {
 	/* clean qtds first, and know this is not linked */
@@ -224,11 +223,11 @@ static int ehci_mem_init (struct ehci_hcd *ehci, gfp_t flags)
 		hw->hw_next = EHCI_LIST_END(ehci);
 		hw->hw_qtd_next = EHCI_LIST_END(ehci);
 		hw->hw_alt_next = EHCI_LIST_END(ehci);
+		hw->hw_token &= ~QTD_STS_ACTIVE;
 		ehci->dummy->hw = hw;
 
 		for (i = 0; i < ehci->periodic_size; i++)
-			ehci->periodic[i] = cpu_to_hc32(ehci,
-					ehci->dummy->qh_dma);
+			ehci->periodic[i] = ehci->dummy->qh_dma;
 	} else {
 		for (i = 0; i < ehci->periodic_size; i++)
 			ehci->periodic[i] = EHCI_LIST_END(ehci);

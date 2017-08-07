@@ -76,6 +76,8 @@ struct thread_info {
 
 #endif
 
+#define PREEMPT_ACTIVE		0x10000000
+
 /*
  * macros/functions for gaining access to the thread information structure
  */
@@ -114,7 +116,6 @@ static inline struct thread_info *current_thread_info(void)
 	extui reg, sp, 0, 13; \
 	xor   reg, sp, reg
 #endif
-
 
 /*
  * thread information flags

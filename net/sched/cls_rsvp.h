@@ -32,10 +32,8 @@
    source address and SPI(="Source Port ID" here rather than
    "security parameter index"): triple (key, mask, offset).
 
-
    NOTE 1. All the packets with IPv6 extension headers (but AH and ESP)
    and all fragmented packets go to the best-effort traffic class.
-
 
    NOTE 2. Two "port id"'s seems to be redundant, rfc2207 requires
    only one "Generalized Port Identifier". So that for classic
@@ -46,7 +44,6 @@
    resources. But DPI and SPI add the possibility to assign different
    priorities to GPIs. Look also at note 4 about tunnels below.
 
-
    NOTE 3. One complication is the case of tunneled packets.
    We implement it as following: if the first lookup
    matches a special session with "tunnelhdr" value not zero,
@@ -55,16 +52,13 @@
    with tunnel ID added to the list of keys. Simple and stupid 8)8)
    It's enough for PIMREG and IPIP.
 
-
    NOTE 4. Two GPIs make it possible to parse even GRE packets.
    F.e. DPI can select ETH_P_IP (and necessary flags to make
    tunnelhdr correct) in GRE protocol field and SPI matches
    GRE key. Is it not nice? 8)8)
 
-
    Well, as result, despite its simplicity, we get a pretty
    powerful classification engine.  */
-
 
 struct rsvp_head {
 	u32			tmap[256/32];
@@ -82,7 +76,6 @@ struct rsvp_session {
 	/* 16 (src,sport) hash slots, and one wildcard source slot */
 	struct rsvp_filter	*ht[16 + 1];
 };
-
 
 struct rsvp_filter {
 	struct rsvp_filter	*next;
@@ -115,6 +108,11 @@ static inline unsigned int hash_src(__be32 *src)
 	h ^= h>>4;
 	return h & 0xF;
 }
+
+static struct tcf_ext_map rsvp_ext_map = {
+	.police = TCA_RSVP_POLICE,
+	.action = TCA_RSVP_ACT
+};
 
 #define RSVP_APPLY_RESULT()				\
 {							\
@@ -435,8 +433,7 @@ static int rsvp_change(struct net *net, struct sk_buff *in_skb,
 	if (err < 0)
 		return err;
 
-	tcf_exts_init(&e, TCA_RSVP_ACT, TCA_RSVP_POLICE);
-	err = tcf_exts_validate(net, tp, tb, tca[TCA_RATE], &e);
+	err = tcf_exts_validate(net, tp, tb, tca[TCA_RATE], &e, &rsvp_ext_map);
 	if (err < 0)
 		return err;
 
@@ -467,7 +464,6 @@ static int rsvp_change(struct net *net, struct sk_buff *in_skb,
 	if (f == NULL)
 		goto errout2;
 
-	tcf_exts_init(&f->exts, TCA_RSVP_ACT, TCA_RSVP_POLICE);
 	h2 = 16;
 	if (tb[TCA_RSVP_SRC]) {
 		memcpy(f->src, nla_data(tb[TCA_RSVP_SRC]), sizeof(f->src));
@@ -594,7 +590,7 @@ static void rsvp_walk(struct tcf_proto *tp, struct tcf_walker *arg)
 	}
 }
 
-static int rsvp_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
+static int rsvp_dump(struct tcf_proto *tp, unsigned long fh,
 		     struct sk_buff *skb, struct tcmsg *t)
 {
 	struct rsvp_filter *f = (struct rsvp_filter *)fh;
@@ -630,12 +626,12 @@ static int rsvp_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
 	    nla_put(skb, TCA_RSVP_SRC, sizeof(f->src), f->src))
 		goto nla_put_failure;
 
-	if (tcf_exts_dump(skb, &f->exts) < 0)
+	if (tcf_exts_dump(skb, &f->exts, &rsvp_ext_map) < 0)
 		goto nla_put_failure;
 
 	nla_nest_end(skb, nest);
 
-	if (tcf_exts_dump_stats(skb, &f->exts) < 0)
+	if (tcf_exts_dump_stats(skb, &f->exts, &rsvp_ext_map) < 0)
 		goto nla_put_failure;
 	return skb->len;
 

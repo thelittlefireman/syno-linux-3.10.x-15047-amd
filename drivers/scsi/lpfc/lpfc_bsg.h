@@ -59,7 +59,6 @@ struct send_mgmt_resp {
 	uint32_t tag;
 };
 
-
 #define INTERNAL_LOOP_BACK 0x1 /* adapter short cuts the loop internally */
 #define EXTERNAL_LOOP_BACK 0x2 /* requires an external loopback plug */
 
@@ -231,8 +230,6 @@ struct lpfc_sli_config_emb0_subsys {
 #define SLI_CONFIG_SUBSYS_FCOE		0x0C
 #define FCOE_OPCODE_READ_FCF		0x08
 #define FCOE_OPCODE_ADD_FCF		0x09
-#define FCOE_OPCODE_SET_DPORT_MODE	0x27
-#define FCOE_OPCODE_GET_DPORT_RESULTS	0x28
 };
 
 struct lpfc_sli_config_emb1_subsys {

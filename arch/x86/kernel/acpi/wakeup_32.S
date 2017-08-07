@@ -40,8 +40,6 @@ wakeup_pmode_return:
 bogus_magic:
 	jmp	bogus_magic
 
-
-
 save_registers:
 	sidt	saved_idt
 	sldt	saved_ldt
@@ -59,7 +57,6 @@ save_registers:
 	movl	$ret_point, saved_eip
 	ret
 
-
 restore_registers:
 	movl	saved_context_ebp, %ebp
 	movl	saved_context_ebx, %ebx
@@ -73,7 +70,7 @@ ENTRY(do_suspend_lowlevel)
 	call	save_processor_state
 	call	save_registers
 	pushl	$3
-	call	x86_acpi_enter_sleep_state
+	call	acpi_enter_sleep_state
 	addl	$4, %esp
 
 #	In case of S3 failure, we'll emerge here.  Jump
@@ -94,4 +91,3 @@ ENTRY(saved_eip)	.long	0
 saved_idt:	.long	0,0
 saved_ldt:	.long	0
 saved_tss:	.long	0
-

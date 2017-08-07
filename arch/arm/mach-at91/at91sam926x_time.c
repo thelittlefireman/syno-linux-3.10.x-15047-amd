@@ -19,7 +19,6 @@
 #include <linux/of_irq.h>
 
 #include <asm/mach/time.h>
-#include <mach/hardware.h>
 
 #define AT91_PIT_MR		0x00			/* Mode Register */
 #define		AT91_PIT_PITIEN		(1 << 25)		/* Timer Interrupt Enable */
@@ -40,7 +39,6 @@
 static u32 pit_cycle;		/* write-once */
 static u32 pit_cnt;		/* access only w/system irq blocked */
 static void __iomem *pit_base_addr __read_mostly;
-static struct clk *mck;
 
 static inline unsigned int pit_read(unsigned int reg_offset)
 {
@@ -78,7 +76,6 @@ static struct clocksource pit_clk = {
 	.read		= read_pit_clk,
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
-
 
 /*
  * Clockevent device:  interrupts every 1/HZ (== pit_cycles * MCK/16)
@@ -140,7 +137,6 @@ static struct clock_event_device pit_clkevt = {
 	.resume		= at91sam926x_pit_resume,
 };
 
-
 /*
  * IRQ handler for the timer.
  */
@@ -173,7 +169,7 @@ static irqreturn_t at91sam926x_pit_interrupt(int irq, void *dev_id)
 
 static struct irqaction at91sam926x_pit_irq = {
 	.name		= "at91_tick",
-	.flags		= IRQF_SHARED | IRQF_TIMER | IRQF_IRQPOLL,
+	.flags		= IRQF_SHARED | IRQF_DISABLED | IRQF_TIMER | IRQF_IRQPOLL,
 	.handler	= at91sam926x_pit_interrupt,
 	.irq		= NR_IRQS_LEGACY + AT91_ID_SYS,
 };
@@ -197,14 +193,10 @@ static int __init of_at91sam926x_pit_init(void)
 	if (!pit_base_addr)
 		goto node_err;
 
-	mck = of_clk_get(np, 0);
-
 	/* Get the interrupts property */
 	ret = irq_of_parse_and_map(np, 0);
 	if (!ret) {
 		pr_crit("AT91: PIT: Unable to get IRQ from DT\n");
-		if (!IS_ERR(mck))
-			clk_put(mck);
 		goto ioremap_err;
 	}
 	at91sam926x_pit_irq.irq = ret;
@@ -236,8 +228,6 @@ void __init at91sam926x_pit_init(void)
 	unsigned	bits;
 	int		ret;
 
-	mck = ERR_PTR(-ENOENT);
-
 	/* For device tree enabled device: initialize here */
 	of_at91sam926x_pit_init();
 
@@ -245,12 +235,7 @@ void __init at91sam926x_pit_init(void)
 	 * Use our actual MCK to figure out how many MCK/16 ticks per
 	 * 1/HZ period (instead of a compile-time constant LATCH).
 	 */
-	if (IS_ERR(mck))
-		mck = clk_get(NULL, "mck");
-
-	if (IS_ERR(mck))
-		panic("AT91: PIT: Unable to get mck clk\n");
-	pit_rate = clk_get_rate(mck) / 16;
+	pit_rate = clk_get_rate(clk_get(NULL, "mck")) / 16;
 	pit_cycle = (pit_rate + HZ/2) / HZ;
 	WARN_ON(((pit_cycle - 1) & ~AT91_PIT_PIV) != 0);
 

@@ -1,5 +1,5 @@
 /* IEEE 802.11 SoftMAC layer
- * Copyright (c) 2005 Andrea Merello <andrea.merello@gmail.com>
+ * Copyright (c) 2005 Andrea Merello <andreamrl@tiscali.it>
  *
  * Mostly extracted from the rtl8180-sa2400 driver for the
  * in-kernel generic ieee802.11 stack.
@@ -13,7 +13,6 @@
  * released under the GPL
  */
 
-
 #include "ieee80211.h"
 
 #include <linux/random.h>
@@ -23,6 +22,15 @@
 #include <linux/etherdevice.h>
 
 #include "dot11d.h"
+
+u8 rsn_authen_cipher_suite[16][4] = {
+	{0x00,0x0F,0xAC,0x00}, //Use group key, //Reserved
+	{0x00,0x0F,0xAC,0x01}, //WEP-40         //RSNA default
+	{0x00,0x0F,0xAC,0x02}, //TKIP           //NONE		//{used just as default}
+	{0x00,0x0F,0xAC,0x03}, //WRAP-historical
+	{0x00,0x0F,0xAC,0x04}, //CCMP
+	{0x00,0x0F,0xAC,0x05}, //WEP-104
+};
 
 short ieee80211_is_54g(const struct ieee80211_network *net)
 {
@@ -38,7 +46,7 @@ short ieee80211_is_shortslot(const struct ieee80211_network *net)
  * tag and the EXTENDED RATE MFIE tag if needed.
  * It encludes two bytes per tag for the tag itself and its len
  */
-static unsigned int ieee80211_MFIE_rate_len(struct ieee80211_device *ieee)
+unsigned int ieee80211_MFIE_rate_len(struct ieee80211_device *ieee)
 {
 	unsigned int rate_len = 0;
 
@@ -56,7 +64,7 @@ static unsigned int ieee80211_MFIE_rate_len(struct ieee80211_device *ieee)
  * Then it updates the pointer so that
  * it points after the new MFIE tag added.
  */
-static void ieee80211_MFIE_Brate(struct ieee80211_device *ieee, u8 **tag_p)
+void ieee80211_MFIE_Brate(struct ieee80211_device *ieee, u8 **tag_p)
 {
 	u8 *tag = *tag_p;
 
@@ -73,7 +81,7 @@ static void ieee80211_MFIE_Brate(struct ieee80211_device *ieee, u8 **tag_p)
 	*tag_p = tag;
 }
 
-static void ieee80211_MFIE_Grate(struct ieee80211_device *ieee, u8 **tag_p)
+void ieee80211_MFIE_Grate(struct ieee80211_device *ieee, u8 **tag_p)
 {
 	u8 *tag = *tag_p;
 
@@ -96,9 +104,7 @@ static void ieee80211_MFIE_Grate(struct ieee80211_device *ieee, u8 **tag_p)
 	*tag_p = tag;
 }
 
-
-static void ieee80211_WMM_Info(struct ieee80211_device *ieee, u8 **tag_p)
-{
+void ieee80211_WMM_Info(struct ieee80211_device *ieee, u8 **tag_p) {
 	u8 *tag = *tag_p;
 
 	*tag++ = MFIE_TYPE_GENERIC; //0
@@ -140,7 +146,7 @@ void ieee80211_TURBO_Info(struct ieee80211_device *ieee, u8 **tag_p) {
 }
 #endif
 
-static void enqueue_mgmt(struct ieee80211_device *ieee, struct sk_buff *skb)
+void enqueue_mgmt(struct ieee80211_device *ieee, struct sk_buff *skb)
 {
 	int nh;
 	nh = (ieee->mgmt_queue_head +1) % MGMT_QUEUE_NUM;
@@ -158,7 +164,7 @@ static void enqueue_mgmt(struct ieee80211_device *ieee, struct sk_buff *skb)
 	//return 0;
 }
 
-static struct sk_buff *dequeue_mgmt(struct ieee80211_device *ieee)
+struct sk_buff *dequeue_mgmt(struct ieee80211_device *ieee)
 {
 	struct sk_buff *ret;
 
@@ -173,12 +179,12 @@ static struct sk_buff *dequeue_mgmt(struct ieee80211_device *ieee)
 	return ret;
 }
 
-static void init_mgmt_queue(struct ieee80211_device *ieee)
+void init_mgmt_queue(struct ieee80211_device *ieee)
 {
 	ieee->mgmt_queue_tail = ieee->mgmt_queue_head = 0;
 }
 
-static u8 MgntQuery_MgntFrameTxRate(struct ieee80211_device *ieee)
+u8 MgntQuery_MgntFrameTxRate(struct ieee80211_device *ieee)
 {
 	PRT_HIGH_THROUGHPUT      pHTInfo = ieee->pHTInfo;
 	u8 rate;
@@ -211,7 +217,6 @@ static u8 MgntQuery_MgntFrameTxRate(struct ieee80211_device *ieee)
 	 */
 	return rate;
 }
-
 
 void ieee80211_sta_wakeup(struct ieee80211_device *ieee, short nl);
 
@@ -289,7 +294,6 @@ inline void softmac_ps_mgmt_xmit(struct sk_buff *skb, struct ieee80211_device *i
 	struct ieee80211_hdr_3addr  *header =
 		(struct ieee80211_hdr_3addr  *) skb->data;
 
-
 	if(single){
 
 		header->seq_ctl = cpu_to_le16(ieee->seq_ctrl[0] << 4);
@@ -357,8 +361,7 @@ inline struct sk_buff *ieee80211_probe_req(struct ieee80211_device *ieee)
 }
 
 struct sk_buff *ieee80211_get_beacon_(struct ieee80211_device *ieee);
-
-static void ieee80211_send_beacon(struct ieee80211_device *ieee)
+void ieee80211_send_beacon(struct ieee80211_device *ieee)
 {
 	struct sk_buff *skb;
 	if(!ieee->ieee_up)
@@ -383,8 +386,7 @@ static void ieee80211_send_beacon(struct ieee80211_device *ieee)
 	//spin_unlock_irqrestore(&ieee->beacon_lock,flags);
 }
 
-
-static void ieee80211_send_beacon_cb(unsigned long _ieee)
+void ieee80211_send_beacon_cb(unsigned long _ieee)
 {
 	struct ieee80211_device *ieee =
 		(struct ieee80211_device *) _ieee;
@@ -395,8 +397,7 @@ static void ieee80211_send_beacon_cb(unsigned long _ieee)
 	spin_unlock_irqrestore(&ieee->beacon_lock, flags);
 }
 
-
-static void ieee80211_send_probe(struct ieee80211_device *ieee)
+void ieee80211_send_probe(struct ieee80211_device *ieee)
 {
 	struct sk_buff *skb;
 
@@ -469,7 +470,6 @@ void ieee80211_softmac_scan_syncro(struct ieee80211_device *ieee)
 		if (ieee->sync_scan_hurryup)
 			goto out;
 
-
 		msleep_interruptible_rsl(IEEE80211_SOFTMAC_SCAN_TIME);
 
 	}
@@ -486,8 +486,7 @@ out:
 }
 }
 
-
-static void ieee80211_softmac_scan_wq(struct work_struct *work)
+void ieee80211_softmac_scan_wq(struct work_struct *work)
 {
 	struct delayed_work *dwork = container_of(work, struct delayed_work, work);
 	struct ieee80211_device *ieee = container_of(dwork, struct ieee80211_device, softmac_scan_wq);
@@ -515,7 +514,6 @@ static void ieee80211_softmac_scan_wq(struct work_struct *work)
 	if(channel_map[ieee->current_network.channel] == 1)
 	ieee80211_send_probe_requests(ieee);
 
-
 	queue_delayed_work(ieee->wq, &ieee->softmac_scan_wq, IEEE80211_SOFTMAC_SCAN_TIME);
 
 	up(&ieee->scan_sem);
@@ -529,9 +527,7 @@ out:
 	up(&ieee->scan_sem);
 }
 
-
-
-static void ieee80211_beacons_start(struct ieee80211_device *ieee)
+void ieee80211_beacons_start(struct ieee80211_device *ieee)
 {
 	unsigned long flags;
 	spin_lock_irqsave(&ieee->beacon_lock,flags);
@@ -542,7 +538,7 @@ static void ieee80211_beacons_start(struct ieee80211_device *ieee)
 	spin_unlock_irqrestore(&ieee->beacon_lock,flags);
 }
 
-static void ieee80211_beacons_stop(struct ieee80211_device *ieee)
+void ieee80211_beacons_stop(struct ieee80211_device *ieee)
 {
 	unsigned long flags;
 
@@ -555,7 +551,6 @@ static void ieee80211_beacons_stop(struct ieee80211_device *ieee)
 
 }
 
-
 void ieee80211_stop_send_beacons(struct ieee80211_device *ieee)
 {
 	if(ieee->stop_send_beacons)
@@ -563,7 +558,6 @@ void ieee80211_stop_send_beacons(struct ieee80211_device *ieee)
 	if (ieee->softmac_features & IEEE_SOFTMAC_BEACONS)
 		ieee80211_beacons_stop(ieee);
 }
-
 
 void ieee80211_start_send_beacons(struct ieee80211_device *ieee)
 {
@@ -573,8 +567,7 @@ void ieee80211_start_send_beacons(struct ieee80211_device *ieee)
 		ieee80211_beacons_start(ieee);
 }
 
-
-static void ieee80211_softmac_stop_scan(struct ieee80211_device *ieee)
+void ieee80211_softmac_stop_scan(struct ieee80211_device *ieee)
 {
 //	unsigned long flags;
 
@@ -602,7 +595,7 @@ void ieee80211_stop_scan(struct ieee80211_device *ieee)
 }
 
 /* called with ieee->lock held */
-static void ieee80211_start_scan(struct ieee80211_device *ieee)
+void ieee80211_start_scan(struct ieee80211_device *ieee)
 {
 	if(IS_DOT11D_ENABLE(ieee) )
 	{
@@ -646,7 +639,6 @@ inline struct sk_buff *ieee80211_authentication_req(struct ieee80211_network *be
 	struct ieee80211_authentication *auth;
 	int len = sizeof(struct ieee80211_authentication) + challengelen + ieee->tx_headroom;
 
-
 	skb = dev_alloc_skb(len);
 	if (!skb) return NULL;
 
@@ -680,8 +672,7 @@ inline struct sk_buff *ieee80211_authentication_req(struct ieee80211_network *be
 
 }
 
-
-static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *dest)
+static struct sk_buff* ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *dest)
 {
 	u8 *tag;
 	int beacon_size;
@@ -689,7 +680,7 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	struct sk_buff *skb = NULL;
 	int encrypt;
 	int atim_len,erp_len;
-	struct ieee80211_crypt_data *crypt;
+	struct ieee80211_crypt_data* crypt;
 
 	char *ssid = ieee->current_network.ssid;
 	int ssid_len = ieee->current_network.ssid_len;
@@ -698,12 +689,12 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	int wpa_ie_len = ieee->wpa_ie_len;
 	u8 erpinfo_content = 0;
 
-	u8 *tmp_ht_cap_buf;
+	u8* tmp_ht_cap_buf;
 	u8 tmp_ht_cap_len=0;
-	u8 *tmp_ht_info_buf;
+	u8* tmp_ht_info_buf;
 	u8 tmp_ht_info_len=0;
 	PRT_HIGH_THROUGHPUT	pHTInfo = ieee->pHTInfo;
-	u8 *tmp_generic_ie_buf=NULL;
+	u8* tmp_generic_ie_buf=NULL;
 	u8 tmp_generic_ie_len=0;
 
 	if(rate_ex_len > 0) rate_ex_len+=2;
@@ -718,20 +709,17 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	else
 		erp_len = 0;
 
-
 	crypt = ieee->crypt[ieee->tx_keyidx];
-
 
 	encrypt = ieee->host_encrypt && crypt && crypt->ops &&
 		((0 == strcmp(crypt->ops->name, "WEP") || wpa_ie_len));
 	//HT ralated element
-	tmp_ht_cap_buf =(u8 *) &(ieee->pHTInfo->SelfHTCap);
+	tmp_ht_cap_buf =(u8*) &(ieee->pHTInfo->SelfHTCap);
 	tmp_ht_cap_len = sizeof(ieee->pHTInfo->SelfHTCap);
-	tmp_ht_info_buf =(u8 *) &(ieee->pHTInfo->SelfHTInfo);
+	tmp_ht_info_buf =(u8*) &(ieee->pHTInfo->SelfHTInfo);
 	tmp_ht_info_len = sizeof(ieee->pHTInfo->SelfHTInfo);
 	HTConstructCapabilityElement(ieee, tmp_ht_cap_buf, &tmp_ht_cap_len,encrypt);
 	HTConstructInfoElement(ieee,tmp_ht_info_buf,&tmp_ht_info_len, encrypt);
-
 
 	if(pHTInfo->bRegRT2RTAggregation)
 	{
@@ -757,7 +745,7 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	if (!skb)
 		return NULL;
 	skb_reserve(skb, ieee->tx_headroom);
-	beacon_buf = (struct ieee80211_probe_response *) skb_put(skb, (beacon_size - ieee->tx_headroom));
+	beacon_buf = (struct ieee80211_probe_response*) skb_put(skb, (beacon_size - ieee->tx_headroom));
 	memcpy (beacon_buf->header.addr1, dest,ETH_ALEN);
 	memcpy (beacon_buf->header.addr2, ieee->dev->dev_addr, ETH_ALEN);
 	memcpy (beacon_buf->header.addr3, ieee->current_network.bssid, ETH_ALEN);
@@ -777,12 +765,11 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	if (encrypt)
 		beacon_buf->capability |= cpu_to_le16(WLAN_CAPABILITY_PRIVACY);
 
-
 	beacon_buf->header.frame_ctl = cpu_to_le16(IEEE80211_STYPE_PROBE_RESP);
 	beacon_buf->info_element[0].id = MFIE_TYPE_SSID;
 	beacon_buf->info_element[0].len = ssid_len;
 
-	tag = (u8 *) beacon_buf->info_element[0].data;
+	tag = (u8*) beacon_buf->info_element[0].data;
 
 	memcpy(tag, ssid, ssid_len);
 
@@ -833,14 +820,12 @@ static struct sk_buff *ieee80211_probe_resp(struct ieee80211_device *ieee, u8 *d
 	return skb;
 }
 
-
-static struct sk_buff *ieee80211_assoc_resp(struct ieee80211_device *ieee,
-					    u8 *dest)
+struct sk_buff* ieee80211_assoc_resp(struct ieee80211_device *ieee, u8 *dest)
 {
 	struct sk_buff *skb;
-	u8 *tag;
+	u8* tag;
 
-	struct ieee80211_crypt_data *crypt;
+	struct ieee80211_crypt_data* crypt;
 	struct ieee80211_assoc_response_frame *assoc;
 	short encrypt;
 
@@ -864,7 +849,6 @@ static struct sk_buff *ieee80211_assoc_resp(struct ieee80211_device *ieee,
 	assoc->capability = cpu_to_le16(ieee->iw_mode == IW_MODE_MASTER ?
 		WLAN_CAPABILITY_BSS : WLAN_CAPABILITY_IBSS);
 
-
 	if(ieee->short_slot)
 		assoc->capability |= cpu_to_le16(WLAN_CAPABILITY_SHORT_SLOT);
 
@@ -882,7 +866,7 @@ static struct sk_buff *ieee80211_assoc_resp(struct ieee80211_device *ieee,
 	if (ieee->assoc_id == 0x2007) ieee->assoc_id=0;
 	else ieee->assoc_id++;
 
-	tag = (u8 *) skb_put(skb, rate_len);
+	tag = (u8*) skb_put(skb, rate_len);
 
 	ieee80211_MFIE_Brate(ieee, &tag);
 	ieee80211_MFIE_Grate(ieee, &tag);
@@ -890,8 +874,7 @@ static struct sk_buff *ieee80211_assoc_resp(struct ieee80211_device *ieee,
 	return skb;
 }
 
-static struct sk_buff *ieee80211_auth_resp(struct ieee80211_device *ieee,
-					   int status, u8 *dest)
+struct sk_buff* ieee80211_auth_resp(struct ieee80211_device *ieee,int status, u8 *dest)
 {
 	struct sk_buff *skb;
 	struct ieee80211_authentication *auth;
@@ -916,21 +899,19 @@ static struct sk_buff *ieee80211_auth_resp(struct ieee80211_device *ieee,
 	auth->header.frame_ctl = cpu_to_le16(IEEE80211_STYPE_AUTH);
 	return skb;
 
-
 }
 
-static struct sk_buff *ieee80211_null_func(struct ieee80211_device *ieee,
-					   short pwr)
+struct sk_buff* ieee80211_null_func(struct ieee80211_device *ieee,short pwr)
 {
 	struct sk_buff *skb;
-	struct ieee80211_hdr_3addr *hdr;
+	struct ieee80211_hdr_3addr* hdr;
 
 	skb = dev_alloc_skb(sizeof(struct ieee80211_hdr_3addr));
 
 	if (!skb)
 		return NULL;
 
-	hdr = (struct ieee80211_hdr_3addr *)skb_put(skb,sizeof(struct ieee80211_hdr_3addr));
+	hdr = (struct ieee80211_hdr_3addr*)skb_put(skb,sizeof(struct ieee80211_hdr_3addr));
 
 	memcpy(hdr->addr1, ieee->current_network.bssid, ETH_ALEN);
 	memcpy(hdr->addr2, ieee->dev->dev_addr, ETH_ALEN);
@@ -942,11 +923,9 @@ static struct sk_buff *ieee80211_null_func(struct ieee80211_device *ieee,
 
 	return skb;
 
-
 }
 
-
-static void ieee80211_resp_to_assoc_rq(struct ieee80211_device *ieee, u8 *dest)
+void ieee80211_resp_to_assoc_rq(struct ieee80211_device *ieee, u8* dest)
 {
 	struct sk_buff *buf = ieee80211_assoc_resp(ieee, dest);
 
@@ -954,9 +933,7 @@ static void ieee80211_resp_to_assoc_rq(struct ieee80211_device *ieee, u8 *dest)
 		softmac_mgmt_xmit(buf, ieee);
 }
 
-
-static void ieee80211_resp_to_auth(struct ieee80211_device *ieee, int s,
-				   u8 *dest)
+void ieee80211_resp_to_auth(struct ieee80211_device *ieee, int s, u8* dest)
 {
 	struct sk_buff *buf = ieee80211_auth_resp(ieee, s, dest);
 
@@ -964,16 +941,13 @@ static void ieee80211_resp_to_auth(struct ieee80211_device *ieee, int s,
 		softmac_mgmt_xmit(buf, ieee);
 }
 
-
-static void ieee80211_resp_to_probe(struct ieee80211_device *ieee, u8 *dest)
+void ieee80211_resp_to_probe(struct ieee80211_device *ieee, u8 *dest)
 {
-
 
 	struct sk_buff *buf = ieee80211_probe_resp(ieee, dest);
 	if (buf)
 		softmac_mgmt_xmit(buf, ieee);
 }
-
 
 inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beacon,struct ieee80211_device *ieee)
 {
@@ -988,15 +962,15 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 	//u8 suit_select = 0;
 	//unsigned int wpa_len = beacon->wpa_ie_len;
 	//for HT
-	u8 *ht_cap_buf = NULL;
+	u8* ht_cap_buf = NULL;
 	u8 ht_cap_len=0;
-	u8 *realtek_ie_buf=NULL;
+	u8* realtek_ie_buf=NULL;
 	u8 realtek_ie_len=0;
 	int wpa_ie_len= ieee->wpa_ie_len;
 	unsigned int ckip_ie_len=0;
 	unsigned int ccxrm_ie_len=0;
 	unsigned int cxvernum_ie_len=0;
-	struct ieee80211_crypt_data *crypt;
+	struct ieee80211_crypt_data* crypt;
 	int encrypt;
 
 	unsigned int rate_len = ieee80211_MFIE_rate_len(ieee);
@@ -1013,7 +987,7 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 	//Include High Throuput capability && Realtek proprietary
 	if(ieee->pHTInfo->bCurrentHTSupport&&ieee->pHTInfo->bEnableHT)
 	{
-		ht_cap_buf = (u8 *)&(ieee->pHTInfo->SelfHTCap);
+		ht_cap_buf = (u8*)&(ieee->pHTInfo->SelfHTCap);
 		ht_cap_len = sizeof(ieee->pHTInfo->SelfHTCap);
 		HTConstructCapabilityElement(ieee, ht_cap_buf, &ht_cap_len, encrypt);
 		if(ieee->pHTInfo->bCurrentRT2RTAggregation)
@@ -1027,7 +1001,6 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 	if(ieee->qos_support){
 		wmm_info_len = beacon->qos_data.supported?9:0;
 	}
-
 
 	if(beacon->bCkipSupported)
 	{
@@ -1077,7 +1050,6 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 
 	hdr = (struct ieee80211_assoc_request_frame *)
 		skb_put(skb, sizeof(struct ieee80211_assoc_request_frame)+2);
-
 
 	hdr->header.frame_ctl = IEEE80211_STYPE_ASSOC_REQ;
 	hdr->header.duration_id= 37; //FIXME
@@ -1177,7 +1149,6 @@ inline struct sk_buff *ieee80211_association_req(struct ieee80211_network *beaco
 		}
 	}
 
-
 	//choose what wpa_supplicant gives to associate.
 	tag = skb_put(skb, wpa_ie_len);
 	if (wpa_ie_len){
@@ -1247,13 +1218,12 @@ void ieee80211_associate_abort(struct ieee80211_device *ieee)
 	spin_unlock_irqrestore(&ieee->lock, flags);
 }
 
-static void ieee80211_associate_abort_cb(unsigned long dev)
+void ieee80211_associate_abort_cb(unsigned long dev)
 {
 	ieee80211_associate_abort((struct ieee80211_device *) dev);
 }
 
-
-static void ieee80211_associate_step1(struct ieee80211_device *ieee)
+void ieee80211_associate_step1(struct ieee80211_device *ieee)
 {
 	struct ieee80211_network *beacon = &ieee->current_network;
 	struct sk_buff *skb;
@@ -1279,9 +1249,7 @@ static void ieee80211_associate_step1(struct ieee80211_device *ieee)
 	}
 }
 
-static void ieee80211_auth_challenge(struct ieee80211_device *ieee,
-				     u8 *challenge,
-				     int chlen)
+void ieee80211_auth_challenge(struct ieee80211_device *ieee, u8 *challenge, int chlen)
 {
 	u8 *c;
 	struct sk_buff *skb;
@@ -1311,9 +1279,9 @@ static void ieee80211_auth_challenge(struct ieee80211_device *ieee,
 	kfree(challenge);
 }
 
-static void ieee80211_associate_step2(struct ieee80211_device *ieee)
+void ieee80211_associate_step2(struct ieee80211_device *ieee)
 {
-	struct sk_buff *skb;
+	struct sk_buff* skb;
 	struct ieee80211_network *beacon = &ieee->current_network;
 
 	del_timer_sync(&ieee->associate_timer);
@@ -1330,7 +1298,7 @@ static void ieee80211_associate_step2(struct ieee80211_device *ieee)
 		//dev_kfree_skb_any(skb);//edit by thomas
 	}
 }
-static void ieee80211_associate_complete_wq(struct work_struct *work)
+void ieee80211_associate_complete_wq(struct work_struct *work)
 {
 	struct ieee80211_device *ieee = container_of(work, struct ieee80211_device, associate_complete_wq);
 	printk(KERN_INFO "Associated successfully\n");
@@ -1377,7 +1345,7 @@ static void ieee80211_associate_complete_wq(struct work_struct *work)
 	netif_carrier_on(ieee->dev);
 }
 
-static void ieee80211_associate_complete(struct ieee80211_device *ieee)
+void ieee80211_associate_complete(struct ieee80211_device *ieee)
 {
 //	int i;
 //	struct net_device* dev = ieee->dev;
@@ -1388,7 +1356,7 @@ static void ieee80211_associate_complete(struct ieee80211_device *ieee)
 	queue_work(ieee->wq, &ieee->associate_complete_wq);
 }
 
-static void ieee80211_associate_procedure_wq(struct work_struct *work)
+void ieee80211_associate_procedure_wq(struct work_struct *work)
 {
 	struct ieee80211_device *ieee = container_of(work, struct ieee80211_device, associate_procedure_wq);
 	ieee->sync_scan_hurryup = 1;
@@ -1427,7 +1395,6 @@ inline void ieee80211_softmac_new_net(struct ieee80211_device *ieee, struct ieee
 	if ((ieee->iw_mode == IW_MODE_ADHOC) && !(net->capability & WLAN_CAPABILITY_IBSS))
 		return;
 
-
 	if (ieee->iw_mode == IW_MODE_INFRA || ieee->iw_mode == IW_MODE_ADHOC){
 		/* if the user specified the AP MAC, we need also the essid
 		 * This could be obtained by beacons or, if the network does not
@@ -1439,7 +1406,6 @@ inline void ieee80211_softmac_new_net(struct ieee80211_device *ieee, struct ieee
 		apmatch = (memcmp(ieee->current_network.bssid, net->bssid, ETH_ALEN)==0);
 		ssidmatch = (ieee->current_network.ssid_len == net->ssid_len)&&\
 				(!strncmp(ieee->current_network.ssid, net->ssid, net->ssid_len));
-
 
 		if (	/* if the user set the AP check if match.
 			 * if the network does not broadcast essid we check the user supplyed ANY essid
@@ -1534,8 +1500,7 @@ void ieee80211_softmac_check_all_nets(struct ieee80211_device *ieee)
 
 }
 
-
-static inline u16 auth_parse(struct sk_buff *skb, u8 **challenge, int *chlen)
+static inline u16 auth_parse(struct sk_buff *skb, u8** challenge, int *chlen)
 {
 	struct ieee80211_authentication *a;
 	u8 *t;
@@ -1544,7 +1509,7 @@ static inline u16 auth_parse(struct sk_buff *skb, u8 **challenge, int *chlen)
 		return 0xcafe;
 	}
 	*challenge = NULL;
-	a = (struct ieee80211_authentication *) skb->data;
+	a = (struct ieee80211_authentication*) skb->data;
 	if(skb->len > (sizeof(struct ieee80211_authentication) +3)){
 		t = skb->data + sizeof(struct ieee80211_authentication);
 
@@ -1560,8 +1525,7 @@ static inline u16 auth_parse(struct sk_buff *skb, u8 **challenge, int *chlen)
 
 }
 
-
-static int auth_rq_parse(struct sk_buff *skb, u8 *dest)
+int auth_rq_parse(struct sk_buff *skb,u8* dest)
 {
 	struct ieee80211_authentication *a;
 
@@ -1569,7 +1533,7 @@ static int auth_rq_parse(struct sk_buff *skb, u8 *dest)
 		IEEE80211_DEBUG_MGMT("invalid len in auth request: %d\n",skb->len);
 		return -1;
 	}
-	a = (struct ieee80211_authentication *) skb->data;
+	a = (struct ieee80211_authentication*) skb->data;
 
 	memcpy(dest,a->header.addr2, ETH_ALEN);
 
@@ -1594,7 +1558,7 @@ static short probe_rq_parse(struct ieee80211_device *ieee, struct sk_buff *skb, 
 
 	memcpy(src,header->addr2, ETH_ALEN);
 
-	skbend = (u8 *)skb->data + skb->len;
+	skbend = (u8*)skb->data + skb->len;
 
 	tag = skb->data + sizeof (struct ieee80211_hdr_3addr  );
 
@@ -1617,7 +1581,7 @@ static short probe_rq_parse(struct ieee80211_device *ieee, struct sk_buff *skb, 
 
 }
 
-static int assoc_rq_parse(struct sk_buff *skb, u8 *dest)
+int assoc_rq_parse(struct sk_buff *skb,u8* dest)
 {
 	struct ieee80211_assoc_request_frame *a;
 
@@ -1628,7 +1592,7 @@ static int assoc_rq_parse(struct sk_buff *skb, u8 *dest)
 		return -1;
 	}
 
-	a = (struct ieee80211_assoc_request_frame *) skb->data;
+	a = (struct ieee80211_assoc_request_frame*) skb->data;
 
 	memcpy(dest,a->header.addr2,ETH_ALEN);
 
@@ -1645,7 +1609,7 @@ static inline u16 assoc_parse(struct ieee80211_device *ieee, struct sk_buff *skb
 		return 0xcafe;
 	}
 
-	response_head = (struct ieee80211_assoc_response_frame *) skb->data;
+	response_head = (struct ieee80211_assoc_response_frame*) skb->data;
 	*aid = le16_to_cpu(response_head->aid) & 0x3fff;
 
 	status_code = le16_to_cpu(response_head->status);
@@ -1709,10 +1673,7 @@ ieee80211_rx_assoc_rq(struct ieee80211_device *ieee, struct sk_buff *skb)
 	//FIXME
 }
 
-
-
-static void ieee80211_sta_ps_send_null_frame(struct ieee80211_device *ieee,
-					     short pwr)
+void ieee80211_sta_ps_send_null_frame(struct ieee80211_device *ieee, short pwr)
 {
 
 	struct sk_buff *buf = ieee80211_null_func(ieee, pwr);
@@ -1722,9 +1683,7 @@ static void ieee80211_sta_ps_send_null_frame(struct ieee80211_device *ieee,
 
 }
 
-
-static short ieee80211_sta_ps_sleep(struct ieee80211_device *ieee, u32 *time_h,
-				    u32 *time_l)
+short ieee80211_sta_ps_sleep(struct ieee80211_device *ieee, u32 *time_h, u32 *time_l)
 {
 	int timeout = ieee->ps_timeout;
 	u8 dtim;
@@ -1769,10 +1728,9 @@ static short ieee80211_sta_ps_sleep(struct ieee80211_device *ieee, u32 *time_h,
 
 	return 1;
 
-
 }
 
-static inline void ieee80211_sta_ps(struct ieee80211_device *ieee)
+inline void ieee80211_sta_ps(struct ieee80211_device *ieee)
 {
 
 	u32 th,tl;
@@ -1810,7 +1768,6 @@ static inline void ieee80211_sta_ps(struct ieee80211_device *ieee)
 
 			if(ieee->ps_is_queue_empty(ieee->dev)){
 
-
 				ieee->sta_sleep = 2;
 
 				ieee->ps_request_tx_ack(ieee->dev);
@@ -1823,7 +1780,6 @@ static inline void ieee80211_sta_ps(struct ieee80211_device *ieee)
 			spin_unlock_irqrestore(&ieee->mgmt_tx_lock, flags2);
 
 		}
-
 
 	}else if(sleep == 2){
 //#warning CHECK_LOCK_HERE
@@ -1889,11 +1845,10 @@ void ieee80211_ps_tx_ack(struct ieee80211_device *ieee, short success)
 	}
 	spin_unlock_irqrestore(&ieee->lock, flags);
 }
-static void ieee80211_process_action(struct ieee80211_device *ieee,
-				     struct sk_buff *skb)
+void ieee80211_process_action(struct ieee80211_device* ieee, struct sk_buff* skb)
 {
-	struct ieee80211_hdr *header = (struct ieee80211_hdr *)skb->data;
-	u8 *act = ieee80211_get_payload(header);
+	struct ieee80211_hdr* header = (struct ieee80211_hdr*)skb->data;
+	u8* act = ieee80211_get_payload(header);
 	u8 tmp = 0;
 //	IEEE80211_DEBUG_DATA(IEEE80211_DL_DATA|IEEE80211_DL_BA, skb->data, skb->len);
 	if (act == NULL)
@@ -1928,7 +1883,7 @@ ieee80211_rx_frame_softmac(struct ieee80211_device *ieee, struct sk_buff *skb,
 {
 	struct ieee80211_hdr_3addr *header = (struct ieee80211_hdr_3addr *) skb->data;
 	u16 errcode;
-	u8 *challenge;
+	u8* challenge;
 	int chlen=0;
 	int aid;
 	struct ieee80211_assoc_response_frame *assoc_resp;
@@ -1961,15 +1916,14 @@ ieee80211_rx_frame_softmac(struct ieee80211_device *ieee, struct sk_buff *skb,
 			struct ieee80211_network network_resp;
 			struct ieee80211_network *network = &network_resp;
 
-			errcode = assoc_parse(ieee, skb, &aid);
-			if (!errcode) {
+			if (0 == (errcode=assoc_parse(ieee,skb, &aid))){
 				ieee->state=IEEE80211_LINKED;
 				ieee->assoc_id = aid;
 				ieee->softmac_stats.rx_ass_ok++;
 				/* station support qos */
 				/* Let the register setting defaultly with Legacy station */
 				if(ieee->qos_support) {
-					assoc_resp = (struct ieee80211_assoc_response_frame *)skb->data;
+					assoc_resp = (struct ieee80211_assoc_response_frame*)skb->data;
 					memset(network, 0, sizeof(*network));
 					if (ieee80211_parse_info_param(ieee,assoc_resp->info_element,\
 								rx_stats->len - sizeof(*assoc_resp),\
@@ -1982,7 +1936,7 @@ ieee80211_rx_frame_softmac(struct ieee80211_device *ieee, struct sk_buff *skb,
 						memcpy(ieee->pHTInfo->PeerHTInfoBuf, network->bssht.bdHTInfoBuf, network->bssht.bdHTInfoLen);
 					}
 					if (ieee->handle_assoc_response != NULL)
-						ieee->handle_assoc_response(ieee->dev, (struct ieee80211_assoc_response_frame *)header, network);
+						ieee->handle_assoc_response(ieee->dev, (struct ieee80211_assoc_response_frame*)header, network);
 				}
 				ieee80211_associate_complete(ieee);
 			} else {
@@ -2020,8 +1974,7 @@ ieee80211_rx_frame_softmac(struct ieee80211_device *ieee, struct sk_buff *skb,
 
 					IEEE80211_DEBUG_MGMT("Received authentication response");
 
-					errcode = auth_parse(skb, &challenge, &chlen);
-					if (!errcode) {
+					if (0 == (errcode=auth_parse(skb, &challenge, &chlen))){
 						if(ieee->open_wep || !challenge){
 							ieee->state = IEEE80211_ASSOCIATING_AUTHENTICATED;
 							ieee->softmac_stats.rx_auth_rs_ok++;
@@ -2193,7 +2146,7 @@ void ieee80211_softmac_xmit(struct ieee80211_txb *txb, struct ieee80211_device *
 }
 
 /* called with ieee->lock acquired */
-static void ieee80211_resume_tx(struct ieee80211_device *ieee)
+void ieee80211_resume_tx(struct ieee80211_device *ieee)
 {
 	int i;
 	for(i = ieee->tx_pending.frag; i < ieee->tx_pending.txb->nr_frags; i++) {
@@ -2212,11 +2165,9 @@ static void ieee80211_resume_tx(struct ieee80211_device *ieee)
 		}
 	}
 
-
 	ieee80211_txb_free(ieee->tx_pending.txb);
 	ieee->tx_pending.txb = NULL;
 }
-
 
 void ieee80211_reset_queue(struct ieee80211_device *ieee)
 {
@@ -2273,7 +2224,6 @@ exit :
 	spin_unlock_irqrestore(&ieee->lock,flags);
 }
 
-
 void ieee80211_stop_queue(struct ieee80211_device *ieee)
 {
 	//unsigned long flags;
@@ -2287,7 +2237,6 @@ void ieee80211_stop_queue(struct ieee80211_device *ieee)
 	//spin_unlock_irqrestore(&ieee->lock,flags);
 
 }
-
 
 inline void ieee80211_randomize_cell(struct ieee80211_device *ieee)
 {
@@ -2322,7 +2271,7 @@ void ieee80211_start_master_bss(struct ieee80211_device *ieee)
 	netif_carrier_on(ieee->dev);
 }
 
-static void ieee80211_start_monitor_mode(struct ieee80211_device *ieee)
+void ieee80211_start_monitor_mode(struct ieee80211_device *ieee)
 {
 	if(ieee->raw_tx){
 
@@ -2332,7 +2281,7 @@ static void ieee80211_start_monitor_mode(struct ieee80211_device *ieee)
 		netif_carrier_on(ieee->dev);
 	}
 }
-static void ieee80211_start_ibss_wq(struct work_struct *work)
+void ieee80211_start_ibss_wq(struct work_struct *work)
 {
 
 	struct delayed_work *dwork = container_of(work, struct delayed_work, work);
@@ -2358,7 +2307,6 @@ static void ieee80211_start_ibss_wq(struct work_struct *work)
 
 	/* check if we have this cell in our network list */
 	ieee80211_softmac_check_all_nets(ieee);
-
 
 //	if((IS_DOT11D_ENABLE(ieee)) && (ieee->state == IEEE80211_NOLINK))
 	if (ieee->state == IEEE80211_NOLINK)
@@ -2489,7 +2437,6 @@ void ieee80211_start_bss(struct ieee80211_device *ieee)
 void ieee80211_disassociate(struct ieee80211_device *ieee)
 {
 
-
 	netif_carrier_off(ieee->dev);
 	if (ieee->softmac_features & IEEE_SOFTMAC_TX_QUEUE)
 			ieee80211_reset_queue(ieee);
@@ -2505,7 +2452,7 @@ void ieee80211_disassociate(struct ieee80211_device *ieee)
 	notify_wx_assoc_event(ieee);
 
 }
-static void ieee80211_associate_retry_wq(struct work_struct *work)
+void ieee80211_associate_retry_wq(struct work_struct *work)
 {
 	struct delayed_work *dwork = container_of(work, struct delayed_work, work);
 	struct ieee80211_device *ieee = container_of(dwork, struct ieee80211_device, associate_retry_wq);
@@ -2593,7 +2540,6 @@ void ieee80211_softmac_stop_protocol(struct ieee80211_device *ieee)
 	up(&ieee->wx_sem);
 }
 
-
 void ieee80211_stop_protocol(struct ieee80211_device *ieee)
 {
 	if (!ieee->proto_started)
@@ -2650,7 +2596,6 @@ void ieee80211_start_protocol(struct ieee80211_device *ieee)
 
 	ieee->init_wmmparam_flag = 0;//reinitialize AC_xx_PARAM registers.
 
-
 	/* if the user set the MAC of the ad-hoc cell and then
 	 * switch to managed mode, shall we  make sure that association
 	 * attempts does not fail just because the user provide the essid
@@ -2668,7 +2613,6 @@ void ieee80211_start_protocol(struct ieee80211_device *ieee)
 	else if(ieee->iw_mode == IW_MODE_MONITOR)
 		ieee80211_start_monitor_mode(ieee);
 }
-
 
 #define DRV_NAME  "Ieee80211"
 void ieee80211_softmac_init(struct ieee80211_device *ieee)
@@ -2734,7 +2678,6 @@ void ieee80211_softmac_init(struct ieee80211_device *ieee)
 	INIT_DELAYED_WORK(&ieee->associate_retry_wq, ieee80211_associate_retry_wq);
 	INIT_WORK(&ieee->wx_sync_scan_wq,ieee80211_wx_sync_scan_wq);
 
-
 	sema_init(&ieee->wx_sem, 1);
 	sema_init(&ieee->scan_sem, 1);
 
@@ -2765,7 +2708,6 @@ void ieee80211_softmac_free(struct ieee80211_device *ieee)
  * this is stolen from the ipw2200 driver               *
  ********************************************************/
 
-
 static int ieee80211_wpa_enable(struct ieee80211_device *ieee, int value)
 {
 	/* This is called when wpa_supplicant loads and closes the driver
@@ -2775,16 +2717,13 @@ static int ieee80211_wpa_enable(struct ieee80211_device *ieee, int value)
 	return 0;
 }
 
-
-static void ieee80211_wpa_assoc_frame(struct ieee80211_device *ieee,
-				      char *wpa_ie, int wpa_ie_len)
+void ieee80211_wpa_assoc_frame(struct ieee80211_device *ieee, char *wpa_ie, int wpa_ie_len)
 {
 	/* make sure WPA is enabled */
 	ieee80211_wpa_enable(ieee, 1);
 
 	ieee80211_disassociate(ieee);
 }
-
 
 static int ieee80211_wpa_mlme(struct ieee80211_device *ieee, int command, int reason)
 {
@@ -2807,7 +2746,6 @@ static int ieee80211_wpa_mlme(struct ieee80211_device *ieee, int command, int re
 
 	return ret;
 }
-
 
 static int ieee80211_wpa_set_wpa_ie(struct ieee80211_device *ieee,
 			      struct ieee_param *param, int plen)
@@ -2862,7 +2800,6 @@ static int ieee80211_wpa_set_auth_algs(struct ieee80211_device *ieee, int value)
 		ieee->open_wep = 1;
 		ieee->auth_mode = 2;
 	}
-
 
 	if (ieee->set_security)
 		ieee->set_security(ieee->dev, &sec);
@@ -3125,11 +3062,10 @@ inline struct sk_buff *ieee80211_disassociate_skb(
 	return skb;
 }
 
-
 void
 SendDisassociation(
 		struct ieee80211_device *ieee,
-		u8					*asSta,
+		u8*					asSta,
 		u8						asRsn
 )
 {
@@ -3155,9 +3091,14 @@ int ieee80211_wpa_supplicant_ioctl(struct ieee80211_device *ieee, struct iw_poin
 		goto out;
 	}
 
-	param = memdup_user(p->pointer, p->length);
-	if (IS_ERR(param)) {
-		ret = PTR_ERR(param);
+	param = kmalloc(p->length, GFP_KERNEL);
+	if (param == NULL){
+		ret = -ENOMEM;
+		goto out;
+	}
+	if (copy_from_user(param, p->pointer, p->length)) {
+		kfree(param);
+		ret = -EFAULT;
 		goto out;
 	}
 

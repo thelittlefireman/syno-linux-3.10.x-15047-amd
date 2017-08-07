@@ -8,7 +8,6 @@
  *             Johan Adolfsson  (read/set directions, write, port G)
  */
 
-
 #include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/slab.h>
@@ -106,7 +105,6 @@ static volatile unsigned char *shads[NUM_PORTS] = {
 #define CONFIG_ETRAX_PB_CHANGEABLE_BITS 0xFF
 #endif
 
-
 static unsigned char changeable_dir[NUM_PORTS] = {
 	CONFIG_ETRAX_PA_CHANGEABLE_DIR,
 	CONFIG_ETRAX_PB_CHANGEABLE_DIR
@@ -138,7 +136,6 @@ static unsigned long dir_g_out_bits;
 static unsigned long dir_g_shadow; /* 1=output */
 
 #define USE_PORTS(priv) ((priv)->minor <= GPIO_MINOR_B)
-
 
 static unsigned int gpio_poll(struct file *file, poll_table *wait)
 {
@@ -303,8 +300,6 @@ out:
 	spin_unlock_irqrestore(&gpio_lock, flags);
 	return retval;
 }
-
-
 
 static int
 gpio_open(struct inode *inode, struct file *filp)
@@ -838,13 +833,13 @@ static int __init gpio_init(void)
 	 * in some tests.
 	 */
 	res = request_irq(TIMER0_IRQ_NBR, gpio_poll_timer_interrupt,
-		IRQF_SHARED, "gpio poll", gpio_name);
+		IRQF_SHARED | IRQF_DISABLED, "gpio poll", gpio_name);
 	if (res) {
 		printk(KERN_CRIT "err: timer0 irq for gpio\n");
 		return res;
 	}
 	res = request_irq(PA_IRQ_NBR, gpio_interrupt,
-		IRQF_SHARED, "gpio PA", gpio_name);
+		IRQF_SHARED | IRQF_DISABLED, "gpio PA", gpio_name);
 	if (res)
 		printk(KERN_CRIT "err: PA irq for gpio\n");
 
@@ -853,4 +848,3 @@ static int __init gpio_init(void)
 
 /* this makes sure that gpio_init is called during kernel boot */
 module_init(gpio_init);
-

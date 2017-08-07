@@ -152,7 +152,6 @@ static struct ib_mw *nes_alloc_mw(struct ib_pd *ibpd, enum ib_mw_type type)
 	return ibmw;
 }
 
-
 /**
  * nes_dealloc_mw
  */
@@ -203,7 +202,6 @@ static int nes_dealloc_mw(struct ib_mw *ibmw)
 
 	return err;
 }
-
 
 /**
  * nes_bind_mw
@@ -278,7 +276,6 @@ static int nes_bind_mw(struct ib_qp *ibqp, struct ib_mw *ibmw,
 	return 0;
 }
 
-
 /*
  * nes_alloc_fast_mr
  */
@@ -293,7 +290,6 @@ static int alloc_fast_reg_mr(struct nes_device *nesdev, struct nes_pd *nespd,
 	u32 opcode = 0;
 	u16 major_code;
 	u64 region_length = page_count * PAGE_SIZE;
-
 
 	cqp_request = nes_get_cqp_request(nesdev);
 	if (cqp_request == NULL) {
@@ -559,7 +555,6 @@ static int nes_query_device(struct ib_device *ibdev, struct ib_device_attr *prop
 	return 0;
 }
 
-
 /**
  * nes_query_port
  */
@@ -606,7 +601,6 @@ static int nes_query_port(struct ib_device *ibdev, u8 port, struct ib_port_attr 
 	return 0;
 }
 
-
 /**
  * nes_query_pkey
  */
@@ -615,7 +609,6 @@ static int nes_query_pkey(struct ib_device *ibdev, u8 port, u16 index, u16 *pkey
 	*pkey = 0;
 	return 0;
 }
-
 
 /**
  * nes_query_gid
@@ -630,7 +623,6 @@ static int nes_query_gid(struct ib_device *ibdev, u8 port,
 
 	return 0;
 }
-
 
 /**
  * nes_alloc_ucontext - Allocate the user context data structure. This keeps track
@@ -647,7 +639,6 @@ static struct ib_ucontext *nes_alloc_ucontext(struct ib_device *ibdev,
 	struct nes_ucontext *nes_ucontext;
 	struct nes_ib_device *nesibdev = nesvnic->nesibdev;
 
-
 	if (ib_copy_from_udata(&req, udata, sizeof(struct nes_alloc_ucontext_req))) {
 		printk(KERN_ERR PFX "Invalid structure size on allocate user context.\n");
 		return ERR_PTR(-EINVAL);
@@ -658,7 +649,6 @@ static struct ib_ucontext *nes_alloc_ucontext(struct ib_device *ibdev,
 			req.userspace_ver, NES_ABI_USERSPACE_VER);
 		return ERR_PTR(-EINVAL);
 	}
-
 
 	memset(&uresp, 0, sizeof uresp);
 
@@ -678,7 +668,6 @@ static struct ib_ucontext *nes_alloc_ucontext(struct ib_device *ibdev,
 			((sizeof(struct nes_hw_qp_wqe) * uresp.max_qps * 2) + PAGE_SIZE-1) /
 			PAGE_SIZE;
 
-
 	if (ib_copy_to_udata(udata, &uresp, sizeof uresp)) {
 		kfree(nes_ucontext);
 		return ERR_PTR(-EFAULT);
@@ -689,7 +678,6 @@ static struct ib_ucontext *nes_alloc_ucontext(struct ib_device *ibdev,
 	atomic_set(&nes_ucontext->usecnt, 1);
 	return &nes_ucontext->ibucontext;
 }
-
 
 /**
  * nes_dealloc_ucontext
@@ -706,7 +694,6 @@ static int nes_dealloc_ucontext(struct ib_ucontext *context)
 	return 0;
 }
 
-
 /**
  * nes_mmap
  */
@@ -720,7 +707,6 @@ static int nes_mmap(struct ib_ucontext *context, struct vm_area_struct *vma)
 	struct nes_qp *nesqp;
 
 	nes_ucontext = to_nesucontext(context);
-
 
 	if (vma->vm_pgoff >= nes_ucontext->mmap_wq_offset) {
 		index = (vma->vm_pgoff - nes_ucontext->mmap_wq_offset) * PAGE_SIZE;
@@ -761,7 +747,6 @@ static int nes_mmap(struct ib_ucontext *context, struct vm_area_struct *vma)
 
 	return -ENOSYS;
 }
-
 
 /**
  * nes_alloc_pd
@@ -829,7 +814,6 @@ static struct ib_pd *nes_alloc_pd(struct ib_device *ibdev,
 	return &nespd->ibpd;
 }
 
-
 /**
  * nes_dealloc_pd
  */
@@ -861,7 +845,6 @@ static int nes_dealloc_pd(struct ib_pd *ibpd)
 	return 0;
 }
 
-
 /**
  * nes_create_ah
  */
@@ -870,7 +853,6 @@ static struct ib_ah *nes_create_ah(struct ib_pd *pd, struct ib_ah_attr *ah_attr)
 	return ERR_PTR(-ENOSYS);
 }
 
-
 /**
  * nes_destroy_ah
  */
@@ -878,7 +860,6 @@ static int nes_destroy_ah(struct ib_ah *ah)
 {
 	return -ENOSYS;
 }
-
 
 /**
  * nes_get_encoded_size
@@ -898,8 +879,6 @@ static inline u8 nes_get_encoded_size(int *size)
 	}
 	return (encoded_size);
 }
-
-
 
 /**
  * nes_setup_virt_qp
@@ -1022,7 +1001,6 @@ static int nes_setup_virt_qp(struct nes_qp *nesqp, struct nes_pbl *nespbl,
 	return 0;
 }
 
-
 /**
  * nes_setup_mmap_qp
  */
@@ -1070,7 +1048,6 @@ static int nes_setup_mmap_qp(struct nes_qp *nesqp, struct nes_vnic *nesvnic,
 	return 0;
 }
 
-
 /**
  * nes_free_qp_mem() is to free up the qp's pci_alloc_consistent() memory.
  */
@@ -1095,7 +1072,6 @@ static inline void nes_free_qp_mem(struct nes_device *nesdev,
 		}
 	}
 }
-
 
 /**
  * nes_create_qp
@@ -1191,8 +1167,6 @@ static struct ib_qp *nes_create_qp(struct ib_pd *ibpd,
 				if (req.user_wqe_buffers) {
 					virt_wqs = 1;
 				}
-				if (req.user_qp_buffer)
-					nesqp->nesuqp_addr = req.user_qp_buffer;
 				if ((ibpd->uobject) && (ibpd->uobject->context)) {
 					nesqp->user_mode = 1;
 					nes_ucontext = to_nesucontext(ibpd->uobject->context);
@@ -1286,7 +1260,6 @@ static struct ib_qp *nes_create_qp(struct ib_pd *ibpd,
 			nesqp->nesqp_context->sq_addr_low = cpu_to_le32((u32)u64temp);
 			nesqp->nesqp_context->sq_addr_high = cpu_to_le32((u32)(u64temp >> 32));
 
-
 			if (!virt_wqs) {
 				u64temp = (u64)nesqp->hwqp.sq_pbase;
 				nesqp->nesqp_context->sq_addr_low = cpu_to_le32((u32)u64temp);
@@ -1328,7 +1301,6 @@ static struct ib_qp *nes_create_qp(struct ib_pd *ibpd,
 				nes_debug(NES_DBG_QP, "Disabling MPA crc checking due to module option.\n");
 				nesqp->nesqp_context->ird_ord_sizes |= cpu_to_le32(NES_QPCONTEXT_ORDIRD_RNMC);
 			}
-
 
 			/* Create the QP */
 			cqp_request = nes_get_cqp_request(nesdev);
@@ -1386,7 +1358,6 @@ static struct ib_qp *nes_create_qp(struct ib_pd *ibpd,
 
 			if (ibpd->uobject) {
 				uresp.mmap_sq_db_index = nesqp->mmap_sq_db_index;
-				uresp.mmap_rq_db_index = 0;
 				uresp.actual_sq_size = sq_size;
 				uresp.actual_rq_size = rq_size;
 				uresp.qp_id = nesqp->hwqp.qp_id;
@@ -1455,7 +1426,6 @@ static void nes_clean_cq(struct nes_qp *nesqp, struct nes_cq *nescq)
 	spin_unlock_irqrestore(&nescq->lock, flags);
 }
 
-
 /**
  * nes_destroy_qp
  */
@@ -1523,7 +1493,6 @@ static int nes_destroy_qp(struct ib_qp *ibqp)
 	return 0;
 }
 
-
 /**
  * nes_create_cq
  */
@@ -1569,7 +1538,6 @@ static struct ib_cq *nes_create_cq(struct ib_device *ibdev, int entries,
 	nescq->hw_cq.cq_size = max(entries + 1, 5);
 	nescq->hw_cq.cq_number = cq_num;
 	nescq->ibcq.cqe = nescq->hw_cq.cq_size - 1;
-
 
 	if (context) {
 		nes_ucontext = to_nesucontext(context);
@@ -1770,7 +1738,7 @@ static struct ib_cq *nes_create_cq(struct ib_device *ibdev, int entries,
 		resp.cq_id = nescq->hw_cq.cq_number;
 		resp.cq_size = nescq->hw_cq.cq_size;
 		resp.mmap_db_index = 0;
-		if (ib_copy_to_udata(udata, &resp, sizeof resp - sizeof resp.reserved)) {
+		if (ib_copy_to_udata(udata, &resp, sizeof resp)) {
 			nes_free_resource(nesadapter, nesadapter->allocated_cqs, cq_num);
 			kfree(nescq);
 			return ERR_PTR(-EFAULT);
@@ -1779,7 +1747,6 @@ static struct ib_cq *nes_create_cq(struct ib_device *ibdev, int entries,
 
 	return &nescq->ibcq;
 }
-
 
 /**
  * nes_destroy_cq
@@ -1918,7 +1885,6 @@ static u32 root_256(struct nes_device *nesdev,
 
 	return 1;
 }
-
 
 /**
  * nes_reg_mr
@@ -2085,7 +2051,6 @@ static int nes_reg_mr(struct nes_device *nesdev, struct nes_pd *nespd,
 	*used_4k_pbls = use_4k_pbls;
 	return 0;
 }
-
 
 /**
  * nes_reg_phys_mr
@@ -2276,7 +2241,6 @@ static struct ib_mr *nes_reg_phys_mr(struct ib_pd *ib_pd,
 	return ibmr;
 }
 
-
 /**
  * nes_get_dma_mr
  */
@@ -2291,7 +2255,6 @@ static struct ib_mr *nes_get_dma_mr(struct ib_pd *pd, int acc)
 	bl.addr = 0;
 	return nes_reg_phys_mr(pd, &bl, 1, acc, &kva);
 }
-
 
 /**
  * nes_reg_user_mr
@@ -2309,7 +2272,7 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	struct nes_device *nesdev = nesvnic->nesdev;
 	struct nes_adapter *nesadapter = nesdev->nesadapter;
 	struct ib_mr *ibmr = ERR_PTR(-EINVAL);
-	struct scatterlist *sg;
+	struct ib_umem_chunk *chunk;
 	struct nes_ucontext *nes_ucontext;
 	struct nes_pbl *nespbl;
 	struct nes_mr *nesmr;
@@ -2317,7 +2280,7 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	struct nes_mem_reg_req req;
 	struct nes_vpbl vpbl;
 	struct nes_root_vpbl root_vpbl;
-	int entry, page_index;
+	int nmap_index, page_index;
 	int page_count = 0;
 	int err, pbl_depth = 0;
 	int chunk_pages;
@@ -2332,7 +2295,6 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	u16 pbl_count;
 	u8 single_page = 1;
 	u8 stag_key;
-	int first_page = 1;
 
 	region = ib_umem_get(pd->uobject->context, start, length, acc, 0);
 	if (IS_ERR(region)) {
@@ -2383,125 +2345,128 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 			}
 			nesmr->region = region;
 
-			for_each_sg(region->sg_head.sgl, sg, region->nmap, entry) {
-				if (sg_dma_address(sg) & ~PAGE_MASK) {
-					ib_umem_release(region);
-					nes_free_resource(nesadapter, nesadapter->allocated_mrs, stag_index);
-					nes_debug(NES_DBG_MR, "Unaligned Memory Buffer: 0x%x\n",
-						  (unsigned int) sg_dma_address(sg));
-					ibmr = ERR_PTR(-EINVAL);
-					kfree(nesmr);
-					goto reg_user_mr_err;
-				}
-
-				if (!sg_dma_len(sg)) {
-					ib_umem_release(region);
-					nes_free_resource(nesadapter, nesadapter->allocated_mrs,
-							  stag_index);
-					nes_debug(NES_DBG_MR, "Invalid Buffer Size\n");
-					ibmr = ERR_PTR(-EINVAL);
-					kfree(nesmr);
-					goto reg_user_mr_err;
-				}
-
-				region_length += sg_dma_len(sg);
-				chunk_pages = sg_dma_len(sg) >> 12;
-				region_length -= skip_pages << 12;
-				for (page_index = skip_pages; page_index < chunk_pages; page_index++) {
-					skip_pages = 0;
-					if ((page_count != 0) && (page_count<<12)-(region->offset&(4096-1)) >= region->length)
-						goto enough_pages;
-					if ((page_count&0x01FF) == 0) {
-						if (page_count >= 1024 * 512) {
-							ib_umem_release(region);
-							nes_free_resource(nesadapter,
-									  nesadapter->allocated_mrs, stag_index);
-							kfree(nesmr);
-							ibmr = ERR_PTR(-E2BIG);
-							goto reg_user_mr_err;
-						}
-						if (root_pbl_index == 1) {
-							root_vpbl.pbl_vbase = pci_alloc_consistent(nesdev->pcidev,
-									8192, &root_vpbl.pbl_pbase);
-							nes_debug(NES_DBG_MR, "Allocating root PBL, va = %p, pa = 0x%08X\n",
-								  root_vpbl.pbl_vbase, (unsigned int)root_vpbl.pbl_pbase);
-							if (!root_vpbl.pbl_vbase) {
-								ib_umem_release(region);
-								pci_free_consistent(nesdev->pcidev, 4096, vpbl.pbl_vbase,
-										    vpbl.pbl_pbase);
-								nes_free_resource(nesadapter, nesadapter->allocated_mrs,
-										  stag_index);
-								kfree(nesmr);
-								ibmr = ERR_PTR(-ENOMEM);
-								goto reg_user_mr_err;
-							}
-							root_vpbl.leaf_vpbl = kzalloc(sizeof(*root_vpbl.leaf_vpbl)*1024,
-									GFP_KERNEL);
-							if (!root_vpbl.leaf_vpbl) {
-								ib_umem_release(region);
-								pci_free_consistent(nesdev->pcidev, 8192, root_vpbl.pbl_vbase,
-										    root_vpbl.pbl_pbase);
-								pci_free_consistent(nesdev->pcidev, 4096, vpbl.pbl_vbase,
-										    vpbl.pbl_pbase);
-								nes_free_resource(nesadapter, nesadapter->allocated_mrs,
-										  stag_index);
-								kfree(nesmr);
-								ibmr = ERR_PTR(-ENOMEM);
-								goto reg_user_mr_err;
-							}
-							root_vpbl.pbl_vbase[0].pa_low =
-									cpu_to_le32((u32)vpbl.pbl_pbase);
-							root_vpbl.pbl_vbase[0].pa_high =
-									cpu_to_le32((u32)((((u64)vpbl.pbl_pbase) >> 32)));
-							root_vpbl.leaf_vpbl[0] = vpbl;
-						}
-						vpbl.pbl_vbase = pci_alloc_consistent(nesdev->pcidev, 4096,
-								&vpbl.pbl_pbase);
-						nes_debug(NES_DBG_MR, "Allocating leaf PBL, va = %p, pa = 0x%08X\n",
-							  vpbl.pbl_vbase, (unsigned int)vpbl.pbl_pbase);
-						if (!vpbl.pbl_vbase) {
-							ib_umem_release(region);
-							nes_free_resource(nesadapter, nesadapter->allocated_mrs, stag_index);
-							ibmr = ERR_PTR(-ENOMEM);
-							kfree(nesmr);
-							goto reg_user_mr_err;
-						}
-						if (1 <= root_pbl_index) {
-							root_vpbl.pbl_vbase[root_pbl_index].pa_low =
-									cpu_to_le32((u32)vpbl.pbl_pbase);
-							root_vpbl.pbl_vbase[root_pbl_index].pa_high =
-									cpu_to_le32((u32)((((u64)vpbl.pbl_pbase)>>32)));
-							root_vpbl.leaf_vpbl[root_pbl_index] = vpbl;
-						}
-						root_pbl_index++;
-						cur_pbl_index = 0;
-					}
-					if (single_page) {
-						if (page_count != 0) {
-							if ((last_dma_addr+4096) !=
-									(sg_dma_address(sg)+
-									(page_index*4096)))
-								single_page = 0;
-							last_dma_addr = sg_dma_address(sg)+
-									(page_index*4096);
-						} else {
-							first_dma_addr = sg_dma_address(sg)+
-									(page_index*4096);
-							last_dma_addr = first_dma_addr;
-						}
+			list_for_each_entry(chunk, &region->chunk_list, list) {
+				nes_debug(NES_DBG_MR, "Chunk: nents = %u, nmap = %u .\n",
+						chunk->nents, chunk->nmap);
+				for (nmap_index = 0; nmap_index < chunk->nmap; ++nmap_index) {
+					if (sg_dma_address(&chunk->page_list[nmap_index]) & ~PAGE_MASK) {
+						ib_umem_release(region);
+						nes_free_resource(nesadapter, nesadapter->allocated_mrs, stag_index);
+						nes_debug(NES_DBG_MR, "Unaligned Memory Buffer: 0x%x\n",
+								(unsigned int) sg_dma_address(&chunk->page_list[nmap_index]));
+						ibmr = ERR_PTR(-EINVAL);
+						kfree(nesmr);
+						goto reg_user_mr_err;
 					}
 
-					vpbl.pbl_vbase[cur_pbl_index].pa_low =
-							cpu_to_le32((u32)(sg_dma_address(sg)+
-							(page_index*4096)));
-					vpbl.pbl_vbase[cur_pbl_index].pa_high =
-							cpu_to_le32((u32)((((u64)(sg_dma_address(sg)+
-							(page_index*4096))) >> 32)));
-					cur_pbl_index++;
-					page_count++;
+					if (!sg_dma_len(&chunk->page_list[nmap_index])) {
+						ib_umem_release(region);
+						nes_free_resource(nesadapter, nesadapter->allocated_mrs,
+								stag_index);
+						nes_debug(NES_DBG_MR, "Invalid Buffer Size\n");
+						ibmr = ERR_PTR(-EINVAL);
+						kfree(nesmr);
+						goto reg_user_mr_err;
+					}
+
+					region_length += sg_dma_len(&chunk->page_list[nmap_index]);
+					chunk_pages = sg_dma_len(&chunk->page_list[nmap_index]) >> 12;
+					region_length -= skip_pages << 12;
+					for (page_index=skip_pages; page_index < chunk_pages; page_index++) {
+						skip_pages = 0;
+						if ((page_count!=0)&&(page_count<<12)-(region->offset&(4096-1))>=region->length)
+							goto enough_pages;
+						if ((page_count&0x01FF) == 0) {
+							if (page_count >= 1024 * 512) {
+								ib_umem_release(region);
+								nes_free_resource(nesadapter,
+										nesadapter->allocated_mrs, stag_index);
+								kfree(nesmr);
+								ibmr = ERR_PTR(-E2BIG);
+								goto reg_user_mr_err;
+							}
+							if (root_pbl_index == 1) {
+								root_vpbl.pbl_vbase = pci_alloc_consistent(nesdev->pcidev,
+										8192, &root_vpbl.pbl_pbase);
+								nes_debug(NES_DBG_MR, "Allocating root PBL, va = %p, pa = 0x%08X\n",
+										root_vpbl.pbl_vbase, (unsigned int)root_vpbl.pbl_pbase);
+								if (!root_vpbl.pbl_vbase) {
+									ib_umem_release(region);
+									pci_free_consistent(nesdev->pcidev, 4096, vpbl.pbl_vbase,
+											vpbl.pbl_pbase);
+									nes_free_resource(nesadapter, nesadapter->allocated_mrs,
+											stag_index);
+									kfree(nesmr);
+									ibmr = ERR_PTR(-ENOMEM);
+									goto reg_user_mr_err;
+								}
+								root_vpbl.leaf_vpbl = kzalloc(sizeof(*root_vpbl.leaf_vpbl)*1024,
+										GFP_KERNEL);
+								if (!root_vpbl.leaf_vpbl) {
+									ib_umem_release(region);
+									pci_free_consistent(nesdev->pcidev, 8192, root_vpbl.pbl_vbase,
+											root_vpbl.pbl_pbase);
+									pci_free_consistent(nesdev->pcidev, 4096, vpbl.pbl_vbase,
+											vpbl.pbl_pbase);
+									nes_free_resource(nesadapter, nesadapter->allocated_mrs,
+											stag_index);
+									kfree(nesmr);
+									ibmr = ERR_PTR(-ENOMEM);
+									goto reg_user_mr_err;
+								}
+								root_vpbl.pbl_vbase[0].pa_low =
+										cpu_to_le32((u32)vpbl.pbl_pbase);
+								root_vpbl.pbl_vbase[0].pa_high =
+										cpu_to_le32((u32)((((u64)vpbl.pbl_pbase) >> 32)));
+								root_vpbl.leaf_vpbl[0] = vpbl;
+							}
+							vpbl.pbl_vbase = pci_alloc_consistent(nesdev->pcidev, 4096,
+									&vpbl.pbl_pbase);
+							nes_debug(NES_DBG_MR, "Allocating leaf PBL, va = %p, pa = 0x%08X\n",
+									vpbl.pbl_vbase, (unsigned int)vpbl.pbl_pbase);
+							if (!vpbl.pbl_vbase) {
+								ib_umem_release(region);
+								nes_free_resource(nesadapter, nesadapter->allocated_mrs, stag_index);
+								ibmr = ERR_PTR(-ENOMEM);
+								kfree(nesmr);
+								goto reg_user_mr_err;
+							}
+							if (1 <= root_pbl_index) {
+								root_vpbl.pbl_vbase[root_pbl_index].pa_low =
+										cpu_to_le32((u32)vpbl.pbl_pbase);
+								root_vpbl.pbl_vbase[root_pbl_index].pa_high =
+										cpu_to_le32((u32)((((u64)vpbl.pbl_pbase)>>32)));
+								root_vpbl.leaf_vpbl[root_pbl_index] = vpbl;
+							}
+							root_pbl_index++;
+							cur_pbl_index = 0;
+						}
+						if (single_page) {
+							if (page_count != 0) {
+								if ((last_dma_addr+4096) !=
+										(sg_dma_address(&chunk->page_list[nmap_index])+
+										(page_index*4096)))
+									single_page = 0;
+								last_dma_addr = sg_dma_address(&chunk->page_list[nmap_index])+
+										(page_index*4096);
+							} else {
+								first_dma_addr = sg_dma_address(&chunk->page_list[nmap_index])+
+										(page_index*4096);
+								last_dma_addr = first_dma_addr;
+							}
+						}
+
+						vpbl.pbl_vbase[cur_pbl_index].pa_low =
+								cpu_to_le32((u32)(sg_dma_address(&chunk->page_list[nmap_index])+
+								(page_index*4096)));
+						vpbl.pbl_vbase[cur_pbl_index].pa_high =
+								cpu_to_le32((u32)((((u64)(sg_dma_address(&chunk->page_list[nmap_index])+
+								(page_index*4096))) >> 32)));
+						cur_pbl_index++;
+						page_count++;
+					}
 				}
 			}
-
 			enough_pages:
 			nes_debug(NES_DBG_MR, "calculating stag, stag_index=0x%08x, driver_key=0x%08x,"
 					" stag_key=0x%08x\n",
@@ -2613,28 +2578,25 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 				  nespbl->pbl_size, (unsigned long) nespbl->pbl_pbase,
 				  (void *) nespbl->pbl_vbase, nespbl->user_base);
 
-			for_each_sg(region->sg_head.sgl, sg, region->nmap, entry) {
-				chunk_pages = sg_dma_len(sg) >> 12;
-				chunk_pages += (sg_dma_len(sg) & (4096-1)) ? 1 : 0;
-				if (first_page) {
-					nespbl->page = sg_page(sg);
-					first_page = 0;
-				}
-
-				for (page_index = 0; page_index < chunk_pages; page_index++) {
-					((__le32 *)pbl)[0] = cpu_to_le32((u32)
-							(sg_dma_address(sg)+
-							(page_index*4096)));
-					((__le32 *)pbl)[1] = cpu_to_le32(((u64)
-							(sg_dma_address(sg)+
-							(page_index*4096)))>>32);
-					nes_debug(NES_DBG_MR, "pbl=%p, *pbl=0x%016llx, 0x%08x%08x\n", pbl,
-						  (unsigned long long)*pbl,
-						  le32_to_cpu(((__le32 *)pbl)[1]), le32_to_cpu(((__le32 *)pbl)[0]));
-					pbl++;
+			list_for_each_entry(chunk, &region->chunk_list, list) {
+				for (nmap_index = 0; nmap_index < chunk->nmap; ++nmap_index) {
+					chunk_pages = sg_dma_len(&chunk->page_list[nmap_index]) >> 12;
+					chunk_pages += (sg_dma_len(&chunk->page_list[nmap_index]) & (4096-1)) ? 1 : 0;
+					nespbl->page = sg_page(&chunk->page_list[0]);
+					for (page_index=0; page_index<chunk_pages; page_index++) {
+						((__le32 *)pbl)[0] = cpu_to_le32((u32)
+								(sg_dma_address(&chunk->page_list[nmap_index])+
+								(page_index*4096)));
+						((__le32 *)pbl)[1] = cpu_to_le32(((u64)
+								(sg_dma_address(&chunk->page_list[nmap_index])+
+								(page_index*4096)))>>32);
+						nes_debug(NES_DBG_MR, "pbl=%p, *pbl=0x%016llx, 0x%08x%08x\n", pbl,
+								(unsigned long long)*pbl,
+								le32_to_cpu(((__le32 *)pbl)[1]), le32_to_cpu(((__le32 *)pbl)[0]));
+						pbl++;
+					}
 				}
 			}
-
 			if (req.reg_type == IWNES_MEMREG_TYPE_QP) {
 				list_add_tail(&nespbl->list, &nes_ucontext->qp_reg_mem_list);
 			} else {
@@ -2649,7 +2611,6 @@ static struct ib_mr *nes_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	ib_umem_release(region);
 	return ERR_PTR(-ENOSYS);
 }
-
 
 /**
  * nes_dereg_mr
@@ -2746,7 +2707,6 @@ static int nes_dereg_mr(struct ib_mr *ib_mr)
 	return 0;
 }
 
-
 /**
  * show_rev
  */
@@ -2760,7 +2720,6 @@ static ssize_t show_rev(struct device *dev, struct device_attribute *attr,
 	nes_debug(NES_DBG_INIT, "\n");
 	return sprintf(buf, "%x\n", nesvnic->nesdev->nesadapter->hw_rev);
 }
-
 
 /**
  * show_fw_ver
@@ -2778,7 +2737,6 @@ static ssize_t show_fw_ver(struct device *dev, struct device_attribute *attr,
 		(nesvnic->nesdev->nesadapter->firmware_version & 0x000000ff));
 }
 
-
 /**
  * show_hca
  */
@@ -2789,7 +2747,6 @@ static ssize_t show_hca(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "NES020\n");
 }
 
-
 /**
  * show_board
  */
@@ -2799,7 +2756,6 @@ static ssize_t show_board(struct device *dev, struct device_attribute *attr,
 	nes_debug(NES_DBG_INIT, "\n");
 	return sprintf(buf, "%.*s\n", 32, "NES020 Board ID");
 }
-
 
 static DEVICE_ATTR(hw_rev, S_IRUGO, show_rev, NULL);
 static DEVICE_ATTR(fw_ver, S_IRUGO, show_fw_ver, NULL);
@@ -2812,7 +2768,6 @@ static struct device_attribute *nes_dev_attributes[] = {
 	&dev_attr_hca_type,
 	&dev_attr_board_id
 };
-
 
 /**
  * nes_query_qp
@@ -2837,12 +2792,11 @@ static int nes_query_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 	init_attr->qp_context = nesqp->ibqp.qp_context;
 	init_attr->send_cq = nesqp->ibqp.send_cq;
 	init_attr->recv_cq = nesqp->ibqp.recv_cq;
-	init_attr->srq = nesqp->ibqp.srq;
+	init_attr->srq = nesqp->ibqp.srq = nesqp->ibqp.srq;
 	init_attr->cap = attr->cap;
 
 	return 0;
 }
-
 
 /**
  * nes_hw_modify_qp
@@ -2919,7 +2873,6 @@ int nes_hw_modify_qp(struct nes_device *nesdev, struct nes_qp *nesqp,
 		return 0;
 	}
 }
-
 
 /**
  * nes_modify_qp
@@ -3121,7 +3074,6 @@ int nes_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 
 	ret = 0;
 
-
 	if (issue_modify_qp) {
 		nes_debug(NES_DBG_MOD_QP, "call nes_hw_modify_qp\n");
 		ret = nes_hw_modify_qp(nesdev, nesqp, next_iwarp_state, 0, 1);
@@ -3137,7 +3089,9 @@ int nes_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 				" original_last_aeq = 0x%04X. last_aeq = 0x%04X.\n",
 				nesqp->hwqp.qp_id, atomic_read(&nesqp->refcount),
 				original_last_aeq, nesqp->last_aeq);
-		if (!ret || original_last_aeq != NES_AEQE_AEID_RDMAP_ROE_BAD_LLP_CLOSE) {
+		if ((!ret) ||
+				((original_last_aeq != NES_AEQE_AEID_RDMAP_ROE_BAD_LLP_CLOSE) &&
+				(ret))) {
 			if (dont_wait) {
 				if (nesqp->cm_id && nesqp->hw_tcp_state != 0) {
 					nes_debug(NES_DBG_MOD_QP, "QP%u Queuing fake disconnect for QP refcount (%d),"
@@ -3198,7 +3152,6 @@ int nes_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 	return err;
 }
 
-
 /**
  * nes_muticast_attach
  */
@@ -3208,7 +3161,6 @@ static int nes_multicast_attach(struct ib_qp *ibqp, union ib_gid *gid, u16 lid)
 	return -ENOSYS;
 }
 
-
 /**
  * nes_multicast_detach
  */
@@ -3217,7 +3169,6 @@ static int nes_multicast_detach(struct ib_qp *ibqp, union ib_gid *gid, u16 lid)
 	nes_debug(NES_DBG_INIT, "\n");
 	return -ENOSYS;
 }
-
 
 /**
  * nes_process_mad
@@ -3533,7 +3484,6 @@ out:
 	return err;
 }
 
-
 /**
  * nes_post_recv
  */
@@ -3625,7 +3575,6 @@ out:
 		*bad_wr = ib_wr;
 	return err;
 }
-
 
 /**
  * nes_poll_cq
@@ -3801,7 +3750,6 @@ static int nes_poll_cq(struct ib_cq *ibcq, int num_entries, struct ib_wc *entry)
 	return cqe_count;
 }
 
-
 /**
  * nes_req_notify_cq
  */
@@ -3828,7 +3776,6 @@ static int nes_req_notify_cq(struct ib_cq *ibcq, enum ib_cq_notify_flags notify_
 
 	return 0;
 }
-
 
 /**
  * nes_init_ofa_device
@@ -3933,7 +3880,6 @@ struct nes_ib_device *nes_init_ofa_device(struct net_device *netdev)
 	return nesibdev;
 }
 
-
 /**
  * nes_handle_delayed_event
  */
@@ -3955,7 +3901,6 @@ static void nes_handle_delayed_event(unsigned long data)
 stop_timer:
 	nesvnic->event_timer.function = NULL;
 }
-
 
 void  nes_port_ibevent(struct nes_vnic *nesvnic)
 {
@@ -3979,7 +3924,6 @@ void  nes_port_ibevent(struct nes_vnic *nesvnic)
 	nesvnic->delayed_event = event.event;
 }
 
-
 /**
  * nes_destroy_ofa_device
  */
@@ -3993,7 +3937,6 @@ void nes_destroy_ofa_device(struct nes_ib_device *nesibdev)
 	kfree(nesibdev->ibdev.iwcm);
 	ib_dealloc_device(&nesibdev->ibdev);
 }
-
 
 /**
  * nes_register_ofa_device
@@ -4033,7 +3976,6 @@ int nes_register_ofa_device(struct nes_ib_device *nesibdev)
 
 	return 0;
 }
-
 
 /**
  * nes_unregister_ofa_device

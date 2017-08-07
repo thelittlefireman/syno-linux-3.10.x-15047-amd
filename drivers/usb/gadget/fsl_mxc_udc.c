@@ -33,7 +33,7 @@ int fsl_udc_clk_init(struct platform_device *pdev)
 	unsigned long freq;
 	int ret;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 
 	mxc_ipg_clk = devm_clk_get(&pdev->dev, "ipg");
 	if (IS_ERR(mxc_ipg_clk)) {
@@ -80,7 +80,7 @@ eclkrate:
 
 int fsl_udc_clk_finalize(struct platform_device *pdev)
 {
-	struct fsl_usb2_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct fsl_usb2_platform_data *pdata = pdev->dev.platform_data;
 	int ret = 0;
 
 	/* workaround ENGcm09152 for i.MX35 */
@@ -102,7 +102,6 @@ int fsl_udc_clk_finalize(struct platform_device *pdev)
 
 		iounmap(phy_regs);
 	}
-
 
 ioremap_err:
 	/* ULPI transceivers don't need usbpll */

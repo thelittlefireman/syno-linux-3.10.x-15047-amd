@@ -36,20 +36,18 @@ struct bcm_kona_smc_data {
 };
 
 static const struct of_device_id bcm_kona_smc_ids[] __initconst = {
-	{.compatible = "brcm,kona-smc"},
-	{.compatible = "bcm,kona-smc"}, /* deprecated name */
+	{.compatible = "bcm,kona-smc"},
 	{},
 };
 
 /* Map in the bounce area */
-int __init bcm_kona_smc_init(void)
+void __init bcm_kona_smc_init(void)
 {
 	struct device_node *node;
 
 	/* Read buffer addr and size from the device tree node */
 	node = of_find_matching_node(NULL, bcm_kona_smc_ids);
-	if (!node)
-		return -ENODEV;
+	BUG_ON(!node);
 
 	/* Don't care about size or flags of the DT node */
 	bridge_data.buffer_addr =
@@ -61,9 +59,7 @@ int __init bcm_kona_smc_init(void)
 
 	bridge_data.initialized = 1;
 
-	pr_info("Kona Secure API initialized\n");
-
-	return 0;
+	pr_info("Secure API initialized!\n");
 }
 
 /* __bcm_kona_smc() should only run on CPU 0, with pre-emption disabled */

@@ -1,7 +1,7 @@
-/*
- * CPU subsystem support
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -13,22 +13,20 @@
 #include <linux/gfp.h>
 #include <linux/slab.h>
 #include <linux/percpu.h>
-#include <linux/acpi.h>
-#include <linux/of.h>
-#include <linux/cpufeature.h>
 
 #include "base.h"
 
+#if defined(MY_ABC_HERE)
+#include <linux/synobios.h>
+#endif  
+
+struct bus_type cpu_subsys = {
+	.name = "cpu",
+	.dev_name = "cpu",
+};
+EXPORT_SYMBOL_GPL(cpu_subsys);
+
 static DEFINE_PER_CPU(struct device *, cpu_sys_devices);
-
-static int cpu_subsys_match(struct device *dev, struct device_driver *drv)
-{
-	/* ACPI style match is the only one that may succeed. */
-	if (acpi_driver_match_device(dev, drv))
-		return 1;
-
-	return 0;
-}
 
 #ifdef CONFIG_HOTPLUG_CPU
 static void change_cpu_under_node(struct cpu *cpu,
@@ -40,39 +38,79 @@ static void change_cpu_under_node(struct cpu *cpu,
 	cpu->node_id = to_nid;
 }
 
-static int __ref cpu_subsys_online(struct device *dev)
+static ssize_t show_online(struct device *dev,
+			   struct device_attribute *attr,
+			   char *buf)
 {
 	struct cpu *cpu = container_of(dev, struct cpu, dev);
-	int cpuid = dev->id;
+
+	return sprintf(buf, "%u\n", !!cpu_online(cpu->dev.id));
+}
+
+static ssize_t __ref store_online(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	struct cpu *cpu = container_of(dev, struct cpu, dev);
+	int cpuid = cpu->dev.id;
 	int from_nid, to_nid;
-	int ret;
+	ssize_t ret;
 
-	from_nid = cpu_to_node(cpuid);
-	if (from_nid == NUMA_NO_NODE)
-		return -ENODEV;
+#ifdef MY_ABC_HERE
+	if(syno_is_hw_version(HW_DS712pv20)) {
+		if( 1 == cpuid || 3 == cpuid ) {
+			printk(KERN_ERR "This model does not allow changing the specified cpu state.\n");
+			ret = count;
+			goto END;
+		}
+	}
+#endif  
 
-	ret = cpu_up(cpuid);
-	/*
-	 * When hot adding memory to memoryless node and enabling a cpu
-	 * on the node, node number of the cpu may internally change.
-	 */
-	to_nid = cpu_to_node(cpuid);
-	if (from_nid != to_nid)
-		change_cpu_under_node(cpu, from_nid, to_nid);
+	cpu_hotplug_driver_lock();
+	switch (buf[0]) {
+	case '0':
+		ret = cpu_down(cpuid);
+		if (!ret)
+			kobject_uevent(&dev->kobj, KOBJ_OFFLINE);
+		break;
+	case '1':
+		from_nid = cpu_to_node(cpuid);
+		ret = cpu_up(cpuid);
+
+		to_nid = cpu_to_node(cpuid);
+		if (from_nid != to_nid)
+			change_cpu_under_node(cpu, from_nid, to_nid);
+
+		if (!ret)
+			kobject_uevent(&dev->kobj, KOBJ_ONLINE);
+		break;
+	default:
+		ret = -EINVAL;
+	}
+	cpu_hotplug_driver_unlock();
+
+	if (ret >= 0)
+		ret = count;
+
+#ifdef MY_ABC_HERE
+END:
+#endif  
 
 	return ret;
 }
+static DEVICE_ATTR(online, 0644, show_online, store_online);
 
-static int cpu_subsys_offline(struct device *dev)
+static void __cpuinit register_cpu_control(struct cpu *cpu)
 {
-	return cpu_down(dev->id);
+	device_create_file(&cpu->dev, &dev_attr_online);
 }
-
 void unregister_cpu(struct cpu *cpu)
 {
 	int logical_cpu = cpu->dev.id;
 
 	unregister_cpu_under_node(logical_cpu, cpu_to_node(logical_cpu));
+
+	device_remove_file(&cpu->dev, &dev_attr_online);
 
 	device_unregister(&cpu->dev);
 	per_cpu(cpu_sys_devices, logical_cpu) = NULL;
@@ -85,17 +123,7 @@ static ssize_t cpu_probe_store(struct device *dev,
 			       const char *buf,
 			       size_t count)
 {
-	ssize_t cnt;
-	int ret;
-
-	ret = lock_device_hotplug_sysfs();
-	if (ret)
-		return ret;
-
-	cnt = arch_cpu_probe(buf, count);
-
-	unlock_device_hotplug();
-	return cnt;
+	return arch_cpu_probe(buf, count);
 }
 
 static ssize_t cpu_release_store(struct device *dev,
@@ -103,34 +131,18 @@ static ssize_t cpu_release_store(struct device *dev,
 				 const char *buf,
 				 size_t count)
 {
-	ssize_t cnt;
-	int ret;
-
-	ret = lock_device_hotplug_sysfs();
-	if (ret)
-		return ret;
-
-	cnt = arch_cpu_release(buf, count);
-
-	unlock_device_hotplug();
-	return cnt;
+	return arch_cpu_release(buf, count);
 }
 
 static DEVICE_ATTR(probe, S_IWUSR, NULL, cpu_probe_store);
 static DEVICE_ATTR(release, S_IWUSR, NULL, cpu_release_store);
-#endif /* CONFIG_ARCH_CPU_PROBE_RELEASE */
-#endif /* CONFIG_HOTPLUG_CPU */
+#endif  
 
-struct bus_type cpu_subsys = {
-	.name = "cpu",
-	.dev_name = "cpu",
-	.match = cpu_subsys_match,
-#ifdef CONFIG_HOTPLUG_CPU
-	.online = cpu_subsys_online,
-	.offline = cpu_subsys_offline,
-#endif
-};
-EXPORT_SYMBOL_GPL(cpu_subsys);
+#else  
+static inline void register_cpu_control(struct cpu *cpu)
+{
+}
+#endif  
 
 #ifdef CONFIG_KEXEC
 #include <linux/kexec.h>
@@ -145,12 +157,6 @@ static ssize_t show_crash_notes(struct device *dev, struct device_attribute *att
 
 	cpunum = cpu->dev.id;
 
-	/*
-	 * Might be reading other cpu's data based on which cpu read thread
-	 * has been scheduled. But cpu data (memory) is allocated once during
-	 * boot up and this data does not change there after. Hence this
-	 * operation should be safe. No locking required.
-	 */
 	addr = per_cpu_ptr_to_phys(per_cpu_ptr(crash_notes, cpunum));
 	rc = sprintf(buf, "%Lx\n", addr);
 	return rc;
@@ -167,35 +173,7 @@ static ssize_t show_crash_notes_size(struct device *dev,
 	return rc;
 }
 static DEVICE_ATTR(crash_notes_size, 0400, show_crash_notes_size, NULL);
-
-static struct attribute *crash_note_cpu_attrs[] = {
-	&dev_attr_crash_notes.attr,
-	&dev_attr_crash_notes_size.attr,
-	NULL
-};
-
-static struct attribute_group crash_note_cpu_attr_group = {
-	.attrs = crash_note_cpu_attrs,
-};
 #endif
-
-static const struct attribute_group *common_cpu_attr_groups[] = {
-#ifdef CONFIG_KEXEC
-	&crash_note_cpu_attr_group,
-#endif
-	NULL
-};
-
-static const struct attribute_group *hotplugable_cpu_attr_groups[] = {
-#ifdef CONFIG_KEXEC
-	&crash_note_cpu_attr_group,
-#endif
-	NULL
-};
-
-/*
- * Print cpu online, possible, present, and system maps
- */
 
 struct cpu_attr {
 	struct device_attribute attr;
@@ -217,16 +195,12 @@ static ssize_t show_cpus_attr(struct device *dev,
 #define _CPU_ATTR(name, map) \
 	{ __ATTR(name, 0444, show_cpus_attr, NULL), map }
 
-/* Keep in sync with cpu_subsys_attrs */
 static struct cpu_attr cpu_attrs[] = {
 	_CPU_ATTR(online, &cpu_online_mask),
 	_CPU_ATTR(possible, &cpu_possible_mask),
 	_CPU_ATTR(present, &cpu_present_mask),
 };
 
-/*
- * Print values for NR_CPUS and offlined cpus
- */
 static ssize_t print_cpus_kernel_max(struct device *dev,
 				     struct device_attribute *attr, char *buf)
 {
@@ -235,7 +209,6 @@ static ssize_t print_cpus_kernel_max(struct device *dev,
 }
 static DEVICE_ATTR(kernel_max, 0444, print_cpus_kernel_max, NULL);
 
-/* arch-optional setting to enable display of offline cpus >= nr_cpu_ids */
 unsigned int total_cpus;
 
 static ssize_t print_cpus_offline(struct device *dev,
@@ -244,14 +217,12 @@ static ssize_t print_cpus_offline(struct device *dev,
 	int n = 0, len = PAGE_SIZE-2;
 	cpumask_var_t offline;
 
-	/* display offline cpus < nr_cpu_ids */
 	if (!alloc_cpumask_var(&offline, GFP_KERNEL))
 		return -ENOMEM;
 	cpumask_andnot(offline, cpu_possible_mask, cpu_online_mask);
 	n = cpulist_scnprintf(buf, len, offline);
 	free_cpumask_var(offline);
 
-	/* display offline cpus >= nr_cpu_ids */
 	if (total_cpus && nr_cpu_ids < total_cpus) {
 		if (n && n < len)
 			buf[n++] = ',';
@@ -270,67 +241,10 @@ static DEVICE_ATTR(offline, 0444, print_cpus_offline, NULL);
 
 static void cpu_device_release(struct device *dev)
 {
-	/*
-	 * This is an empty function to prevent the driver core from spitting a
-	 * warning at us.  Yes, I know this is directly opposite of what the
-	 * documentation for the driver core and kobjects say, and the author
-	 * of this code has already been publically ridiculed for doing
-	 * something as foolish as this.  However, at this point in time, it is
-	 * the only way to handle the issue of statically allocated cpu
-	 * devices.  The different architectures will have their cpu device
-	 * code reworked to properly handle this in the near future, so this
-	 * function will then be changed to correctly free up the memory held
-	 * by the cpu device.
-	 *
-	 * Never copy this way of doing things, or you too will be made fun of
-	 * on the linux-kernel list, you have been warned.
-	 */
+	 
 }
 
-#ifdef CONFIG_GENERIC_CPU_AUTOPROBE
-static ssize_t print_cpu_modalias(struct device *dev,
-				  struct device_attribute *attr,
-				  char *buf)
-{
-	ssize_t n;
-	u32 i;
-
-	n = sprintf(buf, "cpu:type:" CPU_FEATURE_TYPEFMT ":feature:",
-		    CPU_FEATURE_TYPEVAL);
-
-	for (i = 0; i < MAX_CPU_FEATURES; i++)
-		if (cpu_have_feature(i)) {
-			if (PAGE_SIZE < n + sizeof(",XXXX\n")) {
-				WARN(1, "CPU features overflow page\n");
-				break;
-			}
-			n += sprintf(&buf[n], ",%04X", i);
-		}
-	buf[n++] = '\n';
-	return n;
-}
-
-static int cpu_uevent(struct device *dev, struct kobj_uevent_env *env)
-{
-	char *buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (buf) {
-		print_cpu_modalias(NULL, NULL, buf);
-		add_uevent_var(env, "MODALIAS=%s", buf);
-		kfree(buf);
-	}
-	return 0;
-}
-#endif
-
-/*
- * register_cpu - Setup a sysfs device for a CPU.
- * @cpu - cpu->hotpluggable field set to 1 will generate a control file in
- *	  sysfs for this CPU.
- * @num - CPU number to use when creating the device.
- *
- * Initialize and register the CPU device.
- */
-int register_cpu(struct cpu *cpu, int num)
+int __cpuinit register_cpu(struct cpu *cpu, int num)
 {
 	int error;
 
@@ -339,21 +253,24 @@ int register_cpu(struct cpu *cpu, int num)
 	cpu->dev.id = num;
 	cpu->dev.bus = &cpu_subsys;
 	cpu->dev.release = cpu_device_release;
-	cpu->dev.offline_disabled = !cpu->hotpluggable;
-	cpu->dev.offline = !cpu_online(num);
-	cpu->dev.of_node = of_get_cpu_node(num, NULL);
-#ifdef CONFIG_GENERIC_CPU_AUTOPROBE
-	cpu->dev.bus->uevent = cpu_uevent;
+#ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
+	cpu->dev.bus->uevent = arch_cpu_uevent;
 #endif
-	cpu->dev.groups = common_cpu_attr_groups;
-	if (cpu->hotpluggable)
-		cpu->dev.groups = hotplugable_cpu_attr_groups;
 	error = device_register(&cpu->dev);
+	if (!error && cpu->hotpluggable)
+		register_cpu_control(cpu);
 	if (!error)
 		per_cpu(cpu_sys_devices, num) = &cpu->dev;
 	if (!error)
 		register_cpu_under_node(num, cpu_to_node(num));
 
+#ifdef CONFIG_KEXEC
+	if (!error)
+		error = device_create_file(&cpu->dev, &dev_attr_crash_notes);
+	if (!error)
+		error = device_create_file(&cpu->dev,
+					   &dev_attr_crash_notes_size);
+#endif
 	return error;
 }
 
@@ -366,8 +283,8 @@ struct device *get_cpu_device(unsigned cpu)
 }
 EXPORT_SYMBOL_GPL(get_cpu_device);
 
-#ifdef CONFIG_GENERIC_CPU_AUTOPROBE
-static DEVICE_ATTR(modalias, 0444, print_cpu_modalias, NULL);
+#ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
+static DEVICE_ATTR(modalias, 0444, arch_print_cpu_modalias, NULL);
 #endif
 
 static struct attribute *cpu_root_attrs[] = {
@@ -380,7 +297,7 @@ static struct attribute *cpu_root_attrs[] = {
 	&cpu_attrs[2].attr.attr,
 	&dev_attr_kernel_max.attr,
 	&dev_attr_offline.attr,
-#ifdef CONFIG_GENERIC_CPU_AUTOPROBE
+#ifdef CONFIG_ARCH_HAS_CPU_AUTOPROBE
 	&dev_attr_modalias.attr,
 #endif
 	NULL

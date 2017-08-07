@@ -502,7 +502,6 @@ void fimc_hw_set_in_dma(struct fimc_ctx *ctx)
 	writel(cfg, dev->regs + FIMC_REG_CIDMAPARAM);
 }
 
-
 void fimc_hw_set_input_path(struct fimc_ctx *ctx)
 {
 	struct fimc_dev *dev = ctx->fimc_dev;
@@ -618,7 +617,7 @@ int fimc_hw_set_camera_source(struct fimc_dev *fimc,
 		}
 
 		if (i == ARRAY_SIZE(pix_desc)) {
-			v4l2_err(&vc->ve.vdev,
+			v4l2_err(&vc->vfd,
 				 "Camera color format not supported: %d\n",
 				 vc->ci_fmt.code);
 			return -EINVAL;
@@ -698,7 +697,7 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 			cfg |= FIMC_REG_CIGCTRL_CAM_JPEG;
 			break;
 		default:
-			v4l2_err(&vid_cap->ve.vdev,
+			v4l2_err(&vid_cap->vfd,
 				 "Not supported camera pixel format: %#x\n",
 				 vid_cap->ci_fmt.code);
 			return -EINVAL;
@@ -721,8 +720,7 @@ int fimc_hw_set_camera_type(struct fimc_dev *fimc,
 			WARN_ONCE(1, "ISP Writeback input is not supported\n");
 		break;
 	default:
-		v4l2_err(&vid_cap->ve.vdev,
-			 "Invalid FIMC bus type selected: %d\n",
+		v4l2_err(&vid_cap->vfd, "Invalid FIMC bus type selected: %d\n",
 			 source->fimc_bus_type);
 		return -EINVAL;
 	}

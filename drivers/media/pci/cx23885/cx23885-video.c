@@ -32,7 +32,6 @@
 #include <asm/div64.h>
 
 #include "cx23885.h"
-#include "cx23885-video.h"
 #include <media/v4l2-common.h>
 #include <media/v4l2-ioctl.h>
 #include "cx23885-ioctl.h"
@@ -418,7 +417,7 @@ static void res_free(struct cx23885_dev *dev, struct cx23885_fh *fh,
 	mutex_unlock(&dev->lock);
 }
 
-int cx23885_flatiron_write(struct cx23885_dev *dev, u8 reg, u8 data)
+static int cx23885_flatiron_write(struct cx23885_dev *dev, u8 reg, u8 data)
 {
 	/* 8 bit registers, 8 bit values */
 	u8 buf[] = { reg, data };
@@ -429,7 +428,7 @@ int cx23885_flatiron_write(struct cx23885_dev *dev, u8 reg, u8 data)
 	return i2c_transfer(&dev->i2c_bus[2].i2c_adap, &msg, 1);
 }
 
-u8 cx23885_flatiron_read(struct cx23885_dev *dev, u8 reg)
+static u8 cx23885_flatiron_read(struct cx23885_dev *dev, u8 reg)
 {
 	/* 8 bit registers, 8 bit values */
 	int ret;
@@ -578,7 +577,6 @@ static int cx23885_start_video_dma(struct cx23885_dev *dev,
 
 	return 0;
 }
-
 
 static int cx23885_restart_video_queue(struct cx23885_dev *dev,
 			       struct cx23885_dmaqueue *q)
@@ -903,7 +901,6 @@ static int video_open(struct file *file)
 		V4L2_FIELD_SEQ_TB,
 		sizeof(struct cx23885_buffer),
 		fh, NULL);
-
 
 	dprintk(1, "post videobuf_queue_init()\n");
 
@@ -1255,7 +1252,8 @@ static int vidioc_g_std(struct file *file, void *priv, v4l2_std_id *id)
 	struct cx23885_dev *dev = ((struct cx23885_fh *)priv)->dev;
 	dprintk(1, "%s()\n", __func__);
 
-	*id = dev->tvnorm;
+	call_all(dev, core, g_std, id);
+
 	return 0;
 }
 
@@ -1743,6 +1741,7 @@ static const struct v4l2_ioctl_ops video_ioctl_ops = {
 	.vidioc_dqbuf         = vidioc_dqbuf,
 	.vidioc_s_std         = vidioc_s_std,
 	.vidioc_g_std         = vidioc_g_std,
+	.vidioc_querystd      = vidioc_g_std,
 	.vidioc_enum_input    = vidioc_enum_input,
 	.vidioc_g_input       = vidioc_g_input,
 	.vidioc_s_input       = vidioc_s_input,
@@ -1756,8 +1755,8 @@ static const struct v4l2_ioctl_ops video_ioctl_ops = {
 	.vidioc_s_tuner       = vidioc_s_tuner,
 	.vidioc_g_frequency   = vidioc_g_frequency,
 	.vidioc_s_frequency   = vidioc_s_frequency,
+	.vidioc_g_chip_ident  = cx23885_g_chip_ident,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
-	.vidioc_g_chip_info   = cx23885_g_chip_info,
 	.vidioc_g_register    = cx23885_g_register,
 	.vidioc_s_register    = cx23885_s_register,
 #endif
@@ -1772,6 +1771,7 @@ static struct video_device cx23885_video_template = {
 	.fops                 = &video_fops,
 	.ioctl_ops 	      = &video_ioctl_ops,
 	.tvnorms              = CX23885_NORMS,
+	.current_norm         = V4L2_STD_NTSC_M,
 };
 
 static const struct v4l2_file_operations radio_fops = {
@@ -1780,7 +1780,6 @@ static const struct v4l2_file_operations radio_fops = {
 	.release       = video_release,
 	.ioctl         = video_ioctl2,
 };
-
 
 void cx23885_video_unregister(struct cx23885_dev *dev)
 {
@@ -1820,7 +1819,7 @@ int cx23885_video_register(struct cx23885_dev *dev)
 	cx23885_vbi_template = cx23885_video_template;
 	strcpy(cx23885_vbi_template.name, "cx23885-vbi");
 
-	dev->tvnorm = V4L2_STD_NTSC_M;
+	dev->tvnorm = cx23885_video_template.current_norm;
 
 	/* init video dma queues */
 	INIT_LIST_HEAD(&dev->vidq.active);
@@ -1865,8 +1864,7 @@ int cx23885_video_register(struct cx23885_dev *dev)
 
 			v4l2_subdev_call(sd, tuner, s_type_addr, &tun_setup);
 
-			if ((dev->board == CX23885_BOARD_LEADTEK_WINFAST_PXTV1200) ||
-			    (dev->board == CX23885_BOARD_LEADTEK_WINFAST_PXPVR2200)) {
+			if (dev->board == CX23885_BOARD_LEADTEK_WINFAST_PXTV1200) {
 				struct xc2028_ctrl ctrl = {
 					.fname = XC2028_DEFAULT_FIRMWARE,
 					.max_len = 64
@@ -1935,4 +1933,3 @@ fail_unreg:
 	cx23885_video_unregister(dev);
 	return err;
 }
-

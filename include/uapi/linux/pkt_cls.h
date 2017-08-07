@@ -235,7 +235,6 @@ struct tc_u32_pcnt {
 
 #define TC_U32_MAXDEPTH 8
 
-
 /* RSVP filter */
 
 enum {
@@ -280,7 +279,6 @@ enum {
 };
 
 #define TCA_ROUTE4_MAX (__TCA_ROUTE4_MAX - 1)
-
 
 /* FW filter */
 
@@ -375,7 +373,6 @@ enum {
 
 #define TCA_BASIC_MAX (__TCA_BASIC_MAX - 1)
 
-
 /* Cgroup classifier */
 
 enum {
@@ -387,20 +384,6 @@ enum {
 };
 
 #define TCA_CGROUP_MAX (__TCA_CGROUP_MAX - 1)
-
-/* BPF classifier */
-
-enum {
-	TCA_BPF_UNSPEC,
-	TCA_BPF_ACT,
-	TCA_BPF_POLICE,
-	TCA_BPF_CLASSID,
-	TCA_BPF_OPS_LEN,
-	TCA_BPF_OPS,
-	__TCA_BPF_MAX,
-};
-
-#define TCA_BPF_MAX (__TCA_BPF_MAX - 1)
 
 /* Extended Matches */
 

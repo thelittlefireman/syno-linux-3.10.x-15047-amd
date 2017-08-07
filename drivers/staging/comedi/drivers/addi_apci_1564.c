@@ -1,4 +1,3 @@
-#include <linux/module.h>
 #include <linux/pci.h>
 
 #include "../comedidev.h"
@@ -21,16 +20,16 @@ static const struct addi_board apci1564_boardtypes[] = {
 		.i_NbrDoChannel		= 32,
 		.i_DoMaxdata		= 0xffffffff,
 		.i_Timer		= 1,
-		.interrupt		= apci1564_interrupt,
-		.reset			= apci1564_reset,
-		.di_config		= apci1564_di_config,
+		.interrupt		= v_APCI1564_Interrupt,
+		.reset			= i_APCI1564_Reset,
+		.di_config		= i_APCI1564_ConfigDigitalInput,
 		.di_bits		= apci1564_di_insn_bits,
-		.do_config		= apci1564_do_config,
+		.do_config		= i_APCI1564_ConfigDigitalOutput,
 		.do_bits		= apci1564_do_insn_bits,
-		.do_read		= apci1564_do_read,
-		.timer_config		= apci1564_timer_config,
-		.timer_write		= apci1564_timer_write,
-		.timer_read		= apci1564_timer_read,
+		.do_read		= i_APCI1564_ReadInterruptStatus,
+		.timer_config		= i_APCI1564_ConfigTimerCounterWatchdog,
+		.timer_write		= i_APCI1564_StartStopWriteTimerCounterWatchdog,
+		.timer_read		= i_APCI1564_ReadTimerCounterWatchdog,
 	},
 };
 
@@ -55,7 +54,7 @@ static int apci1564_pci_probe(struct pci_dev *dev,
 	return comedi_pci_auto_config(dev, &apci1564_driver, id->driver_data);
 }
 
-static const struct pci_device_id apci1564_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(apci1564_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_ADDIDATA, 0x1006) },
 	{ 0 }
 };

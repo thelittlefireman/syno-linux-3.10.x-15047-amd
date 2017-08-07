@@ -12,15 +12,16 @@
 #include <asm/reg.h>
 
 #ifdef CONFIG_VSX
-/* See fpu.S, this is borrowed from there */
-#define __SAVE_32FPRS_VSRS(n,c,base)		\
+/* See fpu.S, this is very similar but to save/restore checkpointed FPRs/VSRs */
+#define __SAVE_32FPRS_VSRS_TRANSACT(n,c,base)	\
 BEGIN_FTR_SECTION				\
 	b	2f;				\
 END_FTR_SECTION_IFSET(CPU_FTR_VSX);		\
-	SAVE_32FPRS(n,base);			\
+	SAVE_32FPRS_TRANSACT(n,base);		\
 	b	3f;				\
-2:	SAVE_32VSRS(n,c,base);			\
+2:	SAVE_32VSRS_TRANSACT(n,c,base);		\
 3:
+/* ...and this is just plain borrowed from there. */
 #define __REST_32FPRS_VSRS(n,c,base)		\
 BEGIN_FTR_SECTION				\
 	b	2f;				\
@@ -30,11 +31,11 @@ END_FTR_SECTION_IFSET(CPU_FTR_VSX);		\
 2:	REST_32VSRS(n,c,base);			\
 3:
 #else
-#define __SAVE_32FPRS_VSRS(n,c,base)	SAVE_32FPRS(n, base)
-#define __REST_32FPRS_VSRS(n,c,base)	REST_32FPRS(n, base)
+#define __SAVE_32FPRS_VSRS_TRANSACT(n,c,base) SAVE_32FPRS_TRANSACT(n, base)
+#define __REST_32FPRS_VSRS(n,c,base)	      REST_32FPRS(n, base)
 #endif
-#define SAVE_32FPRS_VSRS(n,c,base) \
-	__SAVE_32FPRS_VSRS(n,__REG_##c,__REG_##base)
+#define SAVE_32FPRS_VSRS_TRANSACT(n,c,base) \
+	__SAVE_32FPRS_VSRS_TRANSACT(n,__REG_##c,__REG_##base)
 #define REST_32FPRS_VSRS(n,c,base) \
 	__REST_32FPRS_VSRS(n,__REG_##c,__REG_##base)
 
@@ -42,7 +43,6 @@ END_FTR_SECTION_IFSET(CPU_FTR_VSX);		\
 #define TM_FRAME_L0	TM_FRAME_SIZE-16
 #define TM_FRAME_L1	TM_FRAME_SIZE-8
 #define STACK_PARAM(x)	(48+((x)*8))
-
 
 /* In order to access the TM SPRs, TM must be enabled.  So, do so: */
 _GLOBAL(tm_enable)
@@ -106,7 +106,7 @@ DSCR_DEFAULT:
 _GLOBAL(tm_reclaim)
 	mfcr	r6
 	mflr	r0
-	stw	r6, 8(r1)
+	std	r6, 8(r1)
 	std	r0, 16(r1)
 	std	r2, 40(r1)
 	stdu	r1, -TM_FRAME_SIZE(r1)
@@ -116,19 +116,9 @@ _GLOBAL(tm_reclaim)
 	std	r3, STACK_PARAM(0)(r1)
 	SAVE_NVGPRS(r1)
 
-	/* We need to setup MSR for VSX register save instructions.  Here we
-	 * also clear the MSR RI since when we do the treclaim, we won't have a
-	 * valid kernel pointer for a while.  We clear RI here as it avoids
-	 * adding another mtmsr closer to the treclaim.  This makes the region
-	 * maked as non-recoverable wider than it needs to be but it saves on
-	 * inserting another mtmsrd later.
-	 */
 	mfmsr	r14
 	mr	r15, r14
 	ori	r15, r15, MSR_FP
-	li	r16, MSR_RI
-	ori	r16, r16, MSR_EE /* IRQs hard off */
-	andc	r15, r15, r16
 	oris	r15, r15, MSR_VEC@h
 #ifdef CONFIG_VSX
 	BEGIN_FTR_SECTION
@@ -156,23 +146,21 @@ _GLOBAL(tm_reclaim)
 	andis.		r0, r4, MSR_VEC@h
 	beq	dont_backup_vec
 
-	addi	r7, r3, THREAD_TRANSACT_VRSTATE
-	SAVE_32VRS(0, r6, r7)	/* r6 scratch, r7 transact vr state */
+	SAVE_32VRS_TRANSACT(0, r6, r3)	/* r6 scratch, r3 thread */
 	mfvscr	vr0
-	li	r6, VRSTATE_VSCR
-	stvx	vr0, r7, r6
-dont_backup_vec:
+	li	r6, THREAD_TRANSACT_VSCR
+	stvx	vr0, r3, r6
 	mfspr	r0, SPRN_VRSAVE
 	std	r0, THREAD_TRANSACT_VRSAVE(r3)
 
+dont_backup_vec:
 	andi.	r0, r4, MSR_FP
 	beq	dont_backup_fp
 
-	addi	r7, r3, THREAD_TRANSACT_FPSTATE
-	SAVE_32FPRS_VSRS(0, R6, R7)	/* r6 scratch, r7 transact fp state */
+	SAVE_32FPRS_VSRS_TRANSACT(0, R6, R3)	/* r6 scratch, r3 thread */
 
 	mffs    fr0
-	stfd    fr0,FPSTATE_FPSCR(r7)
+	stfd    fr0,THREAD_TRANSACT_FPSCR(r3)
 
 dont_backup_fp:
 	/* The moment we treclaim, ALL of our GPRs will switch
@@ -251,7 +239,6 @@ dont_backup_fp:
 	std	r5, _CCR(r7)
 	std	r6, _XER(r7)
 
-
 	/* ******************** TAR, DSCR ********** */
 	mfspr	r3, SPRN_TAR
 	mfspr	r4, SPRN_DSCR
@@ -285,7 +272,7 @@ dont_backup_fp:
 	REST_NVGPRS(r1)
 
 	addi    r1, r1, TM_FRAME_SIZE
-	lwz	r4, 8(r1)
+	ld	r4, 8(r1)
 	ld	r0, 16(r1)
 	mtcr	r4
 	mtlr	r0
@@ -298,7 +285,6 @@ dont_backup_fp:
 
 	blr
 
-
 	/* void tm_recheckpoint(struct thread_struct *thread,
 	 *			unsigned long orig_msr)
 	 *	- Restore the checkpointed register state saved by tm_reclaim
@@ -310,7 +296,7 @@ dont_backup_fp:
 _GLOBAL(__tm_recheckpoint)
 	mfcr	r5
 	mflr	r0
-	stw	r5, 8(r1)
+	std	r5, 8(r1)
 	std	r0, 16(r1)
 	std	r2, 40(r1)
 	stdu	r1, -TM_FRAME_SIZE(r1)
@@ -359,23 +345,21 @@ _GLOBAL(__tm_recheckpoint)
 	andis.	r0, r4, MSR_VEC@h
 	beq	dont_restore_vec
 
-	addi	r8, r3, THREAD_VRSTATE
-	li	r5, VRSTATE_VSCR
-	lvx	vr0, r8, r5
+	li	r5, THREAD_VSCR
+	lvx	vr0, r3, r5
 	mtvscr	vr0
-	REST_32VRS(0, r5, r8)			/* r5 scratch, r8 ptr */
-dont_restore_vec:
+	REST_32VRS(0, r5, r3)			/* r5 scratch, r3 THREAD ptr */
 	ld	r5, THREAD_VRSAVE(r3)
 	mtspr	SPRN_VRSAVE, r5
 #endif
 
+dont_restore_vec:
 	andi.	r0, r4, MSR_FP
 	beq	dont_restore_fp
 
-	addi	r8, r3, THREAD_FPSTATE
-	lfd	fr0, FPSTATE_FPSCR(r8)
+	lfd	fr0, THREAD_FPSCR(r3)
 	MTFSF_L(fr0)
-	REST_32FPRS_VSRS(0, R4, R8)
+	REST_32FPRS_VSRS(0, R4, R3)
 
 dont_restore_fp:
 	mtmsr	r6				/* FP/Vec off again! */
@@ -401,10 +385,9 @@ restore_gprs:
 	ld	r5, THREAD_TM_DSCR(r3)
 	ld	r6, THREAD_TM_PPR(r3)
 
-	/* Clear the MSR RI since we are about to change R1.  EE is already off
+	/* MSR and flags:  We don't change CRs, and we don't need to alter
+	 * MSR.
 	 */
-	li	r4, 0
-	mtmsrd	r4, 1
 
 	REST_4GPRS(0, r7)			/* GPR0-3 */
 	REST_GPR(4, r7)				/* GPR4 */
@@ -437,14 +420,10 @@ restore_gprs:
 	GET_PACA(r13)
 	GET_SCRATCH0(r1)
 
-	/* R1 is restored, so we are recoverable again.  EE is still off */
-	li	r4, MSR_RI
-	mtmsrd	r4, 1
-
 	REST_NVGPRS(r1)
 
 	addi    r1, r1, TM_FRAME_SIZE
-	lwz	r4, 8(r1)
+	ld	r4, 8(r1)
 	ld	r0, 16(r1)
 	mtcr	r4
 	mtlr	r0

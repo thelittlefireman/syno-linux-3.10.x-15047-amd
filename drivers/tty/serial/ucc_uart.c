@@ -25,8 +25,6 @@
 #include <linux/tty.h>
 #include <linux/tty_flip.h>
 #include <linux/io.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/dma-mapping.h>
 
@@ -271,7 +269,7 @@ static unsigned int qe_uart_tx_empty(struct uart_port *port)
 			return 1;
 
 		bdp++;
-	}
+	};
 }
 
 /*
@@ -1453,7 +1451,7 @@ static int ucc_uart_probe(struct platform_device *ofdev)
 		goto out_np;
 	}
 
-	platform_set_drvdata(ofdev, qe_port);
+	dev_set_drvdata(&ofdev->dev, qe_port);
 
 	dev_info(&ofdev->dev, "UCC%u assigned to /dev/ttyQE%u\n",
 		qe_port->ucc_num + 1, qe_port->port.line);
@@ -1473,12 +1471,13 @@ out_free:
 
 static int ucc_uart_remove(struct platform_device *ofdev)
 {
-	struct uart_qe_port *qe_port = platform_get_drvdata(ofdev);
+	struct uart_qe_port *qe_port = dev_get_drvdata(&ofdev->dev);
 
 	dev_info(&ofdev->dev, "removing /dev/ttyQE%u\n", qe_port->port.line);
 
 	uart_remove_one_port(&ucc_uart_driver, &qe_port->port);
 
+	dev_set_drvdata(&ofdev->dev, NULL);
 	kfree(qe_port);
 
 	return 0;
@@ -1519,11 +1518,9 @@ static int __init ucc_uart_init(void)
 	}
 
 	ret = platform_driver_register(&ucc_uart_of_driver);
-	if (ret) {
+	if (ret)
 		printk(KERN_ERR
 		       "ucc-uart: could not register platform driver\n");
-		uart_unregister_driver(&ucc_uart_driver);
-	}
 
 	return ret;
 }
@@ -1544,4 +1541,3 @@ MODULE_DESCRIPTION("Freescale QUICC Engine (QE) UART");
 MODULE_AUTHOR("Timur Tabi <timur@freescale.com>");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS_CHARDEV_MAJOR(SERIAL_QE_MAJOR);
-

@@ -38,7 +38,6 @@
 #include "omap-mcbsp.h"
 #include "../codecs/cx20442.h"
 
-
 /* Board specific DAPM widgets */
 static const struct snd_soc_dapm_widget ams_delta_dapm_widgets[] = {
 	/* Handset */
@@ -103,62 +102,60 @@ static int ams_delta_set_audio_mode(struct snd_kcontrol *kcontrol,
 	if (!codec->hw_write)
 		return -EUNATCH;
 
-	if (ucontrol->value.enumerated.item[0] >= control->items)
+	if (ucontrol->value.enumerated.item[0] >= control->max)
 		return -EINVAL;
 
-	snd_soc_dapm_mutex_lock(dapm);
+	mutex_lock(&codec->mutex);
 
 	/* Translate selection to bitmap */
 	pins = ams_delta_audio_mode_pins[ucontrol->value.enumerated.item[0]];
 
 	/* Setup pins after corresponding bits if changed */
 	pin = !!(pins & (1 << AMS_DELTA_MOUTHPIECE));
-
 	if (pin != snd_soc_dapm_get_pin_status(dapm, "Mouthpiece")) {
 		changed = 1;
 		if (pin)
-			snd_soc_dapm_enable_pin_unlocked(dapm, "Mouthpiece");
+			snd_soc_dapm_enable_pin(dapm, "Mouthpiece");
 		else
-			snd_soc_dapm_disable_pin_unlocked(dapm, "Mouthpiece");
+			snd_soc_dapm_disable_pin(dapm, "Mouthpiece");
 	}
 	pin = !!(pins & (1 << AMS_DELTA_EARPIECE));
 	if (pin != snd_soc_dapm_get_pin_status(dapm, "Earpiece")) {
 		changed = 1;
 		if (pin)
-			snd_soc_dapm_enable_pin_unlocked(dapm, "Earpiece");
+			snd_soc_dapm_enable_pin(dapm, "Earpiece");
 		else
-			snd_soc_dapm_disable_pin_unlocked(dapm, "Earpiece");
+			snd_soc_dapm_disable_pin(dapm, "Earpiece");
 	}
 	pin = !!(pins & (1 << AMS_DELTA_MICROPHONE));
 	if (pin != snd_soc_dapm_get_pin_status(dapm, "Microphone")) {
 		changed = 1;
 		if (pin)
-			snd_soc_dapm_enable_pin_unlocked(dapm, "Microphone");
+			snd_soc_dapm_enable_pin(dapm, "Microphone");
 		else
-			snd_soc_dapm_disable_pin_unlocked(dapm, "Microphone");
+			snd_soc_dapm_disable_pin(dapm, "Microphone");
 	}
 	pin = !!(pins & (1 << AMS_DELTA_SPEAKER));
 	if (pin != snd_soc_dapm_get_pin_status(dapm, "Speaker")) {
 		changed = 1;
 		if (pin)
-			snd_soc_dapm_enable_pin_unlocked(dapm, "Speaker");
+			snd_soc_dapm_enable_pin(dapm, "Speaker");
 		else
-			snd_soc_dapm_disable_pin_unlocked(dapm, "Speaker");
+			snd_soc_dapm_disable_pin(dapm, "Speaker");
 	}
 	pin = !!(pins & (1 << AMS_DELTA_AGC));
 	if (pin != ams_delta_audio_agc) {
 		ams_delta_audio_agc = pin;
 		changed = 1;
 		if (pin)
-			snd_soc_dapm_enable_pin_unlocked(dapm, "AGCIN");
+			snd_soc_dapm_enable_pin(dapm, "AGCIN");
 		else
-			snd_soc_dapm_disable_pin_unlocked(dapm, "AGCIN");
+			snd_soc_dapm_disable_pin(dapm, "AGCIN");
 	}
-
 	if (changed)
-		snd_soc_dapm_sync_unlocked(dapm);
+		snd_soc_dapm_sync(dapm);
 
-	snd_soc_dapm_mutex_unlock(dapm);
+	mutex_unlock(&codec->mutex);
 
 	return changed;
 }
@@ -196,11 +193,13 @@ static int ams_delta_get_audio_mode(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static const SOC_ENUM_SINGLE_EXT_DECL(ams_delta_audio_enum,
-				      ams_delta_audio_mode);
+static const struct soc_enum ams_delta_audio_enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ams_delta_audio_mode),
+						ams_delta_audio_mode),
+};
 
 static const struct snd_kcontrol_new ams_delta_audio_controls[] = {
-	SOC_ENUM_EXT("Audio Mode", ams_delta_audio_enum,
+	SOC_ENUM_EXT("Audio Mode", ams_delta_audio_enum[0],
 			ams_delta_get_audio_mode, ams_delta_set_audio_mode),
 };
 
@@ -240,7 +239,6 @@ static struct snd_soc_jack_pin ams_delta_hook_switch_pins[] = {
 		.invert = 1,
 	},
 };
-
 
 /*
  * Modem line discipline, required for making above controls functional.
@@ -315,17 +313,12 @@ static void cx81801_close(struct tty_struct *tty)
 	v253_ops.close(tty);
 
 	/* Revert back to default audio input/output constellation */
-	snd_soc_dapm_mutex_lock(dapm);
-
-	snd_soc_dapm_disable_pin_unlocked(dapm, "Mouthpiece");
-	snd_soc_dapm_enable_pin_unlocked(dapm, "Earpiece");
-	snd_soc_dapm_enable_pin_unlocked(dapm, "Microphone");
-	snd_soc_dapm_disable_pin_unlocked(dapm, "Speaker");
-	snd_soc_dapm_disable_pin_unlocked(dapm, "AGCIN");
-
-	snd_soc_dapm_sync_unlocked(dapm);
-
-	snd_soc_dapm_mutex_unlock(dapm);
+	snd_soc_dapm_disable_pin(dapm, "Mouthpiece");
+	snd_soc_dapm_enable_pin(dapm, "Earpiece");
+	snd_soc_dapm_enable_pin(dapm, "Microphone");
+	snd_soc_dapm_disable_pin(dapm, "Speaker");
+	snd_soc_dapm_disable_pin(dapm, "AGCIN");
+	snd_soc_dapm_sync(dapm);
 }
 
 /* Line discipline .hangup() */
@@ -405,7 +398,6 @@ static struct tty_ldisc_ops cx81801_ops = {
 	.write_wakeup = cx81801_wakeup,
 };
 
-
 /*
  * Even if not very useful, the sound card can still work without any of the
  * above functonality activated.  You can still control its audio input/output
@@ -428,7 +420,6 @@ static int ams_delta_hw_params(struct snd_pcm_substream *substream,
 static struct snd_soc_ops ams_delta_ops = {
 	.hw_params = ams_delta_hw_params,
 };
-
 
 /* Digital mute implemented using modem/CPU multiplexer.
  * Shares hardware with codec config pulse generation */
@@ -467,7 +458,6 @@ static void ams_delta_shutdown(struct snd_pcm_substream *substream)
 {
 	ams_delta_digital_mute(NULL, 1);
 }
-
 
 /*
  * Card initialization

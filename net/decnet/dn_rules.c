@@ -49,7 +49,6 @@ struct dn_fib_rule
 	u8			flags;
 };
 
-
 int dn_fib_lookup(struct flowidn *flp, struct dn_fib_res *res)
 {
 	struct fib_lookup_arg arg = {
@@ -251,5 +250,3 @@ void __exit dn_fib_rules_cleanup(void)
 	fib_rules_unregister(dn_fib_rules_ops);
 	rcu_barrier();
 }
-
-

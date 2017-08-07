@@ -213,7 +213,6 @@ static inline u16 i5100_mtr_numcol(u16 a)
 	return a & ((1 << 2) - 1);
 }
 
-
 static inline u32 i5100_validlog_redmemvalid(u32 a)
 {
 	return a >> 2 & 1;
@@ -869,13 +868,16 @@ static void i5100_init_csrows(struct mem_ctl_info *mci)
 			       chan, rank, 0);
 
 		dimm->nr_pages = npages;
-		dimm->grain = 32;
-		dimm->dtype = (priv->mtr[chan][rank].width == 4) ?
-				DEV_X4 : DEV_X8;
-		dimm->mtype = MEM_RDDR2;
-		dimm->edac_mode = EDAC_SECDED;
-		snprintf(dimm->label, sizeof(dimm->label), "DIMM%u",
-			 i5100_rank_to_slot(mci, chan, rank));
+		if (npages) {
+			dimm->grain = 32;
+			dimm->dtype = (priv->mtr[chan][rank].width == 4) ?
+					DEV_X4 : DEV_X8;
+			dimm->mtype = MEM_RDDR2;
+			dimm->edac_mode = EDAC_SECDED;
+			snprintf(dimm->label, sizeof(dimm->label),
+				"DIMM%u",
+				i5100_rank_to_slot(mci, chan, rank));
+		}
 
 		edac_dbg(2, "dimm channel %d, rank %d, size %ld\n",
 			 chan, rank, (long)PAGES_TO_MiB(npages));
@@ -1073,7 +1075,6 @@ static int i5100_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		goto bail_disable_ch1;
 	}
 
-
 	/* device 19, func 0, Error injection */
 	einj = pci_get_device_func(PCI_VENDOR_ID_INTEL,
 				    PCI_DEVICE_ID_INTEL_5100_19, 0);
@@ -1087,7 +1088,6 @@ static int i5100_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 		ret = rc;
 		goto bail_disable_einj;
 	}
-
 
 	mci->pdev = &pdev->dev;
 
@@ -1210,7 +1210,7 @@ static void i5100_remove_one(struct pci_dev *pdev)
 	edac_mc_free(mci);
 }
 
-static const struct pci_device_id i5100_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(i5100_pci_tbl) = {
 	/* Device 16, Function 0, Channel 0 Memory Map, Error Flag/Mask, ... */
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_5100_16) },
 	{ 0, }

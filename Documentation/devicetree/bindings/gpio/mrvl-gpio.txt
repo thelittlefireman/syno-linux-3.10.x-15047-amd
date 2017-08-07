@@ -10,9 +10,8 @@ Required properties:
   There're three gpio interrupts in arch-pxa, and they're gpio0,
   gpio1 and gpio_mux. There're only one gpio interrupt in arch-mmp,
   gpio_mux.
-- interrupt-names : Should be the names of irq resources. Each interrupt
-  uses its own interrupt name, so there should be as many interrupt names
-  as referenced interrups.
+- interrupt-name : Should be the name of irq resource. Each interrupt
+  binds its interrupt-name.
 - interrupt-controller : Identifies the node as an interrupt controller.
 - #interrupt-cells: Specifies the number of cells needed to encode an
   interrupt source.
@@ -25,7 +24,7 @@ Example:
 		compatible = "marvell,mmp-gpio";
 		reg = <0xd4019000 0x1000>;
 		interrupts = <49>;
-		interrupt-names = "gpio_mux";
+		interrupt-name = "gpio_mux";
 		gpio-controller;
 		#gpio-cells = <1>;
 		interrupt-controller;

@@ -24,7 +24,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754int.h"
 
 #define assert(expr) ((void)0)
@@ -68,7 +67,6 @@ extern ieee754dp ieee754dp_xcpt(ieee754dp, const char *, ...);
 extern ieee754dp ieee754dp_nanxcpt(ieee754dp, const char *, ...);
 extern ieee754dp ieee754dp_bestnan(ieee754dp, ieee754dp);
 extern ieee754dp ieee754dp_format(int, int, u64);
-
 
 #define DPNORMRET2(s, e, m, name, a0, a1) \
 { \

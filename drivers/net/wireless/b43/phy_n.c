@@ -164,8 +164,7 @@ static void b43_nphy_rf_ctl_override_rev7(struct b43_wldev *dev, u16 field,
 		}
 		en_addr = en_addrs[override][i];
 
-		if (e)
-			val_addr = (i == 0) ? e->val_addr_core0 : e->val_addr_core1;
+		val_addr = (i == 0) ? e->val_addr_core0 : e->val_addr_core1;
 
 		if (off) {
 			b43_phy_mask(dev, en_addr, ~en_mask);
@@ -1118,7 +1117,6 @@ static u16 b43_nphy_gen_load_samples(struct b43_wldev *dev, u32 freq, u16 max,
 	int i;
 	u16 bw, len, rot, angle;
 	struct b43_c32 *samples;
-
 
 	bw = (dev->phy.is_40mhz) ? 40 : 20;
 	len = bw << 3;

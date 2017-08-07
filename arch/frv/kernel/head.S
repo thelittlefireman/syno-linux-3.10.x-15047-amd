@@ -225,7 +225,6 @@ __head_sdram_moved:
 0:	movsg		lr,gr26
 	addi		gr26,#__head_reference-0b,gr26
 
-
 ###############################################################################
 #
 # move the kernel image down to the bottom of the SDRAM
@@ -273,7 +272,6 @@ __head_kernel_moved:
 	call		0f
 0:	movsg		lr,gr26
 	addi		gr26,#__head_reference-0b,gr26
-
 
 ###############################################################################
 #
@@ -470,7 +468,6 @@ __head_mmu_enabled:
 	ori		gr22,#PSR_ET,gr22
 	sti		gr22,@(gr28,REG_PSR)
 
-
 ###############################################################################
 #
 # set up the registers and jump into the kernel
@@ -478,6 +475,11 @@ __head_mmu_enabled:
 ###############################################################################
 
 	LEDS		0x000c
+
+	# initialise the processor and the peripherals
+	#call		SYMBOL_NAME(processor_init)
+	#call		SYMBOL_NAME(unit_init)
+	#LEDS		0x0aff
 
 	sethi.p		#0xe5e5,gr3
 	setlo		#0xe5e5,gr3

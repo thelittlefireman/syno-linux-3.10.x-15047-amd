@@ -143,7 +143,6 @@
 /* Matches PNP_CS32 and PNP_CS16 (they must be consecutive) */
 #define SEGMENT_IS_PNP_CODE(x)   (((x) & 0xf4) == GDT_ENTRY_PNPBIOS_BASE * 8)
 
-
 #else
 #include <asm/cache.h>
 
@@ -212,11 +211,19 @@
 #define TLS_SIZE (GDT_ENTRY_TLS_ENTRIES * 8)
 
 #ifdef __KERNEL__
+
+/*
+ * early_idt_handler_array is an array of entry points referenced in the
+ * early IDT.  For simplicity, it's a real array with one entry point
+ * every nine bytes.  That leaves room for an optional 'push $0' if the
+ * vector has no error code (two bytes), a 'push $vector_number' (two
+ * bytes), and a jump to the common entry code (up to five bytes).
+ */
+#define EARLY_IDT_HANDLER_SIZE 9
+
 #ifndef __ASSEMBLY__
-extern const char early_idt_handlers[NUM_EXCEPTION_VECTORS][2+2+5];
-#ifdef CONFIG_TRACING
-#define trace_early_idt_handlers early_idt_handlers
-#endif
+
+extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS][EARLY_IDT_HANDLER_SIZE];
 
 /*
  * Load a segment. Fall back on loading the zero

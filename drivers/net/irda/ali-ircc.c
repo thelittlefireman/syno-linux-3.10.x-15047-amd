@@ -183,7 +183,6 @@ static int __init ali_ircc_init(void)
 			info.dma = dma[i];
 			info.irq = irq[i];
 			
-			
 			/* Enter Configuration */
 			outb(chip->entr1, cfg_base);
 			outb(chip->entr2, cfg_base);
@@ -351,16 +350,16 @@ static int ali_ircc_open(int i, chipio_t *info)
 
 	/* Allocate memory if needed */
 	self->rx_buff.head =
-		dma_zalloc_coherent(NULL, self->rx_buff.truesize,
-				    &self->rx_buff_dma, GFP_KERNEL);
+		dma_alloc_coherent(NULL, self->rx_buff.truesize,
+				   &self->rx_buff_dma, GFP_KERNEL | __GFP_ZERO);
 	if (self->rx_buff.head == NULL) {
 		err = -ENOMEM;
 		goto err_out2;
 	}
 	
 	self->tx_buff.head =
-		dma_zalloc_coherent(NULL, self->tx_buff.truesize,
-				    &self->tx_buff_dma, GFP_KERNEL);
+		dma_alloc_coherent(NULL, self->tx_buff.truesize,
+				   &self->tx_buff_dma, GFP_KERNEL | __GFP_ZERO);
 	if (self->tx_buff.head == NULL) {
 		err = -ENOMEM;
 		goto err_out3;
@@ -409,7 +408,6 @@ static int ali_ircc_open(int i, chipio_t *info)
 	free_netdev(dev);
 	return err;
 }
-
 
 /*
  * Function ali_ircc_close (self)
@@ -608,7 +606,6 @@ static int ali_ircc_setup(chipio_t *info)
 	/* Disable Interrupt */
 	outb(0x00, iobase+FIR_IER);
 	
-	
 	/* Switch to SIR space */
 	FIR2SIR(iobase);
 	
@@ -627,7 +624,7 @@ static int ali_ircc_setup(chipio_t *info)
 /*
  * Function ali_ircc_read_dongle_id (int index, info)
  *
- * Try to read dongle identification. This procedure needs to be executed
+ * Try to read dongle indentification. This procedure needs to be executed
  * once after power-on/reset. It also needs to be used whenever you suspect
  * that the user may have plugged/unplugged the IrDA Dongle.
  */
@@ -858,12 +855,10 @@ static irqreturn_t ali_ircc_sir_interrupt(struct ali_ircc_cb *self)
 		
 	}
 	
-	
 	IRDA_DEBUG(2, "%s(), ----------------- End ------------------\n", __func__);
 
 	return IRQ_RETVAL(iir);
 }
-
 
 /*
  * Function ali_ircc_sir_receive (self)
@@ -982,7 +977,6 @@ static void ali_ircc_change_speed(struct ali_ircc_cb *self, __u32 baud)
 	if (baud > 115200)
 	{
 		
-					
 		ali_ircc_fir_change_speed(self, baud);			
 		
 		/* Install FIR xmit handler*/
@@ -1003,7 +997,6 @@ static void ali_ircc_change_speed(struct ali_ircc_cb *self, __u32 baud)
 		dev->netdev_ops = &ali_ircc_sir_ops;
 	}
 	
-		
 	SetCOMInterrupts(self, TRUE);	// 2000/11/24 11:43AM
 		
 	netif_wake_queue(self->netdev);	
@@ -1540,7 +1533,6 @@ static netdev_tx_t ali_ircc_fir_hard_xmit(struct sk_buff *skb,
 						outb(TIMER_IIR_2ms, iobase+FIR_TIMER_IIR);
 					}
 					
-					
 					/* Start timer */
 					outb(inb(iobase+FIR_CR) | CR_TIMER_EN, iobase+FIR_CR);
 					self->io.direction = IO_XMIT;
@@ -1582,12 +1574,10 @@ static netdev_tx_t ali_ircc_fir_hard_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;	
 }
 
-
 static void ali_ircc_dma_xmit(struct ali_ircc_cb *self)
 {
 	int iobase, tmp;
 	unsigned char FIFO_OPTI, Hi, Lo;
-	
 	
 	IRDA_DEBUG(1, "%s(), ---------------- Start -----------------\n", __func__ );
 	
@@ -1951,8 +1941,6 @@ static int  ali_ircc_dma_receive_complete(struct ali_ircc_cb *self)
 	return TRUE;
 }
 
-
-
 /*
  * Function ali_ircc_sir_hard_xmit (skb, dev)
  *
@@ -2020,7 +2008,6 @@ static netdev_tx_t ali_ircc_sir_hard_xmit(struct sk_buff *skb,
 	
 	return NETDEV_TX_OK;	
 }
-
 
 /*
  * Function ali_ircc_net_ioctl (dev, rq, cmd)
@@ -2258,7 +2245,6 @@ MODULE_AUTHOR("Benjamin Kong <benjamin_kong@ali.com.tw>");
 MODULE_DESCRIPTION("ALi FIR Controller Driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:" ALI_IRCC_DRIVER_NAME);
-
 
 module_param_array(io, int, NULL, 0);
 MODULE_PARM_DESC(io, "Base I/O addresses");

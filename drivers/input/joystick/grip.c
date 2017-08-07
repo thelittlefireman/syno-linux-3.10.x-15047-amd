@@ -28,6 +28,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/gameport.h>
 #include <linux/input.h>
@@ -272,7 +273,6 @@ static void grip_poll(struct gameport *gameport)
 				for (j = 0; j < 9; j++)
 					input_report_key(dev, grip_btn_dc[j], (data[3] >> (j + 3)) & 1);
 				break;
-
 
 		}
 

@@ -18,7 +18,6 @@
  */
 
 #include <linux/of.h>
-#include <linux/of_fdt.h>
 #include <asm/epapr_hcalls.h>
 #include <asm/cacheflush.h>
 #include <asm/code-patching.h>
@@ -31,20 +30,22 @@ extern u32 epapr_ev_idle_start[];
 
 bool epapr_paravirt_enabled;
 
-static int __init early_init_dt_scan_epapr(unsigned long node,
-					   const char *uname,
-					   int depth, void *data)
+static int __init epapr_paravirt_init(void)
 {
+	struct device_node *hyper_node;
 	const u32 *insts;
-	unsigned long len;
-	int i;
+	int len, i;
 
-	insts = of_get_flat_dt_prop(node, "hcall-instructions", &len);
+	hyper_node = of_find_node_by_path("/hypervisor");
+	if (!hyper_node)
+		return -ENODEV;
+
+	insts = of_get_property(hyper_node, "hcall-instructions", &len);
 	if (!insts)
-		return 0;
+		return -ENODEV;
 
 	if (len % 4 || len > (4 * 4))
-		return -1;
+		return -ENODEV;
 
 	for (i = 0; i < (len / 4); i++) {
 		patch_instruction(epapr_hypercall_start + i, insts[i]);
@@ -54,19 +55,13 @@ static int __init early_init_dt_scan_epapr(unsigned long node,
 	}
 
 #if !defined(CONFIG_64BIT) || defined(CONFIG_PPC_BOOK3E_64)
-	if (of_get_flat_dt_prop(node, "has-idle", NULL))
+	if (of_get_property(hyper_node, "has-idle", NULL))
 		ppc_md.power_save = epapr_ev_idle;
 #endif
 
 	epapr_paravirt_enabled = true;
 
-	return 1;
-}
-
-int __init epapr_paravirt_early_init(void)
-{
-	of_scan_flat_dt(early_init_dt_scan_epapr, NULL);
-
 	return 0;
 }
 
+early_initcall(epapr_paravirt_init);

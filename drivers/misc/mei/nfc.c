@@ -92,7 +92,7 @@ struct mei_nfc_hci_hdr {
  * @cl: NFC host client
  * @cl_info: NFC info host client
  * @init_work: perform connection to the info client
- * @fw_ivn: NFC Interface Version Number
+ * @fw_ivn: NFC Intervace Version Number
  * @vendor_id: NFC manufacturer ID
  * @radio_type: NFC radio type
  */
@@ -163,7 +163,7 @@ static int mei_nfc_build_bus_name(struct mei_nfc_dev *ndev)
 			return 0;
 
 		default:
-			dev_err(&dev->pdev->dev, "Unknown radio type 0x%x\n",
+			dev_err(&dev->pdev->dev, "Unknow radio type 0x%x\n",
 				ndev->radio_type);
 
 			return -EINVAL;
@@ -175,14 +175,14 @@ static int mei_nfc_build_bus_name(struct mei_nfc_dev *ndev)
 			ndev->bus_name = "pn544";
 			return 0;
 		default:
-			dev_err(&dev->pdev->dev, "Unknown radio type 0x%x\n",
+			dev_err(&dev->pdev->dev, "Unknow radio type 0x%x\n",
 				ndev->radio_type);
 
 			return -EINVAL;
 		}
 
 	default:
-		dev_err(&dev->pdev->dev, "Unknown vendor ID 0x%x\n",
+		dev_err(&dev->pdev->dev, "Unknow vendor ID 0x%x\n",
 			ndev->vendor_id);
 
 		return -EINVAL;
@@ -342,9 +342,10 @@ static int mei_nfc_send(struct mei_cl_device *cldev, u8 *buf, size_t length)
 	ndev = (struct mei_nfc_dev *) cldev->priv_data;
 	dev = ndev->cl->dev;
 
+	err = -ENOMEM;
 	mei_buf = kzalloc(length + MEI_NFC_HEADER_SIZE, GFP_KERNEL);
 	if (!mei_buf)
-		return -ENOMEM;
+		goto out;
 
 	hdr = (struct mei_nfc_hci_hdr *) mei_buf;
 	hdr->cmd = MEI_NFC_CMD_HCI_SEND;
@@ -354,21 +355,19 @@ static int mei_nfc_send(struct mei_cl_device *cldev, u8 *buf, size_t length)
 	hdr->data_size = length;
 
 	memcpy(mei_buf + MEI_NFC_HEADER_SIZE, buf, length);
-
 	err = __mei_cl_send(ndev->cl, mei_buf, length + MEI_NFC_HEADER_SIZE);
 	if (err < 0)
-		return err;
-
-	kfree(mei_buf);
+		goto out;
 
 	if (!wait_event_interruptible_timeout(ndev->send_wq,
 				ndev->recv_req_id == ndev->req_id, HZ)) {
 		dev_err(&dev->pdev->dev, "NFC MEI command timeout\n");
-		err = -ETIME;
+		err = -ETIMEDOUT;
 	} else {
 		ndev->req_id++;
 	}
-
+out:
+	kfree(mei_buf);
 	return err;
 }
 
@@ -428,7 +427,7 @@ static void mei_nfc_init(struct work_struct *work)
 	mutex_unlock(&dev->device_lock);
 
 	if (mei_nfc_if_version(ndev) < 0) {
-		dev_err(&dev->pdev->dev, "Could not get the NFC interface version");
+		dev_err(&dev->pdev->dev, "Could not get the NFC interfave version");
 
 		goto err;
 	}
@@ -465,17 +464,13 @@ static void mei_nfc_init(struct work_struct *work)
 
 	cldev->priv_data = ndev;
 
-
 	return;
 
 err:
-	mutex_lock(&dev->device_lock);
 	mei_nfc_free(ndev);
-	mutex_unlock(&dev->device_lock);
 
 	return;
 }
-
 
 int mei_nfc_host_init(struct mei_device *dev)
 {
@@ -483,7 +478,7 @@ int mei_nfc_host_init(struct mei_device *dev)
 	struct mei_cl *cl_info, *cl = NULL;
 	int i, ret;
 
-	/* already initialized */
+	/* already initialzed */
 	if (ndev->cl_info)
 		return 0;
 
@@ -502,7 +497,7 @@ int mei_nfc_host_init(struct mei_device *dev)
 	i = mei_me_cl_by_uuid(dev, &mei_nfc_info_guid);
 	if (i < 0) {
 		dev_info(&dev->pdev->dev, "nfc: failed to find the client\n");
-		ret = -ENOTTY;
+		ret = -ENOENT;
 		goto err;
 	}
 
@@ -520,7 +515,7 @@ int mei_nfc_host_init(struct mei_device *dev)
 	i = mei_me_cl_by_uuid(dev, &mei_nfc_guid);
 	if (i < 0) {
 		dev_info(&dev->pdev->dev, "nfc: failed to find the client\n");
-		ret = -ENOTTY;
+		ret = -ENOENT;
 		goto err;
 	}
 
@@ -531,7 +526,6 @@ int mei_nfc_host_init(struct mei_device *dev)
 		goto err;
 
 	cl->device_uuid = mei_nfc_guid;
-
 
 	list_add_tail(&cl->device_link, &dev->device_list);
 
@@ -549,10 +543,12 @@ err:
 	return ret;
 }
 
-void mei_nfc_host_exit(struct mei_device *dev)
+void mei_nfc_host_exit(void)
 {
 	struct mei_nfc_dev *ndev = &nfc_dev;
-	cancel_work_sync(&ndev->init_work);
+
+	if (ndev->cl && ndev->cl->device)
+		mei_cl_remove_device(ndev->cl->device);
+
+	mei_nfc_free(ndev);
 }
-
-

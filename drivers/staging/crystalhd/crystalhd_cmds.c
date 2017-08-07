@@ -94,7 +94,8 @@ static enum BC_STATUS bc_cproc_notify_mode(struct crystalhd_cmd *ctx,
 	for (i = 0; i < BC_LINK_MAX_OPENS; i++) {
 		if (ctx->user[i].mode == DTS_DIAG_MODE ||
 		    ctx->user[i].mode == DTS_PLAYBACK_MODE) {
-			BCMLOG_ERR("multiple playback sessions are not supported..\n");
+			BCMLOG_ERR("multiple playback sessions are not "
+				   "supported..\n");
 			return BC_STS_ERR_USAGE;
 		}
 	}
@@ -122,7 +123,6 @@ static enum BC_STATUS bc_cproc_get_version(struct crystalhd_cmd *ctx,
 	idata->udata.u.VerInfo.DriverRevision	= crystalhd_kmod_rev;
 	return BC_STS_SUCCESS;
 }
-
 
 static enum BC_STATUS bc_cproc_get_hwtype(struct crystalhd_cmd *ctx,
 					struct crystalhd_ioctl_data *idata)
@@ -471,8 +471,8 @@ static enum BC_STATUS bc_cproc_hw_txdma(struct crystalhd_cmd *ctx,
 }
 
 /* Helper function to check on user buffers */
-static enum BC_STATUS bc_cproc_check_inbuffs(bool pin, void *ubuff,
-				 uint32_t ub_sz, uint32_t uv_off, bool en_422)
+static enum BC_STATUS bc_cproc_check_inbuffs(bool pin, void *ubuff, uint32_t ub_sz,
+					uint32_t uv_off, bool en_422)
 {
 	if (!ubuff || !ub_sz) {
 		BCMLOG_ERR("%s->Invalid Arg %p %x\n",
@@ -482,9 +482,8 @@ static enum BC_STATUS bc_cproc_check_inbuffs(bool pin, void *ubuff,
 
 	/* Check for alignment */
 	if (((uintptr_t)ubuff) & 0x03) {
-		BCMLOG_ERR(
-			"%s-->Un-aligned address not implemented yet.. %p\n",
-			 ((pin) ? "TX" : "RX"), ubuff);
+		BCMLOG_ERR("%s-->Un-aligned address not implemented yet.. %p\n",
+				((pin) ? "TX" : "RX"), ubuff);
 		return BC_STS_NOT_IMPL;
 	}
 	if (pin)
@@ -572,8 +571,7 @@ static enum BC_STATUS bc_cproc_add_cap_buff(struct crystalhd_cmd *ctx,
 	if (!dio_hnd)
 		return BC_STS_ERROR;
 
-	sts = crystalhd_hw_add_cap_buffer(&ctx->hw_ctx, dio_hnd,
-					 (ctx->state == BC_LINK_READY));
+	sts = crystalhd_hw_add_cap_buffer(&ctx->hw_ctx, dio_hnd, (ctx->state == BC_LINK_READY));
 	if ((sts != BC_STS_SUCCESS) && (sts != BC_STS_BUSY)) {
 		crystalhd_unmap_dio(ctx->adp, dio_hnd);
 		return sts;
@@ -619,8 +617,7 @@ static enum BC_STATUS bc_cproc_fetch_frame(struct crystalhd_cmd *ctx,
 
 	sts = crystalhd_hw_get_cap_buffer(&ctx->hw_ctx, &frame->PibInfo, &dio);
 	if (sts != BC_STS_SUCCESS)
-		return (ctx->state & BC_LINK_SUSPEND) ?
-					 BC_STS_IO_USER_ABORT : sts;
+		return (ctx->state & BC_LINK_SUSPEND) ? BC_STS_IO_USER_ABORT : sts;
 
 	frame->Flags = dio->uinfo.comp_flags;
 
@@ -675,8 +672,7 @@ static enum BC_STATUS bc_cproc_flush_cap_buffs(struct crystalhd_cmd *ctx,
 	frame = &idata->udata.u.DecOutData;
 	for (count = 0; count < BC_RX_LIST_CNT; count++) {
 
-		sts = crystalhd_hw_get_cap_buffer(&ctx->hw_ctx,
-					 &frame->PibInfo, &dio);
+		sts = crystalhd_hw_get_cap_buffer(&ctx->hw_ctx, &frame->PibInfo, &dio);
 		if (sts != BC_STS_SUCCESS)
 			break;
 
@@ -798,7 +794,7 @@ static const struct crystalhd_cmd_tbl	g_crystalhd_cproc_tbl[] = {
  *
  * Current gstreamer frame work does not provide any power management
  * related notification to user mode decoder plug-in. As a work-around
- * we pass on the power management notification to our plug-in by completing
+ * we pass on the power mangement notification to our plug-in by completing
  * all outstanding requests with BC_STS_IO_USER_ABORT return code.
  */
 enum BC_STATUS crystalhd_suspend(struct crystalhd_cmd *ctx,
@@ -919,8 +915,7 @@ enum BC_STATUS crystalhd_user_open(struct crystalhd_cmd *ctx,
  * Closer application handle and release app specific
  * resources.
  */
-enum BC_STATUS crystalhd_user_close(struct crystalhd_cmd *ctx,
-					 struct crystalhd_user *uc)
+enum BC_STATUS crystalhd_user_close(struct crystalhd_cmd *ctx, struct crystalhd_user *uc)
 {
 	uint32_t mode = uc->mode;
 
@@ -1012,8 +1007,8 @@ enum BC_STATUS crystalhd_delete_cmd_context(struct crystalhd_cmd *ctx)
  * mode of operation and returns the function pointer
  * from the cproc table.
  */
-crystalhd_cmd_proc crystalhd_get_cmd_proc(struct crystalhd_cmd *ctx,
-				 uint32_t cmd, struct crystalhd_user *uc)
+crystalhd_cmd_proc crystalhd_get_cmd_proc(struct crystalhd_cmd *ctx, uint32_t cmd,
+				      struct crystalhd_user *uc)
 {
 	crystalhd_cmd_proc cproc = NULL;
 	unsigned int i, tbl_sz;
@@ -1028,8 +1023,7 @@ crystalhd_cmd_proc crystalhd_get_cmd_proc(struct crystalhd_cmd *ctx,
 		return NULL;
 	}
 
-	tbl_sz = sizeof(g_crystalhd_cproc_tbl) /
-				 sizeof(struct crystalhd_cmd_tbl);
+	tbl_sz = sizeof(g_crystalhd_cproc_tbl) / sizeof(struct crystalhd_cmd_tbl);
 	for (i = 0; i < tbl_sz; i++) {
 		if (g_crystalhd_cproc_tbl[i].cmd_id == cmd) {
 			if ((uc->mode == DTS_MONITOR_MODE) &&
@@ -1059,7 +1053,7 @@ bool crystalhd_cmd_interrupt(struct crystalhd_cmd *ctx)
 {
 	if (!ctx) {
 		BCMLOG_ERR("Invalid arg..\n");
-		return false;
+		return 0;
 	}
 
 	return crystalhd_hw_interrupt(ctx->adp, &ctx->hw_ctx);

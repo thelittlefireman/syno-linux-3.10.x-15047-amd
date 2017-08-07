@@ -47,7 +47,6 @@ static unsigned int kmsg_poll(struct file *file, poll_table *wait)
 	return 0;
 }
 
-
 static const struct file_operations proc_kmsg_operations = {
 	.read		= kmsg_read,
 	.poll		= kmsg_poll,
@@ -61,4 +60,4 @@ static int __init proc_kmsg_init(void)
 	proc_create("kmsg", S_IRUSR, NULL, &proc_kmsg_operations);
 	return 0;
 }
-fs_initcall(proc_kmsg_init);
+module_init(proc_kmsg_init);

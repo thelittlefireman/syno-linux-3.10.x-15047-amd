@@ -195,7 +195,7 @@ static int pcf50633_probe(struct i2c_client *client,
 				const struct i2c_device_id *ids)
 {
 	struct pcf50633 *pcf;
-	struct pcf50633_platform_data *pdata = dev_get_platdata(&client->dev);
+	struct pcf50633_platform_data *pdata = client->dev.platform_data;
 	int i, ret;
 	int version, variant;
 
@@ -241,11 +241,10 @@ static int pcf50633_probe(struct i2c_client *client,
 	pcf50633_client_dev_register(pcf, "pcf50633-adc", &pcf->adc_pdev);
 	pcf50633_client_dev_register(pcf, "pcf50633-backlight", &pcf->bl_pdev);
 
-
 	for (i = 0; i < PCF50633_NUM_REGULATORS; i++) {
 		struct platform_device *pdev;
 
-		pdev = platform_device_alloc("pcf50633-regulator", i);
+		pdev = platform_device_alloc("pcf50633-regltr", i);
 		if (!pdev) {
 			dev_err(pcf->dev, "Cannot create regulator %d\n", i);
 			continue;

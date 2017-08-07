@@ -17,7 +17,6 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <asm/thread_notify.h>
-#include <asm/cputype.h>
 
 static int iwmmxt_do(struct notifier_block *self, unsigned long cmd, void *t)
 {
@@ -49,7 +48,6 @@ static struct notifier_block iwmmxt_notifier_block = {
 	.notifier_call	= iwmmxt_do,
 };
 
-
 static u32 __init pj4_cp_access_read(void)
 {
 	u32 value;
@@ -72,7 +70,6 @@ static void __init pj4_cp_access_write(u32 value)
 		: "=r" (temp) : "r" (value));
 }
 
-
 /*
  * Disable CP0/CP1 on boot, and let call_fpe() and the iWMMXt lazy
  * switch code handle iWMMXt context switching.
@@ -80,9 +77,6 @@ static void __init pj4_cp_access_write(u32 value)
 static int __init pj4_cp0_init(void)
 {
 	u32 cp_access;
-
-	if (!cpu_is_pj4())
-		return 0;
 
 	cp_access = pj4_cp_access_read() & ~0xf;
 	pj4_cp_access_write(cp_access);

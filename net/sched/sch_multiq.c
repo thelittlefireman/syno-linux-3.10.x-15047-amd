@@ -11,7 +11,8 @@
  * more details.
  *
  * You should have received a copy of the GNU General Public License along with
- * this program; if not, see <http://www.gnu.org/licenses/>.
+ * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
+ * Place - Suite 330, Boston, MA 02111-1307 USA.
  *
  * Author: Alexander Duyck <alexander.h.duyck@intel.com>
  */
@@ -26,7 +27,6 @@
 #include <net/netlink.h>
 #include <net/pkt_sched.h>
 
-
 struct multiq_sched_data {
 	u16 bands;
 	u16 max_bands;
@@ -34,7 +34,6 @@ struct multiq_sched_data {
 	struct tcf_proto *filter_list;
 	struct Qdisc **queues;
 };
-
 
 static struct Qdisc *
 multiq_classify(struct sk_buff *skb, struct Qdisc *sch, int *qerr)
@@ -169,7 +168,6 @@ static unsigned int multiq_drop(struct Qdisc *sch)
 	}
 	return 0;
 }
-
 
 static void
 multiq_reset(struct Qdisc *sch)
@@ -336,7 +334,6 @@ static unsigned long multiq_bind(struct Qdisc *sch, unsigned long parent,
 {
 	return multiq_get(sch, classid);
 }
-
 
 static void multiq_put(struct Qdisc *q, unsigned long cl)
 {

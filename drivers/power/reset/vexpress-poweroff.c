@@ -48,7 +48,7 @@ static void vexpress_power_off(void)
 
 static struct device *vexpress_restart_device;
 
-static void vexpress_restart(enum reboot_mode reboot_mode, const char *cmd)
+static void vexpress_restart(char str, const char *cmd)
 {
 	vexpress_reset_do(vexpress_restart_device, "restart");
 }
@@ -73,7 +73,6 @@ static ssize_t vexpress_reset_active_store(struct device *dev,
 
 DEVICE_ATTR(active, S_IRUGO | S_IWUSR, vexpress_reset_active_show,
 		vexpress_reset_active_store);
-
 
 enum vexpress_reset_func { FUNC_RESET, FUNC_SHUTDOWN, FUNC_REBOOT };
 

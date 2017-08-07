@@ -56,7 +56,7 @@
 #ifdef __KERNEL__
 #include <linux/module.h>
 #include <linux/compiler.h>
-#include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #define s_space "%%sr1"
 #define d_space "%%sr2"
 #else
@@ -161,7 +161,7 @@ static inline void prefetch_dst(const void *addr)
 /* Copy from a not-aligned src to an aligned dst, using shifts. Handles 4 words
  * per loop.  This code is derived from glibc. 
  */
-static noinline unsigned long copy_dstaligned(unsigned long dst,
+static inline unsigned long copy_dstaligned(unsigned long dst,
 					unsigned long src, unsigned long len)
 {
 	/* gcc complains that a2 and a3 may be uninitialized, but actually
@@ -272,11 +272,10 @@ handle_store_error:
 	return PA_MEMCPY_STORE_ERROR;
 }
 
-
 /* Returns PA_MEMCPY_OK, PA_MEMCPY_LOAD_ERROR or PA_MEMCPY_STORE_ERROR.
  * In case of an access fault the faulty address can be read from the per_cpu
  * exception data struct. */
-static noinline unsigned long pa_memcpy_internal(void *dstp, const void *srcp,
+static unsigned long pa_memcpy_internal(void *dstp, const void *srcp,
 					unsigned long len)
 {
 	register unsigned long src, dst, t1, t2, t3;
@@ -458,7 +457,6 @@ handle_store_error:
 	return PA_MEMCPY_STORE_ERROR;
 }
 
-
 /* Returns 0 for success, otherwise, returns number of bytes not transferred. */
 static unsigned long pa_memcpy(void *dstp, const void *srcp, unsigned long len)
 {
@@ -470,7 +468,7 @@ static unsigned long pa_memcpy(void *dstp, const void *srcp, unsigned long len)
 		return 0;
 
 	/* if a load or store fault occured we can get the faulty addr */
-	d = this_cpu_ptr(&exception_data);
+	d = &__get_cpu_var(exception_data);
 	fault_addr = d->fault_addr;
 
 	/* error in load or store? */
@@ -511,7 +509,6 @@ unsigned long copy_in_user(void __user *dst, const void __user *src, unsigned lo
 	return pa_memcpy((void __force *)dst, (void __force *)src, len);
 }
 
-
 void * memcpy(void * dst,const void *src, size_t count)
 {
 	mtsp(get_kernel_space(), 1);
@@ -524,17 +521,4 @@ EXPORT_SYMBOL(copy_to_user);
 EXPORT_SYMBOL(copy_from_user);
 EXPORT_SYMBOL(copy_in_user);
 EXPORT_SYMBOL(memcpy);
-
-long probe_kernel_read(void *dst, const void *src, size_t size)
-{
-	unsigned long addr = (unsigned long)src;
-
-	if (addr < PAGE_SIZE)
-		return -EFAULT;
-
-	/* check for I/O space F_EXTEND(0xfff00000) access as well? */
-
-	return __probe_kernel_read(dst, src, size);
-}
-
 #endif

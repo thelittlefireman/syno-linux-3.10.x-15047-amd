@@ -39,7 +39,6 @@
 #include <linux/mm.h>
 #include <linux/console.h>
 #include <linux/tty.h>
-#include <linux/vt.h>
 
 #include <asm/sibyte/bcm1480_regs.h>
 #include <asm/sibyte/bcm1480_scd.h>
@@ -198,7 +197,6 @@ struct pci_controller bcm1480_controller = {
 	.io_offset	= A_BCM1480_PHYS_PCI_IO_MATCH_BYTES,
 };
 
-
 static int __init bcm1480_pcibios_init(void)
 {
 	uint32_t cmdreg;
@@ -258,9 +256,7 @@ static int __init bcm1480_pcibios_init(void)
 	register_pci_controller(&bcm1480_controller);
 
 #ifdef CONFIG_VGA_CONSOLE
-	console_lock();
-	do_take_over_console(&vga_con, 0, MAX_NR_CONSOLES-1, 1);
-	console_unlock();
+	take_over_console(&vga_con, 0, MAX_NR_CONSOLES-1, 1);
 #endif
 	return 0;
 }

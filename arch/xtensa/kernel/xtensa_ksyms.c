@@ -25,14 +25,12 @@
 #include <asm/io.h>
 #include <asm/page.h>
 #include <asm/pgalloc.h>
-#include <asm/ftrace.h>
 #ifdef CONFIG_BLK_DEV_FD
 #include <asm/floppy.h>
 #endif
 #ifdef CONFIG_NET
 #include <net/checksum.h>
 #endif /* CONFIG_NET */
-
 
 /*
  * String functions
@@ -122,8 +120,6 @@ EXPORT_SYMBOL(insw);
 EXPORT_SYMBOL(insl);
 
 extern long common_exception_return;
+extern long _spill_registers;
 EXPORT_SYMBOL(common_exception_return);
-
-#ifdef CONFIG_FUNCTION_TRACER
-EXPORT_SYMBOL(_mcount);
-#endif
+EXPORT_SYMBOL(_spill_registers);

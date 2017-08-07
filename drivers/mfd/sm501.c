@@ -72,7 +72,6 @@ struct sm501_devdata {
 	struct resource			*regs_claim;
 	struct sm501_platdata		*platdata;
 
-
 	unsigned int			 in_suspend;
 	unsigned long			 pm_misc;
 
@@ -82,7 +81,6 @@ struct sm501_devdata {
 	void __iomem			*regs;
 	unsigned int			 rev;
 };
-
 
 #define MHZ (1000 * 1000)
 
@@ -840,7 +838,7 @@ static int sm501_register_uart(struct sm501_devdata *sm, int devices)
 	if (!pdev)
 		return -ENOMEM;
 
-	uart_data = dev_get_platdata(&pdev->dev);
+	uart_data = pdev->dev.platform_data;
 
 	if (devices & SM501_USE_UART0) {
 		sm501_setup_uart_data(sm, uart_data++, 0x30000);
@@ -1167,7 +1165,7 @@ static int sm501_register_gpio_i2c_instance(struct sm501_devdata *sm,
 	if (!pdev)
 		return -ENOMEM;
 
-	icd = dev_get_platdata(&pdev->dev);
+	icd = pdev->dev.platform_data;
 
 	/* We keep the pin_sda and pin_scl fields relative in case the
 	 * same platform data is passed to >1 SM501.
@@ -1230,7 +1228,6 @@ static ssize_t sm501_dbg_regs(struct device *dev,
 
 	return ptr - buff;
 }
-
 
 static DEVICE_ATTR(dbg_regs, 0444, sm501_dbg_regs, NULL);
 
@@ -1403,7 +1400,7 @@ static int sm501_plat_probe(struct platform_device *dev)
 
 	sm->dev = &dev->dev;
 	sm->pdev_id = dev->id;
-	sm->platdata = dev_get_platdata(&dev->dev);
+	sm->platdata = dev->dev.platform_data;
 
 	ret = platform_get_irq(dev, 0);
 	if (ret < 0) {
@@ -1660,6 +1657,7 @@ static int sm501_pci_probe(struct pci_dev *dev,
  err3:
 	pci_disable_device(dev);
  err2:
+	pci_set_drvdata(dev, NULL);
 	kfree(sm);
  err1:
 	return err;
@@ -1694,6 +1692,7 @@ static void sm501_pci_remove(struct pci_dev *dev)
 	release_resource(sm->regs_claim);
 	kfree(sm->regs_claim);
 
+	pci_set_drvdata(dev, NULL);
 	pci_disable_device(dev);
 }
 
@@ -1710,7 +1709,7 @@ static int sm501_plat_remove(struct platform_device *dev)
 	return 0;
 }
 
-static const struct pci_device_id sm501_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(sm501_pci_tbl) = {
 	{ 0x126f, 0x0501, PCI_ANY_ID, PCI_ANY_ID, 0, 0, 0 },
 	{ 0, },
 };

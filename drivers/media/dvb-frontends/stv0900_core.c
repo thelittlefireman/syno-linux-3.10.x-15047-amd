@@ -943,7 +943,6 @@ void stv0900_activate_s2_modcod(struct stv0900_internal *intp,
 		for (reg_index = 0; reg_index < 8; reg_index++)
 			stv0900_write_reg(intp, MODCODLST7 + reg_index, 0xcc);
 
-
 	}
 }
 
@@ -1572,7 +1571,6 @@ static int stv0900_set_mis(struct stv0900_internal *intp,
 	return error;
 }
 
-
 static enum dvbfe_search stv0900_search(struct dvb_frontend *fe)
 {
 	struct stv0900_state *state = fe->demodulator_priv;
@@ -1753,7 +1751,6 @@ static int stv0900_send_burst(struct dvb_frontend *fe, fe_sec_mini_cmd_t burst)
 	struct stv0900_internal *intp = state->internal;
 	enum fe_stv0900_demod_num demod = state->demod;
 	u8 data;
-
 
 	switch (burst) {
 	case SEC_MINI_A:

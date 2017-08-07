@@ -176,7 +176,6 @@ struct sn_irq_info *sn_retarget_vector(struct sn_irq_info *sn_irq_info,
 	spin_unlock(&sn_irq_info_lock);
 	kfree_rcu(sn_irq_info, rcu);
 
-
 finish_up:
 	/* Update kernels new_irq_info with new target info */
 	cpuid = nasid_slice_to_cpuid(new_irq_info->irq_nasid,
@@ -209,8 +208,8 @@ static int sn_set_affinity_irq(struct irq_data *data,
 	nasid_t nasid;
 	int slice;
 
-	nasid = cpuid_to_nasid(cpumask_first_and(mask, cpu_online_mask));
-	slice = cpuid_to_slice(cpumask_first_and(mask, cpu_online_mask));
+	nasid = cpuid_to_nasid(cpumask_first(mask));
+	slice = cpuid_to_slice(cpumask_first(mask));
 
 	list_for_each_entry_safe(sn_irq_info, sn_irq_info_safe,
 				 sn_irq_lh[irq], list)

@@ -144,7 +144,6 @@ static void set_idt(void *newidt, u16 limit)
 		);
 };
 
-
 static void set_gdt(void *newgdt, u16 limit)
 {
 	struct desc_ptr curgdt;
@@ -279,7 +278,4 @@ void arch_crash_save_vmcoreinfo(void)
 	VMCOREINFO_SYMBOL(node_data);
 	VMCOREINFO_LENGTH(node_data, MAX_NUMNODES);
 #endif
-	vmcoreinfo_append_str("KERNELOFFSET=%lx\n",
-			      (unsigned long)&_text - __START_KERNEL);
 }
-

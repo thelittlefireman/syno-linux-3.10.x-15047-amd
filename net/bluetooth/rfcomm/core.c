@@ -48,7 +48,6 @@ static DEFINE_MUTEX(rfcomm_mutex);
 #define rfcomm_lock()	mutex_lock(&rfcomm_mutex)
 #define rfcomm_unlock()	mutex_unlock(&rfcomm_mutex)
 
-
 static LIST_HEAD(session_list);
 
 static int rfcomm_send_frame(struct rfcomm_session *s, u8 *data, int len);
@@ -216,7 +215,6 @@ static int rfcomm_check_security(struct rfcomm_dlc *d)
 
 	switch (d->sec_level) {
 	case BT_SECURITY_HIGH:
-	case BT_SECURITY_FIPS:
 		auth_type = HCI_AT_GENERAL_BONDING_MITM;
 		break;
 	case BT_SECURITY_MEDIUM:
@@ -360,11 +358,6 @@ static struct rfcomm_dlc *rfcomm_dlc_get(struct rfcomm_session *s, u8 dlci)
 	return NULL;
 }
 
-static int rfcomm_check_channel(u8 channel)
-{
-	return channel < 1 || channel > 30;
-}
-
 static int __rfcomm_dlc_open(struct rfcomm_dlc *d, bdaddr_t *src, bdaddr_t *dst, u8 channel)
 {
 	struct rfcomm_session *s;
@@ -374,7 +367,7 @@ static int __rfcomm_dlc_open(struct rfcomm_dlc *d, bdaddr_t *src, bdaddr_t *dst,
 	BT_DBG("dlc %p state %ld %pMR -> %pMR channel %d",
 	       d, d->state, src, dst, channel);
 
-	if (rfcomm_check_channel(channel))
+	if (channel < 1 || channel > 30)
 		return -EINVAL;
 
 	if (d->state != BT_OPEN && d->state != BT_CLOSED)
@@ -431,20 +424,6 @@ int rfcomm_dlc_open(struct rfcomm_dlc *d, bdaddr_t *src, bdaddr_t *dst, u8 chann
 	return r;
 }
 
-static void __rfcomm_dlc_disconn(struct rfcomm_dlc *d)
-{
-	struct rfcomm_session *s = d->session;
-
-	d->state = BT_DISCONN;
-	if (skb_queue_empty(&d->tx_queue)) {
-		rfcomm_send_disc(s, d->dlci);
-		rfcomm_dlc_set_timer(d, RFCOMM_DISC_TIMEOUT);
-	} else {
-		rfcomm_queue_disc(d);
-		rfcomm_dlc_set_timer(d, RFCOMM_DISC_TIMEOUT * 2);
-	}
-}
-
 static int __rfcomm_dlc_close(struct rfcomm_dlc *d, int err)
 {
 	struct rfcomm_session *s = d->session;
@@ -457,29 +436,32 @@ static int __rfcomm_dlc_close(struct rfcomm_dlc *d, int err)
 	switch (d->state) {
 	case BT_CONNECT:
 	case BT_CONFIG:
+		if (test_and_clear_bit(RFCOMM_DEFER_SETUP, &d->flags)) {
+			set_bit(RFCOMM_AUTH_REJECT, &d->flags);
+			rfcomm_schedule();
+			break;
+		}
+		/* Fall through */
+
+	case BT_CONNECTED:
+		d->state = BT_DISCONN;
+		if (skb_queue_empty(&d->tx_queue)) {
+			rfcomm_send_disc(s, d->dlci);
+			rfcomm_dlc_set_timer(d, RFCOMM_DISC_TIMEOUT);
+		} else {
+			rfcomm_queue_disc(d);
+			rfcomm_dlc_set_timer(d, RFCOMM_DISC_TIMEOUT * 2);
+		}
+		break;
+
 	case BT_OPEN:
 	case BT_CONNECT2:
 		if (test_and_clear_bit(RFCOMM_DEFER_SETUP, &d->flags)) {
 			set_bit(RFCOMM_AUTH_REJECT, &d->flags);
 			rfcomm_schedule();
-			return 0;
-		}
-	}
-
-	switch (d->state) {
-	case BT_CONNECT:
-	case BT_CONNECTED:
-		__rfcomm_dlc_disconn(d);
-		break;
-
-	case BT_CONFIG:
-		if (s->state != BT_BOUND) {
-			__rfcomm_dlc_disconn(d);
 			break;
 		}
-		/* if closing a dlc in a session that hasn't been started,
-		 * just close and unlink the dlc
-		 */
+		/* Fall through */
 
 	default:
 		rfcomm_dlc_clear_timer(d);
@@ -530,25 +512,6 @@ no_session:
 	return r;
 }
 
-struct rfcomm_dlc *rfcomm_dlc_exists(bdaddr_t *src, bdaddr_t *dst, u8 channel)
-{
-	struct rfcomm_session *s;
-	struct rfcomm_dlc *dlc = NULL;
-	u8 dlci;
-
-	if (rfcomm_check_channel(channel))
-		return ERR_PTR(-EINVAL);
-
-	rfcomm_lock();
-	s = rfcomm_session_get(src, dst);
-	if (s) {
-		dlci = __dlci(!s->initiator, channel);
-		dlc = rfcomm_dlc_get(s, dlci);
-	}
-	rfcomm_unlock();
-	return dlc;
-}
-
 int rfcomm_dlc_send(struct rfcomm_dlc *d, struct sk_buff *skb)
 {
 	int len = skb->len;
@@ -567,20 +530,6 @@ int rfcomm_dlc_send(struct rfcomm_dlc *d, struct sk_buff *skb)
 	if (!test_bit(RFCOMM_TX_THROTTLED, &d->flags))
 		rfcomm_schedule();
 	return len;
-}
-
-void rfcomm_dlc_send_noerror(struct rfcomm_dlc *d, struct sk_buff *skb)
-{
-	int len = skb->len;
-
-	BT_DBG("dlc %p mtu %d len %d", d, d->mtu, len);
-
-	rfcomm_make_uih(skb, d->addr);
-	skb_queue_tail(&d->tx_queue, skb);
-
-	if (d->state == BT_CONNECTED &&
-	    !test_bit(RFCOMM_TX_THROTTLED, &d->flags))
-		rfcomm_schedule();
 }
 
 void __rfcomm_dlc_throttle(struct rfcomm_dlc *d)
@@ -691,13 +640,13 @@ static struct rfcomm_session *rfcomm_session_get(bdaddr_t *src, bdaddr_t *dst)
 {
 	struct rfcomm_session *s;
 	struct list_head *p, *n;
-	struct l2cap_chan *chan;
+	struct bt_sock *sk;
 	list_for_each_safe(p, n, &session_list) {
 		s = list_entry(p, struct rfcomm_session, list);
-		chan = l2cap_pi(s->sock->sk)->chan;
+		sk = bt_sk(s->sock->sk);
 
-		if ((!bacmp(src, BDADDR_ANY) || !bacmp(&chan->src, src)) &&
-		    !bacmp(&chan->dst, dst))
+		if ((!bacmp(src, BDADDR_ANY) || !bacmp(&sk->src, src)) &&
+				!bacmp(&sk->dst, dst))
 			return s;
 	}
 	return NULL;
@@ -744,7 +693,6 @@ static struct rfcomm_session *rfcomm_session_create(bdaddr_t *src,
 	addr.l2_family = AF_BLUETOOTH;
 	addr.l2_psm    = 0;
 	addr.l2_cid    = 0;
-	addr.l2_bdaddr_type = BDADDR_BREDR;
 	*err = kernel_bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (*err < 0)
 		goto failed;
@@ -768,9 +716,8 @@ static struct rfcomm_session *rfcomm_session_create(bdaddr_t *src,
 
 	bacpy(&addr.l2_bdaddr, dst);
 	addr.l2_family = AF_BLUETOOTH;
-	addr.l2_psm    = cpu_to_le16(RFCOMM_PSM);
+	addr.l2_psm    = __constant_cpu_to_le16(RFCOMM_PSM);
 	addr.l2_cid    = 0;
-	addr.l2_bdaddr_type = BDADDR_BREDR;
 	*err = kernel_connect(sock, (struct sockaddr *) &addr, sizeof(addr), O_NONBLOCK);
 	if (*err == 0 || *err == -EINPROGRESS)
 		return s;
@@ -784,11 +731,11 @@ failed:
 
 void rfcomm_session_getaddr(struct rfcomm_session *s, bdaddr_t *src, bdaddr_t *dst)
 {
-	struct l2cap_chan *chan = l2cap_pi(s->sock->sk)->chan;
+	struct sock *sk = s->sock->sk;
 	if (src)
-		bacpy(src, &chan->src);
+		bacpy(src, &bt_sk(sk)->src);
 	if (dst)
-		bacpy(dst, &chan->dst);
+		bacpy(dst, &bt_sk(sk)->dst);
 }
 
 /* ---- RFCOMM frame sending ---- */
@@ -1909,10 +1856,13 @@ static struct rfcomm_session *rfcomm_process_rx(struct rfcomm_session *s)
 	/* Get data directly from socket receive queue without copying it. */
 	while ((skb = skb_dequeue(&sk->sk_receive_queue))) {
 		skb_orphan(skb);
-		if (!skb_linearize(skb))
+		if (!skb_linearize(skb)) {
 			s = rfcomm_recv_frame(s, skb);
-		else
+			if (!s)
+				break;
+		} else {
 			kfree_skb(skb);
+		}
 	}
 
 	if (s && (sk->sk_state == BT_CLOSED))
@@ -1993,11 +1943,12 @@ static void rfcomm_process_sessions(void)
 			continue;
 		}
 
-		switch (s->state) {
-		case BT_LISTEN:
+		if (s->state == BT_LISTEN) {
 			rfcomm_accept_connection(s);
 			continue;
+		}
 
+		switch (s->state) {
 		case BT_BOUND:
 			s = rfcomm_check_connection(s);
 			break;
@@ -2032,9 +1983,8 @@ static int rfcomm_add_listener(bdaddr_t *ba)
 	/* Bind socket */
 	bacpy(&addr.l2_bdaddr, ba);
 	addr.l2_family = AF_BLUETOOTH;
-	addr.l2_psm    = cpu_to_le16(RFCOMM_PSM);
+	addr.l2_psm    = __constant_cpu_to_le16(RFCOMM_PSM);
 	addr.l2_cid    = 0;
-	addr.l2_bdaddr_type = BDADDR_BREDR;
 	err = kernel_bind(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0) {
 		BT_ERR("Bind failed %d", err);
@@ -2134,8 +2084,7 @@ static void rfcomm_security_cfm(struct hci_conn *conn, u8 status, u8 encrypt)
 				set_bit(RFCOMM_SEC_PENDING, &d->flags);
 				rfcomm_dlc_set_timer(d, RFCOMM_AUTH_TIMEOUT);
 				continue;
-			} else if (d->sec_level == BT_SECURITY_HIGH ||
-				   d->sec_level == BT_SECURITY_FIPS) {
+			} else if (d->sec_level == BT_SECURITY_HIGH) {
 				set_bit(RFCOMM_ENC_DROP, &d->flags);
 				continue;
 			}
@@ -2165,11 +2114,12 @@ static int rfcomm_dlc_debugfs_show(struct seq_file *f, void *x)
 	rfcomm_lock();
 
 	list_for_each_entry(s, &session_list, list) {
-		struct l2cap_chan *chan = l2cap_pi(s->sock->sk)->chan;
 		struct rfcomm_dlc *d;
 		list_for_each_entry(d, &s->dlcs, list) {
+			struct sock *sk = s->sock->sk;
+
 			seq_printf(f, "%pMR %pMR %ld %d %d %d %d\n",
-				   &chan->src, &chan->dst,
+				   &bt_sk(sk)->src, &bt_sk(sk)->dst,
 				   d->state, d->dlci, d->mtu,
 				   d->rx_credits, d->tx_credits);
 		}
@@ -2207,6 +2157,13 @@ static int __init rfcomm_init(void)
 		goto unregister;
 	}
 
+	if (bt_debugfs) {
+		rfcomm_dlc_debugfs = debugfs_create_file("rfcomm_dlc", 0444,
+				bt_debugfs, NULL, &rfcomm_dlc_debugfs_fops);
+		if (!rfcomm_dlc_debugfs)
+			BT_ERR("Failed to create RFCOMM debug file");
+	}
+
 	err = rfcomm_init_ttys();
 	if (err < 0)
 		goto stop;
@@ -2216,13 +2173,6 @@ static int __init rfcomm_init(void)
 		goto cleanup;
 
 	BT_INFO("RFCOMM ver %s", VERSION);
-
-	if (IS_ERR_OR_NULL(bt_debugfs))
-		return 0;
-
-	rfcomm_dlc_debugfs = debugfs_create_file("rfcomm_dlc", 0444,
-						 bt_debugfs, NULL,
-						 &rfcomm_dlc_debugfs_fops);
 
 	return 0;
 

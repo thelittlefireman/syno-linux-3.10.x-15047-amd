@@ -153,7 +153,7 @@ static int atl1c_get_permanent_address(struct atl1c_hw *hw)
 bool atl1c_read_eeprom(struct atl1c_hw *hw, u32 offset, u32 *p_value)
 {
 	int i;
-	bool ret = false;
+	int ret = false;
 	u32 otp_ctrl_data;
 	u32 control;
 	u32 data;
@@ -304,7 +304,6 @@ void atl1c_start_phy_polling(struct atl1c_hw *hw, u16 clk_sel)
 	udelay(30);
 }
 
-
 /*
  * atl1c_read_phy_core
  * core funtion to read register in PHY via MDIO control regsiter.
@@ -368,7 +367,6 @@ int atl1c_write_phy_core(struct atl1c_hw *hw, bool ext, u8 dev,
 	u16 clk_sel = MDIO_CTRL_CLK_25_4;
 
 	atl1c_stop_phy_polling(hw);
-
 
 	/* only l2c_b2 & l1d_2 could use slow clock */
 	if ((hw->nic_type == athr_l2c_b2 || hw->nic_type == athr_l1d_2) &&
@@ -505,7 +503,6 @@ void atl1c_phy_disable(struct atl1c_hw *hw)
 {
 	atl1c_power_saving(hw, 0);
 }
-
 
 int atl1c_phy_reset(struct atl1c_hw *hw)
 {
@@ -826,7 +823,6 @@ int atl1c_power_saving(struct atl1c_hw *hw, u32 wufc)
 
 	return 0;
 }
-
 
 /* configure phy after Link change Event */
 void atl1c_post_phy_linkchg(struct atl1c_hw *hw, u16 link_speed)

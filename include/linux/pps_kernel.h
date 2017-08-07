@@ -80,7 +80,7 @@ struct pps_device {
  * Global variables
  */
 
-extern const struct attribute_group *pps_groups[];
+extern struct device_attribute pps_attrs[];
 
 /*
  * Internal functions.
@@ -137,4 +137,3 @@ static inline void pps_sub_ts(struct pps_event_time *ts, struct timespec delta)
 }
 
 #endif /* LINUX_PPS_KERNEL_H */
-

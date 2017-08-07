@@ -13,7 +13,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -265,7 +266,6 @@ enum dot11_profile_t { /* And set/allowed values */
 		/* Same as MIXED_G_WIFI */
 };
 
-
 /* The dot11d conformance level configures the 802.11d conformance levels.
  * The following conformance levels exist:*/
 enum oid_inl_conformance_t {
@@ -298,7 +298,6 @@ enum oid_inl_phycap_t {
 	INL_PHYCAP_5000MHZ = 2,
 	INL_PHYCAP_FAA = 0x80000000,	/* Means card supports the FAA switch */
 };
-
 
 enum oid_num_t {
 	GEN_OID_MACADDRESS = 0,

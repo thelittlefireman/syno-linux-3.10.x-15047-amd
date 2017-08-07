@@ -15,7 +15,6 @@
 #  define ASM_CONST(x)		__ASM_CONST(x)
 #endif
 
-
 #ifdef __powerpc64__
 
 /* operations for longs and pointers */
@@ -32,15 +31,6 @@
 #define PPC_MTOCRF(FXM, RS) MTOCRF((FXM), RS)
 #define PPC_LR_STKOFF	16
 #define PPC_MIN_STKFRM	112
-
-#ifdef __BIG_ENDIAN__
-#define LDX_BE	stringify_in_c(ldx)
-#define STDX_BE	stringify_in_c(stdx)
-#else
-#define LDX_BE	stringify_in_c(ldbrx)
-#define STDX_BE	stringify_in_c(stdbrx)
-#endif
-
 #else /* 32-bit */
 
 /* operations for longs and pointers */

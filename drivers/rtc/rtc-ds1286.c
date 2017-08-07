@@ -38,7 +38,6 @@ static inline void ds1286_rtc_write(struct ds1286_priv *priv, u8 data, int reg)
 	__raw_writel(data, &priv->rtcregs[reg]);
 }
 
-
 static int ds1286_alarm_irq_enable(struct device *dev, unsigned int enabled)
 {
 	struct ds1286_priv *priv = dev_get_drvdata(dev);
@@ -353,12 +352,18 @@ static int ds1286_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int ds1286_remove(struct platform_device *pdev)
+{
+	return 0;
+}
+
 static struct platform_driver ds1286_platform_driver = {
 	.driver		= {
 		.name	= "rtc-ds1286",
 		.owner	= THIS_MODULE,
 	},
 	.probe		= ds1286_probe,
+	.remove		= ds1286_remove,
 };
 
 module_platform_driver(ds1286_platform_driver);

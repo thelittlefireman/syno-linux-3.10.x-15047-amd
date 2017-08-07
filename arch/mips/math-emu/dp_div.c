@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754dp.h"
 
 ieee754dp ieee754dp_div(ieee754dp x, ieee754dp y)
@@ -66,7 +65,6 @@ ieee754dp ieee754dp_div(ieee754dp x, ieee754dp y)
 	case CLPAIR(IEEE754_CLASS_QNAN, IEEE754_CLASS_DNORM):
 	case CLPAIR(IEEE754_CLASS_QNAN, IEEE754_CLASS_INF):
 		return x;
-
 
 		/* Infinity handling
 		 */

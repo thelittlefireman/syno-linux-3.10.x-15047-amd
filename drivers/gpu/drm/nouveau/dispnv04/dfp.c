@@ -275,7 +275,6 @@ static void nv04_dfp_prepare(struct drm_encoder *encoder)
 	}
 }
 
-
 static void nv04_dfp_mode_set(struct drm_encoder *encoder,
 			      struct drm_display_mode *mode,
 			      struct drm_display_mode *adjusted_mode)
@@ -415,7 +414,7 @@ static void nv04_dfp_mode_set(struct drm_encoder *encoder,
 	/* Output property. */
 	if ((nv_connector->dithering_mode == DITHERING_MODE_ON) ||
 	    (nv_connector->dithering_mode == DITHERING_MODE_AUTO &&
-	     encoder->crtc->primary->fb->depth > connector->display_info.bpc * 3)) {
+	     encoder->crtc->fb->depth > connector->display_info.bpc * 3)) {
 		if (nv_device(drm->device)->chipset == 0x11)
 			regp->dither = savep->dither | 0x00010000;
 		else {
@@ -490,10 +489,10 @@ static void nv04_dfp_update_backlight(struct drm_encoder *encoder, int mode)
 	/* BIOS scripts usually take care of the backlight, thanks
 	 * Apple for your consistency.
 	 */
-	if (dev->pdev->device == 0x0174 || dev->pdev->device == 0x0179 ||
-	    dev->pdev->device == 0x0189 || dev->pdev->device == 0x0329) {
+	if (dev->pci_device == 0x0174 || dev->pci_device == 0x0179 ||
+	    dev->pci_device == 0x0189 || dev->pci_device == 0x0329) {
 		if (mode == DRM_MODE_DPMS_ON) {
-			nv_mask(device, NV_PBUS_DEBUG_DUALHEAD_CTL, 1 << 31, 1 << 31);
+			nv_mask(device, NV_PBUS_DEBUG_DUALHEAD_CTL, 0, 1 << 31);
 			nv_mask(device, NV_PCRTC_GPIO_EXT, 3, 1);
 		} else {
 			nv_mask(device, NV_PBUS_DEBUG_DUALHEAD_CTL, 1 << 31, 0);
@@ -625,15 +624,13 @@ static void nv04_tmds_slave_init(struct drm_encoder *encoder)
 	struct nouveau_drm *drm = nouveau_drm(dev);
 	struct nouveau_i2c *i2c = nouveau_i2c(drm->device);
 	struct nouveau_i2c_port *port = i2c->find(i2c, 2);
-	struct nouveau_i2c_board_info info[] = {
+	struct i2c_board_info info[] = {
 		{
-		    {
-		        .type = "sil164",
-		        .addr = (dcb->tmdsconf.slave_addr == 0x7 ? 0x3a : 0x38),
-		        .platform_data = &(struct sil164_encoder_params) {
-		            SIL164_INPUT_EDGE_RISING
-		         }
-		    }, 0
+			.type = "sil164",
+			.addr = (dcb->tmdsconf.slave_addr == 0x7 ? 0x3a : 0x38),
+			.platform_data = &(struct sil164_encoder_params) {
+				SIL164_INPUT_EDGE_RISING
+			}
 		},
 		{ }
 	};
@@ -643,12 +640,12 @@ static void nv04_tmds_slave_init(struct drm_encoder *encoder)
 	    get_tmds_slave(encoder))
 		return;
 
-	type = i2c->identify(i2c, 2, "TMDS transmitter", info, NULL, NULL);
+	type = i2c->identify(i2c, 2, "TMDS transmitter", info, NULL);
 	if (type < 0)
 		return;
 
 	drm_i2c_encoder_init(dev, to_encoder_slave(encoder),
-			     &port->adapter, &info[type].dev);
+			     &port->adapter, &info[type]);
 }
 
 static const struct drm_encoder_helper_funcs nv04_lvds_helper_funcs = {

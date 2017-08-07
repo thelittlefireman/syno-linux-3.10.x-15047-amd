@@ -11,14 +11,13 @@ struct atmel_ssc_platform_data {
 
 struct ssc_device {
 	struct list_head	list;
-	dma_addr_t		phybase;
+	resource_size_t		phybase;
 	void __iomem		*regs;
 	struct platform_device	*pdev;
 	struct atmel_ssc_platform_data *pdata;
 	struct clk		*clk;
 	int			user;
 	int			irq;
-	bool			clk_from_rk_pin;
 };
 
 struct ssc_device * __must_check ssc_request(unsigned int ssc_num);

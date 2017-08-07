@@ -60,7 +60,6 @@ static netdev_tx_t mac802154_monitor_xmit(struct sk_buff *skb,
 	return mac802154_tx(priv->hw, skb, page, chan);
 }
 
-
 void mac802154_monitors_rx(struct mac802154_priv *priv, struct sk_buff *skb)
 {
 	struct sk_buff *skb2;

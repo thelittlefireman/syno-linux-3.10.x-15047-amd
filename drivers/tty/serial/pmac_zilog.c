@@ -57,8 +57,6 @@
 #include <linux/bitops.h>
 #include <linux/sysrq.h>
 #include <linux/mutex.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <asm/sections.h>
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -119,7 +117,6 @@ static struct uart_driver pmz_uart_reg = {
 	.major		=	PMACZILOG_MAJOR,
 	.minor		=	PMACZILOG_MINOR,
 };
-
 
 /* 
  * Load all registers to reprogram the port
@@ -1074,7 +1071,7 @@ static void pmz_convert_to_zs(struct uart_pmac_port *uap, unsigned int cflag,
 		uap->curregs[5] |= Tx8;
 		uap->parity_mask = 0xff;
 		break;
-	}
+	};
 	uap->curregs[4] &= ~(SB_MASK);
 	if (cflag & CSTOPB)
 		uap->curregs[4] |= SB2;
@@ -1107,7 +1104,6 @@ static void pmz_convert_to_zs(struct uart_pmac_port *uap, unsigned int cflag,
 	if ((cflag & CREAD) == 0)
 		uap->port.ignore_status_mask = 0xff;
 }
-
 
 /*
  * Set the irda codec on the imac to the specified baud rate.
@@ -1240,7 +1236,6 @@ static void pmz_irda_setup(struct uart_pmac_port *uap, unsigned long *baud)
 	(void)read_zsdata(uap);
 	(void)read_zsdata(uap);
 }
-
 
 static void __pmz_set_termios(struct uart_port *port, struct ktermios *termios,
 			      struct ktermios *old)
@@ -1564,7 +1559,6 @@ static int pmz_attach(struct macio_dev *mdev, const struct of_device_id *match)
 	if (i >= MAX_ZS_PORTS)
 		return -ENODEV;
 
-
 	uap = &pmz_ports[i];
 	uap->dev = mdev;
 	uap->port.dev = &mdev->ofdev.dev;
@@ -1607,7 +1601,6 @@ static int pmz_detach(struct macio_dev *mdev)
 	return 0;
 }
 
-
 static int pmz_suspend(struct macio_dev *mdev, pm_message_t pm_state)
 {
 	struct uart_pmac_port *uap = dev_get_drvdata(&mdev->ofdev.dev);
@@ -1621,7 +1614,6 @@ static int pmz_suspend(struct macio_dev *mdev, pm_message_t pm_state)
 
 	return 0;
 }
-
 
 static int pmz_resume(struct macio_dev *mdev)
 {
@@ -1800,6 +1792,7 @@ static int __exit pmz_detach(struct platform_device *pdev)
 
 	uart_remove_one_port(&pmz_uart_reg, &uap->port);
 
+	platform_set_drvdata(pdev, NULL);
 	uap->port.dev = NULL;
 
 	return 0;

@@ -14,6 +14,7 @@
 #include <linux/types.h>
 #include <linux/pci.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/export.h>
 
 #include <loongson.h>
@@ -30,7 +31,6 @@
 	(void *)CKSEG1ADDR(LOONGSON_PCICFG_BASE | (offset))
 #define ID_SEL_BEGIN 11
 #define MAX_DEV_NUM (31 - ID_SEL_BEGIN)
-
 
 static int loongson_pcibios_config_access(unsigned char access_type,
 				      struct pci_bus *bus,
@@ -112,7 +112,6 @@ static int loongson_pcibios_config_access(unsigned char access_type,
 	return 0;
 
 }
-
 
 /*
  * We can't address 8 and 16 bit words directly.  Instead we have to

@@ -18,7 +18,9 @@
  * General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License along
- * with this program; if not, see http://www.gnu.org/licenses/gpl.html
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307. You can also get it
+ * at http://www.gnu.org/licenses/gpl.html
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
@@ -73,10 +75,6 @@ MODULE_PARM_DESC(maxdev, "Maximum number of slcan interfaces");
 
 /* maximum rx buffer len: extended CAN frame with timestamp */
 #define SLC_MTU (sizeof("T1111222281122334455667788EA5F\r")+1)
-
-#define SLC_CMD_LEN 1
-#define SLC_SFF_ID_LEN 3
-#define SLC_EFF_ID_LEN 8
 
 struct slcan {
 	int			magic;
@@ -144,63 +142,47 @@ static void slc_bump(struct slcan *sl)
 {
 	struct sk_buff *skb;
 	struct can_frame cf;
-	int i, tmp;
-	u32 tmpid;
-	char *cmd = sl->rbuff;
+	int i, dlc_pos, tmp;
+	unsigned long ultmp;
+	char cmd = sl->rbuff[0];
 
-	cf.can_id = 0;
-
-	switch (*cmd) {
-	case 'r':
-		cf.can_id = CAN_RTR_FLAG;
-		/* fallthrough */
-	case 't':
-		/* store dlc ASCII value and terminate SFF CAN ID string */
-		cf.can_dlc = sl->rbuff[SLC_CMD_LEN + SLC_SFF_ID_LEN];
-		sl->rbuff[SLC_CMD_LEN + SLC_SFF_ID_LEN] = 0;
-		/* point to payload data behind the dlc */
-		cmd += SLC_CMD_LEN + SLC_SFF_ID_LEN + 1;
-		break;
-	case 'R':
-		cf.can_id = CAN_RTR_FLAG;
-		/* fallthrough */
-	case 'T':
-		cf.can_id |= CAN_EFF_FLAG;
-		/* store dlc ASCII value and terminate EFF CAN ID string */
-		cf.can_dlc = sl->rbuff[SLC_CMD_LEN + SLC_EFF_ID_LEN];
-		sl->rbuff[SLC_CMD_LEN + SLC_EFF_ID_LEN] = 0;
-		/* point to payload data behind the dlc */
-		cmd += SLC_CMD_LEN + SLC_EFF_ID_LEN + 1;
-		break;
-	default:
-		return;
-	}
-
-	if (kstrtou32(sl->rbuff + SLC_CMD_LEN, 16, &tmpid))
+	if ((cmd != 't') && (cmd != 'T') && (cmd != 'r') && (cmd != 'R'))
 		return;
 
-	cf.can_id |= tmpid;
-
-	/* get can_dlc from sanitized ASCII value */
-	if (cf.can_dlc >= '0' && cf.can_dlc < '9')
-		cf.can_dlc -= '0';
+	if (cmd & 0x20) /* tiny chars 'r' 't' => standard frame format */
+		dlc_pos = 4; /* dlc position tiiid */
 	else
+		dlc_pos = 9; /* dlc position Tiiiiiiiid */
+
+	if (!((sl->rbuff[dlc_pos] >= '0') && (sl->rbuff[dlc_pos] < '9')))
 		return;
+
+	cf.can_dlc = sl->rbuff[dlc_pos] - '0'; /* get can_dlc from ASCII val */
+
+	sl->rbuff[dlc_pos] = 0; /* terminate can_id string */
+
+	if (strict_strtoul(sl->rbuff+1, 16, &ultmp))
+		return;
+
+	cf.can_id = ultmp;
+
+	if (!(cmd & 0x20)) /* NO tiny chars => extended frame format */
+		cf.can_id |= CAN_EFF_FLAG;
+
+	if ((cmd | 0x20) == 'r') /* RTR frame */
+		cf.can_id |= CAN_RTR_FLAG;
 
 	*(u64 *) (&cf.data) = 0; /* clear payload */
 
-	/* RTR frames may have a dlc > 0 but they never have any data bytes */
-	if (!(cf.can_id & CAN_RTR_FLAG)) {
-		for (i = 0; i < cf.can_dlc; i++) {
-			tmp = hex_to_bin(*cmd++);
-			if (tmp < 0)
-				return;
-			cf.data[i] = (tmp << 4);
-			tmp = hex_to_bin(*cmd++);
-			if (tmp < 0)
-				return;
-			cf.data[i] |= tmp;
-		}
+	for (i = 0, dlc_pos++; i < cf.can_dlc; i++) {
+		tmp = hex_to_bin(sl->rbuff[dlc_pos++]);
+		if (tmp < 0)
+			return;
+		cf.data[i] = (tmp << 4);
+		tmp = hex_to_bin(sl->rbuff[dlc_pos++]);
+		if (tmp < 0)
+			return;
+		cf.data[i] |= tmp;
 	}
 
 	skb = dev_alloc_skb(sizeof(struct can_frame) +
@@ -227,6 +209,7 @@ static void slc_bump(struct slcan *sl)
 /* parse tty input stream */
 static void slcan_unesc(struct slcan *sl, unsigned char s)
 {
+
 	if ((s == '\r') || (s == '\a')) { /* CR or BEL ends the pdu */
 		if (!test_and_clear_bit(SLF_ERROR, &sl->flags) &&
 		    (sl->rcount > 4))  {
@@ -253,46 +236,27 @@ static void slcan_unesc(struct slcan *sl, unsigned char s)
 /* Encapsulate one can_frame and stuff into a TTY queue. */
 static void slc_encaps(struct slcan *sl, struct can_frame *cf)
 {
-	int actual, i;
-	unsigned char *pos;
-	unsigned char *endpos;
-	canid_t id = cf->can_id;
-
-	pos = sl->xbuff;
+	int actual, idx, i;
+	char cmd;
 
 	if (cf->can_id & CAN_RTR_FLAG)
-		*pos = 'R'; /* becomes 'r' in standard frame format (SFF) */
+		cmd = 'R'; /* becomes 'r' in standard frame format */
 	else
-		*pos = 'T'; /* becomes 't' in standard frame format (SSF) */
+		cmd = 'T'; /* becomes 't' in standard frame format */
 
-	/* determine number of chars for the CAN-identifier */
-	if (cf->can_id & CAN_EFF_FLAG) {
-		id &= CAN_EFF_MASK;
-		endpos = pos + SLC_EFF_ID_LEN;
-	} else {
-		*pos |= 0x20; /* convert R/T to lower case for SFF */
-		id &= CAN_SFF_MASK;
-		endpos = pos + SLC_SFF_ID_LEN;
-	}
+	if (cf->can_id & CAN_EFF_FLAG)
+		sprintf(sl->xbuff, "%c%08X%d", cmd,
+			cf->can_id & CAN_EFF_MASK, cf->can_dlc);
+	else
+		sprintf(sl->xbuff, "%c%03X%d", cmd | 0x20,
+			cf->can_id & CAN_SFF_MASK, cf->can_dlc);
 
-	/* build 3 (SFF) or 8 (EFF) digit CAN identifier */
-	pos++;
-	while (endpos >= pos) {
-		*endpos-- = hex_asc_upper[id & 0xf];
-		id >>= 4;
-	}
+	idx = strlen(sl->xbuff);
 
-	pos += (cf->can_id & CAN_EFF_FLAG) ? SLC_EFF_ID_LEN : SLC_SFF_ID_LEN;
+	for (i = 0; i < cf->can_dlc; i++)
+		sprintf(&sl->xbuff[idx + 2*i], "%02X", cf->data[i]);
 
-	*pos++ = cf->can_dlc + '0';
-
-	/* RTR frames may have a dlc > 0 but they never have any data bytes */
-	if (!(cf->can_id & CAN_RTR_FLAG)) {
-		for (i = 0; i < cf->can_dlc; i++)
-			pos = hex_byte_pack_upper(pos, cf->data[i]);
-	}
-
-	*pos++ = '\r';
+	strcat(sl->xbuff, "\r"); /* add terminating character */
 
 	/* Order of next two lines is *very* important.
 	 * When we are sending a little amount of data,
@@ -303,8 +267,8 @@ static void slc_encaps(struct slcan *sl, struct can_frame *cf)
 	 *       14 Oct 1994  Dmitry Gorodchanin.
 	 */
 	set_bit(TTY_DO_WRITE_WAKEUP, &sl->tty->flags);
-	actual = sl->tty->ops->write(sl->tty, sl->xbuff, pos - sl->xbuff);
-	sl->xleft = (pos - sl->xbuff) - actual;
+	actual = sl->tty->ops->write(sl->tty, sl->xbuff, strlen(sl->xbuff));
+	sl->xleft = strlen(sl->xbuff) - actual;
 	sl->xhead = sl->xbuff + actual;
 	sl->dev->stats.tx_bytes += cf->can_dlc;
 }
@@ -322,13 +286,11 @@ static void slcan_write_wakeup(struct tty_struct *tty)
 	if (!sl || sl->magic != SLCAN_MAGIC || !netif_running(sl->dev))
 		return;
 
-	spin_lock(&sl->lock);
 	if (sl->xleft <= 0)  {
 		/* Now serial buffer is almost free & we can start
 		 * transmission of another packet */
 		sl->dev->stats.tx_packets++;
 		clear_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
-		spin_unlock(&sl->lock);
 		netif_wake_queue(sl->dev);
 		return;
 	}
@@ -336,7 +298,6 @@ static void slcan_write_wakeup(struct tty_struct *tty)
 	actual = tty->ops->write(tty, sl->xhead, sl->xleft);
 	sl->xleft -= actual;
 	sl->xhead += actual;
-	spin_unlock(&sl->lock);
 }
 
 /* Send a can_frame to a TTY queue. */
@@ -366,7 +327,6 @@ out:
 	kfree_skb(skb);
 	return NETDEV_TX_OK;
 }
-
 
 /******************************************
  *   Routines looking at netdevice side.
@@ -411,16 +371,10 @@ static void slc_free_netdev(struct net_device *dev)
 	slcan_devs[i] = NULL;
 }
 
-static int slcan_change_mtu(struct net_device *dev, int new_mtu)
-{
-	return -EINVAL;
-}
-
 static const struct net_device_ops slc_netdev_ops = {
 	.ndo_open               = slc_open,
 	.ndo_stop               = slc_close,
 	.ndo_start_xmit         = slc_xmit,
-	.ndo_change_mtu         = slcan_change_mtu,
 };
 
 static void slc_setup(struct net_device *dev)

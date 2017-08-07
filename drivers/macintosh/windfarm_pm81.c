@@ -149,7 +149,6 @@ static int wf_smu_all_controls_ok, wf_smu_all_sensors_ok, wf_smu_started;
 
 static unsigned int wf_smu_failure_state;
 static int wf_smu_readjust, wf_smu_skipping;
-static bool wf_smu_overtemp;
 
 /*
  * ****** System Fans Control Loop ******
@@ -237,7 +236,6 @@ static struct wf_smu_sys_fans_state *wf_smu_sys_fans;
  *
  */
 
-
 #define WF_SMU_CPU_FANS_INTERVAL	1
 #define WF_SMU_CPU_FANS_MAX_HISTORY	16
 #define WF_SMU_CPU_FANS_SIBLING_SCALE	0x00001000
@@ -254,8 +252,6 @@ struct wf_smu_cpu_fans_state {
 };
 
 static struct wf_smu_cpu_fans_state *wf_smu_cpu_fans;
-
-
 
 /*
  * ***** Implementation *****
@@ -594,7 +590,6 @@ static void wf_smu_tick(void)
 	if (new_failure & FAILURE_OVERTEMP) {
 		wf_set_overtemp();
 		wf_smu_skipping = 2;
-		wf_smu_overtemp = true;
 	}
 
 	/* We only clear the overtemp condition if overtemp is cleared
@@ -603,10 +598,8 @@ static void wf_smu_tick(void)
 	 * the control loop levels, but we don't want to keep it clear
 	 * here in this case
 	 */
-	if (!wf_smu_failure_state && wf_smu_overtemp) {
+	if (new_failure == 0 && last_failure & FAILURE_OVERTEMP)
 		wf_clear_overtemp();
-		wf_smu_overtemp = false;
-	}
 }
 
 static void wf_smu_new_control(struct wf_control *ct)
@@ -671,7 +664,6 @@ static void wf_smu_new_sensor(struct wf_sensor *sr)
 	if (sensor_cpu_power && sensor_cpu_temp && sensor_hd_temp)
 		wf_smu_all_sensors_ok = 1;
 }
-
 
 static int wf_smu_notify(struct notifier_block *self,
 			       unsigned long event, void *data)
@@ -774,7 +766,6 @@ static struct platform_driver wf_smu_driver = {
 	},
 };
 
-
 static int __init wf_smu_init(void)
 {
 	int rc = -ENODEV;
@@ -802,7 +793,6 @@ static void __exit wf_smu_exit(void)
 
 	platform_driver_unregister(&wf_smu_driver);
 }
-
 
 module_init(wf_smu_init);
 module_exit(wf_smu_exit);

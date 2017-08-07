@@ -44,7 +44,6 @@ static char *MInit_speed28800 = "AT%G0%B28800\r\0";
 static char *MInit_dialout = "ATs7=60 x1 d\r\0";
 static char *MInit_dialin = "ATs7=60 x1 a\r\0";
 
-
 static inline unsigned int serial_in(struct IsdnCardState *cs, int offset)
 {
 #ifdef SERIAL_DEBUG_REG
@@ -109,7 +108,6 @@ static void change_speed(struct IsdnCardState *cs, int baud)
 {
 	int	quot = 0, baud_base;
 	unsigned cval, fcr = 0;
-
 
 	/* byte size and parity */
 	cval = 0x03;
@@ -344,7 +342,7 @@ static inline void receive_chars(struct IsdnCardState *cs,
 
 		t += sprintf(t, "modem read cnt %d", cs->hw.elsa.rcvcnt);
 		QuickHex(t, cs->hw.elsa.rcvbuf, cs->hw.elsa.rcvcnt);
-		debugl1(cs, "%s", tmp);
+		debugl1(cs, tmp);
 	}
 	cs->hw.elsa.rcvcnt = 0;
 }
@@ -382,7 +380,6 @@ static inline void transmit_chars(struct IsdnCardState *cs, int *intr_done)
 		serial_outp(cs, UART_IER, cs->hw.elsa.IER);
 	}
 }
-
 
 static void rs_interrupt_elsa(struct IsdnCardState *cs)
 {
@@ -573,8 +570,7 @@ modem_l2l1(struct PStack *st, int pr, void *arg)
 		test_and_clear_bit(BC_FLG_ACTIV, &bcs->Flag);
 		bcs->cs->dc.isac.arcofi_bc = st->l1.bc;
 		arcofi_fsm(bcs->cs, ARCOFI_START, &ARCOFI_XOP_0);
-		wait_event_interruptible(bcs->cs->dc.isac.arcofi_wait,
-				 bcs->cs->dc.isac.arcofi_state == ARCOFI_NOP);
+		interruptible_sleep_on(&bcs->cs->dc.isac.arcofi_wait);
 		bcs->cs->hw.elsa.MFlag = 1;
 	} else {
 		printk(KERN_WARNING "ElsaSer: unknown pr %x\n", pr);

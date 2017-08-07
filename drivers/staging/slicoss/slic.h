@@ -171,7 +171,6 @@ struct slic_cmdqueue {
 #define SLIC_MAX_CARDS              32
 #define SLIC_MAX_PORTS              4        /* Max # of ports per card   */
 
-
 struct mcast_address {
 	unsigned char address[6];
 	struct mcast_address *next;
@@ -464,12 +463,9 @@ struct adapter {
 	/*
 	*  SLIC Handles
 	*/
-	/* Object handles*/
-	struct slic_handle slic_handles[SLIC_CMDQ_MAXCMDS+1];
-	/* Free object handles*/
-	struct slic_handle *pfree_slic_handles;
-	/* Object handle list lock*/
-	struct slic_spinlock     handle_lock;
+	struct slic_handle slic_handles[SLIC_CMDQ_MAXCMDS+1]; /* Object handles*/
+	struct slic_handle *pfree_slic_handles;          /* Free object handles*/
+	struct slic_spinlock     handle_lock;           /* Object handle list lock*/
 	ushort              slic_handle_ix;
 
 	u32             xmitq_full;
@@ -503,7 +499,6 @@ struct adapter {
 	struct slic_stats        inicstats_prev;
 	struct slicnet_stats     slic_stats;
 };
-
 
 #define UPDATE_STATS(largestat, newstat, oldstat)                        \
 {                                                                        \

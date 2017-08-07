@@ -40,4 +40,3 @@
 #define __HAVE_BUILTIN_BSWAP16__
 #define __builtin_bswap16 _bswap16
 #endif
-

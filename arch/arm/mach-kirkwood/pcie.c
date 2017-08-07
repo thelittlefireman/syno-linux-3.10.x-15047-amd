@@ -12,23 +12,12 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
-#include <linux/mbus.h>
 #include <video/vga.h>
 #include <asm/irq.h>
 #include <asm/mach/pci.h>
 #include <plat/pcie.h>
 #include <mach/bridge-regs.h>
 #include "common.h"
-
-/* These can go away once Kirkwood uses the mvebu-mbus DT binding */
-#define KIRKWOOD_MBUS_PCIE0_MEM_TARGET    0x4
-#define KIRKWOOD_MBUS_PCIE0_MEM_ATTR      0xe8
-#define KIRKWOOD_MBUS_PCIE0_IO_TARGET     0x4
-#define KIRKWOOD_MBUS_PCIE0_IO_ATTR       0xe0
-#define KIRKWOOD_MBUS_PCIE1_MEM_TARGET    0x4
-#define KIRKWOOD_MBUS_PCIE1_MEM_ATTR      0xd8
-#define KIRKWOOD_MBUS_PCIE1_IO_TARGET     0x4
-#define KIRKWOOD_MBUS_PCIE1_IO_ATTR       0xd0
 
 static void kirkwood_enable_pcie_clk(const char *port)
 {
@@ -90,7 +79,6 @@ static int pcie_valid_config(struct pcie_port *pp, int bus, int dev)
 
 	return 1;
 }
-
 
 /*
  * PCIe config cycles are done by programming the PCIE_CONF_ADDR register
@@ -264,25 +252,6 @@ static void __init add_pcie_port(int index, void __iomem *base)
 
 void __init kirkwood_pcie_init(unsigned int portmask)
 {
-	mvebu_mbus_add_window_remap_by_id(KIRKWOOD_MBUS_PCIE0_IO_TARGET,
-					  KIRKWOOD_MBUS_PCIE0_IO_ATTR,
-					  KIRKWOOD_PCIE_IO_PHYS_BASE,
-					  KIRKWOOD_PCIE_IO_SIZE,
-					  KIRKWOOD_PCIE_IO_BUS_BASE);
-	mvebu_mbus_add_window_by_id(KIRKWOOD_MBUS_PCIE0_MEM_TARGET,
-				    KIRKWOOD_MBUS_PCIE0_MEM_ATTR,
-				    KIRKWOOD_PCIE_MEM_PHYS_BASE,
-				    KIRKWOOD_PCIE_MEM_SIZE);
-	mvebu_mbus_add_window_remap_by_id(KIRKWOOD_MBUS_PCIE1_IO_TARGET,
-					  KIRKWOOD_MBUS_PCIE1_IO_ATTR,
-					  KIRKWOOD_PCIE1_IO_PHYS_BASE,
-					  KIRKWOOD_PCIE1_IO_SIZE,
-					  KIRKWOOD_PCIE1_IO_BUS_BASE);
-	mvebu_mbus_add_window_by_id(KIRKWOOD_MBUS_PCIE1_MEM_TARGET,
-				    KIRKWOOD_MBUS_PCIE1_MEM_ATTR,
-				    KIRKWOOD_PCIE1_MEM_PHYS_BASE,
-				    KIRKWOOD_PCIE1_MEM_SIZE);
-
 	vga_base = KIRKWOOD_PCIE_MEM_PHYS_BASE;
 
 	if (portmask & KW_PCIE0)

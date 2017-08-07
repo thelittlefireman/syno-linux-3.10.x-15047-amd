@@ -39,7 +39,6 @@
 #include <asm/mach/pci.h>
 #include "mm.h"
 
-
 LIST_HEAD(static_vmlist);
 
 static struct static_vm *find_static_vm_paddr(phys_addr_t paddr,
@@ -392,9 +391,9 @@ __arm_ioremap_exec(phys_addr_t phys_addr, size_t size, bool cached)
 	unsigned int mtype;
 
 	if (cached)
-		mtype = MT_MEMORY_RWX;
+		mtype = MT_MEMORY;
 	else
-		mtype = MT_MEMORY_RWX_NONCACHED;
+		mtype = MT_MEMORY_NONCACHED;
 
 	return __arm_ioremap_caller(phys_addr, size, mtype,
 			__builtin_return_address(0));

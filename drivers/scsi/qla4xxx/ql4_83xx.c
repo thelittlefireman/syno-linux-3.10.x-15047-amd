@@ -1,6 +1,6 @@
 /*
  * QLogic iSCSI HBA Driver
- * Copyright (c)   2003-2013 QLogic Corporation
+ * Copyright (c)   2003-2012 QLogic Corporation
  *
  * See LICENSE.qla4xxx for copyright and licensing details.
  */
@@ -259,8 +259,8 @@ void qla4_83xx_rom_lock_recovery(struct scsi_qla_host *ha)
  * Return: On success return QLA_SUCCESS
  *	   On error return QLA_ERROR
  **/
-int qla4_83xx_ms_mem_write_128b(struct scsi_qla_host *ha, uint64_t addr,
-				uint32_t *data, uint32_t count)
+static int qla4_83xx_ms_mem_write_128b(struct scsi_qla_host *ha, uint64_t addr,
+				       uint32_t *data, uint32_t count)
 {
 	int i, j;
 	uint32_t agt_ctrl;
@@ -465,7 +465,7 @@ int qla4_83xx_drv_lock(struct scsi_qla_host *ha)
 				}
 				/* Recovery Failed, some other function
 				 * has the lock, wait for 2secs and retry */
-				ql4_printk(KERN_INFO, ha, "%s: IDC lock Recovery by %d failed, Retrying timeout\n",
+				ql4_printk(KERN_INFO, ha, "%s: IDC lock Recovery by %d failed, Retrying timout\n",
 					   __func__, ha->func_num);
 				timeout = 0;
 			}
@@ -1304,24 +1304,12 @@ static void qla4_83xx_process_init_seq(struct scsi_qla_host *ha)
 static int qla4_83xx_restart(struct scsi_qla_host *ha)
 {
 	int ret_val = QLA_SUCCESS;
-	uint32_t idc_ctrl;
 
 	qla4_83xx_process_stop_seq(ha);
 
-	/*
-	 * Collect minidump.
-	 * If IDC_CTRL BIT1 is set, clear it on going to INIT state and
-	 * don't collect minidump
-	 */
-	idc_ctrl = qla4_83xx_rd_reg(ha, QLA83XX_IDC_DRV_CTRL);
-	if (idc_ctrl & GRACEFUL_RESET_BIT1) {
-		qla4_83xx_wr_reg(ha, QLA83XX_IDC_DRV_CTRL,
-				 (idc_ctrl & ~GRACEFUL_RESET_BIT1));
-		ql4_printk(KERN_INFO, ha, "%s: Graceful RESET: Not collecting minidump\n",
-			   __func__);
-	} else {
+	/* Collect minidump*/
+	if (!test_and_clear_bit(AF_83XX_NO_FW_DUMP, &ha->flags))
 		qla4_8xxx_get_minidump(ha);
-	}
 
 	qla4_83xx_process_init_seq(ha);
 
@@ -1407,13 +1395,11 @@ void qla4_83xx_enable_mbox_intrs(struct scsi_qla_host *ha)
 	}
 }
 
-
 void qla4_83xx_enable_intrs(struct scsi_qla_host *ha)
 {
 	qla4_83xx_enable_mbox_intrs(ha);
 	qla4_83xx_enable_iocb_intrs(ha);
 }
-
 
 void qla4_83xx_queue_mbox_cmd(struct scsi_qla_host *ha, uint32_t *mbx_cmd,
 			      int incount)
@@ -1485,9 +1471,9 @@ int qla4_83xx_isp_reset(struct scsi_qla_host *ha)
 				  __func__));
 	}
 
-	/* For ISP8324 and ISP8042, Reset owner is NIC, iSCSI or FCOE based on
-	 * priority and which drivers are present. Unlike ISP8022, the function
-	 * setting NEED_RESET, may not be the Reset owner. */
+	/* For ISP8324, Reset owner is NIC, iSCSI or FCOE based on priority
+	 * and which drivers are present. Unlike ISP8022, the function setting
+	 * NEED_RESET, may not be the Reset owner. */
 	if (qla4_83xx_can_perform_reset(ha))
 		set_bit(AF_8XXX_RST_OWNER, &ha->flags);
 
@@ -1675,24 +1661,4 @@ void qla4_83xx_disable_pause(struct scsi_qla_host *ha)
 	qla4_83xx_dump_pause_control_regs(ha);
 	__qla4_83xx_disable_pause(ha);
 	ha->isp_ops->idc_unlock(ha);
-}
-
-/**
- * qla4_83xx_is_detached - Check if we are marked invisible.
- * @ha: Pointer to host adapter structure.
- **/
-int qla4_83xx_is_detached(struct scsi_qla_host *ha)
-{
-	uint32_t drv_active;
-
-	drv_active = qla4_8xxx_rd_direct(ha, QLA8XXX_CRB_DRV_ACTIVE);
-
-	if (test_bit(AF_INIT_DONE, &ha->flags) &&
-	    !(drv_active & (1 << ha->func_num))) {
-		DEBUG2(ql4_printk(KERN_INFO, ha, "%s: drv_active = 0x%X\n",
-				  __func__, drv_active));
-		return QLA_SUCCESS;
-	}
-
-	return QLA_ERROR;
 }

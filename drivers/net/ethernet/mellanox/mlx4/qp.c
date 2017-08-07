@@ -35,6 +35,7 @@
 
 #include <linux/gfp.h>
 #include <linux/export.h>
+#include <linux/init.h>
 
 #include <linux/mlx4/cmd.h>
 #include <linux/mlx4/qp.h>
@@ -249,7 +250,7 @@ void __mlx4_qp_release_range(struct mlx4_dev *dev, int base_qpn, int cnt)
 
 	if (mlx4_is_qp_reserved(dev, (u32) base_qpn))
 		return;
-	mlx4_bitmap_free_range(&qp_table->bitmap, base_qpn, cnt, MLX4_USE_RR);
+	mlx4_bitmap_free_range(&qp_table->bitmap, base_qpn, cnt);
 }
 
 void mlx4_qp_release_range(struct mlx4_dev *dev, int base_qpn, int cnt)
@@ -479,7 +480,8 @@ int mlx4_init_qp_table(struct mlx4_dev *dev)
 	*/
 
 	err = mlx4_bitmap_init(&qp_table->bitmap, dev->caps.num_qps,
-			       (1 << 23) - 1, mlx4_num_reserved_sqps(dev),
+			       (1 << 23) - 1, dev->phys_caps.base_sqpn + 8 +
+			       16 * MLX4_MFUNC_MAX * !!mlx4_is_master(dev),
 			       reserved_from_top);
 	if (err)
 		return err;
@@ -511,7 +513,6 @@ int mlx4_init_qp_table(struct mlx4_dev *dev)
 			dev->caps.qp1_tunnel[k] = dev->caps.qp1_proxy[k] + 8 * MLX4_MFUNC_MAX;
 		}
 	}
-
 
 	err = mlx4_CONF_SPECIAL_QP(dev, dev->phys_caps.base_sqpn);
 	if (err)

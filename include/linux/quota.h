@@ -173,7 +173,6 @@ static inline struct kqid make_kqid_projid(kprojid_t projid)
 	return kqid;
 }
 
-
 extern spinlock_t dq_data_lock;
 
 /* Maximal numbers of writes for quota operation (insert/delete/update)
@@ -328,7 +327,6 @@ struct quotactl_ops {
 	int (*set_dqblk)(struct super_block *, struct kqid, struct fs_disk_quota *);
 	int (*get_xstate)(struct super_block *, struct fs_quota_stat *);
 	int (*set_xstate)(struct super_block *, unsigned int, int);
-	int (*get_xstatev)(struct super_block *, struct fs_quota_statv *);
 };
 
 struct quota_format_type {

@@ -325,7 +325,6 @@ sisusb_bulkin_msg(struct sisusb_usb_data *sisusb, unsigned int pipe, void *data,
 	return retval;
 }
 
-
 /* Level 1:  */
 
 /* Send a bulk message of variable size
@@ -520,7 +519,6 @@ static int sisusb_recv_bulk_msg(struct sisusb_usb_data *sisusb, int ep, int len,
 
 		} else
 			return -EIO;
-
 
 		if (thispass) {
 
@@ -2123,8 +2121,8 @@ sisusb_get_ramconfig(struct sisusb_usb_data *sisusb)
 	u8 tmp8, tmp82, ramtype;
 	int bw = 0;
 	char *ramtypetext1 = NULL;
-	static const char ram_datarate[4] = {'S', 'S', 'D', 'D'};
-	static const char ram_dynamictype[4] = {'D', 'G', 'D', 'G'};
+	const char *ramtypetext2[] = {	"SDR SDRAM", "SDR SGRAM",
+					"DDR SDRAM", "DDR SGRAM" };
 	static const int busSDR[4]  = {64, 64, 128, 128};
 	static const int busDDR[4]  = {32, 32,  64,  64};
 	static const int busDDRA[4] = {64+32, 64+32 , (64+32)*2, (64+32)*2};
@@ -2156,10 +2154,8 @@ sisusb_get_ramconfig(struct sisusb_usb_data *sisusb)
 		break;
 	}
 
-
-	dev_info(&sisusb->sisusb_dev->dev, "%dMB %s %cDR S%cRAM, bus width %d\n",
-		 sisusb->vramsize >> 20, ramtypetext1,
-		 ram_datarate[ramtype], ram_dynamictype[ramtype], bw);
+	dev_info(&sisusb->sisusb_dev->dev, "%dMB %s %s, bus width %d\n", (sisusb->vramsize >> 20), ramtypetext1,
+			ramtypetext2[ramtype], bw);
 }
 
 static int
@@ -2284,7 +2280,6 @@ sisusb_init_gfxdevice(struct sisusb_usb_data *sisusb, int initscreen)
 
 	return ret;
 }
-
 
 #ifdef INCL_SISUSB_CON
 
@@ -2785,7 +2780,6 @@ sisusb_write(struct file *file, const char __user *buffer, size_t count,
 		else
 			bytes_written = 4;
 
-
 	} else {
 
 		/* Error */
@@ -3250,6 +3244,7 @@ static const struct usb_device_id sisusb_table[] = {
 	{ USB_DEVICE(0x0711, 0x0918) },
 	{ USB_DEVICE(0x0711, 0x0920) },
 	{ USB_DEVICE(0x0711, 0x0950) },
+	{ USB_DEVICE(0x0711, 0x5200) },
 	{ USB_DEVICE(0x182d, 0x021c) },
 	{ USB_DEVICE(0x182d, 0x0269) },
 	{ }
@@ -3285,4 +3280,3 @@ module_exit(usb_sisusb_exit);
 MODULE_AUTHOR("Thomas Winischhofer <thomas@winischhofer.net>");
 MODULE_DESCRIPTION("sisusbvga - Driver for Net2280/SiS315-based USB2VGA dongles");
 MODULE_LICENSE("GPL");
-

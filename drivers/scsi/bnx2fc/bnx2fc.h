@@ -64,7 +64,7 @@
 #include "bnx2fc_constants.h"
 
 #define BNX2FC_NAME		"bnx2fc"
-#define BNX2FC_VERSION		"2.4.2"
+#define BNX2FC_VERSION		"1.0.14"
 
 #define PFX			"bnx2fc: "
 
@@ -96,7 +96,6 @@
 			(BNX2FC_MAX_PAYLOAD + sizeof(struct fc_frame_header))
 #define BNX2FC_MINI_JUMBO_MTU		2500
 
-
 #define BNX2FC_RQ_BUF_SZ		256
 #define BNX2FC_RQ_BUF_LOG_SZ		(ilog2(BNX2FC_RQ_BUF_SZ))
 
@@ -105,7 +104,7 @@
 #define BNX2FC_RQ_WQE_SIZE		(BNX2FC_RQ_BUF_SZ)
 #define BNX2FC_XFERQ_WQE_SIZE		(sizeof(struct fcoe_xfrqe))
 #define BNX2FC_CONFQ_WQE_SIZE		(sizeof(struct fcoe_confqe))
-#define BNX2X_DB_SHIFT			3
+#define BNX2FC_5771X_DB_PAGE_SIZE	128
 
 #define BNX2FC_TASK_SIZE		128
 #define	BNX2FC_TASKS_PER_PAGE		(PAGE_SIZE/BNX2FC_TASK_SIZE)
@@ -367,7 +366,6 @@ struct bnx2fc_rport {
 	atomic_t num_active_ios;
 	u32 flush_in_prog;
 	unsigned long timestamp;
-	unsigned long retry_delay_timestamp;
 	struct list_head free_task_list;
 	struct bnx2fc_cmd *pending_queue[BNX2FC_SQ_WQES_MAX+1];
 	struct list_head active_cmd_queue;
@@ -484,8 +482,6 @@ struct bnx2fc_unsol_els {
 	struct work_struct unsol_els_work;
 };
 
-
-
 struct bnx2fc_cmd *bnx2fc_cmd_alloc(struct bnx2fc_rport *tgt);
 struct bnx2fc_cmd *bnx2fc_elstm_alloc(struct bnx2fc_rport *tgt, int type);
 void bnx2fc_cmd_release(struct kref *ref);
@@ -560,8 +556,6 @@ void bnx2fc_process_els_compl(struct bnx2fc_cmd *els_req,
 void bnx2fc_build_fcp_cmnd(struct bnx2fc_cmd *io_req,
 			   struct fcp_cmnd *fcp_cmnd);
 
-
-
 void bnx2fc_flush_active_ios(struct bnx2fc_rport *tgt);
 struct fc_seq *bnx2fc_elsct_send(struct fc_lport *lport, u32 did,
 				      struct fc_frame *fp, unsigned int op,
@@ -586,7 +580,6 @@ void bnx2fc_process_seq_cleanup_compl(struct bnx2fc_cmd *seq_clnup_req,
 				      u8 rx_state);
 int bnx2fc_initiate_seq_cleanup(struct bnx2fc_cmd *orig_io_req, u32 offset,
 				enum fc_rctl r_ctl);
-
 
 #include "bnx2fc_debug.h"
 

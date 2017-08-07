@@ -26,8 +26,6 @@
 
 #include <acpi/button.h>
 
-#include <linux/pm_runtime.h>
-
 #include <drm/drmP.h>
 #include <drm/drm_edid.h>
 #include <drm/drm_crtc_helper.h>
@@ -100,7 +98,6 @@ static void
 nouveau_connector_destroy(struct drm_connector *connector)
 {
 	struct nouveau_connector *nv_connector = nouveau_connector(connector);
-	nouveau_event_ref(NULL, &nv_connector->hpd_func);
 	kfree(nv_connector->edid);
 	drm_sysfs_connector_remove(connector);
 	drm_connector_cleanup(connector);
@@ -215,10 +212,9 @@ nouveau_connector_set_encoder(struct drm_connector *connector,
 	} else {
 		connector->doublescan_allowed = true;
 		if (nv_device(drm->device)->card_type == NV_20 ||
-		    ((nv_device(drm->device)->card_type == NV_10 ||
-		      nv_device(drm->device)->card_type == NV_11) &&
-		     (dev->pdev->device & 0x0ff0) != 0x0100 &&
-		     (dev->pdev->device & 0x0ff0) != 0x0150))
+		   (nv_device(drm->device)->card_type == NV_10 &&
+		    (dev->pci_device & 0x0ff0) != 0x0100 &&
+		    (dev->pci_device & 0x0ff0) != 0x0150))
 			/* HW is broken */
 			connector->interlace_allowed = false;
 		else
@@ -244,8 +240,6 @@ nouveau_connector_detect(struct drm_connector *connector, bool force)
 	struct nouveau_encoder *nv_partner;
 	struct nouveau_i2c_port *i2c;
 	int type;
-	int ret;
-	enum drm_connector_status conn_status = connector_status_disconnected;
 
 	/* Cleanup the previous EDID block. */
 	if (nv_connector->edid) {
@@ -253,10 +247,6 @@ nouveau_connector_detect(struct drm_connector *connector, bool force)
 		kfree(nv_connector->edid);
 		nv_connector->edid = NULL;
 	}
-
-	ret = pm_runtime_get_sync(connector->dev->dev);
-	if (ret < 0 && ret != -EACCES)
-		return conn_status;
 
 	i2c = nouveau_connector_ddc_detect(connector, &nv_encoder);
 	if (i2c) {
@@ -273,8 +263,7 @@ nouveau_connector_detect(struct drm_connector *connector, bool force)
 		    !nouveau_dp_detect(to_drm_encoder(nv_encoder))) {
 			NV_ERROR(drm, "Detected %s, but failed init\n",
 				 drm_get_connector_name(connector));
-			conn_status = connector_status_disconnected;
-			goto out;
+			return connector_status_disconnected;
 		}
 
 		/* Override encoder type for DVI-I based on whether EDID
@@ -301,15 +290,13 @@ nouveau_connector_detect(struct drm_connector *connector, bool force)
 		}
 
 		nouveau_connector_set_encoder(connector, nv_encoder);
-		conn_status = connector_status_connected;
-		goto out;
+		return connector_status_connected;
 	}
 
 	nv_encoder = nouveau_connector_of_detect(connector);
 	if (nv_encoder) {
 		nouveau_connector_set_encoder(connector, nv_encoder);
-		conn_status = connector_status_connected;
-		goto out;
+		return connector_status_connected;
 	}
 
 detect_analog:
@@ -324,18 +311,12 @@ detect_analog:
 		if (helper->detect(encoder, connector) ==
 						connector_status_connected) {
 			nouveau_connector_set_encoder(connector, nv_encoder);
-			conn_status = connector_status_connected;
-			goto out;
+			return connector_status_connected;
 		}
 
 	}
 
- out:
-
-	pm_runtime_mark_last_busy(connector->dev->dev);
-	pm_runtime_put_autosuspend(connector->dev->dev);
-
-	return conn_status;
+	return connector_status_disconnected;
 }
 
 static enum drm_connector_status
@@ -934,9 +915,10 @@ nouveau_connector_hotplug_work(struct work_struct *work)
 }
 
 static int
-nouveau_connector_hotplug(void *data, int index)
+nouveau_connector_hotplug(struct nouveau_eventh *event, int index)
 {
-	struct nouveau_connector *nv_connector = data;
+	struct nouveau_connector *nv_connector =
+		container_of(event, struct nouveau_connector, hpd_func);
 	schedule_work(&nv_connector->hpd_work);
 	return NVKM_EVENT_KEEP;
 }
@@ -960,8 +942,7 @@ drm_conntype_from_dcb(enum dcb_connector_type dcb)
 	case DCB_CONNECTOR_DP       : return DRM_MODE_CONNECTOR_DisplayPort;
 	case DCB_CONNECTOR_eDP      : return DRM_MODE_CONNECTOR_eDP;
 	case DCB_CONNECTOR_HDMI_0   :
-	case DCB_CONNECTOR_HDMI_1   :
-	case DCB_CONNECTOR_HDMI_C   : return DRM_MODE_CONNECTOR_HDMIA;
+	case DCB_CONNECTOR_HDMI_1   : return DRM_MODE_CONNECTOR_HDMIA;
 	default:
 		break;
 	}
@@ -1009,15 +990,9 @@ nouveau_connector_create(struct drm_device *dev, int index)
 
 		ret = gpio->find(gpio, 0, hpd[ffs((entry & 0x07033000) >> 12)],
 				 DCB_GPIO_UNUSED, &nv_connector->hpd);
+		nv_connector->hpd_func.func = nouveau_connector_hotplug;
 		if (ret)
 			nv_connector->hpd.func = DCB_GPIO_UNUSED;
-
-		if (nv_connector->hpd.func != DCB_GPIO_UNUSED) {
-			nouveau_event_new(gpio->events, nv_connector->hpd.line,
-					  nouveau_connector_hotplug,
-					  nv_connector,
-					 &nv_connector->hpd_func);
-		}
 
 		nv_connector->type = nv_connector->dcb[0];
 		if (drm_conntype_from_dcb(nv_connector->type) ==

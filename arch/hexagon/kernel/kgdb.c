@@ -18,8 +18,6 @@
  * 02110-1301, USA.
  */
 
-#include <linux/irq.h>
-#include <linux/sched.h>
 #include <linux/kdebug.h>
 #include <linux/kgdb.h>
 
@@ -145,7 +143,6 @@ void kgdb_roundup_cpus(unsigned long flags)
 	local_irq_disable();
 }
 #endif
-
 
 /*  Not yet working  */
 void sleeping_thread_to_gdb_regs(unsigned long *gdb_regs,

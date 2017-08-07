@@ -922,7 +922,7 @@ int rds_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
 {
 	struct sock *sk = sock->sk;
 	struct rds_sock *rs = rds_sk_to_rs(sk);
-	DECLARE_SOCKADDR(struct sockaddr_in *, usin, msg->msg_name);
+	struct sockaddr_in *usin = (struct sockaddr_in *)msg->msg_name;
 	__be32 daddr;
 	__be16 dport;
 	struct rds_message *rm = NULL;
@@ -955,11 +955,13 @@ int rds_sendmsg(struct kiocb *iocb, struct socket *sock, struct msghdr *msg,
 		release_sock(sk);
 	}
 
-	/* racing with another thread binding seems ok here */
+	lock_sock(sk);
 	if (daddr == 0 || rs->rs_bound_addr == 0) {
+		release_sock(sk);
 		ret = -ENOTCONN; /* XXX not a great errno */
 		goto out;
 	}
+	release_sock(sk);
 
 	/* size of rm including all sgs */
 	ret = rds_rm_size(msg, payload_len);

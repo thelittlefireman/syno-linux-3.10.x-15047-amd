@@ -179,7 +179,6 @@ enum wmi_crypto_type {
 	WMI_CRYPT_AES_GCMP		= 0x20,
 };
 
-
 enum wmi_connect_ctrl_flag_bits {
 	WMI_CONNECT_ASSOC_POLICY_USER		= 0x0001,
 	WMI_CONNECT_SEND_REASSOC		= 0x0002,
@@ -228,7 +227,6 @@ struct wmi_reconnect_cmd {
 	u8 bssid[WMI_MAC_LEN];		/* mandatory if set */
 } __packed;
 
-
 /*
  * WMI_SET_PMK_CMDID
  */
@@ -242,7 +240,6 @@ struct wmi_reconnect_cmd {
 struct  wmi_set_pmk_cmd {
 	u8 pmk[WMI_PMK_LEN];
 } __packed;
-
 
 /*
  * WMI_SET_PASSPHRASE_CMDID
@@ -281,7 +278,6 @@ struct wmi_delete_cipher_key_cmd {
 	u8 key_index;
 	u8 mac[WMI_MAC_LEN];
 } __packed;
-
 
 /*
  * WMI_START_SCAN_CMDID
@@ -357,7 +353,6 @@ struct wmi_set_appie_cmd {
 	u8 ie_info[0];
 } __packed;
 
-
 /*
  * WMI_PXMT_RANGE_CFG_CMDID
  */
@@ -385,7 +380,6 @@ enum wmi_rf_mgmt_type {
 struct wmi_rf_mgmt_cmd {
 	__le32 rf_mgmt_type;
 } __packed;
-
 
 /*
  * WMI_RF_RX_TEST_CMDID
@@ -431,7 +425,6 @@ struct wmi_bcon_ctrl_cmd {
 	u8 disable_sec_offload;
 	u8 disable_sec;
 } __packed;
-
 
 /******* P2P ***********/
 
@@ -801,7 +794,6 @@ struct wmi_temp_sense_cmd {
 	__le32 measure_marlon_r_en;
 } __packed;
 
-
 /*
  * WMI Events
  */
@@ -889,7 +881,6 @@ enum wmi_event_id {
 /*
  * Events data structures
  */
-
 
 enum wmi_fw_status {
 	WMI_FW_STATUS_SUCCESS,
@@ -1077,7 +1068,6 @@ struct wmi_delba_event {
 	__le16 reason;
 } __packed;
 
-
 /*
  * WMI_VRING_CFG_DONE_EVENTID
  */
@@ -1143,7 +1133,6 @@ struct wmi_data_port_open_event {
 	u8 reserved[3];
 } __packed;
 
-
 /*
  * WMI_GET_PCP_CHANNEL_EVENTID
  */
@@ -1151,7 +1140,6 @@ struct wmi_get_pcp_channel_event {
 	u8 channel;
 	u8 reserved[3];
 } __packed;
-
 
 /*
 * WMI_PORT_ALLOCATED_EVENTID

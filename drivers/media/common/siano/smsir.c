@@ -24,7 +24,6 @@
 
  ****************************************************************/
 
-
 #include <linux/types.h>
 #include <linux/input.h>
 
@@ -88,7 +87,7 @@ int sms_ir_init(struct smscore_device_t *coredev)
 
 	dev->priv = coredev;
 	dev->driver_type = RC_DRIVER_IR_RAW;
-	rc_set_allowed_protocols(dev, RC_BIT_ALL);
+	dev->allowed_protos = RC_BIT_ALL;
 	dev->map_name = sms_get_board(board_id)->rc_codes;
 	dev->driver_name = MODULE_NAME;
 

@@ -6,7 +6,6 @@
 #include <linux/export.h>
 #include <linux/spinlock.h>
 
-
 static int ss_get(void *data, u64 *val)
 {
 	ktime_t start, finish;
@@ -35,8 +34,6 @@ static int ss_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(fops_ss, ss_get, NULL, "%llu\n");
-
-
 
 struct spin_multi_state {
 	raw_spinlock_t lock;
@@ -114,7 +111,6 @@ static int multi_get(void *data, u64 *val)
 }
 
 DEFINE_SIMPLE_ATTRIBUTE(fops_multi, multi_get, NULL, "%llu\n");
-
 
 extern struct dentry *mips_debugfs_dir;
 static int __init spinlock_test(void)

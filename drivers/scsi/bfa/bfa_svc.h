@@ -21,7 +21,6 @@
 #include "bfa_cs.h"
 #include "bfi_ms.h"
 
-
 /*
  * Scatter-gather DMA related defines
  */
@@ -79,7 +78,6 @@ void bfa_sgpg_winit(struct bfa_sgpg_wqe_s *wqe,
 void bfa_sgpg_wait(struct bfa_s *bfa, struct bfa_sgpg_wqe_s *wqe, int nsgpgs);
 void bfa_sgpg_wcancel(struct bfa_s *bfa, struct bfa_sgpg_wqe_s *wqe);
 
-
 /*
  * FCXP related defines
  */
@@ -126,8 +124,6 @@ typedef void (*bfa_cb_fcxp_send_t) (void *bfad_fcxp, struct bfa_fcxp_s *fcxp,
 				    u32 rsp_len, u32 resid_len,
 				    struct fchs_s *rsp_fchs);
 typedef void (*bfa_fcxp_alloc_cbfn_t) (void *cbarg, struct bfa_fcxp_s *fcxp);
-
-
 
 /*
  * Information needed for a FCXP request
@@ -233,7 +229,6 @@ struct bfa_fcxp_wqe_s {
 
 void	bfa_fcxp_isr(struct bfa_s *bfa, struct bfi_msg_s *msg);
 
-
 /*
  * RPORT related defines
  */
@@ -313,7 +308,6 @@ struct bfa_rport_s {
 	} event_arg;
 };
 #define BFA_RPORT_FC_COS(_rport)	((_rport)->rport_info.fc_class)
-
 
 /*
  * UF - unsolicited receive related defines
@@ -405,6 +399,8 @@ struct bfa_lps_s {
 	bfa_status_t	status;		/*  login status		*/
 	u16		pdusz;		/*  max receive PDU size	*/
 	u16		pr_bbcred;	/*  BB_CREDIT from peer		*/
+	u8		pr_bbscn;	/*  BB_SCN from peer		*/
+	u8		bb_scn;		/*  local BB_SCN		*/
 	u8		lsrjt_rsn;	/*  LSRJT reason		*/
 	u8		lsrjt_expl;	/*  LSRJT explanation		*/
 	u8		lun_mask;	/*  LUN mask flag		*/
@@ -438,7 +434,6 @@ struct bfa_lps_mod_s {
  * external functions
  */
 void	bfa_lps_isr(struct bfa_s *bfa, struct bfi_msg_s *msg);
-
 
 /*
  * FCPORT related defines
@@ -508,12 +503,11 @@ struct bfa_fcport_s {
 	bfa_boolean_t		diag_busy; /*  diag busy status */
 	bfa_boolean_t		beacon; /*  port beacon status */
 	bfa_boolean_t		link_e2e_beacon; /*  link beacon status */
+	bfa_boolean_t		bbsc_op_state;	/* Cred recov Oper State */
 	struct bfa_fcport_trunk_s trunk;
 	u16		fcoe_vlan;
 	struct bfa_mem_dma_s	fcport_dma;
 	bfa_boolean_t		stats_dma_ready;
-	struct bfa_bbcr_attr_s	bbcr_attr;
-	enum bfa_fec_state_s	fec_state;
 };
 
 #define BFA_FCPORT_MOD(__bfa)	(&(__bfa)->modules.fcport)
@@ -551,12 +545,11 @@ void bfa_fcport_event_register(struct bfa_s *bfa,
 			enum bfa_port_linkstate event), void *event_cbarg);
 bfa_boolean_t bfa_fcport_is_disabled(struct bfa_s *bfa);
 bfa_boolean_t bfa_fcport_is_dport(struct bfa_s *bfa);
-bfa_boolean_t bfa_fcport_is_ddport(struct bfa_s *bfa);
 bfa_status_t bfa_fcport_set_qos_bw(struct bfa_s *bfa,
 				   struct bfa_qos_bw_s *qos_bw);
 enum bfa_port_speed bfa_fcport_get_ratelim_speed(struct bfa_s *bfa);
 
-void bfa_fcport_set_tx_bbcredit(struct bfa_s *bfa, u16 tx_bbcredit);
+void bfa_fcport_set_tx_bbcredit(struct bfa_s *bfa, u16 tx_bbcredit, u8 bb_scn);
 bfa_boolean_t     bfa_fcport_is_ratelim(struct bfa_s *bfa);
 void bfa_fcport_beacon(void *dev, bfa_boolean_t beacon,
 			bfa_boolean_t link_e2e_beacon);
@@ -571,10 +564,6 @@ void bfa_fcport_dportenable(struct bfa_s *bfa);
 void bfa_fcport_dportdisable(struct bfa_s *bfa);
 bfa_status_t bfa_fcport_is_pbcdisabled(struct bfa_s *bfa);
 void bfa_fcport_cfg_faa(struct bfa_s *bfa, u8 state);
-bfa_status_t bfa_fcport_cfg_bbcr(struct bfa_s *bfa,
-			bfa_boolean_t on_off, u8 bb_scn);
-bfa_status_t bfa_fcport_get_bbcr_attr(struct bfa_s *bfa,
-			struct bfa_bbcr_attr_s *bbcr_attr);
 
 /*
  * bfa rport API functions
@@ -671,7 +660,7 @@ struct bfa_lps_s *bfa_lps_alloc(struct bfa_s *bfa);
 void bfa_lps_delete(struct bfa_lps_s *lps);
 void bfa_lps_flogi(struct bfa_lps_s *lps, void *uarg, u8 alpa,
 		   u16 pdusz, wwn_t pwwn, wwn_t nwwn,
-		   bfa_boolean_t auth_en);
+		   bfa_boolean_t auth_en, u8 bb_scn);
 void bfa_lps_fdisc(struct bfa_lps_s *lps, void *uarg, u16 pdusz,
 		   wwn_t pwwn, wwn_t nwwn);
 void bfa_lps_fdisclogo(struct bfa_lps_s *lps);
@@ -716,18 +705,10 @@ struct bfa_fcdiag_lb_s {
 struct bfa_dport_s {
 	struct bfa_s	*bfa;		/* Back pointer to BFA	*/
 	bfa_sm_t	sm;		/* finite state machine */
+	u32		msgtag;		/* firmware msg tag for reply */
 	struct bfa_reqq_wait_s reqq_wait;
 	bfa_cb_diag_t	cbfn;
 	void		*cbarg;
-	union bfi_diag_dport_msg_u i2hmsg;
-	u8		test_state;	/* enum dport_test_state  */
-	u8		dynamic;	/* boolean_t  */
-	u8		rsvd[2];
-	u32		lpcnt;
-	u32		payload;	/* user defined payload pattern */
-	wwn_t		rp_pwwn;
-	wwn_t		rp_nwwn;
-	struct bfa_diag_dport_result_s result;
 };
 
 struct bfa_fcdiag_s {
@@ -751,13 +732,11 @@ bfa_status_t	bfa_fcdiag_queuetest(struct bfa_s *bfa, u32 ignore,
 			u32 queue, struct bfa_diag_qtest_result_s *result,
 			bfa_cb_diag_t cbfn, void *cbarg);
 bfa_status_t	bfa_fcdiag_lb_is_running(struct bfa_s *bfa);
-bfa_status_t	bfa_dport_enable(struct bfa_s *bfa, u32 lpcnt, u32 pat,
-					bfa_cb_diag_t cbfn, void *cbarg);
+bfa_status_t	bfa_dport_enable(struct bfa_s *bfa, bfa_cb_diag_t cbfn,
+				 void *cbarg);
 bfa_status_t	bfa_dport_disable(struct bfa_s *bfa, bfa_cb_diag_t cbfn,
 				  void *cbarg);
-bfa_status_t	bfa_dport_start(struct bfa_s *bfa, u32 lpcnt, u32 pat,
-				bfa_cb_diag_t cbfn, void *cbarg);
-bfa_status_t	bfa_dport_show(struct bfa_s *bfa,
-				struct bfa_diag_dport_result_s *result);
+bfa_status_t	bfa_dport_get_state(struct bfa_s *bfa,
+				    enum bfa_dport_state *state);
 
 #endif /* __BFA_SVC_H__ */

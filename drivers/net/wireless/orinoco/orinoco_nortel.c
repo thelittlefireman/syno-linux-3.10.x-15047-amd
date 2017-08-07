@@ -53,7 +53,6 @@
 #define COR_OFFSET    (0xe0)	/* COR attribute offset of Prism2 PC card */
 #define COR_VALUE     (COR_LEVEL_REQ | COR_FUNC_ENA)	/* Enable PC card with interrupt in level trigger */
 
-
 /*
  * Do a soft reset of the card using the Configuration Option Register
  * We need this to get going...
@@ -234,6 +233,7 @@ static int orinoco_nortel_init_one(struct pci_dev *pdev,
 	free_irq(pdev->irq, priv);
 
  fail_irq:
+	pci_set_drvdata(pdev, NULL);
 	free_orinocodev(priv);
 
  fail_alloc:
@@ -264,6 +264,7 @@ static void orinoco_nortel_remove_one(struct pci_dev *pdev)
 
 	orinoco_if_del(priv);
 	free_irq(pdev->irq, priv);
+	pci_set_drvdata(pdev, NULL);
 	free_orinocodev(priv);
 	pci_iounmap(pdev, priv->hw.iobase);
 	pci_iounmap(pdev, card->attr_io);

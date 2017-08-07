@@ -110,7 +110,6 @@ enum {
 #define OMAP_MMC_CMDTYPE_AC	2
 #define OMAP_MMC_CMDTYPE_ADTC	3
 
-
 struct goldfish_mmc_host {
 	struct mmc_request	*mrq;
 	struct mmc_command	*cmd;
@@ -545,6 +544,8 @@ err_alloc_host_failed:
 static int goldfish_mmc_remove(struct platform_device *pdev)
 {
 	struct goldfish_mmc_host *host = platform_get_drvdata(pdev);
+
+	platform_set_drvdata(pdev, NULL);
 
 	BUG_ON(host == NULL);
 

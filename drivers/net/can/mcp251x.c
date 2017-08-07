@@ -28,7 +28,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
  *
@@ -36,6 +37,9 @@
  *
  * static struct mcp251x_platform_data mcp251x_info = {
  *         .oscillator_frequency = 8000000,
+ *         .board_specific_setup = &mcp251x_setup,
+ *         .power_enable = mcp251x_power_enable,
+ *         .transceiver_enable = NULL,
  * };
  *
  * static struct spi_board_info spi_board_info[] = {
@@ -58,7 +62,6 @@
 #include <linux/can/dev.h>
 #include <linux/can/led.h>
 #include <linux/can/platform/mcp251x.h>
-#include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -69,13 +72,10 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/uaccess.h>
-#include <linux/regulator/consumer.h>
 
 /* SPI interface instruction set */
 #define INSTRUCTION_WRITE	0x02
@@ -88,7 +88,6 @@
 #define RTS_TXB1		0x02
 #define RTS_TXB2		0x04
 #define INSTRUCTION_RTS(n)	(0x80 | ((n) & 0x07))
-
 
 /* MPC251x registers */
 #define CANSTAT	      0x0e
@@ -264,9 +263,6 @@ struct mcp251x_priv {
 #define AFTER_SUSPEND_POWER 4
 #define AFTER_SUSPEND_RESTART 8
 	int restart_tx;
-	struct regulator *power;
-	struct regulator *transceiver;
-	struct clk *clk;
 };
 
 #define MCP251X_IS(_model) \
@@ -601,10 +597,10 @@ static int mcp251x_do_set_bittiming(struct net_device *net)
 			  (bt->prop_seg - 1));
 	mcp251x_write_bits(spi, CNF3, CNF3_PHSEG2_MASK,
 			   (bt->phase_seg2 - 1));
-	dev_dbg(&spi->dev, "CNF: 0x%02x 0x%02x 0x%02x\n",
-		mcp251x_read_reg(spi, CNF1),
-		mcp251x_read_reg(spi, CNF2),
-		mcp251x_read_reg(spi, CNF3));
+	dev_info(&spi->dev, "CNF: 0x%02x 0x%02x 0x%02x\n",
+		 mcp251x_read_reg(spi, CNF1),
+		 mcp251x_read_reg(spi, CNF2),
+		 mcp251x_read_reg(spi, CNF3));
 
 	return 0;
 }
@@ -670,25 +666,16 @@ static int mcp251x_hw_probe(struct spi_device *spi)
 	return (st1 == 0x80 && st2 == 0x07) ? 1 : 0;
 }
 
-static int mcp251x_power_enable(struct regulator *reg, int enable)
-{
-	if (IS_ERR_OR_NULL(reg))
-		return 0;
-
-	if (enable)
-		return regulator_enable(reg);
-	else
-		return regulator_disable(reg);
-}
-
 static void mcp251x_open_clean(struct net_device *net)
 {
 	struct mcp251x_priv *priv = netdev_priv(net);
 	struct spi_device *spi = priv->spi;
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
 
 	free_irq(spi->irq, priv);
 	mcp251x_hw_sleep(spi);
-	mcp251x_power_enable(priv->transceiver, 0);
+	if (pdata->transceiver_enable)
+		pdata->transceiver_enable(0);
 	close_candev(net);
 }
 
@@ -696,6 +683,7 @@ static int mcp251x_stop(struct net_device *net)
 {
 	struct mcp251x_priv *priv = netdev_priv(net);
 	struct spi_device *spi = priv->spi;
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
 
 	close_candev(net);
 
@@ -715,7 +703,8 @@ static int mcp251x_stop(struct net_device *net)
 
 	mcp251x_hw_sleep(spi);
 
-	mcp251x_power_enable(priv->transceiver, 0);
+	if (pdata->transceiver_enable)
+		pdata->transceiver_enable(0);
 
 	priv->can.state = CAN_STATE_STOPPED;
 
@@ -938,7 +927,8 @@ static int mcp251x_open(struct net_device *net)
 {
 	struct mcp251x_priv *priv = netdev_priv(net);
 	struct spi_device *spi = priv->spi;
-	unsigned long flags = IRQF_ONESHOT | IRQF_TRIGGER_FALLING;
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
+	unsigned long flags;
 	int ret;
 
 	ret = open_candev(net);
@@ -948,17 +938,25 @@ static int mcp251x_open(struct net_device *net)
 	}
 
 	mutex_lock(&priv->mcp_lock);
-	mcp251x_power_enable(priv->transceiver, 1);
+	if (pdata->transceiver_enable)
+		pdata->transceiver_enable(1);
 
 	priv->force_quit = 0;
 	priv->tx_skb = NULL;
 	priv->tx_len = 0;
 
+	flags = IRQF_ONESHOT;
+	if (pdata->irq_flags)
+		flags |= pdata->irq_flags;
+	else
+		flags |= IRQF_TRIGGER_FALLING;
+
 	ret = request_threaded_irq(spi->irq, NULL, mcp251x_can_ist,
 				   flags, DEVICE_NAME, priv);
 	if (ret) {
 		dev_err(&spi->dev, "failed to acquire irq %d\n", spi->irq);
-		mcp251x_power_enable(priv->transceiver, 0);
+		if (pdata->transceiver_enable)
+			pdata->transceiver_enable(0);
 		close_candev(net);
 		goto open_unlock;
 	}
@@ -996,68 +994,24 @@ static const struct net_device_ops mcp251x_netdev_ops = {
 	.ndo_open = mcp251x_open,
 	.ndo_stop = mcp251x_stop,
 	.ndo_start_xmit = mcp251x_hard_start_xmit,
-	.ndo_change_mtu = can_change_mtu,
 };
-
-static const struct of_device_id mcp251x_of_match[] = {
-	{
-		.compatible	= "microchip,mcp2510",
-		.data		= (void *)CAN_MCP251X_MCP2510,
-	},
-	{
-		.compatible	= "microchip,mcp2515",
-		.data		= (void *)CAN_MCP251X_MCP2515,
-	},
-	{ }
-};
-MODULE_DEVICE_TABLE(of, mcp251x_of_match);
-
-static const struct spi_device_id mcp251x_id_table[] = {
-	{
-		.name		= "mcp2510",
-		.driver_data	= (kernel_ulong_t)CAN_MCP251X_MCP2510,
-	},
-	{
-		.name		= "mcp2515",
-		.driver_data	= (kernel_ulong_t)CAN_MCP251X_MCP2515,
-	},
-	{ }
-};
-MODULE_DEVICE_TABLE(spi, mcp251x_id_table);
 
 static int mcp251x_can_probe(struct spi_device *spi)
 {
-	const struct of_device_id *of_id = of_match_device(mcp251x_of_match,
-							   &spi->dev);
-	struct mcp251x_platform_data *pdata = dev_get_platdata(&spi->dev);
 	struct net_device *net;
 	struct mcp251x_priv *priv;
-	int freq, ret = -ENODEV;
-	struct clk *clk;
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
+	int ret = -ENODEV;
 
-	clk = devm_clk_get(&spi->dev, NULL);
-	if (IS_ERR(clk)) {
-		if (pdata)
-			freq = pdata->oscillator_frequency;
-		else
-			return PTR_ERR(clk);
-	} else {
-		freq = clk_get_rate(clk);
-	}
-
-	/* Sanity check */
-	if (freq < 1000000 || freq > 25000000)
-		return -ERANGE;
+	if (!pdata)
+		/* Platform data is required for osc freq */
+		goto error_out;
 
 	/* Allocate can/net device */
 	net = alloc_candev(sizeof(struct mcp251x_priv), TX_ECHO_SKB_MAX);
-	if (!net)
-		return -ENOMEM;
-
-	if (!IS_ERR(clk)) {
-		ret = clk_prepare_enable(clk);
-		if (ret)
-			goto out_free;
+	if (!net) {
+		ret = -ENOMEM;
+		goto error_alloc;
 	}
 
 	net->netdev_ops = &mcp251x_netdev_ops;
@@ -1066,28 +1020,11 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	priv = netdev_priv(net);
 	priv->can.bittiming_const = &mcp251x_bittiming_const;
 	priv->can.do_set_mode = mcp251x_do_set_mode;
-	priv->can.clock.freq = freq / 2;
+	priv->can.clock.freq = pdata->oscillator_frequency / 2;
 	priv->can.ctrlmode_supported = CAN_CTRLMODE_3_SAMPLES |
 		CAN_CTRLMODE_LOOPBACK | CAN_CTRLMODE_LISTENONLY;
-	if (of_id)
-		priv->model = (enum mcp251x_model)of_id->data;
-	else
-		priv->model = spi_get_device_id(spi)->driver_data;
+	priv->model = spi_get_device_id(spi)->driver_data;
 	priv->net = net;
-	priv->clk = clk;
-
-	priv->power = devm_regulator_get(&spi->dev, "vdd");
-	priv->transceiver = devm_regulator_get(&spi->dev, "xceiver");
-	if ((PTR_ERR(priv->power) == -EPROBE_DEFER) ||
-	    (PTR_ERR(priv->transceiver) == -EPROBE_DEFER)) {
-		ret = -EPROBE_DEFER;
-		goto out_clk;
-	}
-
-	ret = mcp251x_power_enable(priv->power, 1);
-	if (ret)
-		goto out_clk;
-
 	spi_set_drvdata(spi, priv);
 
 	priv->spi = spi;
@@ -1118,37 +1055,41 @@ static int mcp251x_can_probe(struct spi_device *spi)
 
 	/* Allocate non-DMA buffers */
 	if (!mcp251x_enable_dma) {
-		priv->spi_tx_buf = devm_kzalloc(&spi->dev, SPI_TRANSFER_BUF_LEN,
-						GFP_KERNEL);
+		priv->spi_tx_buf = kmalloc(SPI_TRANSFER_BUF_LEN, GFP_KERNEL);
 		if (!priv->spi_tx_buf) {
 			ret = -ENOMEM;
-			goto error_probe;
+			goto error_tx_buf;
 		}
-		priv->spi_rx_buf = devm_kzalloc(&spi->dev, SPI_TRANSFER_BUF_LEN,
-						GFP_KERNEL);
+		priv->spi_rx_buf = kmalloc(SPI_TRANSFER_BUF_LEN, GFP_KERNEL);
 		if (!priv->spi_rx_buf) {
 			ret = -ENOMEM;
-			goto error_probe;
+			goto error_rx_buf;
 		}
 	}
+
+	if (pdata->power_enable)
+		pdata->power_enable(1);
+
+	/* Call out to platform specific setup */
+	if (pdata->board_specific_setup)
+		pdata->board_specific_setup(spi);
 
 	SET_NETDEV_DEV(net, &spi->dev);
 
 	/* Configure the SPI bus */
-	spi->mode = spi->mode ? : SPI_MODE_0;
-	if (mcp251x_is_2510(spi))
-		spi->max_speed_hz = spi->max_speed_hz ? : 5 * 1000 * 1000;
-	else
-		spi->max_speed_hz = spi->max_speed_hz ? : 10 * 1000 * 1000;
+	spi->mode = SPI_MODE_0;
 	spi->bits_per_word = 8;
 	spi_setup(spi);
 
 	/* Here is OK to not lock the MCP, no one knows about it yet */
 	if (!mcp251x_hw_probe(spi)) {
-		ret = -ENODEV;
+		dev_info(&spi->dev, "Probe failed\n");
 		goto error_probe;
 	}
 	mcp251x_hw_sleep(spi);
+
+	if (pdata->transceiver_enable)
+		pdata->transceiver_enable(0);
 
 	ret = register_candev(net);
 	if (ret)
@@ -1156,49 +1097,58 @@ static int mcp251x_can_probe(struct spi_device *spi)
 
 	devm_can_led_init(net);
 
+	dev_info(&spi->dev, "probed\n");
+
 	return ret;
 
 error_probe:
+	if (!mcp251x_enable_dma)
+		kfree(priv->spi_rx_buf);
+error_rx_buf:
+	if (!mcp251x_enable_dma)
+		kfree(priv->spi_tx_buf);
+error_tx_buf:
+	free_candev(net);
 	if (mcp251x_enable_dma)
 		dma_free_coherent(&spi->dev, PAGE_SIZE,
 				  priv->spi_tx_buf, priv->spi_tx_dma);
-	mcp251x_power_enable(priv->power, 0);
-
-out_clk:
-	if (!IS_ERR(clk))
-		clk_disable_unprepare(clk);
-
-out_free:
-	free_candev(net);
-
+error_alloc:
+	if (pdata->power_enable)
+		pdata->power_enable(0);
+	dev_err(&spi->dev, "probe failed\n");
+error_out:
 	return ret;
 }
 
 static int mcp251x_can_remove(struct spi_device *spi)
 {
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
 	struct mcp251x_priv *priv = spi_get_drvdata(spi);
 	struct net_device *net = priv->net;
 
 	unregister_candev(net);
+	free_candev(net);
 
 	if (mcp251x_enable_dma) {
 		dma_free_coherent(&spi->dev, PAGE_SIZE,
 				  priv->spi_tx_buf, priv->spi_tx_dma);
+	} else {
+		kfree(priv->spi_tx_buf);
+		kfree(priv->spi_rx_buf);
 	}
 
-	mcp251x_power_enable(priv->power, 0);
-
-	if (!IS_ERR(priv->clk))
-		clk_disable_unprepare(priv->clk);
-
-	free_candev(net);
+	if (pdata->power_enable)
+		pdata->power_enable(0);
 
 	return 0;
 }
 
-static int __maybe_unused mcp251x_can_suspend(struct device *dev)
+#ifdef CONFIG_PM_SLEEP
+
+static int mcp251x_can_suspend(struct device *dev)
 {
 	struct spi_device *spi = to_spi_device(dev);
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
 	struct mcp251x_priv *priv = spi_get_drvdata(spi);
 	struct net_device *net = priv->net;
 
@@ -1212,31 +1162,34 @@ static int __maybe_unused mcp251x_can_suspend(struct device *dev)
 		netif_device_detach(net);
 
 		mcp251x_hw_sleep(spi);
-		mcp251x_power_enable(priv->transceiver, 0);
+		if (pdata->transceiver_enable)
+			pdata->transceiver_enable(0);
 		priv->after_suspend = AFTER_SUSPEND_UP;
 	} else {
 		priv->after_suspend = AFTER_SUSPEND_DOWN;
 	}
 
-	if (!IS_ERR_OR_NULL(priv->power)) {
-		regulator_disable(priv->power);
+	if (pdata->power_enable) {
+		pdata->power_enable(0);
 		priv->after_suspend |= AFTER_SUSPEND_POWER;
 	}
 
 	return 0;
 }
 
-static int __maybe_unused mcp251x_can_resume(struct device *dev)
+static int mcp251x_can_resume(struct device *dev)
 {
 	struct spi_device *spi = to_spi_device(dev);
+	struct mcp251x_platform_data *pdata = spi->dev.platform_data;
 	struct mcp251x_priv *priv = spi_get_drvdata(spi);
 
 	if (priv->after_suspend & AFTER_SUSPEND_POWER) {
-		mcp251x_power_enable(priv->power, 1);
+		pdata->power_enable(1);
 		queue_work(priv->wq, &priv->restart_work);
 	} else {
 		if (priv->after_suspend & AFTER_SUSPEND_UP) {
-			mcp251x_power_enable(priv->transceiver, 1);
+			if (pdata->transceiver_enable)
+				pdata->transceiver_enable(1);
 			queue_work(priv->wq, &priv->restart_work);
 		} else {
 			priv->after_suspend = 0;
@@ -1246,17 +1199,26 @@ static int __maybe_unused mcp251x_can_resume(struct device *dev)
 	enable_irq(spi->irq);
 	return 0;
 }
+#endif
 
 static SIMPLE_DEV_PM_OPS(mcp251x_can_pm_ops, mcp251x_can_suspend,
 	mcp251x_can_resume);
+
+static const struct spi_device_id mcp251x_id_table[] = {
+	{ "mcp2510",	CAN_MCP251X_MCP2510 },
+	{ "mcp2515",	CAN_MCP251X_MCP2515 },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(spi, mcp251x_id_table);
 
 static struct spi_driver mcp251x_can_driver = {
 	.driver = {
 		.name = DEVICE_NAME,
 		.owner = THIS_MODULE,
-		.of_match_table = mcp251x_of_match,
 		.pm = &mcp251x_can_pm_ops,
 	},
+
 	.id_table = mcp251x_id_table,
 	.probe = mcp251x_can_probe,
 	.remove = mcp251x_can_remove,

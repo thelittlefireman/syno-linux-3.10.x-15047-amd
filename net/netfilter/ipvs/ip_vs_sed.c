@@ -43,8 +43,7 @@
 
 #include <net/ip_vs.h>
 
-
-static inline int
+static inline unsigned int
 ip_vs_sed_dest_overhead(struct ip_vs_dest *dest)
 {
 	/*
@@ -54,16 +53,14 @@ ip_vs_sed_dest_overhead(struct ip_vs_dest *dest)
 	return atomic_read(&dest->activeconns) + 1;
 }
 
-
 /*
  *	Weighted Least Connection scheduling
  */
 static struct ip_vs_dest *
-ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-		   struct ip_vs_iphdr *iph)
+ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
 {
 	struct ip_vs_dest *dest, *least;
-	int loh, doh;
+	unsigned int loh, doh;
 
 	IP_VS_DBG(6, "%s(): Scheduling...\n", __func__);
 
@@ -99,8 +96,8 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
 			continue;
 		doh = ip_vs_sed_dest_overhead(dest);
-		if ((__s64)loh * atomic_read(&dest->weight) >
-		    (__s64)doh * atomic_read(&least->weight)) {
+		if (loh * atomic_read(&dest->weight) >
+		    doh * atomic_read(&least->weight)) {
 			least = dest;
 			loh = doh;
 		}
@@ -116,7 +113,6 @@ ip_vs_sed_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
 	return least;
 }
 
-
 static struct ip_vs_scheduler ip_vs_sed_scheduler =
 {
 	.name =			"sed",
@@ -125,7 +121,6 @@ static struct ip_vs_scheduler ip_vs_sed_scheduler =
 	.n_list =		LIST_HEAD_INIT(ip_vs_sed_scheduler.n_list),
 	.schedule =		ip_vs_sed_schedule,
 };
-
 
 static int __init ip_vs_sed_init(void)
 {

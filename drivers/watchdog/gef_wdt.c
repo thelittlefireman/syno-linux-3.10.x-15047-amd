@@ -34,7 +34,6 @@
 #include <linux/watchdog.h>
 #include <linux/fs.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
 #include <linux/of_platform.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
@@ -75,7 +74,6 @@ static bool nowayout = WATCHDOG_NOWAYOUT;
 module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 	__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
-
 
 static int gef_wdt_toggle_wdc(int enabled_predicate, int field_shift)
 {
@@ -134,7 +132,6 @@ static void gef_wdt_set_timeout(unsigned int timeout)
 	gef_wdt_count = (timeout * bus_clk) >> 8;
 	gef_wdt_timeout = timeout;
 }
-
 
 static ssize_t gef_wdt_write(struct file *file, const char __user *data,
 				 size_t len, loff_t *ppos)
@@ -262,7 +259,6 @@ static struct miscdevice gef_wdt_miscdev = {
 	.fops = &gef_wdt_fops,
 };
 
-
 static int gef_wdt_probe(struct platform_device *dev)
 {
 	int timeout = 10;
@@ -331,4 +327,5 @@ module_exit(gef_wdt_exit);
 MODULE_AUTHOR("Martyn Welch <martyn.welch@ge.com>");
 MODULE_DESCRIPTION("GE watchdog driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_ALIAS("platform:gef_wdt");

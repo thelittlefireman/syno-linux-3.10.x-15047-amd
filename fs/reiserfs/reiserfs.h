@@ -608,6 +608,14 @@ int reiserfs_resize(struct super_block *, unsigned long);
 
 #define SB_DISK_JOURNAL_HEAD(s) (SB_JOURNAL(s)->j_header_bh->)
 
+/* A safe version of the "bdevname", which returns the "s_id" field of
+ * a superblock or else "Null superblock" if the super block is NULL.
+ */
+static inline char *reiserfs_bdevname(struct super_block *s)
+{
+	return (s == NULL) ? "Null superblock" : s->s_id;
+}
+
 #define reiserfs_is_journal_aborted(journal) (unlikely (__reiserfs_is_journal_aborted (journal)))
 static inline int __reiserfs_is_journal_aborted(struct reiserfs_journal
 						*journal)
@@ -622,8 +630,8 @@ static inline int __reiserfs_is_journal_aborted(struct reiserfs_journal
  */
 void reiserfs_write_lock(struct super_block *s);
 void reiserfs_write_unlock(struct super_block *s);
-int __must_check reiserfs_write_unlock_nested(struct super_block *s);
-void reiserfs_write_lock_nested(struct super_block *s, int depth);
+int reiserfs_write_lock_once(struct super_block *s);
+void reiserfs_write_unlock_once(struct super_block *s, int lock_depth);
 
 #ifdef CONFIG_REISERFS_CHECK
 void reiserfs_lock_check_recursive(struct super_block *s);
@@ -659,33 +667,31 @@ static inline void reiserfs_lock_check_recursive(struct super_block *s) { }
  * - The inode mutex
  */
 static inline void reiserfs_mutex_lock_safe(struct mutex *m,
-					    struct super_block *s)
+			       struct super_block *s)
 {
-	int depth;
-
-	depth = reiserfs_write_unlock_nested(s);
+	reiserfs_lock_check_recursive(s);
+	reiserfs_write_unlock(s);
 	mutex_lock(m);
-	reiserfs_write_lock_nested(s, depth);
+	reiserfs_write_lock(s);
 }
 
 static inline void
 reiserfs_mutex_lock_nested_safe(struct mutex *m, unsigned int subclass,
-				struct super_block *s)
+			       struct super_block *s)
 {
-	int depth;
-
-	depth = reiserfs_write_unlock_nested(s);
+	reiserfs_lock_check_recursive(s);
+	reiserfs_write_unlock(s);
 	mutex_lock_nested(m, subclass);
-	reiserfs_write_lock_nested(s, depth);
+	reiserfs_write_lock(s);
 }
 
 static inline void
 reiserfs_down_read_safe(struct rw_semaphore *sem, struct super_block *s)
 {
-       int depth;
-       depth = reiserfs_write_unlock_nested(s);
-       down_read(sem);
-       reiserfs_write_lock_nested(s, depth);
+	reiserfs_lock_check_recursive(s);
+	reiserfs_write_unlock(s);
+	down_read(sem);
+	reiserfs_write_lock(s);
 }
 
 /*
@@ -695,11 +701,9 @@ reiserfs_down_read_safe(struct rw_semaphore *sem, struct super_block *s)
 static inline void reiserfs_cond_resched(struct super_block *s)
 {
 	if (need_resched()) {
-		int depth;
-
-		depth = reiserfs_write_unlock_nested(s);
+		reiserfs_write_unlock(s);
 		schedule();
-		reiserfs_write_lock_nested(s, depth);
+		reiserfs_write_lock(s);
 	}
 }
 
@@ -2703,7 +2707,7 @@ extern const struct inode_operations reiserfs_dir_inode_operations;
 extern const struct inode_operations reiserfs_symlink_inode_operations;
 extern const struct inode_operations reiserfs_special_inode_operations;
 extern const struct file_operations reiserfs_dir_operations;
-int reiserfs_readdir_inode(struct inode *, struct dir_context *);
+int reiserfs_readdir_dentry(struct dentry *, void *, filldir_t, loff_t *);
 
 /* tail_conversion.c */
 int direct2indirect(struct reiserfs_transaction_handle *, struct inode *,
@@ -2831,7 +2835,6 @@ void reiserfs_init_alloc_options(struct super_block *s);
  */
 __le32 reiserfs_choose_packing(struct inode *dir);
 
-void show_alloc_options(struct seq_file *seq, struct super_block *s);
 int reiserfs_init_bitmap_cache(struct super_block *sb);
 void reiserfs_free_bitmap_cache(struct super_block *sb);
 void reiserfs_cache_bitmap_metadata(struct super_block *sb, struct buffer_head *bh, struct reiserfs_bitmap_info *info);

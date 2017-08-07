@@ -197,7 +197,6 @@ static void collie_bat_work(struct work_struct *work)
 	collie_bat_update(&collie_bat_main);
 }
 
-
 static enum power_supply_property collie_bat_main_props[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_TECHNOLOGY,
@@ -287,7 +286,7 @@ static struct gpio collie_batt_gpios[] = {
 };
 
 #ifdef CONFIG_PM
-static int collie_bat_suspend(struct ucb1x00_dev *dev)
+static int collie_bat_suspend(struct ucb1x00_dev *dev, pm_message_t state)
 {
 	/* flush all pending status updates */
 	flush_work(&bat_work);

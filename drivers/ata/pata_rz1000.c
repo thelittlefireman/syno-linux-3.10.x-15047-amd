@@ -14,6 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -21,7 +22,6 @@
 
 #define DRV_NAME	"pata_rz1000"
 #define DRV_VERSION	"0.2.4"
-
 
 /**
  *	rz1000_set_mode		-	mode setting function
@@ -47,7 +47,6 @@ static int rz1000_set_mode(struct ata_link *link, struct ata_device **unused)
 	}
 	return 0;
 }
-
 
 static struct scsi_host_template rz1000_sht = {
 	ATA_PIO_SHT(DRV_NAME),
@@ -104,7 +103,7 @@ static int rz1000_init_one (struct pci_dev *pdev, const struct pci_device_id *en
 #ifdef CONFIG_PM
 static int rz1000_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

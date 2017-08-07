@@ -5,6 +5,7 @@
 #include <linux/interrupt.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/init.h>
 
 #include <asm/processor.h>
 #include <asm/mce.h>

@@ -574,7 +574,6 @@
 #define EEPROM_DEFAULT_HT40_PWRMAXOFFSET	0
 #define EEPROM_DEFAULT_HT20_PWRMAXOFFSET	0
 
-
 #define EEPROM_DEFAULT_PID			0x1234
 #define EEPROM_DEFAULT_VID			0x5678
 #define EEPROM_DEFAULT_CUSTOMERID		0xAB
@@ -2058,6 +2057,22 @@
 #define	BWORD0					0x3
 #define	BWORD1					0xc
 #define	BWORD					0xf
+
+#define	MASKBYTE0				0xff
+#define	MASKBYTE1				0xff00
+#define	MASKBYTE2				0xff0000
+#define	MASKBYTE3				0xff000000
+#define	MASKHWORD				0xffff0000
+#define	MASKLWORD				0x0000ffff
+#define	MASKDWORD				0xffffffff
+#define	MASK12BITS				0xfff
+#define	MASKH4BITS				0xf0000000
+#define MASKOFDM_D				0xffc00000
+#define	MASKCCK					0x3f3f3f3f
+
+#define	MASK4BITS				0x0f
+#define	MASK20BITS				0xfffff
+#define RFREG_OFFSET_MASK			0xfffff
 
 #define	BENABLE					0x1
 #define	BDISABLE				0x0

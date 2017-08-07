@@ -362,7 +362,6 @@
 #define     MIN_MAX_BANK__MIN_VALUE			0x0003
 #define     MIN_MAX_BANK__MAX_VALUE			0x000c
 
-
 /* ffsdefs.h */
 #define CLEAR 0                 /*use this to clear a field instead of "fail"*/
 #define SET   1                 /*use this to set a field instead of "pass"*/
@@ -428,7 +427,6 @@
 #define MODE_10    0x08000000
 #define MODE_11    0x0C000000
 
-
 #define DATA_TRANSFER_MODE              0
 #define PROTECTION_PER_BLOCK            1
 #define LOAD_WAIT_COUNT                 2
@@ -455,10 +453,12 @@
 
 #define ECC_SECTOR_SIZE     512
 
+#define DENALI_BUF_SIZE		(NAND_MAX_PAGESIZE + NAND_MAX_OOBSIZE)
+
 struct nand_buf {
 	int head;
 	int tail;
-	uint8_t *buf;
+	uint8_t buf[DENALI_BUF_SIZE];
 	dma_addr_t dma_buf;
 };
 

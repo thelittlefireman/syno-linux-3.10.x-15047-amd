@@ -143,7 +143,6 @@ static int ddb_i2c_master_xfer(struct i2c_adapter *adapter,
 	return -EIO;
 }
 
-
 static u32 ddb_i2c_functionality(struct i2c_adapter *adap)
 {
 	return I2C_FUNC_SMBUS_EMUL;
@@ -210,7 +209,6 @@ static int ddb_i2c_init(struct ddb *dev)
 		}
 	return stat;
 }
-
 
 /******************************************************************************/
 /******************************************************************************/
@@ -778,7 +776,6 @@ static int stop_feed(struct dvb_demux_feed *dvbdmxfeed)
 	return 0;
 }
 
-
 static void dvb_input_detach(struct ddb_input *input)
 {
 	struct dvb_adapter *adap = &input->adap;
@@ -876,8 +873,10 @@ static int dvb_input_attach(struct ddb_input *input)
 			return -ENODEV;
 		if (tuner_attach_tda18271(input) < 0)
 			return -ENODEV;
-		if (dvb_register_frontend(adap, input->fe) < 0)
-			return -ENODEV;
+		if (input->fe) {
+			if (dvb_register_frontend(adap, input->fe) < 0)
+				return -ENODEV;
+		}
 		if (input->fe2) {
 			if (dvb_register_frontend(adap, input->fe2) < 0)
 				return -ENODEV;
@@ -1036,7 +1035,6 @@ static void output_tasklet(unsigned long data)
 	wake_up(&output->wq);
 	spin_unlock(&output->lock);
 }
-
 
 struct cxd2099_cfg cxd_cfg = {
 	.bitrate =  62000,
@@ -1527,7 +1525,6 @@ static void ddb_device_destroy(struct ddb *dev)
 	device_destroy(ddb_class, MKDEV(ddb_major, 0));
 }
 
-
 /****************************************************************************/
 /****************************************************************************/
 /****************************************************************************/
@@ -1539,10 +1536,9 @@ static void ddb_unmap(struct ddb *dev)
 	vfree(dev);
 }
 
-
 static void ddb_remove(struct pci_dev *pdev)
 {
-	struct ddb *dev = pci_get_drvdata(pdev);
+	struct ddb *dev = (struct ddb *) pci_get_drvdata(pdev);
 
 	ddb_ports_detach(dev);
 	ddb_i2c_release(dev);
@@ -1561,7 +1557,6 @@ static void ddb_remove(struct pci_dev *pdev)
 	pci_set_drvdata(pdev, 0);
 	pci_disable_device(pdev);
 }
-
 
 static int ddb_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
@@ -1687,7 +1682,6 @@ static const struct pci_device_id ddb_id_tbl[] = {
 	{0}
 };
 MODULE_DEVICE_TABLE(pci, ddb_id_tbl);
-
 
 static struct pci_driver ddb_pci_driver = {
 	.name        = "DDBridge",

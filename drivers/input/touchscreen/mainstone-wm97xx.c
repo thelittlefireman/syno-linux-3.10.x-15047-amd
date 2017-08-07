@@ -25,6 +25,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
@@ -99,7 +100,6 @@ MODULE_PARM_DESC(pressure, "Pressure readback (1 = pressure, 0 = no pressure)");
 static int ac97_touch_slot = 5;
 module_param(ac97_touch_slot, int, 0);
 MODULE_PARM_DESC(ac97_touch_slot, "Touch screen data slot AC97 number");
-
 
 /* flush AC97 slot 5 FIFO on pxa machines */
 #ifdef CONFIG_PXA27x

@@ -32,10 +32,9 @@
 #include <asm/kvm_ppc.h>
 
 #include "e500.h"
+#include "trace.h"
 #include "timing.h"
 #include "e500_mmu_host.h"
-
-#include "trace_booke.h"
 
 #define to_htlb1_esel(esel) (host_tlb_params[1].entries - (esel) - 1)
 
@@ -63,6 +62,15 @@ static inline u32 e500_shadow_mas3_attrib(u32 mas3, int usermode)
 	mas3 |= E500_TLB_SUPER_PERM_MASK;
 #endif
 	return mas3;
+}
+
+static inline u32 e500_shadow_mas2_attrib(u32 mas2, int usermode)
+{
+#ifdef CONFIG_SMP
+	return (mas2 & MAS2_ATTRIB_MASK) | MAS2_M;
+#else
+	return mas2 & MAS2_ATTRIB_MASK;
+#endif
 }
 
 /*
@@ -222,15 +230,15 @@ void inval_gtlbe_on_host(struct kvmppc_vcpu_e500 *vcpu_e500, int tlbsel,
 		ref->flags &= ~(E500_TLB_TLB0 | E500_TLB_VALID);
 	}
 
-	/*
-	 * If TLB entry is still valid then it's a TLB0 entry, and thus
-	 * backed by at most one host tlbe per shadow pid
-	 */
-	if (ref->flags & E500_TLB_VALID)
-		kvmppc_e500_tlbil_one(vcpu_e500, gtlbe);
+	/* Already invalidated in between */
+	if (!(ref->flags & E500_TLB_VALID))
+		return;
+
+	/* Guest tlbe is backed by at most one host tlbe per shadow pid. */
+	kvmppc_e500_tlbil_one(vcpu_e500, gtlbe);
 
 	/* Mark the TLB as not backed by the host anymore */
-	ref->flags = 0;
+	ref->flags &= ~E500_TLB_VALID;
 }
 
 static inline int tlbe_is_writable(struct kvm_book3e_206_tlb_entry *tlbe)
@@ -240,16 +248,10 @@ static inline int tlbe_is_writable(struct kvm_book3e_206_tlb_entry *tlbe)
 
 static inline void kvmppc_e500_ref_setup(struct tlbe_ref *ref,
 					 struct kvm_book3e_206_tlb_entry *gtlbe,
-					 pfn_t pfn, unsigned int wimg)
+					 pfn_t pfn)
 {
 	ref->pfn = pfn;
-	ref->flags = E500_TLB_VALID;
-
-	/* Use guest supplied MAS2_G and MAS2_E */
-	ref->flags |= (gtlbe->mas2 & MAS2_ATTRIB_MASK) | wimg;
-
-	/* Mark the page accessed */
-	kvm_set_pfn_accessed(pfn);
+	ref->flags |= E500_TLB_VALID;
 
 	if (tlbe_is_writable(gtlbe))
 		kvm_set_pfn_dirty(pfn);
@@ -310,7 +312,8 @@ static void kvmppc_e500_setup_stlbe(
 
 	/* Force IPROT=0 for all guest mappings. */
 	stlbe->mas1 = MAS1_TSIZE(tsize) | get_tlb_sts(gtlbe) | MAS1_VALID;
-	stlbe->mas2 = (gvaddr & MAS2_EPN) | (ref->flags & E500_TLB_MAS2_ATTR);
+	stlbe->mas2 = (gvaddr & MAS2_EPN) |
+		      e500_shadow_mas2_attrib(gtlbe->mas2, pr);
 	stlbe->mas7_3 = ((u64)pfn << PAGE_SHIFT) |
 			e500_shadow_mas3_attrib(gtlbe->mas7_3, pr);
 
@@ -329,17 +332,6 @@ static inline int kvmppc_e500_shadow_map(struct kvmppc_vcpu_e500 *vcpu_e500,
 	unsigned long hva;
 	int pfnmap = 0;
 	int tsize = BOOK3E_PAGESZ_4K;
-	int ret = 0;
-	unsigned long mmu_seq;
-	struct kvm *kvm = vcpu_e500->vcpu.kvm;
-	unsigned long tsize_pages = 0;
-	pte_t *ptep;
-	unsigned int wimg = 0;
-	pgd_t *pgdir;
-
-	/* used to check for invalidations in progress */
-	mmu_seq = kvm->mmu_notifier_seq;
-	smp_rmb();
 
 	/*
 	 * Translate guest physical to true physical, acquiring
@@ -402,7 +394,7 @@ static inline int kvmppc_e500_shadow_map(struct kvmppc_vcpu_e500 *vcpu_e500,
 			 */
 
 			for (; tsize > BOOK3E_PAGESZ_4K; tsize -= 2) {
-				unsigned long gfn_start, gfn_end;
+				unsigned long gfn_start, gfn_end, tsize_pages;
 				tsize_pages = 1 << (tsize - 2);
 
 				gfn_start = gfn & ~(tsize_pages - 1);
@@ -444,12 +436,11 @@ static inline int kvmppc_e500_shadow_map(struct kvmppc_vcpu_e500 *vcpu_e500,
 	}
 
 	if (likely(!pfnmap)) {
-		tsize_pages = 1 << (tsize + 10 - PAGE_SHIFT);
+		unsigned long tsize_pages = 1 << (tsize + 10 - PAGE_SHIFT);
 		pfn = gfn_to_pfn_memslot(slot, gfn);
 		if (is_error_noslot_pfn(pfn)) {
-			if (printk_ratelimit())
-				pr_err("%s: real page not found for gfn %lx\n",
-				       __func__, (long)gfn);
+			printk(KERN_ERR "Couldn't get real page for gfn %lx!\n",
+					(long)gfn);
 			return -EINVAL;
 		}
 
@@ -458,24 +449,7 @@ static inline int kvmppc_e500_shadow_map(struct kvmppc_vcpu_e500 *vcpu_e500,
 		gvaddr &= ~((tsize_pages << PAGE_SHIFT) - 1);
 	}
 
-	spin_lock(&kvm->mmu_lock);
-	if (mmu_notifier_retry(kvm, mmu_seq)) {
-		ret = -EAGAIN;
-		goto out;
-	}
-
-
-	pgdir = vcpu_e500->vcpu.arch.pgdir;
-	ptep = lookup_linux_ptep(pgdir, hva, &tsize_pages);
-	if (pte_present(*ptep))
-		wimg = (*ptep >> PTE_WIMGE_SHIFT) & MAS2_WIMGE_MASK;
-	else {
-		if (printk_ratelimit())
-			pr_err("%s: pte not present: gfn %lx, pfn %lx\n",
-				__func__, (long)gfn, pfn);
-		return -EINVAL;
-	}
-	kvmppc_e500_ref_setup(ref, gtlbe, pfn, wimg);
+	kvmppc_e500_ref_setup(ref, gtlbe, pfn);
 
 	kvmppc_e500_setup_stlbe(&vcpu_e500->vcpu, gtlbe, tsize,
 				ref, gvaddr, stlbe);
@@ -483,13 +457,10 @@ static inline int kvmppc_e500_shadow_map(struct kvmppc_vcpu_e500 *vcpu_e500,
 	/* Clear i-cache for new pages */
 	kvmppc_mmu_flush_icache(pfn);
 
-out:
-	spin_unlock(&kvm->mmu_lock);
-
 	/* Drop refcount on page, so that mmu notifiers can clear it */
 	kvm_release_pfn_clean(pfn);
 
-	return ret;
+	return 0;
 }
 
 /* XXX only map the one-one case, for now use TLB0 */

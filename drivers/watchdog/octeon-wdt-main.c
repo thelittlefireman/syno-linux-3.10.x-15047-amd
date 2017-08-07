@@ -463,7 +463,6 @@ static void octeon_wdt_calc_parameters(int t)
 
 	timeout_sec = max_timeout_sec;
 
-
 	/*
 	 * Find the largest interrupt period, that can evenly divide
 	 * the requested heartbeat time.
@@ -655,7 +654,6 @@ static struct notifier_block octeon_wdt_cpu_notifier = {
 	.notifier_call = octeon_wdt_cpu_callback,
 };
 
-
 /**
  * Module/ driver initialization.
  *
@@ -708,13 +706,10 @@ static int __init octeon_wdt_init(void)
 
 	cpumask_clear(&irq_enabled_cpus);
 
-	cpu_notifier_register_begin();
 	for_each_online_cpu(cpu)
 		octeon_wdt_setup_interrupt(cpu);
 
-	__register_hotcpu_notifier(&octeon_wdt_cpu_notifier);
-	cpu_notifier_register_done();
-
+	register_hotcpu_notifier(&octeon_wdt_cpu_notifier);
 out:
 	return ret;
 }
@@ -728,8 +723,7 @@ static void __exit octeon_wdt_cleanup(void)
 
 	misc_deregister(&octeon_wdt_miscdev);
 
-	cpu_notifier_register_begin();
-	__unregister_hotcpu_notifier(&octeon_wdt_cpu_notifier);
+	unregister_hotcpu_notifier(&octeon_wdt_cpu_notifier);
 
 	for_each_online_cpu(cpu) {
 		int core = cpu2core(cpu);
@@ -738,9 +732,6 @@ static void __exit octeon_wdt_cleanup(void)
 		/* Free the interrupt handler */
 		free_irq(OCTEON_IRQ_WDOG0 + core, octeon_wdt_poke_irq);
 	}
-
-	cpu_notifier_register_done();
-
 	/*
 	 * Disable the boot-bus memory, the code it points to is soon
 	 * to go missing.

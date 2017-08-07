@@ -882,8 +882,8 @@ brcms_c_dotxstatus(struct brcms_c_info *wlc, struct tx_status *txs)
 	mcl = le16_to_cpu(txh->MacTxControlLow);
 
 	if (txs->phyerr)
-		brcms_dbg_tx(wlc->hw->d11core, "phyerr 0x%x, rate 0x%x\n",
-			     txs->phyerr, txh->MainRates);
+		brcms_err(wlc->hw->d11core, "phyerr 0x%x, rate 0x%x\n",
+			  txs->phyerr, txh->MainRates);
 
 	if (txs->frameid != le16_to_cpu(txh->TxFrameID)) {
 		brcms_err(wlc->hw->d11core, "frameid != txh->TxFrameID\n");
@@ -1906,14 +1906,14 @@ static void brcms_c_get_macaddr(struct brcms_hardware *wlc_hw, u8 etheraddr[ETH_
 
 	/* If macaddr exists, use it (Sromrev4, CIS, ...). */
 	if (!is_zero_ether_addr(sprom->il0mac)) {
-		memcpy(etheraddr, sprom->il0mac, ETH_ALEN);
+		memcpy(etheraddr, sprom->il0mac, 6);
 		return;
 	}
 
 	if (wlc_hw->_nbands > 1)
-		memcpy(etheraddr, sprom->et1mac, ETH_ALEN);
+		memcpy(etheraddr, sprom->et1mac, 6);
 	else
-		memcpy(etheraddr, sprom->il0mac, ETH_ALEN);
+		memcpy(etheraddr, sprom->il0mac, 6);
 }
 
 /* power both the pll and external oscillator on/off */
@@ -4652,9 +4652,7 @@ static int brcms_b_attach(struct brcms_c_info *wlc, struct bcma_device *core,
 		wlc->band->phyrev = wlc_hw->band->phyrev;
 		wlc->band->radioid = wlc_hw->band->radioid;
 		wlc->band->radiorev = wlc_hw->band->radiorev;
-		brcms_dbg_info(core, "wl%d: phy %u/%u radio %x/%u\n", unit,
-			       wlc->band->phytype, wlc->band->phyrev,
-			       wlc->band->radioid, wlc->band->radiorev);
+
 		/* default contention windows size limits */
 		wlc_hw->band->CWmin = APHY_CWMIN;
 		wlc_hw->band->CWmax = PHY_CWMAX;
@@ -4669,7 +4667,7 @@ static int brcms_b_attach(struct brcms_c_info *wlc, struct bcma_device *core,
 	brcms_c_coredisable(wlc_hw);
 
 	/* Match driver "down" state */
-	bcma_core_pci_down(wlc_hw->d11core->bus);
+	ai_pci_down(wlc_hw->sih);
 
 	/* turn off pll and xtal to match driver "down" state */
 	brcms_b_xtal(wlc_hw, OFF);
@@ -5012,12 +5010,12 @@ static int brcms_b_up_prep(struct brcms_hardware *wlc_hw)
 	 */
 	if (brcms_b_radio_read_hwdisabled(wlc_hw)) {
 		/* put SB PCI in down state again */
-		bcma_core_pci_down(wlc_hw->d11core->bus);
+		ai_pci_down(wlc_hw->sih);
 		brcms_b_xtal(wlc_hw, OFF);
 		return -ENOMEDIUM;
 	}
 
-	bcma_core_pci_up(wlc_hw->d11core->bus);
+	ai_pci_up(wlc_hw->sih);
 
 	/* reset the d11 core */
 	brcms_b_corereset(wlc_hw, BRCMS_USE_COREFLAGS);
@@ -5214,7 +5212,7 @@ static int brcms_b_down_finish(struct brcms_hardware *wlc_hw)
 
 		/* turn off primary xtal and pll */
 		if (!wlc_hw->noreset) {
-			bcma_core_pci_down(wlc_hw->d11core->bus);
+			ai_pci_down(wlc_hw->sih);
 			brcms_b_xtal(wlc_hw, OFF);
 		}
 	}
@@ -5477,7 +5475,6 @@ int brcms_c_set_channel(struct brcms_c_info *wlc, u16 channel)
 	if (!brcms_c_valid_chanspec_db(wlc->cmi, chspec))
 		return -EINVAL;
 
-
 	if (!wlc->pub->up && brcms_is_mband_unlocked(wlc)) {
 		if (wlc->band->bandunit != chspec_bandunit(chspec))
 			wlc->bandinit_pending = true;
@@ -5695,7 +5692,7 @@ static bool brcms_c_chipmatch_pci(struct bcma_device *core)
 		return true;
 	if ((device == BCM43224_D11N_ID) || (device == BCM43225_D11N2G_ID))
 		return true;
-	if (device == BCM4313_D11N2G_ID || device == BCM4313_CHIP_ID)
+	if (device == BCM4313_D11N2G_ID)
 		return true;
 	if ((device == BCM43236_D11N_ID) || (device == BCM43236_D11N2G_ID))
 		return true;
@@ -6385,7 +6382,6 @@ brcms_c_d11hdrs_mac80211(struct brcms_c_info *wlc, struct ieee80211_hw *hw,
 		use_cts |=
 		    txrate[k]->
 		    flags & IEEE80211_TX_RC_USE_CTS_PROTECT ? true : false;
-
 
 		/*
 		 * (1) RATE:
@@ -7108,6 +7104,7 @@ prep_mac80211_status(struct brcms_c_info *wlc, struct d11rxhdr *rxh,
 		     struct sk_buff *p,
 		     struct ieee80211_rx_status *rx_status)
 {
+	int preamble;
 	int channel;
 	u32 rspec;
 	unsigned char *plcp;
@@ -7190,6 +7187,7 @@ prep_mac80211_status(struct brcms_c_info *wlc, struct d11rxhdr *rxh,
 			rx_status->rate_idx -= BRCMS_LEGACY_5G_RATE_OFFSET;
 
 		/* Determine short preamble and rate_idx */
+		preamble = 0;
 		if (is_cck_rate(rspec)) {
 			if (rxh->PhyRxStatus_0 & PRXS0_SHORTH)
 				rx_status->flag |= RX_FLAG_SHORTPRE;

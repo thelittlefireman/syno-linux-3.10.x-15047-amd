@@ -431,9 +431,9 @@ static struct ib_mr *c2_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	u64 *pages;
 	u64 kva = 0;
 	int shift, n, len;
-	int i, k, entry;
+	int i, j, k;
 	int err = 0;
-	struct scatterlist *sg;
+	struct ib_umem_chunk *chunk;
 	struct c2_pd *c2pd = to_c2pd(pd);
 	struct c2_mr *c2mr;
 
@@ -452,7 +452,10 @@ static struct ib_mr *c2_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	}
 
 	shift = ffs(c2mr->umem->page_size) - 1;
-	n = c2mr->umem->nmap;
+
+	n = 0;
+	list_for_each_entry(chunk, &c2mr->umem->chunk_list, list)
+		n += chunk->nents;
 
 	pages = kmalloc(n * sizeof(u64), GFP_KERNEL);
 	if (!pages) {
@@ -461,12 +464,14 @@ static struct ib_mr *c2_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	}
 
 	i = 0;
-	for_each_sg(c2mr->umem->sg_head.sgl, sg, c2mr->umem->nmap, entry) {
-		len = sg_dma_len(sg) >> shift;
-		for (k = 0; k < len; ++k) {
-			pages[i++] =
-				sg_dma_address(sg) +
-				(c2mr->umem->page_size * k);
+	list_for_each_entry(chunk, &c2mr->umem->chunk_list, list) {
+		for (j = 0; j < chunk->nmap; ++j) {
+			len = sg_dma_len(&chunk->page_list[j]) >> shift;
+			for (k = 0; k < len; ++k) {
+				pages[i++] =
+					sg_dma_address(&chunk->page_list[j]) +
+					(c2mr->umem->page_size * k);
+			}
 		}
 	}
 

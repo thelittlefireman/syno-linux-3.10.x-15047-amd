@@ -175,7 +175,6 @@ static const struct x86_cpu_id crc32pclmul_cpu_id[] = {
 };
 MODULE_DEVICE_TABLE(x86cpu, crc32pclmul_cpu_id);
 
-
 static int __init crc32_pclmul_mod_init(void)
 {
 
@@ -197,5 +196,5 @@ module_exit(crc32_pclmul_mod_fini);
 MODULE_AUTHOR("Alexander Boyko <alexander_boyko@xyratex.com>");
 MODULE_LICENSE("GPL");
 
-MODULE_ALIAS("crc32");
-MODULE_ALIAS("crc32-pclmul");
+MODULE_ALIAS_CRYPTO("crc32");
+MODULE_ALIAS_CRYPTO("crc32-pclmul");

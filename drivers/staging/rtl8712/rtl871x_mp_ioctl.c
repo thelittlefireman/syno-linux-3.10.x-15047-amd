@@ -1068,7 +1068,6 @@ uint oid_rt_pro_add_sta_info_hdl(struct oid_par_priv *poid_par_priv)
 	struct sta_info	*psta = NULL;
 	u8	*macaddr;
 
-
 	if (poid_par_priv->type_of_oid != SET_OID)
 		return RNDIS_STATUS_NOT_ACCEPTED;
 
@@ -1095,7 +1094,6 @@ uint oid_rt_pro_dele_sta_info_hdl(struct oid_par_priv *poid_par_priv)
 
 	struct sta_info		*psta = NULL;
 	u8			*macaddr;
-
 
 	if (poid_par_priv->type_of_oid != SET_OID)
 		return RNDIS_STATUS_NOT_ACCEPTED;

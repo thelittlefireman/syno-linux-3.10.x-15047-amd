@@ -20,14 +20,12 @@
 
 #include "53c700.h"
 
-
 static struct scsi_host_template a4000t_scsi_driver_template = {
 	.name		= "A4000T builtin SCSI",
 	.proc_name	= "A4000t",
 	.this_id	= 7,
 	.module		= THIS_MODULE,
 };
-
 
 #define A4000T_SCSI_OFFSET	0x40
 
@@ -56,7 +54,7 @@ static int __init amiga_a4000t_scsi_probe(struct platform_device *pdev)
 	scsi_addr = res->start + A4000T_SCSI_OFFSET;
 
 	/* Fill in the required pieces of hostdata */
-	hostdata->base = ZTWO_VADDR(scsi_addr);
+	hostdata->base = (void __iomem *)ZTWO_VADDR(scsi_addr);
 	hostdata->clock = 50;
 	hostdata->chip710 = 1;
 	hostdata->dmode_extra = DMODE_FC2;
@@ -116,7 +114,20 @@ static struct platform_driver amiga_a4000t_scsi_driver = {
 	},
 };
 
-module_platform_driver_probe(amiga_a4000t_scsi_driver, amiga_a4000t_scsi_probe);
+static int __init amiga_a4000t_scsi_init(void)
+{
+	return platform_driver_probe(&amiga_a4000t_scsi_driver,
+				     amiga_a4000t_scsi_probe);
+}
+
+module_init(amiga_a4000t_scsi_init);
+
+static void __exit amiga_a4000t_scsi_exit(void)
+{
+	platform_driver_unregister(&amiga_a4000t_scsi_driver);
+}
+
+module_exit(amiga_a4000t_scsi_exit);
 
 MODULE_AUTHOR("Alan Hourihane <alanh@fairlite.demon.co.uk> / "
 	      "Kars de Jong <jongk@linux-m68k.org>");

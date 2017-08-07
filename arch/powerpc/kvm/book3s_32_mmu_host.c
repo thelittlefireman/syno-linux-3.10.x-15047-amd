@@ -86,7 +86,6 @@ static u16 kvmppc_sid_hash(struct kvm_vcpu *vcpu, u64 gvsid)
 		     ((gvsid >> (SID_MAP_BITS * 0)) & SID_MAP_MASK));
 }
 
-
 static struct kvmppc_sid_map *find_sid_vsid(struct kvm_vcpu *vcpu, u64 gvsid)
 {
 	struct kvmppc_sid_map *map;
@@ -138,8 +137,7 @@ static u32 *kvmppc_mmu_get_pteg(struct kvm_vcpu *vcpu, u32 vsid, u32 eaddr,
 
 extern char etext[];
 
-int kvmppc_mmu_map_page(struct kvm_vcpu *vcpu, struct kvmppc_pte *orig_pte,
-			bool iswrite)
+int kvmppc_mmu_map_page(struct kvm_vcpu *vcpu, struct kvmppc_pte *orig_pte)
 {
 	pfn_t hpaddr;
 	u64 vpn;
@@ -153,11 +151,9 @@ int kvmppc_mmu_map_page(struct kvm_vcpu *vcpu, struct kvmppc_pte *orig_pte,
 	bool evict = false;
 	struct hpte_cache *pte;
 	int r = 0;
-	bool writable;
 
 	/* Get host physical address for gpa */
-	hpaddr = kvmppc_gfn_to_pfn(vcpu, orig_pte->raddr >> PAGE_SHIFT,
-				   iswrite, &writable);
+	hpaddr = kvmppc_gfn_to_pfn(vcpu, orig_pte->raddr >> PAGE_SHIFT);
 	if (is_error_noslot_pfn(hpaddr)) {
 		printk(KERN_INFO "Couldn't get guest page for gfn %lx!\n",
 				 orig_pte->eaddr);
@@ -207,7 +203,7 @@ next_pteg:
 		(primary ? 0 : PTE_SEC);
 	pteg1 = hpaddr | PTE_M | PTE_R | PTE_C;
 
-	if (orig_pte->may_write && writable) {
+	if (orig_pte->may_write) {
 		pteg1 |= PP_RWRW;
 		mark_page_dirty(vcpu->kvm, orig_pte->raddr >> PAGE_SHIFT);
 	} else {
@@ -239,15 +235,9 @@ next_pteg:
 	dprintk_mmu("KVM:   %08x - %08x\n", pteg[12], pteg[13]);
 	dprintk_mmu("KVM:   %08x - %08x\n", pteg[14], pteg[15]);
 
-
 	/* Now tell our Shadow PTE code about the new page */
 
 	pte = kvmppc_mmu_hpte_cache_next(vcpu);
-	if (!pte) {
-		kvm_release_pfn_clean(hpaddr >> PAGE_SHIFT);
-		r = -EAGAIN;
-		goto out;
-	}
 
 	dprintk_mmu("KVM: %c%c Map 0x%llx: [%lx] 0x%llx (0x%llx) -> %lx\n",
 		    orig_pte->may_write ? 'w' : '-',
@@ -265,11 +255,6 @@ next_pteg:
 	kvm_release_pfn_clean(hpaddr >> PAGE_SHIFT);
 out:
 	return r;
-}
-
-void kvmppc_mmu_unmap_page(struct kvm_vcpu *vcpu, struct kvmppc_pte *pte)
-{
-	kvmppc_mmu_pte_vflush(vcpu, pte->vpage, 0xfffffffffULL);
 }
 
 static struct kvmppc_sid_map *create_sid_map(struct kvm_vcpu *vcpu, u64 gvsid)
@@ -354,7 +339,7 @@ void kvmppc_mmu_flush_segments(struct kvm_vcpu *vcpu)
 	svcpu_put(svcpu);
 }
 
-void kvmppc_mmu_destroy_pr(struct kvm_vcpu *vcpu)
+void kvmppc_mmu_destroy(struct kvm_vcpu *vcpu)
 {
 	int i;
 

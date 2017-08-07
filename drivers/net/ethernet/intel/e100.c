@@ -173,7 +173,6 @@
 #include <linux/rtnetlink.h>
 #include <asm/unaligned.h>
 
-
 #define DRV_NAME		"e100"
 #define DRV_EXT			"-NAPI"
 #define DRV_VERSION		"3.5.24-k2"DRV_EXT
@@ -895,7 +894,6 @@ static int e100_exec_cb(struct nic *nic, struct sk_buff *skb,
 	if (unlikely(!nic->cbs_avail))
 		err = -ENOSPC;
 
-
 	/* Order is important otherwise we'll be in a race with h/w:
 	 * set S-bit in current first, then clear S-bit in previous. */
 	cb->command |= cpu_to_le16(cb_s);
@@ -946,7 +944,6 @@ static u16 mdio_ctrl_hw(struct nic *nic, u32 addr, u32 dir, u32 reg, u16 data)
 	u32 data_out = 0;
 	unsigned int i;
 	unsigned long flags;
-
 
 	/*
 	 * Stratus87247: we shouldn't be writing the MDI control
@@ -1175,12 +1172,15 @@ static int e100_configure(struct nic *nic, struct cb *cb, struct sk_buff *skb)
 		config->rx_discard_short_frames = 0x0;  /* 1=discard, 0=save */
 	}
 
-	netif_printk(nic, hw, KERN_DEBUG, nic->netdev, "[00-07]=%8ph\n",
-		     c + 0);
-	netif_printk(nic, hw, KERN_DEBUG, nic->netdev, "[08-15]=%8ph\n",
-		     c + 8);
-	netif_printk(nic, hw, KERN_DEBUG, nic->netdev, "[16-23]=%8ph\n",
-		     c + 16);
+	netif_printk(nic, hw, KERN_DEBUG, nic->netdev,
+		     "[00-07]=%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n",
+		     c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
+	netif_printk(nic, hw, KERN_DEBUG, nic->netdev,
+		     "[08-15]=%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n",
+		     c[8], c[9], c[10], c[11], c[12], c[13], c[14], c[15]);
+	netif_printk(nic, hw, KERN_DEBUG, nic->netdev,
+		     "[16-23]=%02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X\n",
+		     c[16], c[17], c[18], c[19], c[20], c[21], c[22], c[23]);
 	return 0;
 }
 
@@ -1682,7 +1682,6 @@ static void e100_update_stats(struct nic *nic)
 		}
 	}
 
-
 	if (e100_exec_cmd(nic, cuc_dump_reset, 0))
 		netif_printk(nic, tx_err, KERN_DEBUG, nic->netdev,
 			     "exec cuc_dump_reset failed\n");
@@ -1778,9 +1777,9 @@ static int e100_xmit_prepare(struct nic *nic, struct cb *cb,
 	 * testing, ie sending frames with bad CRC.
 	 */
 	if (unlikely(skb->no_fcs))
-		cb->command |= cpu_to_le16(cb_tx_nc);
+		cb->command |= __constant_cpu_to_le16(cb_tx_nc);
 	else
-		cb->command &= ~cpu_to_le16(cb_tx_nc);
+		cb->command &= ~__constant_cpu_to_le16(cb_tx_nc);
 
 	/* interrupt every 16 packets regardless of delay */
 	if ((nic->cbs_avail & ~15) == nic->cbs_avail)
@@ -2088,7 +2087,6 @@ static void e100_rx_clean(struct nic *nic, unsigned int *work_done,
 		if (-EAGAIN == err || -ENODATA == err)
 			break;
 	}
-
 
 	/* On EAGAIN, hit quota so have more work to do, restart once
 	 * cleanup is complete.
@@ -2985,6 +2983,7 @@ err_out_free_res:
 err_out_disable_pdev:
 	pci_disable_device(pdev);
 err_out_free_dev:
+	pci_set_drvdata(pdev, NULL);
 	free_netdev(netdev);
 	return err;
 }
@@ -3002,6 +3001,7 @@ static void e100_remove(struct pci_dev *pdev)
 		free_netdev(netdev);
 		pci_release_regions(pdev);
 		pci_disable_device(pdev);
+		pci_set_drvdata(pdev, NULL);
 	}
 }
 
@@ -3064,7 +3064,7 @@ static int e100_resume(struct pci_dev *pdev)
 	pci_set_power_state(pdev, PCI_D0);
 	pci_restore_state(pdev);
 	/* ack any pending wake events, disable PME */
-	pci_enable_wake(pdev, PCI_D0, 0);
+	pci_enable_wake(pdev, 0, 0);
 
 	/* disable reverse auto-negotiation */
 	if (nic->phy == phy_82552_v) {
@@ -3155,7 +3155,7 @@ static void e100_io_resume(struct pci_dev *pdev)
 	struct nic *nic = netdev_priv(netdev);
 
 	/* ack any pending wake events, disable PME */
-	pci_enable_wake(pdev, PCI_D0, 0);
+	pci_enable_wake(pdev, 0, 0);
 
 	netif_device_attach(netdev);
 	if (netif_running(netdev)) {

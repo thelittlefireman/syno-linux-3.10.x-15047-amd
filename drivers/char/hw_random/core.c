@@ -30,24 +30,21 @@
 
  */
 
-
 #include <linux/device.h>
 #include <linux/hw_random.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <linux/sched.h>
+#include <linux/init.h>
 #include <linux/miscdevice.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
-#include <linux/random.h>
 #include <asm/uaccess.h>
-
 
 #define RNG_MODULE_NAME		"hw_random"
 #define PFX			RNG_MODULE_NAME ": "
 #define RNG_MISCDEV_MINOR	183 /* official */
-
 
 static struct hwrng *current_rng;
 static LIST_HEAD(rng_list);
@@ -169,7 +166,6 @@ out_unlock:
 	goto out;
 }
 
-
 static const struct file_operations rng_chrdev_ops = {
 	.owner		= THIS_MODULE,
 	.open		= rng_dev_open,
@@ -183,7 +179,6 @@ static struct miscdevice rng_miscdev = {
 	.nodename	= "hwrng",
 	.fops		= &rng_chrdev_ops,
 };
-
 
 static ssize_t hwrng_attr_current_store(struct device *dev,
 					struct device_attribute *attr,
@@ -267,7 +262,6 @@ static DEVICE_ATTR(rng_available, S_IRUGO,
 		   hwrng_attr_available_show,
 		   NULL);
 
-
 static void unregister_miscdev(void)
 {
 	device_remove_file(rng_miscdev.this_device, &dev_attr_rng_available);
@@ -302,10 +296,9 @@ err_misc_dereg:
 
 int hwrng_register(struct hwrng *rng)
 {
+	int must_register_misc;
 	int err = -EINVAL;
 	struct hwrng *old_rng, *tmp;
-	unsigned char bytes[16];
-	int bytes_read;
 
 	if (rng->name == NULL ||
 	    (rng->data_read == NULL && rng->read == NULL))
@@ -328,6 +321,7 @@ int hwrng_register(struct hwrng *rng)
 			goto out_unlock;
 	}
 
+	must_register_misc = (current_rng == NULL);
 	old_rng = current_rng;
 	if (!old_rng) {
 		err = hwrng_init(rng);
@@ -336,20 +330,18 @@ int hwrng_register(struct hwrng *rng)
 		current_rng = rng;
 	}
 	err = 0;
-	if (!old_rng) {
+	if (must_register_misc) {
 		err = register_miscdev();
 		if (err) {
-			hwrng_cleanup(rng);
-			current_rng = NULL;
+			if (!old_rng) {
+				hwrng_cleanup(rng);
+				current_rng = NULL;
+			}
 			goto out_unlock;
 		}
 	}
 	INIT_LIST_HEAD(&rng->list);
 	list_add_tail(&rng->list, &rng_list);
-
-	bytes_read = rng_get_data(rng, bytes, sizeof(bytes), 1);
-	if (bytes_read > 0)
-		add_device_randomness(bytes, bytes_read);
 out_unlock:
 	mutex_unlock(&rng_mutex);
 out:

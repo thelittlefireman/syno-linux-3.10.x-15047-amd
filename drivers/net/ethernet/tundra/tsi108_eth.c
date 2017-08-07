@@ -32,6 +32,7 @@
 
 #include <linux/module.h>
 #include <linux/types.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/net.h>
 #include <linux/netdevice.h>
@@ -363,7 +364,6 @@ static void tsi108_check_phy(struct net_device *dev)
 
 		goto out;
 	}
-
 
 out:
 	spin_unlock_irqrestore(&phy_lock, flags);
@@ -1002,7 +1002,6 @@ static void tsi108_tx_int(struct net_device *dev)
 	}
 }
 
-
 static irqreturn_t tsi108_irq(int irq, void *dev_id)
 {
 	struct net_device *dev = dev_id;
@@ -1307,13 +1306,13 @@ static int tsi108_open(struct net_device *dev)
 		       data->id, dev->irq, dev->name);
 	}
 
-	data->rxring = dma_zalloc_coherent(NULL, rxring_size, &data->rxdma,
-					   GFP_KERNEL);
+	data->rxring = dma_alloc_coherent(NULL, rxring_size, &data->rxdma,
+					  GFP_KERNEL | __GFP_ZERO);
 	if (!data->rxring)
 		return -ENOMEM;
 
-	data->txring = dma_zalloc_coherent(NULL, txring_size, &data->txdma,
-					   GFP_KERNEL);
+	data->txring = dma_alloc_coherent(NULL, txring_size, &data->txdma,
+					  GFP_KERNEL | __GFP_ZERO);
 	if (!data->txring) {
 		pci_free_consistent(0, rxring_size, data->rxring, data->rxdma);
 		return -ENOMEM;
@@ -1557,7 +1556,7 @@ tsi108_init_one(struct platform_device *pdev)
 	hw_info *einfo;
 	int err = 0;
 
-	einfo = dev_get_platdata(&pdev->dev);
+	einfo = pdev->dev.platform_data;
 
 	if (NULL == einfo) {
 		printk(KERN_ERR "tsi-eth %d: Missing additional data!\n",
@@ -1681,6 +1680,7 @@ static int tsi108_ether_remove(struct platform_device *pdev)
 
 	unregister_netdev(dev);
 	tsi108_stop_ethernet(dev);
+	platform_set_drvdata(pdev, NULL);
 	iounmap(priv->regs);
 	iounmap(priv->phyregs);
 	free_netdev(dev);

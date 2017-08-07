@@ -88,7 +88,7 @@ static int sb1250_set_affinity(struct irq_data *d, const struct cpumask *mask,
 	u64 cur_ints;
 	unsigned long flags;
 
-	i = cpumask_first_and(mask, cpu_online_mask);
+	i = cpumask_first(mask);
 
 	/* Convert logical CPU to physical CPU */
 	cpu = cpu_logical_map(i);
@@ -135,7 +135,6 @@ static void enable_sb1250_irq(struct irq_data *d)
 
 	sb1250_unmask_irq(sb1250_irq_owner[irq], irq);
 }
-
 
 static void ack_sb1250_irq(struct irq_data *d)
 {
@@ -202,7 +201,6 @@ void __init init_sb1250_irqs(void)
 		sb1250_irq_owner[i] = 0;
 	}
 }
-
 
 /*
  *  arch_init_irq is called early in the boot sequence from init/main.c via

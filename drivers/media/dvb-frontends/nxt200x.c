@@ -2,7 +2,7 @@
  *    Support for NXT2002 and NXT2004 - VSB/QAM
  *
  *    Copyright (C) 2005 Kirk Lapray <kirk.lapray@gmail.com>
- *    Copyright (C) 2006-2014 Michael Krufky <mkrufky@linuxtv.org>
+ *    Copyright (C) 2006 Michael Krufky <mkrufky@m1k.net>
  *    based on nxt2002 by Taylor Jacob <rtjacob@earthlink.net>
  *    and nxt2004 by Jean-Francois Thibert <jeanfrancois@sagetv.com>
  *
@@ -1248,4 +1248,3 @@ MODULE_AUTHOR("Kirk Lapray, Michael Krufky, Jean-Francois Thibert, and Taylor Ja
 MODULE_LICENSE("GPL");
 
 EXPORT_SYMBOL(nxt200x_attach);
-

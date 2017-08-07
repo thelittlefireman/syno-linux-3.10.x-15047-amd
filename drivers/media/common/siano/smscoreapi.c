@@ -515,7 +515,6 @@ static void smscore_registry_settype(char *devpath,
 		sms_err("No registry found.");
 }
 
-
 static void list_add_locked(struct list_head *new, struct list_head *head,
 			    spinlock_t *lock)
 {
@@ -752,7 +751,6 @@ int smscore_register_device(struct smsdevice_params_t *params,
 }
 EXPORT_SYMBOL_GPL(smscore_register_device);
 
-
 static int smscore_sendrequest_and_wait(struct smscore_device_t *coredev,
 		void *buffer, size_t size, struct completion *completion) {
 	int rc;
@@ -912,7 +910,6 @@ int smscore_start_device(struct smscore_device_t *coredev)
 }
 EXPORT_SYMBOL_GPL(smscore_start_device);
 
-
 static int smscore_load_firmware_family2(struct smscore_device_t *coredev,
 					 void *buffer, size_t size)
 {
@@ -922,8 +919,8 @@ static int smscore_load_firmware_family2(struct smscore_device_t *coredev,
 	u32 i, *ptr;
 	u8 *payload = firmware->payload;
 	int rc = 0;
-	firmware->start_address = le32_to_cpup((__le32 *)&firmware->start_address);
-	firmware->length = le32_to_cpup((__le32 *)&firmware->length);
+	firmware->start_address = le32_to_cpu(firmware->start_address);
+	firmware->length = le32_to_cpu(firmware->length);
 
 	mem_address = firmware->start_address;
 
@@ -982,7 +979,7 @@ static int smscore_load_firmware_family2(struct smscore_device_t *coredev,
 	if (rc < 0)
 		goto exit_fw_download;
 
-	sms_debug("sending MSG_SMS_DATA_VALIDITY_REQ expecting 0x%x",
+	sms_err("sending MSG_SMS_DATA_VALIDITY_REQ expecting 0x%x",
 		calc_checksum);
 	SMS_INIT_MSG(&msg->x_msg_header, MSG_SMS_DATA_VALIDITY_REQ,
 			sizeof(msg->x_msg_header) +
@@ -1154,7 +1151,7 @@ static int smscore_load_firmware_from_file(struct smscore_device_t *coredev,
 
 	char *fw_filename = smscore_get_fw_filename(coredev, mode);
 	if (!fw_filename) {
-		sms_err("mode %d not supported on this device", mode);
+		sms_info("mode %d not supported on this device", mode);
 		return -ENOENT;
 	}
 	sms_debug("Firmware name: %s", fw_filename);
@@ -1165,24 +1162,23 @@ static int smscore_load_firmware_from_file(struct smscore_device_t *coredev,
 
 	rc = request_firmware(&fw, fw_filename, coredev->device);
 	if (rc < 0) {
-		sms_err("failed to open firmware file \"%s\"", fw_filename);
+		sms_info("failed to open \"%s\"", fw_filename);
 		return rc;
 	}
 	sms_info("read fw %s, buffer size=0x%zx", fw_filename, fw->size);
 	fw_buf = kmalloc(ALIGN(fw->size, SMS_ALLOC_ALIGNMENT),
 			 GFP_KERNEL | GFP_DMA);
 	if (!fw_buf) {
-		sms_err("failed to allocate firmware buffer");
-		rc = -ENOMEM;
-	} else {
-		memcpy(fw_buf, fw->data, fw->size);
-		fw_buf_size = fw->size;
-
-		rc = (coredev->device_flags & SMS_DEVICE_FAMILY2) ?
-			smscore_load_firmware_family2(coredev, fw_buf, fw_buf_size)
-			: loadfirmware_handler(coredev->context, fw_buf,
-			fw_buf_size);
+		sms_info("failed to allocate firmware buffer");
+		return -ENOMEM;
 	}
+	memcpy(fw_buf, fw->data, fw->size);
+	fw_buf_size = fw->size;
+
+	rc = (coredev->device_flags & SMS_DEVICE_FAMILY2) ?
+		smscore_load_firmware_family2(coredev, fw_buf, fw_buf_size)
+		: loadfirmware_handler(coredev->context, fw_buf,
+		fw_buf_size);
 
 	kfree(fw_buf);
 	release_firmware(fw);
@@ -1511,7 +1507,6 @@ void smscore_onresponse(struct smscore_device_t *coredev,
 			phdr->msg_dst_id = DVBT_BDA_CONTROL_MSG_ID;
 	}
 
-
 	client = smscore_find_client(coredev, phdr->msg_type, phdr->msg_dst_id);
 
 	/* If no client registered for type & id,
@@ -1562,7 +1557,7 @@ void smscore_onresponse(struct smscore_device_t *coredev,
 		{
 			struct sms_msg_data *validity = (struct sms_msg_data *) phdr;
 
-			sms_debug("MSG_SMS_DATA_VALIDITY_RES, checksum = 0x%x",
+			sms_err("MSG_SMS_DATA_VALIDITY_RES, checksum = 0x%x",
 				validity->msg_data[0]);
 			complete(&coredev->data_validity_done);
 			break;
@@ -1767,7 +1762,6 @@ void smscore_unregister_client(struct smscore_client_t *client)
 
 	spin_lock_irqsave(&coredev->clientslock, flags);
 
-
 	while (!list_empty(&client->idlist)) {
 		struct smscore_idlist_t *identry =
 			(struct smscore_idlist_t *) client->idlist.next;
@@ -1823,7 +1817,6 @@ int smsclient_sendrequest(struct smscore_client_t *client,
 	return coredev->sendrequest_handler(coredev->context, buffer, size);
 }
 EXPORT_SYMBOL_GPL(smsclient_sendrequest);
-
 
 /* old GPIO managements implementation */
 int smscore_configure_gpio(struct smscore_device_t *coredev, u32 pin,
@@ -1963,7 +1956,6 @@ int smscore_gpio_configure(struct smscore_device_t *coredev, u8 pin_num,
 		u32 msg_data[6];
 	} *p_msg;
 
-
 	if (pin_num > MAX_GPIO_PIN_NUMBER)
 		return -EINVAL;
 
@@ -2085,7 +2077,6 @@ int smscore_gpio_get_level(struct smscore_device_t *coredev, u8 pin_num,
 		struct sms_msg_hdr x_msg_header;
 		u32 msg_data[2];
 	} *p_msg;
-
 
 	if (pin_num > MAX_GPIO_PIN_NUMBER)
 		return -EINVAL;

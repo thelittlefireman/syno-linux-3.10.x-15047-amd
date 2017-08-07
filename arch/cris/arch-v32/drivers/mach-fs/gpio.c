@@ -179,8 +179,6 @@ static volatile unsigned long *dir_oe[NUM_PORTS] = {
 #endif
 };
 
-
-
 static unsigned int gpio_poll(struct file *file, struct poll_table_struct *wait)
 {
 	unsigned int mask = 0;
@@ -348,7 +346,6 @@ gpio_pa_interrupt(int irq, void *dev_id)
 	return IRQ_NONE;
 }
 
-
 static ssize_t gpio_write(struct file *file, const char *buf, size_t count,
 	loff_t *off)
 {
@@ -413,8 +410,6 @@ static ssize_t gpio_write(struct file *file, const char *buf, size_t count,
 	}
 	return retval;
 }
-
-
 
 static int
 gpio_open(struct inode *inode, struct file *filp)
@@ -964,11 +959,11 @@ gpio_init(void)
 	 * in some tests.
 	 */
 	if (request_irq(TIMER0_INTR_VECT, gpio_poll_timer_interrupt,
-			IRQF_SHARED, "gpio poll", &alarmlist))
+			IRQF_SHARED | IRQF_DISABLED, "gpio poll", &alarmlist))
 		printk(KERN_ERR "timer0 irq for gpio\n");
 
 	if (request_irq(GIO_INTR_VECT, gpio_pa_interrupt,
-			IRQF_SHARED, "gpio PA", &alarmlist))
+			IRQF_SHARED | IRQF_DISABLED, "gpio PA", &alarmlist))
 		printk(KERN_ERR "PA irq for gpio\n");
 
 #ifdef CONFIG_ETRAX_VIRTUAL_GPIO

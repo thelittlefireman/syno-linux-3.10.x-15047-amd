@@ -23,7 +23,6 @@
 #define	cr6	6
 #define	cr7	7
 
-
 /* General Purpose Registers (GPRs) */
 
 #define	r0	0
@@ -58,8 +57,5 @@
 #define	r29	29
 #define	r30	30
 #define	r31	31
-
-#define SPRN_TBRL	268
-#define SPRN_TBRU	269
 
 #endif /* _PPC64_PPC_ASM_H */

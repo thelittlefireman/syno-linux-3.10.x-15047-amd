@@ -27,7 +27,6 @@
 #include <linux/types.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
-#include <linux/sched.h>
 #include <linux/vmalloc.h>
 #include <linux/fs.h>
 #include <linux/errno.h>
@@ -118,7 +117,6 @@ static struct sbprof_tb sbp;
 						     /* enable, counter0 */ \
 			: /* inputs */ "r"(val), "r" ((1ULL << 33) | 1ULL) \
 			: /* modifies */ "$8" )
-
 
 /* Reads SCD counter 0 and puts result in value
    unsigned long long val; */

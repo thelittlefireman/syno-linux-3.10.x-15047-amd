@@ -668,7 +668,7 @@ static int zfcp_fc_eval_gpn_ft(struct zfcp_fc_req *fc_req,
 
 	list_for_each_entry_safe(port, tmp, &remove_lh, list) {
 		zfcp_erp_port_shutdown(port, 0, "fcegpf2");
-		device_unregister(&port->dev);
+		zfcp_device_unregister(&port->dev, &zfcp_sysfs_port_attrs);
 	}
 
 	return ret;
@@ -988,4 +988,3 @@ void zfcp_fc_gs_destroy(struct zfcp_adapter *adapter)
 	kfree(adapter->gs);
 	adapter->gs = NULL;
 }
-

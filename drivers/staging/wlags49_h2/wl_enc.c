@@ -71,6 +71,15 @@
 #include <wl_enc.h>
 
 /*******************************************************************************
+ *  global definitions
+ ******************************************************************************/
+#if DBG
+
+extern dbg_info_t *DbgInfo;
+
+#endif  /* DBG */
+
+/*******************************************************************************
  *	wl_wep_code()
  *******************************************************************************
  *
@@ -99,7 +108,6 @@ int wl_wep_code(char *szCrypt, char *szDest, void *Data, int nLen)
 	char    *szData = (char *) Data;
 	/*------------------------------------------------------------------------*/
 
-
 	for (i = bits = 0; i < MACADDRESS_STR_LEN; i++) {
 		bits ^= szCrypt[i];
 		bits += szCrypt[i];
@@ -107,7 +115,6 @@ int wl_wep_code(char *szCrypt, char *szDest, void *Data, int nLen)
 
 	for (i = t = *szDest = 0; i < nLen; i++, t++) {
 		k = szData[i] ^ (bits + i);
-
 
 	switch (i % 3) {
 
@@ -119,7 +126,6 @@ int wl_wep_code(char *szCrypt, char *szDest, void *Data, int nLen)
 
 		break;
 
-
 	case 1:
 
 		szDest[t]  += ((k & 0xF0) >> 4);
@@ -127,7 +133,6 @@ int wl_wep_code(char *szCrypt, char *szDest, void *Data, int nLen)
 		szDest[t+2] = '\0';
 
 		break;
-
 
 	case 2:
 
@@ -144,9 +149,6 @@ int wl_wep_code(char *szCrypt, char *szDest, void *Data, int nLen)
 
 }
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wep_decode()
@@ -176,7 +178,6 @@ int wl_wep_decode(char *szCrypt, void *Dest, char *szData)
 	char    *szDest = Dest;
 	/*------------------------------------------------------------------------*/
 
-
 	for (i = bits = 0; i < 12; i++) {
 		bits ^= szCrypt[i] ;
 		bits += szCrypt[i] ;
@@ -192,12 +193,10 @@ int wl_wep_decode(char *szCrypt, void *Dest, char *szData)
 				    (((szData[t+1] - CH_START) & 0x30) >> 4);
 			break;
 
-
 		case 1:
 			szDest[i] = (((szData[t] - CH_START) & 0x0f) << 4) +
 				    (((szData[t+1] - CH_START) & 0x3c) >> 2);
 			break;
-
 
 		case 2:
 			szDest[i] = (((szData[t] - CH_START) & 0x03) << 6) +
@@ -214,4 +213,3 @@ int wl_wep_decode(char *szCrypt, void *Dest, char *szData)
 
 }
 /*============================================================================*/
-

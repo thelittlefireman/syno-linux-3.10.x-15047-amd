@@ -2436,7 +2436,6 @@ static int hrz_open (struct atm_vcc *atm_vcc)
     }
   }
   
-  
   // late abort useful for diagnostics
   if (vcc.aal != aal5) {
     PRINTD (DBG_QOS, "AAL not supported");

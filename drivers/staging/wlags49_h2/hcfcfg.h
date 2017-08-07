@@ -135,7 +135,6 @@
 	__asm pop di										\
 }
 
-
 *****************************   OUT_PORT_STRING_8_16  S a m p l e s ******************************************
 
 		// C implementation which let the processor handle the word-at-byte-boundary problem
@@ -160,7 +159,6 @@
 }
 
 *************************************************************************************************************/
-
 
 /************************************************************************************************/
 /******************  C O M P I L E R   S P E C I F I C   M A C R O S  ***************************/
@@ -390,8 +388,6 @@ typedef unsigned long			hcf_32;
 #define UIL_ERR_NO_DRV				0x42	//obsolete
 #define UIL_ERR_NSTL				0x45	//obsolete
 
-
-
 #if 0  //;? #ifdef get this going LATER HERMES25
 #define HCF_IO              HCF_IO_32BITS
 #define HCF_DMA             1
@@ -405,7 +401,6 @@ typedef unsigned long			hcf_32;
 #endif  // USE_PCMCIA
 
 #endif  // HERMES25
-
 
 /* Overrule standard WaveLAN Packet Size when in DMA mode */
 #ifdef ENABLE_DMA
@@ -536,7 +531,6 @@ typedef unsigned long			hcf_32;
 #define			HCF_INT_ON			1		//just for convenience of generating cfg_hcf_opt
 #endif //		HCF_INT_ON
 
-
 #if ! defined IN_PORT_STRING_8_16
 #define  IN_PORT_STRING_8_16(port, addr, len)	IN_PORT_STRING_16(port, addr, len)
 #define  OUT_PORT_STRING_8_16(port, addr, len)	OUT_PORT_STRING_16(port, addr, len)
@@ -581,7 +575,6 @@ typedef hcf_16 hcf_io;
 #endif
 
 #define HCF_PROT_TIME_CNT (HCF_PROT_TIME / HCF_PROT_TIME_DIV)
-
 
 /************************************************************************************************************/
 /******************************************* . . . . . . . . .  *********************************************/
@@ -666,11 +659,9 @@ err: HSI variants 1, 2 and 3 correspond with H-I only;
 err: primary variants 1 and 2 correspond with H-I only;
 #endif // HCF_PRI_VAR_1 / HCF_PRI_VAR_2
 
-
 /************************************************************************************************************/
 /******************************************* . . . . . . . . .  *********************************************/
 /************************************************************************************************************/
-
 
 /* The BASED customization macro is used to resolves the SS!=DS conflict for the Interrupt Service logic in
  * DOS Drivers. Due to the cumbersomeness of mixing C and assembler local BASED variables still end up in the
@@ -782,4 +773,3 @@ err: at most 1 of these macros should be defined;
 #endif //HCF_TYPE_WARP / HCF_TYPE_WPA
 
 #endif //HCFCFG_H
-

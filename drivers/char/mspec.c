@@ -56,7 +56,6 @@
 #include <asm/sn/bte.h>
 #include <asm/sn/shubio.h>
 
-
 #define FETCHOP_ID	"SGI Fetchop,"
 #define CACHED_ID	"Cached,"
 #define UNCACHED_ID	"Uncached"
@@ -267,7 +266,7 @@ mspec_mmap(struct file *file, struct vm_area_struct *vma,
 	if ((vma->vm_flags & VM_WRITE) == 0)
 		return -EPERM;
 
-	pages = vma_pages(vma);
+	pages = (vma->vm_end - vma->vm_start) >> PAGE_SHIFT;
 	vdata_size = sizeof(struct vma_data) + pages * sizeof(long);
 	if (vdata_size <= PAGE_SIZE)
 		vdata = kzalloc(vdata_size, GFP_KERNEL);

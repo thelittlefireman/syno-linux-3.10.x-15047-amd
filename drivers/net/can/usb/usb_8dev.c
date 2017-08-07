@@ -23,6 +23,7 @@
  * who were very cooperative and answered my questions.
  */
 
+#include <linux/init.h>
 #include <linux/signal.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -111,7 +112,6 @@ enum usb_8dev_cmd {
 #define USB_8DEV_STATUSMSG_CRC		0x27  /* CRC Error */
 
 #define USB_8DEV_RP_MASK		0x7F  /* Mask for Receive Error Bit */
-
 
 /* table of devices that work with this driver */
 static const struct usb_device_id usb_8dev_table[] = {
@@ -697,8 +697,8 @@ static netdev_tx_t usb_8dev_start_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;
 
 nofreecontext:
+	usb_unanchor_urb(urb);
 	usb_free_coherent(priv->udev, size, buf, urb->transfer_dma);
-	usb_free_urb(urb);
 
 	netdev_warn(netdev, "couldn't find free context");
 
@@ -778,7 +778,6 @@ static int usb_8dev_start(struct usb_8dev_priv *priv)
 			usb_unanchor_urb(urb);
 			usb_free_coherent(priv->udev, RX_BUFFER_SIZE, buf,
 					  urb->transfer_dma);
-			usb_free_urb(urb);
 			break;
 		}
 
@@ -887,7 +886,6 @@ static const struct net_device_ops usb_8dev_netdev_ops = {
 	.ndo_open = usb_8dev_open,
 	.ndo_stop = usb_8dev_close,
 	.ndo_start_xmit = usb_8dev_start_xmit,
-	.ndo_change_mtu = can_change_mtu,
 };
 
 static const struct can_bittiming_const usb_8dev_bittiming_const = {

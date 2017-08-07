@@ -7,7 +7,6 @@
  * for more details.
  */
 
-
 /*
  * Entries defined so far:
  * 	- boot param structure itself
@@ -18,6 +17,7 @@
  * 	- crash dumping code reserved region
  * 	- Kernel memory map built from EFI memory map
  * 	- ELF core header
+ *	- xen start info if CONFIG_XEN
  *
  * More could be added if necessary
  */

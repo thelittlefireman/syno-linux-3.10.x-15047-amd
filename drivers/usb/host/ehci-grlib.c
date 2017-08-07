@@ -43,7 +43,7 @@ static const struct hc_driver ehci_grlib_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq			= ehci_irq,
-	.flags			= HCD_MEMORY | HCD_USB2 | HCD_BH,
+	.flags			= HCD_MEMORY | HCD_USB2,
 
 	/*
 	 * basic lifecycle operations
@@ -81,7 +81,6 @@ static const struct hc_driver ehci_grlib_hc_driver = {
 	.clear_tt_buffer_complete	= ehci_clear_tt_buffer_complete,
 };
 
-
 static int ehci_hcd_grlib_probe(struct platform_device *op)
 {
 	struct device_node *dn = op->dev.of_node;
@@ -113,8 +112,7 @@ static int ehci_hcd_grlib_probe(struct platform_device *op)
 
 	irq = irq_of_parse_and_map(dn, 0);
 	if (irq == NO_IRQ) {
-		dev_err(&op->dev, "%s: irq_of_parse_and_map failed\n",
-			__FILE__);
+		printk(KERN_ERR "%s: irq_of_parse_and_map failed\n", __FILE__);
 		rv = -EBUSY;
 		goto err_irq;
 	}
@@ -141,7 +139,6 @@ static int ehci_hcd_grlib_probe(struct platform_device *op)
 	if (rv)
 		goto err_ioremap;
 
-	device_wakeup_enable(hcd->self.controller);
 	return 0;
 
 err_ioremap:
@@ -152,10 +149,11 @@ err_irq:
 	return rv;
 }
 
-
 static int ehci_hcd_grlib_remove(struct platform_device *op)
 {
-	struct usb_hcd *hcd = platform_get_drvdata(op);
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
+
+	dev_set_drvdata(&op->dev, NULL);
 
 	dev_dbg(&op->dev, "stopping GRLIB GRUSBHC EHCI USB Controller\n");
 
@@ -168,6 +166,13 @@ static int ehci_hcd_grlib_remove(struct platform_device *op)
 	return 0;
 }
 
+static void ehci_hcd_grlib_shutdown(struct platform_device *op)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
+
+	if (hcd->driver->shutdown)
+		hcd->driver->shutdown(hcd);
+}
 
 static const struct of_device_id ehci_hcd_grlib_of_match[] = {
 	{
@@ -180,11 +185,10 @@ static const struct of_device_id ehci_hcd_grlib_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, ehci_hcd_grlib_of_match);
 
-
 static struct platform_driver ehci_grlib_driver = {
 	.probe		= ehci_hcd_grlib_probe,
 	.remove		= ehci_hcd_grlib_remove,
-	.shutdown	= usb_hcd_platform_shutdown,
+	.shutdown	= ehci_hcd_grlib_shutdown,
 	.driver = {
 		.name = "grlib-ehci",
 		.owner = THIS_MODULE,

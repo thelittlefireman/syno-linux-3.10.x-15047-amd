@@ -14,6 +14,7 @@
  */
 
 #include <linux/console.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/tty.h>
@@ -261,7 +262,6 @@ static int goldfish_tty_probe(struct platform_device *pdev)
 	ret = request_irq(irq, goldfish_tty_interrupt, IRQF_SHARED, "goldfish_tty", pdev);
 	if(ret)
 		goto err_request_irq_failed;
-
 
 	ttydev = tty_port_register_device(&qtty->port, goldfish_tty_driver,
 							pdev->id, &pdev->dev);

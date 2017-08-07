@@ -22,7 +22,6 @@
  * Christoph Hellwig : Some cleanup work (2000/03/01)
  */
 
-
 #include "sound_config.h"
 #include <linux/init.h>
 #include <linux/types.h>
@@ -71,7 +70,6 @@ static char     dma_alloc_map[MAX_DMA_CHANNELS];
 #define DMA_MAP_UNAVAIL		0
 #define DMA_MAP_FREE		1
 #define DMA_MAP_BUSY		2
-
 
 unsigned long seq_time = 0;	/* Time for /dev/sequencer */
 extern struct class *sound_class;
@@ -154,6 +152,7 @@ static ssize_t sound_read(struct file *file, char __user *buf, size_t count, lof
 	 
 	mutex_lock(&soundcard_mutex);
 	
+	DEB(printk("sound_read(dev=%d, count=%d)\n", dev, count));
 	switch (dev & 0x0f) {
 	case SND_DEV_DSP:
 	case SND_DEV_DSP16:
@@ -179,6 +178,7 @@ static ssize_t sound_write(struct file *file, const char __user *buf, size_t cou
 	int ret = -EINVAL;
 	
 	mutex_lock(&soundcard_mutex);
+	DEB(printk("sound_write(dev=%d, count=%d)\n", dev, count));
 	switch (dev & 0x0f) {
 	case SND_DEV_SEQ:
 	case SND_DEV_SEQ2:
@@ -204,6 +204,7 @@ static int sound_open(struct inode *inode, struct file *file)
 	int dev = iminor(inode);
 	int retval;
 
+	DEB(printk("sound_open(dev=%d)\n", dev));
 	if ((dev >= SND_NDEVS) || (dev < 0)) {
 		printk(KERN_ERR "Invalid minor device %d\n", dev);
 		return -ENXIO;
@@ -254,6 +255,7 @@ static int sound_release(struct inode *inode, struct file *file)
 	int dev = iminor(inode);
 
 	mutex_lock(&soundcard_mutex);
+	DEB(printk("sound_release(dev=%d)\n", dev));
 	switch (dev & 0x0f) {
 	case SND_DEV_CTL:
 		module_put(mixer_devs[dev >> 4]->owner);
@@ -347,6 +349,7 @@ static long sound_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			if (!access_ok(VERIFY_WRITE, p, len))
 				return -EFAULT;
 	}
+	DEB(printk("sound_ioctl(dev=%d, cmd=0x%x, arg=0x%x)\n", dev, cmd, arg));
 	if (cmd == OSS_GETVERSION)
 		return __put_user(SOUND_VERSION, (int __user *)p);
 	
@@ -404,6 +407,7 @@ static unsigned int sound_poll(struct file *file, poll_table * wait)
 	struct inode *inode = file_inode(file);
 	int dev = iminor(inode);
 
+	DEB(printk("sound_poll(dev=%d)\n", dev));
 	switch (dev & 0x0f) {
 	case SND_DEV_SEQ:
 	case SND_DEV_SEQ2:
@@ -519,7 +523,6 @@ bad:
 	return -1;
 }
 
-
 static int dmabuf;
 static int dmabug;
 
@@ -605,7 +608,6 @@ MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("OSS Sound subsystem");
 MODULE_AUTHOR("Hannu Savolainen, et al.");
 
-
 int sound_alloc_dma(int chn, char *deviceID)
 {
 	int err;
@@ -660,7 +662,6 @@ static void do_sequencer_timer(unsigned long dummy)
 {
 	sequencer_timer(0);
 }
-
 
 static DEFINE_TIMER(seq_timer, do_sequencer_timer, 0, 0);
 
@@ -730,4 +731,3 @@ void conf_printf2(char *name, int base, int irq, int dma, int dma2)
 #endif
 }
 EXPORT_SYMBOL(conf_printf2);
-

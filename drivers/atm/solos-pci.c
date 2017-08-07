@@ -102,7 +102,6 @@ struct solos_skb_cb {
 	uint32_t dma_addr;
 };
 
-
 #define SKB_CB(skb)		((struct solos_skb_cb *)skb->cb)
 
 #define PKT_DATA	0
@@ -137,7 +136,6 @@ struct solos_card {
 	int buffer_size;
 	int atmel_flash;
 };
-
 
 struct solos_param {
 	struct list_head list;
@@ -580,7 +578,6 @@ static ssize_t hardware_show(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(console, 0644, console_show, console_store);
 
-
 #define SOLOS_ATTR_RO(x) static DEVICE_ATTR(x, 0444, solos_param_show, NULL);
 #define SOLOS_ATTR_RW(x) static DEVICE_ATTR(x, 0644, solos_param_show, solos_param_store);
 
@@ -703,7 +700,6 @@ static int flash_upgrade(struct solos_card *card, int chip)
 		dev_info(&card->dev->dev, "Set FPGA Flash mode to Solos Chip Erase\n");
 	iowrite32((chip * 2), card->config_regs + FLASH_MODE);
 
-
 	iowrite32(1, card->config_regs + WRITE_FLASH);
 	wait_event(card->fw_wq, !ioread32(card->config_regs + FLASH_BUSY));
 
@@ -760,7 +756,7 @@ static irqreturn_t solos_irq(int irq, void *dev_id)
 	return IRQ_RETVAL(handled);
 }
 
-static void solos_bh(unsigned long card_arg)
+void solos_bh(unsigned long card_arg)
 {
 	struct solos_card *card = (void *)card_arg;
 	uint32_t card_flags;
@@ -1335,6 +1331,7 @@ static int fpga_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	
  out_unmap_both:
 	kfree(card->dma_bounce);
+	pci_set_drvdata(dev, NULL);
 	pci_iounmap(dev, card->buffers);
  out_unmap_config:
 	pci_iounmap(dev, card->config_regs);
@@ -1456,6 +1453,7 @@ static void fpga_remove(struct pci_dev *dev)
 	pci_release_regions(dev);
 	pci_disable_device(dev);
 
+	pci_set_drvdata(dev, NULL);
 	kfree(card);
 }
 
@@ -1472,7 +1470,6 @@ static struct pci_driver fpga_driver = {
 	.probe =	fpga_probe,
 	.remove =	fpga_remove,
 };
-
 
 static int __init solos_pci_init(void)
 {

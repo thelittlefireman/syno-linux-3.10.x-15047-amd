@@ -172,7 +172,6 @@ static struct platform_device gpio_keys = {
 	.id   = -1,
 };
 
-
 /*
  * EGPIO (Xilinx CPLD)
  *
@@ -378,7 +377,6 @@ static struct platform_pwm_backlight_data backlight_data = {
 	.max_brightness = 272,
 	.dft_brightness = 100,
 	.pwm_period_ns  = 30923,
-	.enable_gpio    = -1,
 	.init           = magician_backlight_init,
 	.notify         = magician_backlight_notify,
 	.exit           = magician_backlight_exit,
@@ -634,7 +632,7 @@ static struct platform_device bq24022 = {
 static int magician_mci_init(struct device *dev,
 				irq_handler_t detect_irq, void *data)
 {
-	return request_irq(IRQ_MAGICIAN_SD, detect_irq, 0,
+	return request_irq(IRQ_MAGICIAN_SD, detect_irq, IRQF_DISABLED,
 			   "mmc card detect", data);
 }
 
@@ -653,7 +651,6 @@ static struct pxamci_platform_data magician_mci_info = {
 	.gpio_power		= EGPIO_MAGICIAN_SD_POWER,
 };
 
-
 /*
  * USB OHCI
  */
@@ -663,7 +660,6 @@ static struct pxaohci_platform_data magician_ohci_info = {
 	.flags		= ENABLE_PORT1 | ENABLE_PORT3 | POWER_CONTROL_LOW,
 	.power_budget	= 0,
 };
-
 
 /*
  * StrataFlash
@@ -766,7 +762,6 @@ static void __init magician_init(void)
 	} else
 		pr_err("LCD detection: CPLD mapping failed\n");
 }
-
 
 MACHINE_START(MAGICIAN, "HTC Magician")
 	.atag_offset = 0x100,

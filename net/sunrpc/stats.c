@@ -188,7 +188,7 @@ void rpc_print_iostats(struct seq_file *seq, struct rpc_clnt *clnt)
 
 	seq_printf(seq, "\tRPC iostats version: %s  ", RPC_IOSTATS_VERS);
 	seq_printf(seq, "p/v: %u/%u (%s)\n",
-			clnt->cl_prog, clnt->cl_vers, clnt->cl_program->name);
+			clnt->cl_prog, clnt->cl_vers, clnt->cl_protname);
 
 	rcu_read_lock();
 	xprt = rcu_dereference(clnt->cl_xprt);
@@ -279,4 +279,3 @@ void rpc_proc_exit(struct net *net)
 	dprintk("RPC:       unregistering /proc/net/rpc\n");
 	remove_proc_entry("rpc", net->proc_net);
 }
-

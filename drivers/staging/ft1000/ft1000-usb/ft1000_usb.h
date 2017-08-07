@@ -11,6 +11,8 @@
 
 #define PSEUDOSZ                16
 
+#define  SUCCESS             0x00
+
 struct app_info_block {
 	u32 nTxMsg;                    /* DPRAM msg sent to DSP with app_id */
 	u32 nRxMsg;                    /* DPRAM msg rcv from dsp with app_id */
@@ -28,6 +30,9 @@ struct app_info_block {
 
 #define FALSE           0
 #define TRUE            1
+
+#define STATUS_SUCCESS  0
+#define STATUS_FAILURE   0x1001
 
 #define FT1000_STATUS_CLOSING  0x01
 
@@ -92,7 +97,6 @@ struct ft1000_usb {
 	unsigned short tempbuf[32];
 } __packed;
 
-
 struct dpram_blk {
 	struct list_head list;
 	u16 *pbuffer;
@@ -120,7 +124,7 @@ extern size_t FileLength;
 extern int numofmsgbuf;
 
 int ft1000_close(struct net_device *dev);
-int scram_dnldr(struct ft1000_usb *ft1000dev, void *pFileStart,
+u16 scram_dnldr(struct ft1000_usb *ft1000dev, void *pFileStart,
 		u32  FileLength);
 
 extern struct list_head freercvpool;
@@ -144,7 +148,5 @@ int ft1000_poll(void *dev_id);
 
 int ft1000_init_proc(struct net_device *dev);
 void ft1000_cleanup_proc(struct ft1000_info *info);
-
-
 
 #endif

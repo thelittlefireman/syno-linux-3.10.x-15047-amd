@@ -55,7 +55,6 @@ static const unsigned int dma_ts_shift[] = {
 #define CHCR_TX(xmit_sz) (DM_FIX | SM_INC | 0x800 | TS_INDEX2VAL((xmit_sz)))
 #define CHCR_RX(xmit_sz) (DM_INC | SM_FIX | 0x800 | TS_INDEX2VAL((xmit_sz)))
 
-
 /*
  *		USB High-Speed DMAC
  */

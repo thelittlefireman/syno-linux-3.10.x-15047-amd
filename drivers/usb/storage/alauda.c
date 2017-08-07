@@ -129,7 +129,6 @@ struct alauda_info {
 
 static int init_alauda(struct us_data *us);
 
-
 /*
  * The table of devices
  */
@@ -167,7 +166,6 @@ static struct us_unusual_dev alauda_unusual_dev_list[] = {
 };
 
 #undef UNUSUAL_DEV
-
 
 /*
  * Media handling
@@ -249,7 +247,11 @@ static void nand_init_ecc(void) {
 /* compute 3-byte ecc on 256 bytes */
 static void nand_compute_ecc(unsigned char *data, unsigned char *ecc) {
 	int i, j, a;
-	unsigned char par = 0, bit, bits[8] = {0};
+	unsigned char par, bit, bits[8];
+
+	par = 0;
+	for (j = 0; j < 8; j++)
+		bits[j] = 0;
 
 	/* collect 16 checksum bits */
 	for (i = 0; i < 256; i++) {

@@ -72,7 +72,6 @@
 #include <linux/serial_core.h>
 #include <linux/serial.h>
 
-
 #define MOD_AUTHOR			"Option Wireless"
 #define MOD_DESCRIPTION			"USB High Speed Option driver"
 #define MOD_LICENSE			"GPL"
@@ -185,6 +184,7 @@ enum rx_ctrl_state{
 #define BM_REQUEST_TYPE (0xa1)
 #define B_NOTIFICATION  (0x20)
 #define W_VALUE         (0x0)
+#define W_INDEX         (0x2)
 #define W_LENGTH        (0x2)
 
 #define B_OVERRUN       (0x1<<6)
@@ -214,7 +214,6 @@ struct hso_tiocmget {
 	u16    prev_UART_state_bitmap;
 	struct uart_icount icount;
 };
-
 
 struct hso_serial {
 	struct hso_device *parent;
@@ -1151,9 +1150,6 @@ static void hso_resubmit_rx_bulk_urb(struct hso_serial *serial, struct urb *urb)
 	}
 }
 
-
-
-
 static void put_rxbuf_data_and_resubmit_bulk_urb(struct hso_serial *serial)
 {
 	int count;
@@ -1194,25 +1190,22 @@ static void put_rxbuf_data_and_resubmit_ctrl_urb(struct hso_serial *serial)
 		serial->rx_state = RX_IDLE;
 }
 
-
 /* read callback for Diag and CS port */
 static void hso_std_serial_read_bulk_callback(struct urb *urb)
 {
 	struct hso_serial *serial = urb->context;
 	int status = urb->status;
 
-	D4("\n--- Got serial_read_bulk callback %02x ---", status);
-
 	/* sanity check */
 	if (!serial) {
 		D1("serial == NULL");
 		return;
-	}
-	if (status) {
+	} else if (status) {
 		handle_usb_error(status, __func__, serial->parent);
 		return;
 	}
 
+	D4("\n--- Got serial_read_bulk callback %02x ---", status);
 	D1("Actual length = %d\n", urb->actual_length);
 	DUMP1(urb->transfer_buffer, urb->actual_length);
 
@@ -1220,13 +1213,25 @@ static void hso_std_serial_read_bulk_callback(struct urb *urb)
 	if (serial->port.count == 0)
 		return;
 
-	if (serial->parent->port_spec & HSO_INFO_CRC_BUG)
-		fix_crc_bug(urb, serial->in_endp->wMaxPacketSize);
-	/* Valid data, handle RX data */
-	spin_lock(&serial->serial_lock);
-	serial->rx_urb_filled[hso_urb_to_index(serial, urb)] = 1;
-	put_rxbuf_data_and_resubmit_bulk_urb(serial);
-	spin_unlock(&serial->serial_lock);
+	if (status == 0) {
+		if (serial->parent->port_spec & HSO_INFO_CRC_BUG)
+			fix_crc_bug(urb, serial->in_endp->wMaxPacketSize);
+		/* Valid data, handle RX data */
+		spin_lock(&serial->serial_lock);
+		serial->rx_urb_filled[hso_urb_to_index(serial, urb)] = 1;
+		put_rxbuf_data_and_resubmit_bulk_urb(serial);
+		spin_unlock(&serial->serial_lock);
+	} else if (status == -ENOENT || status == -ECONNRESET) {
+		/* Unlinked - check for throttled port. */
+		D2("Port %d, successfully unlinked urb", serial->minor);
+		spin_lock(&serial->serial_lock);
+		serial->rx_urb_filled[hso_urb_to_index(serial, urb)] = 0;
+		hso_resubmit_rx_bulk_urb(serial, urb);
+		spin_unlock(&serial->serial_lock);
+	} else {
+		D2("Port %d, status = %d for read urb", serial->minor, status);
+		return;
+	}
 }
 
 /*
@@ -1476,7 +1481,6 @@ static void tiocmget_intr_callback(struct urb *urb)
 	struct uart_icount *icount;
 	struct hso_serial_state_notification *serial_state_notification;
 	struct usb_device *usb;
-	int if_num;
 
 	/* Sanity checks */
 	if (!serial)
@@ -1485,24 +1489,15 @@ static void tiocmget_intr_callback(struct urb *urb)
 		handle_usb_error(status, __func__, serial->parent);
 		return;
 	}
-
-	/* tiocmget is only supported on HSO_PORT_MODEM */
 	tiocmget = serial->tiocmget;
 	if (!tiocmget)
 		return;
-	BUG_ON((serial->parent->port_spec & HSO_PORT_MASK) != HSO_PORT_MODEM);
-
 	usb = serial->parent->usb;
-	if_num = serial->parent->interface->altsetting->desc.bInterfaceNumber;
-
-	/* wIndex should be the USB interface number of the port to which the
-	 * notification applies, which should always be the Modem port.
-	 */
 	serial_state_notification = &tiocmget->serial_state_notification;
 	if (serial_state_notification->bmRequestType != BM_REQUEST_TYPE ||
 	    serial_state_notification->bNotification != B_NOTIFICATION ||
 	    le16_to_cpu(serial_state_notification->wValue) != W_VALUE ||
-	    le16_to_cpu(serial_state_notification->wIndex) != if_num ||
+	    le16_to_cpu(serial_state_notification->wIndex) != W_INDEX ||
 	    le16_to_cpu(serial_state_notification->wLength) != W_LENGTH) {
 		dev_warn(&usb->dev,
 			 "hso received invalid serial state notification\n");
@@ -1635,7 +1630,6 @@ static int hso_get_count(struct tty_struct *tty,
 	return 0;
 }
 
-
 static int hso_serial_tiocmget(struct tty_struct *tty)
 {
 	int retval;
@@ -1729,7 +1723,6 @@ static int hso_serial_ioctl(struct tty_struct *tty,
 	}
 	return ret;
 }
-
 
 /* starts a transmit */
 static void hso_kick_transmit(struct hso_serial *serial)
@@ -2048,7 +2041,6 @@ static int put_rxbuf_data(struct urb *urb, struct hso_serial *serial)
 	}
 	return write_length_remaining;
 }
-
 
 /* Base driver functions */
 
@@ -2815,16 +2807,13 @@ exit:
 static int hso_get_config_data(struct usb_interface *interface)
 {
 	struct usb_device *usbdev = interface_to_usbdev(interface);
-	u8 *config_data = kmalloc(17, GFP_KERNEL);
+	u8 config_data[17];
 	u32 if_num = interface->altsetting->desc.bInterfaceNumber;
 	s32 result;
 
-	if (!config_data)
-		return -ENOMEM;
 	if (usb_control_msg(usbdev, usb_rcvctrlpipe(usbdev, 0),
 			    0x86, 0xC0, 0, 0, config_data, 17,
 			    USB_CTRL_SET_TIMEOUT) != 0x11) {
-		kfree(config_data);
 		return -EIO;
 	}
 
@@ -2875,7 +2864,6 @@ static int hso_get_config_data(struct usb_interface *interface)
 	if (config_data[16] & 0x1)
 		result |= HSO_INFO_CRC_BUG;
 
-	kfree(config_data);
 	return result;
 }
 
@@ -2889,11 +2877,6 @@ static int hso_probe(struct usb_interface *interface,
 	struct hso_shared_int *shared_int;
 	struct hso_device *tmp_dev = NULL;
 
-	if (interface->cur_altsetting->desc.bInterfaceClass != 0xFF) {
-		dev_err(&interface->dev, "Not our interface\n");
-		return -ENODEV;
-	}
-
 	if_num = interface->altsetting->desc.bInterfaceNumber;
 
 	/* Get the interface/port specification from either driver_info or from
@@ -2903,6 +2886,10 @@ static int hso_probe(struct usb_interface *interface,
 	else
 		port_spec = hso_get_config_data(interface);
 
+	if (interface->cur_altsetting->desc.bInterfaceClass != 0xFF) {
+		dev_err(&interface->dev, "Not our interface\n");
+		return -ENODEV;
+	}
 	/* Check if we need to switch to alt interfaces prior to port
 	 * configuration */
 	if (interface->num_altsetting > 1)

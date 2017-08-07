@@ -243,14 +243,12 @@
 #include <scsi/scsicam.h>
 #include <scsi/scsi_tcq.h>
 
-
 #define DC390_BANNER "Tekram DC390/AM53C974"
 #define DC390_VERSION "2.1d 2004-05-27"
 
 #define PCI_DEVICE_ID_AMD53C974 	PCI_DEVICE_ID_AMD_SCSI
 
 #include "tmscsim.h"
-
 
 static void dc390_DataOut_0( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus);
 static void dc390_DataIn_0( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus);
@@ -501,7 +499,6 @@ dc390_freetag (struct dc390_dcb* pDCB, struct dc390_srb* pSRB)
 	}
 }
 
-
 static int
 dc390_StartSCSI( struct dc390_acb* pACB, struct dc390_dcb* pDCB, struct dc390_srb* pSRB )
 {
@@ -521,7 +518,7 @@ dc390_StartSCSI( struct dc390_acb* pACB, struct dc390_dcb* pDCB, struct dc390_sr
 	pACB->SelConn++;
 	return 1;
     }
-    if (time_before (jiffies, pACB->last_reset))
+    if (time_before (jiffies, pACB->pScsiHost->last_reset))
     {
 	DEBUG0(printk ("DC390: We were just reset and don't accept commands yet!\n"));
 	return 1;
@@ -635,14 +632,12 @@ dc390_StartSCSI( struct dc390_acb* pACB, struct dc390_dcb* pDCB, struct dc390_sr
     return 0;
 }
 
-
 static void __inline__
 dc390_InvalidCmd(struct dc390_acb* pACB)
 {
 	if (pACB->pActiveDCB->pActiveSRB->SRBState & (SRB_START_ | SRB_MSGOUT))
 		DC390_write8(ScsiCmd, CLEAR_FIFO_CMD);
 }
-
 
 static irqreturn_t __inline__
 DC390_Interrupt(void *dev_id)
@@ -961,7 +956,6 @@ dc390_MsgOut_0( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus)
     //DC390_write8 (DMA_Cmd, DMA_IDLE_CMD);
 }
 
-
 static void __inline__
 dc390_reprog (struct dc390_acb* pACB, struct dc390_dcb* pDCB)
 {
@@ -971,7 +965,6 @@ dc390_reprog (struct dc390_acb* pACB, struct dc390_dcb* pDCB)
   DC390_write8 (CtrlReg4, pDCB->CtrlR4);
   dc390_SetXferRate (pACB, pDCB);
 }
-
 
 #ifdef DC390_DEBUG0
 static void
@@ -1039,7 +1032,6 @@ dc390_MsgIn_QTag (struct dc390_acb* pACB, struct dc390_dcb* pDCB, s8 tag)
     }
   return pSRB;
 }
-
 
 /* set async transfer mode */
 static void 
@@ -1132,7 +1124,6 @@ dc390_MsgIn_set_sync (struct dc390_acb* pACB, struct dc390_srb* pSRB)
   dc390_reprog (pACB, pDCB);
 }
 
-
 /* handle RESTORE_PTR */
 /* This doesn't look very healthy... to-be-fixed */
 static void 
@@ -1176,7 +1167,6 @@ dc390_restore_ptr (struct dc390_acb* pACB, struct dc390_srb* pSRB)
   pSRB->TotalXferredLen = pSRB->Saved_Ptr;
 }
 
-
 /* According to the docs, the AM53C974 reads the message and 
  * generates a Successful Operation IRQ before asserting ACK for
  * the last byte (how does it know whether it's the last ?) */
@@ -1198,8 +1188,6 @@ dc390_MsgIn_complete (u8 *msgbuf, u32 len)
 	if (len < 2) return 0;
   return 1;
 }
-
-
 
 /* read and eval received messages */
 static void
@@ -1274,7 +1262,6 @@ dc390_MsgIn_0( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus)
     DC390_write8 (ScsiCmd, MSG_ACCEPTED_CMD);
     //DC390_write8 (DMA_Cmd, DMA_IDLE_CMD);
 }
-
 
 static void
 dc390_DataIO_Comm( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 ioDir)
@@ -1353,7 +1340,6 @@ dc390_DataIO_Comm( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 ioDir)
 */
     }
 }
-
 
 static void
 dc390_DataOutPhase( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus)
@@ -1483,7 +1469,6 @@ dc390_Nop_1( struct dc390_acb* pACB, struct dc390_srb* pSRB, u8 *psstatus)
 {
 }
 
-
 static void
 dc390_SetXferRate( struct dc390_acb* pACB, struct dc390_dcb* pDCB )
 {
@@ -1513,7 +1498,6 @@ dc390_SetXferRate( struct dc390_acb* pACB, struct dc390_dcb* pDCB )
     }
     return;
 }
-
 
 static void
 dc390_Disconnect( struct dc390_acb* pACB )
@@ -1577,7 +1561,6 @@ disc1:
     }
     pACB->MsgLen = 0;
 }
-
 
 static void
 dc390_Reselect( struct dc390_acb* pACB )
@@ -1692,7 +1675,6 @@ dc390_RequestSense(struct dc390_acb* pACB, struct dc390_dcb* pDCB, struct dc390_
 	return dc390_StartSCSI(pACB, pDCB, pSRB);
 }
 
-
 static void
 dc390_SRBdone( struct dc390_acb* pACB, struct dc390_dcb* pDCB, struct dc390_srb* pSRB )
 {
@@ -1806,7 +1788,6 @@ cmd_done:
     return;
 }
 
-
 /* Remove all SRBs from Going list and inform midlevel */
 static void
 dc390_DoingSRB_Done(struct dc390_acb* pACB, struct scsi_cmnd *cmd)
@@ -1836,7 +1817,6 @@ dc390_DoingSRB_Done(struct dc390_acb* pACB, struct scsi_cmnd *cmd)
     } while( pdcb != pDCB );
 }
 
-
 static void
 dc390_ResetSCSIBus( struct dc390_acb* pACB )
 {
@@ -1863,7 +1843,7 @@ dc390_ScsiRstDetect( struct dc390_acb* pACB )
     /* delay half a second */
     udelay (1000);
     DC390_write8 (ScsiCmd, CLEAR_FIFO_CMD);
-    pACB->last_reset = jiffies + 5*HZ/2
+    pACB->pScsiHost->last_reset = jiffies + 5*HZ/2
 		    + HZ * dc390_eepromBuf[pACB->AdapterIndex][EE_DELAY];
     pACB->Connected = 0;
 
@@ -1990,7 +1970,6 @@ static void dc390_dumpinfo (struct dc390_acb* pACB, struct dc390_dcb* pDCB, stru
     printk ("DC390: In case of driver trouble read Documentation/scsi/tmscsim.txt\n");
 }
 
-
 static int DC390_abort(struct scsi_cmnd *cmd)
 {
 	struct dc390_acb *pACB = (struct dc390_acb*) cmd->device->host->hostdata;
@@ -2008,7 +1987,6 @@ static int DC390_abort(struct scsi_cmnd *cmd)
 
 	return FAILED;
 }
-
 
 static void dc390_ResetDevParam( struct dc390_acb* pACB )
 {
@@ -2048,9 +2026,9 @@ static int DC390_bus_reset (struct scsi_cmnd *cmd)
 
 	dc390_ResetDevParam(pACB);
 	mdelay(1);
-	pACB->last_reset = jiffies + 3*HZ/2
+	pACB->pScsiHost->last_reset = jiffies + 3*HZ/2 
 		+ HZ * dc390_eepromBuf[pACB->AdapterIndex][EE_DELAY];
-
+    
 	DC390_write8(ScsiCmd, CLEAR_FIFO_CMD);
 	DC390_read8(INT_Status);		/* Reset Pending INT */
 
@@ -2383,7 +2361,7 @@ static void dc390_init_hw(struct dc390_acb *pACB, u8 index)
 	if (pACB->Gmode2 & RST_SCSI_BUS) {
 		dc390_ResetSCSIBus(pACB);
 		udelay(1000);
-		pACB->last_reset = jiffies + HZ/2 +
+		shost->last_reset = jiffies + HZ/2 +
 			HZ * dc390_eepromBuf[pACB->AdapterIndex][EE_DELAY];
 	}
 
@@ -2455,8 +2433,8 @@ static int dc390_probe_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	shost->irq = pdev->irq;
 	shost->base = io_port;
 	shost->unique_id = io_port;
-
-	pACB->last_reset = jiffies;
+	shost->last_reset = jiffies;
+	
 	pACB->pScsiHost = shost;
 	pACB->IOPortBase = (u16) io_port;
 	pACB->IRQLevel = pdev->irq;
@@ -2553,6 +2531,7 @@ static void dc390_remove_one(struct pci_dev *dev)
 
 	pci_disable_device(dev);
 	scsi_host_put(scsi_host);
+	pci_set_drvdata(dev, NULL);
 }
 
 static struct pci_device_id tmscsim_pci_tbl[] = {

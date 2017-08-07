@@ -12,11 +12,11 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/string.h>
 #include <linux/usb.h>
-
 
 #define DRIVER_AUTHOR "Harrison Metzger <harrisonmetz@gmail.com>"
 #define DRIVER_DESC "USB 7 Segment Driver"
@@ -56,7 +56,7 @@ struct usb_sevsegdev {
  * if str commands are used, we would assume the end of string
  * so mem commands are used.
  */
-static inline size_t my_memlen(const char *buf, size_t count)
+inline size_t my_memlen(const char *buf, size_t count)
 {
 	if (count > 0 && buf[count-1] == '\n')
 		return count - 1;
@@ -295,7 +295,6 @@ static ssize_t show_attr_textmode(struct device *dev,
 	}
 	strcat(buf, "\n");
 
-
 	return strlen(buf);
 }
 
@@ -318,7 +317,6 @@ static ssize_t set_attr_textmode(struct device *dev,
 }
 
 static DEVICE_ATTR(textmode, S_IRUGO | S_IWUSR, show_attr_textmode, set_attr_textmode);
-
 
 MYDEV_ATTR_SIMPLE_UNSIGNED(powered, update_display_powered);
 MYDEV_ATTR_SIMPLE_UNSIGNED(mode_msb, update_display_mode);

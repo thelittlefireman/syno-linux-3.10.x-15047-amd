@@ -78,17 +78,15 @@ __initcall(cats_hw_init);
 static void __init
 fixup_cats(struct tag *tags, char **cmdline, struct meminfo *mi)
 {
-#if defined(CONFIG_VGA_CONSOLE) || defined(CONFIG_DUMMY_CONSOLE)
 	screen_info.orig_video_lines  = 25;
 	screen_info.orig_video_points = 16;
 	screen_info.orig_y = 24;
-#endif
 }
 
 MACHINE_START(CATS, "Chalice-CATS")
 	/* Maintainer: Philip Blundell */
 	.atag_offset	= 0x100,
-	.reboot_mode	= REBOOT_SOFT,
+	.restart_mode	= 's',
 	.fixup		= fixup_cats,
 	.map_io		= footbridge_map_io,
 	.init_irq	= footbridge_init_irq,

@@ -51,4 +51,3 @@ static void sb_close(struct sbuff *m)
 		local_bh_enable();
 	}
 }
-

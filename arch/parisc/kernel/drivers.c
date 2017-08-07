@@ -145,7 +145,6 @@ static int parisc_driver_remove(struct device *dev)
 	return 0;
 }
 	
-
 /**
  * register_parisc_driver - Register this driver if it can handle a device
  * @driver: the PA-RISC driver to try
@@ -179,7 +178,6 @@ int register_parisc_driver(struct parisc_driver *driver)
 	return driver_register(&driver->drv);
 }
 EXPORT_SYMBOL(register_parisc_driver);
-
 
 struct match_count {
 	struct parisc_driver * driver;
@@ -216,8 +214,6 @@ int count_parisc_driver(struct parisc_driver *driver)
 
 	return m.count;
 }
-
-
 
 /**
  * unregister_parisc_driver - Unregister this driver from the list of drivers
@@ -282,6 +278,18 @@ find_pa_parent_type(const struct parisc_device *padev, int type)
 	return NULL;
 }
 
+#ifdef CONFIG_PCI
+static inline int is_pci_dev(struct device *dev)
+{
+	return dev->bus == &pci_bus_type;
+}
+#else
+static inline int is_pci_dev(struct device *dev)
+{
+	return 0;
+}
+#endif
+
 /*
  * get_node_path fills in @path with the firmware path to the device.
  * Note that if @node is a parisc device, we don't fill in the 'mod' field.
@@ -294,7 +302,7 @@ static void get_node_path(struct device *dev, struct hardware_path *path)
 	int i = 5;
 	memset(&path->bc, -1, 6);
 
-	if (dev_is_pci(dev)) {
+	if (is_pci_dev(dev)) {
 		unsigned int devfn = to_pci_dev(dev)->devfn;
 		path->mod = PCI_FUNC(devfn);
 		path->bc[i--] = PCI_SLOT(devfn);
@@ -302,7 +310,7 @@ static void get_node_path(struct device *dev, struct hardware_path *path)
 	}
 
 	while (dev != &root) {
-		if (dev_is_pci(dev)) {
+		if (is_pci_dev(dev)) {
 			unsigned int devfn = to_pci_dev(dev)->devfn;
 			path->bc[i--] = PCI_SLOT(devfn) | (PCI_FUNC(devfn)<< 5);
 		} else if (dev->bus == &parisc_bus_type) {
@@ -683,7 +691,7 @@ static int check_parent(struct device * dev, void * data)
 		if (dev->bus == &parisc_bus_type) {
 			if (match_parisc_device(dev, d->index, d->modpath))
 				d->dev = dev;
-		} else if (dev_is_pci(dev)) {
+		} else if (is_pci_dev(dev)) {
 			if (match_pci_device(dev, d->index, d->modpath))
 				d->dev = dev;
 		} else if (dev->bus == NULL) {
@@ -741,7 +749,7 @@ struct device *hwpath_to_device(struct hardware_path *modpath)
 		if (!parent)
 			return NULL;
 	}
-	if (dev_is_pci(parent)) /* pci devices already parse MOD */
+	if (is_pci_dev(parent)) /* pci devices already parse MOD */
 		return parent;
 	else
 		return parse_tree_node(parent, 6, modpath);
@@ -760,7 +768,7 @@ void device_to_hwpath(struct device *dev, struct hardware_path *path)
 		padev = to_parisc_device(dev);
 		get_node_path(dev->parent, path);
 		path->mod = padev->hw_path;
-	} else if (dev_is_pci(dev)) {
+	} else if (is_pci_dev(dev)) {
 		get_node_path(dev, path);
 	}
 }
@@ -891,7 +899,6 @@ void init_parisc_bus(void)
 		panic("Could not register PA-RISC root device\n");
 	get_device(&root);
 }
-
 
 static int print_one_device(struct device * dev, void * data)
 {

@@ -54,7 +54,6 @@ static int crc32_cra_init(struct crypto_tfm *tfm)
 	return 0;
 }
 
-
 /*
  * Setting the seed allows arbitrary accumulators and flexible XOR policy
  * If your algorithm starts with ~0, then XOR with ~0 before you set
@@ -156,3 +155,4 @@ module_exit(crc32_mod_fini);
 MODULE_AUTHOR("Alexander Boyko <alexander_boyko@xyratex.com>");
 MODULE_DESCRIPTION("CRC32 calculations wrapper for lib/crc32");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_CRYPTO("crc32");

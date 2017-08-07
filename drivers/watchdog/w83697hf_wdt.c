@@ -41,7 +41,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 #define WATCHDOG_NAME "w83697hf/hg WDT"
 #define WATCHDOG_TIMEOUT 60		/* 60 sec default timeout */
 #define WATCHDOG_EARLY_DISABLE 1	/* Disable until userland kicks in */
@@ -402,7 +401,7 @@ static int __init wdt_init(void)
 
 	if (!found) {
 		pr_err("No W83697HF/HG could be found\n");
-		ret = -ENODEV;
+		ret = -EIO;
 		goto out;
 	}
 
@@ -455,6 +454,7 @@ module_init(wdt_init);
 module_exit(wdt_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Marcus Junker <junker@anduras.de>");
-MODULE_AUTHOR("Samuel Tardieu <sam@rfc1149.net>");
+MODULE_AUTHOR("Marcus Junker <junker@anduras.de>, "
+		"Samuel Tardieu <sam@rfc1149.net>");
 MODULE_DESCRIPTION("w83697hf/hg WDT driver");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

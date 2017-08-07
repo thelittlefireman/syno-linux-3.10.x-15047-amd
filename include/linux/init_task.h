@@ -11,7 +11,6 @@
 #include <linux/user_namespace.h>
 #include <linux/securebits.h>
 #include <linux/seqlock.h>
-#include <linux/rbtree.h>
 #include <net/net_namespace.h>
 #include <linux/sched/rt.h>
 
@@ -33,10 +32,10 @@ extern struct fs_struct init_fs;
 #endif
 
 #ifdef CONFIG_CPUSETS
-#define INIT_CPUSET_SEQ(tsk)							\
-	.mems_allowed_seq = SEQCNT_ZERO(tsk.mems_allowed_seq),
+#define INIT_CPUSET_SEQ							\
+	.mems_allowed_seq = SEQCNT_ZERO,
 #else
-#define INIT_CPUSET_SEQ(tsk)
+#define INIT_CPUSET_SEQ
 #endif
 
 #define INIT_SIGNALS(sig) {						\
@@ -97,7 +96,7 @@ extern struct group_info init_groups;
 #ifdef CONFIG_AUDITSYSCALL
 #define INIT_IDS \
 	.loginuid = INVALID_UID, \
-	.sessionid = (unsigned int)-1,
+	.sessionid = -1,
 #else
 #define INIT_IDS
 #endif
@@ -155,14 +154,6 @@ extern struct task_group root_task_group;
 #endif
 
 #define INIT_TASK_COMM "swapper"
-
-#ifdef CONFIG_RT_MUTEXES
-# define INIT_RT_MUTEXES(tsk)						\
-	.pi_waiters = RB_ROOT,						\
-	.pi_waiters_leftmost = NULL,
-#else
-# define INIT_RT_MUTEXES(tsk)
-#endif
 
 /*
  *  INIT_TASK is used to set up the first task table, touch at
@@ -231,11 +222,9 @@ extern struct task_group root_task_group;
 	INIT_FTRACE_GRAPH						\
 	INIT_TRACE_RECURSION						\
 	INIT_TASK_RCU_PREEMPT(tsk)					\
-	INIT_CPUSET_SEQ(tsk)						\
-	INIT_RT_MUTEXES(tsk)						\
+	INIT_CPUSET_SEQ							\
 	INIT_VTIME(tsk)							\
 }
-
 
 #define INIT_CPU_TIMERS(cpu_timers)					\
 {									\
@@ -246,6 +235,5 @@ extern struct task_group root_task_group;
 
 /* Attach to the init_task data structure for proper alignment */
 #define __init_task_data __attribute__((__section__(".data..init_task")))
-
 
 #endif

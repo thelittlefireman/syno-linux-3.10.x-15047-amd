@@ -80,13 +80,13 @@ static int hostap_enable_hostapd(PSDevice pDevice, int rtnl_locked)
 
 	DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "%s: Enabling hostapd mode\n", dev->name);
 
-	pDevice->apdev = alloc_etherdev(sizeof(*apdev_priv));
+	pDevice->apdev = kzalloc(sizeof(struct net_device), GFP_KERNEL);
 	if (pDevice->apdev == NULL)
 		return -ENOMEM;
 
 	apdev_priv = netdev_priv(pDevice->apdev);
 	*apdev_priv = *pDevice;
-	eth_hw_addr_inherit(pDevice->apdev, dev);
+	memcpy(pDevice->apdev->dev_addr, dev->dev_addr, ETH_ALEN);
 
 	pDevice->apdev->netdev_ops = &apdev_netdev_ops;
 
@@ -104,8 +104,6 @@ static int hostap_enable_hostapd(PSDevice pDevice, int rtnl_locked)
 	if (ret) {
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "%s: register_netdevice(AP) failed!\n",
 			dev->name);
-		free_netdev(pDevice->apdev);
-		pDevice->apdev = NULL;
 		return -1;
 	}
 
@@ -143,8 +141,7 @@ static int hostap_disable_hostapd(PSDevice pDevice, int rtnl_locked)
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "%s: Netdevice %s unregistered\n",
 			pDevice->dev->name, pDevice->apdev->name);
 	}
-	if (pDevice->apdev)
-		free_netdev(pDevice->apdev);
+	kfree(pDevice->apdev);
 	pDevice->apdev = NULL;
 	pDevice->bEnable8021x = false;
 	pDevice->bEnableHostWEP = false;
@@ -454,7 +451,7 @@ static int hostap_set_encryption(PSDevice pDevice,
 	unsigned long dwKeyIndex = 0;
 	unsigned char abyKey[MAX_KEY_LEN];
 	unsigned char abySeq[MAX_KEY_LEN];
-	unsigned long long KeyRSC;
+	NDIS_802_11_KEY_RSC   KeyRSC;
 	unsigned char byKeyDecMode = KEY_CTL_WEP;
 	int     ret = 0;
 	int     iNodeIndex = -1;
@@ -495,11 +492,11 @@ static int hostap_set_encryption(PSDevice pDevice,
 	DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO " hostap_set_encryption: alg %d \n", param->u.crypt.alg);
 
 	if (param->u.crypt.alg == WPA_ALG_NONE) {
-		if (pMgmt->sNodeDBTable[iNodeIndex].bOnFly) {
-			if (!KeybRemoveKey(&(pDevice->sKey),
+		if (pMgmt->sNodeDBTable[iNodeIndex].bOnFly == true) {
+			if (KeybRemoveKey(&(pDevice->sKey),
 					  param->sta_addr,
 					  pMgmt->sNodeDBTable[iNodeIndex].dwKeyIndex,
-					  pDevice->PortOffset)) {
+					  pDevice->PortOffset) == false) {
 				DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "KeybRemoveKey fail \n");
 			}
 			pMgmt->sNodeDBTable[iNodeIndex].bOnFly = false;
@@ -557,7 +554,7 @@ static int hostap_set_encryption(PSDevice pDevice,
 				       (unsigned char *)abyKey,
 				       KEY_CTL_WEP,
 				       pDevice->PortOffset,
-				       pDevice->byLocalID)) {
+				       pDevice->byLocalID) == true) {
 				pMgmt->sNodeDBTable[iNodeIndex].bOnFly = true;
 
 			} else {
@@ -624,7 +621,7 @@ static int hostap_set_encryption(PSDevice pDevice,
 			       (unsigned char *)abyKey,
 			       byKeyDecMode,
 			       pDevice->PortOffset,
-			       pDevice->byLocalID)) {
+			       pDevice->byLocalID) == true) {
 			pMgmt->sNodeDBTable[iNodeIndex].bOnFly = true;
 
 		} else {
@@ -636,7 +633,7 @@ static int hostap_set_encryption(PSDevice pDevice,
 
 	}
 
-	if (bKeyTableFull) {
+	if (bKeyTableFull == true) {
 		wKeyCtl &= 0x7F00;              // clear all key control filed
 		wKeyCtl |= (byKeyDecMode << 4);
 		wKeyCtl |= (byKeyDecMode);
@@ -721,6 +718,7 @@ static int hostap_get_encryption(PSDevice pDevice,
  * Return Value:
  *
  */
+
 int vt6655_hostap_ioctl(PSDevice pDevice, struct iw_point *p)
 {
 	struct viawget_hostapd_param *param;
@@ -731,7 +729,7 @@ int vt6655_hostap_ioctl(PSDevice pDevice, struct iw_point *p)
 	    p->length > VIAWGET_HOSTAPD_MAX_BUF_SIZE || !p->pointer)
 		return -EINVAL;
 
-	param = kmalloc((int)p->length, GFP_KERNEL);
+	param = kmalloc((int)p->length, (int)GFP_KERNEL);
 	if (param == NULL)
 		return -ENOMEM;
 
@@ -755,8 +753,8 @@ int vt6655_hostap_ioctl(PSDevice pDevice, struct iw_point *p)
 		break;
 	case VIAWGET_HOSTAPD_SET_ASSOC_AP_ADDR:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_SET_ASSOC_AP_ADDR \n");
-		ret = -EOPNOTSUPP;
-		goto out;
+		return -EOPNOTSUPP;
+		break;
 	case VIAWGET_HOSTAPD_FLUSH:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_FLUSH \n");
 		spin_lock_irq(&pDevice->lock);
@@ -790,36 +788,40 @@ int vt6655_hostap_ioctl(PSDevice pDevice, struct iw_point *p)
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_SET_FLAGS_STA \n");
 		ret = hostap_set_flags_sta(pDevice, param);
 		break;
+
 	case VIAWGET_HOSTAPD_MLME:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_MLME \n");
-		ret = -EOPNOTSUPP;
-		goto out;
+		return -EOPNOTSUPP;
+
 	case VIAWGET_HOSTAPD_SET_GENERIC_ELEMENT:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_SET_GENERIC_ELEMENT \n");
 		ret = hostap_set_generic_element(pDevice, param);
 		break;
+
 	case VIAWGET_HOSTAPD_SCAN_REQ:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_SCAN_REQ \n");
-		ret = -EOPNOTSUPP;
-		goto out;
+		return -EOPNOTSUPP;
+
 	case VIAWGET_HOSTAPD_STA_CLEAR_STATS:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "VIAWGET_HOSTAPD_STA_CLEAR_STATS \n");
-		ret = -EOPNOTSUPP;
-		goto out;
+		return -EOPNOTSUPP;
+
 	default:
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "vt6655_hostap_ioctl: unknown cmd=%d\n",
 			(int)param->cmd);
-		ret = -EOPNOTSUPP;
-		goto out;
+		return -EOPNOTSUPP;
+		break;
 	}
 
 	if ((ret == 0) && ap_ioctl) {
 		if (copy_to_user(p->pointer, param, p->length)) {
 			ret = -EFAULT;
+			goto out;
 		}
 	}
 
 out:
 	kfree(param);
+
 	return ret;
 }

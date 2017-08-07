@@ -158,11 +158,11 @@ static int max_t3[] = { 8191 }; /* Must fit in 16 bits when multiplied by BCT3MU
 static int min_priority[1];
 static int max_priority[] = { 127 }; /* From DECnet spec */
 
-static int dn_forwarding_proc(struct ctl_table *, int,
+static int dn_forwarding_proc(ctl_table *, int,
 			void __user *, size_t *, loff_t *);
 static struct dn_dev_sysctl_table {
 	struct ctl_table_header *sysctl_header;
-	struct ctl_table dn_dev_vars[5];
+	ctl_table dn_dev_vars[5];
 } dn_dev_sysctl = {
 	NULL,
 	{
@@ -242,7 +242,7 @@ static void dn_dev_sysctl_unregister(struct dn_dev_parms *parms)
 	}
 }
 
-static int dn_forwarding_proc(struct ctl_table *table, int write,
+static int dn_forwarding_proc(ctl_table *table, int write,
 				void __user *buffer,
 				size_t *lenp, loff_t *ppos)
 {
@@ -407,7 +407,6 @@ static int dn_dev_set_ifa(struct net_device *dev, struct dn_ifaddr *ifa)
 	return rv;
 }
 
-
 int dn_dev_ioctl(unsigned int cmd, void __user *arg)
 {
 	char buffer[DN_IFREQ_SIZE];
@@ -561,7 +560,6 @@ static const struct nla_policy dn_ifa_policy[IFA_MAX+1] = {
 	[IFA_LOCAL]		= { .type = NLA_U16 },
 	[IFA_LABEL]		= { .type = NLA_STRING,
 				    .len = IFNAMSIZ - 1 },
-	[IFA_FLAGS]		= { .type = NLA_U32 },
 };
 
 static int dn_nl_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh)
@@ -574,7 +572,7 @@ static int dn_nl_deladdr(struct sk_buff *skb, struct nlmsghdr *nlh)
 	struct dn_ifaddr __rcu **ifap;
 	int err = -EINVAL;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!netlink_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
 	if (!net_eq(net, &init_net))
@@ -618,7 +616,7 @@ static int dn_nl_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh)
 	struct dn_ifaddr *ifa;
 	int err;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!netlink_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
 	if (!net_eq(net, &init_net))
@@ -649,8 +647,7 @@ static int dn_nl_newaddr(struct sk_buff *skb, struct nlmsghdr *nlh)
 
 	ifa->ifa_local = nla_get_le16(tb[IFA_LOCAL]);
 	ifa->ifa_address = nla_get_le16(tb[IFA_ADDRESS]);
-	ifa->ifa_flags = tb[IFA_FLAGS] ? nla_get_u32(tb[IFA_FLAGS]) :
-					 ifm->ifa_flags;
+	ifa->ifa_flags = ifm->ifa_flags;
 	ifa->ifa_scope = ifm->ifa_scope;
 	ifa->ifa_dev = dn_db;
 
@@ -671,8 +668,7 @@ static inline size_t dn_ifaddr_nlmsg_size(void)
 	return NLMSG_ALIGN(sizeof(struct ifaddrmsg))
 	       + nla_total_size(IFNAMSIZ) /* IFA_LABEL */
 	       + nla_total_size(2) /* IFA_ADDRESS */
-	       + nla_total_size(2) /* IFA_LOCAL */
-	       + nla_total_size(4); /* IFA_FLAGS */
+	       + nla_total_size(2); /* IFA_LOCAL */
 }
 
 static int dn_nl_fill_ifaddr(struct sk_buff *skb, struct dn_ifaddr *ifa,
@@ -680,7 +676,6 @@ static int dn_nl_fill_ifaddr(struct sk_buff *skb, struct dn_ifaddr *ifa,
 {
 	struct ifaddrmsg *ifm;
 	struct nlmsghdr *nlh;
-	u32 ifa_flags = ifa->ifa_flags | IFA_F_PERMANENT;
 
 	nlh = nlmsg_put(skb, portid, seq, event, sizeof(*ifm), flags);
 	if (nlh == NULL)
@@ -689,7 +684,7 @@ static int dn_nl_fill_ifaddr(struct sk_buff *skb, struct dn_ifaddr *ifa,
 	ifm = nlmsg_data(nlh);
 	ifm->ifa_family = AF_DECnet;
 	ifm->ifa_prefixlen = 16;
-	ifm->ifa_flags = ifa_flags;
+	ifm->ifa_flags = ifa->ifa_flags | IFA_F_PERMANENT;
 	ifm->ifa_scope = ifa->ifa_scope;
 	ifm->ifa_index = ifa->ifa_dev->dev->ifindex;
 
@@ -698,8 +693,7 @@ static int dn_nl_fill_ifaddr(struct sk_buff *skb, struct dn_ifaddr *ifa,
 	    (ifa->ifa_local &&
 	     nla_put_le16(skb, IFA_LOCAL, ifa->ifa_local)) ||
 	    (ifa->ifa_label[0] &&
-	     nla_put_string(skb, IFA_LABEL, ifa->ifa_label)) ||
-	     nla_put_u32(skb, IFA_FLAGS, ifa_flags))
+	     nla_put_string(skb, IFA_LABEL, ifa->ifa_label)))
 		goto nla_put_failure;
 	return nlmsg_end(skb, nlh);
 
@@ -868,7 +862,6 @@ static void dn_send_endnode_hello(struct net_device *dev, struct dn_ifaddr *ifa)
 
 	dn_rt_finish_output(skb, dn_rt_all_rt_mcast, msg->id);
 }
-
 
 #define DRDELAY (5 * HZ)
 
@@ -1121,7 +1114,6 @@ static struct dn_dev *dn_dev_create(struct net_device *dev, int *err)
 	*err = 0;
 	return dn_db;
 }
-
 
 /*
  * This processes a device up event. We only start up

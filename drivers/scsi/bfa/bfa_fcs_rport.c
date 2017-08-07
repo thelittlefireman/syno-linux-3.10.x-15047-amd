@@ -189,8 +189,8 @@ bfa_fcs_rport_sm_uninit(struct bfa_fcs_rport_s *rport, enum rport_event event)
 		break;
 
 	case RPSM_EVENT_PLOGI_RCVD:
-		bfa_sm_set_state(rport, bfa_fcs_rport_sm_plogiacc_sending);
-		bfa_fcs_rport_send_plogiacc(rport, NULL);
+		bfa_sm_set_state(rport, bfa_fcs_rport_sm_fc4_fcs_online);
+		bfa_fcs_rport_fcs_online_action(rport);
 		break;
 
 	case RPSM_EVENT_PLOGI_COMP:
@@ -263,7 +263,6 @@ bfa_fcs_rport_sm_plogi_sending(struct bfa_fcs_rport_s *rport,
 				bfa_fcs_rport_timeout, rport,
 				bfa_fcs_rport_del_timeout);
 		break;
-
 
 	default:
 		bfa_sm_fault(rport->fcs, event);
@@ -1611,7 +1610,6 @@ bfa_fcs_rport_sm_nsdisc_sent(struct bfa_fcs_rport_s *rport,
 				bfa_fcs_rport_del_timeout);
 		break;
 
-
 	case RPSM_EVENT_PRLO_RCVD:
 		bfa_fcs_rport_send_prlo_acc(rport);
 		break;
@@ -2372,7 +2370,6 @@ bfa_fcs_rport_alloc(struct bfa_fcs_lport_s *port, wwn_t pwwn, u32 rpid)
 	return rport;
 }
 
-
 static void
 bfa_fcs_rport_free(struct bfa_fcs_rport_s *rport)
 {
@@ -2577,7 +2574,7 @@ bfa_fcs_rport_update(struct bfa_fcs_rport_s *rport, struct fc_logi_s *plogi)
 
 		port->fabric->bb_credit = be16_to_cpu(plogi->csp.bbcred);
 		bfa_fcport_set_tx_bbcredit(port->fcs->bfa,
-					  port->fabric->bb_credit);
+					  port->fabric->bb_credit, 0);
 	}
 
 }
@@ -2595,8 +2592,6 @@ bfa_fcs_rport_process_logo(struct bfa_fcs_rport_s *rport, struct fchs_s *fchs)
 	rport->stats.logo_rcvd++;
 	bfa_sm_send_event(rport, RPSM_EVENT_LOGO_RCVD);
 }
-
-
 
 /*
  *  fcs_rport_public FCS rport public interfaces
@@ -2713,7 +2708,6 @@ bfa_fcs_rport_plogi(struct bfa_fcs_rport_s *rport, struct fchs_s *rx_fchs,
 	rport->stats.plogi_rcvd++;
 	bfa_sm_send_event(rport, RPSM_EVENT_PLOGI_RCVD);
 }
-
 
 /*
  *	Called by bport/vport to notify SCN for the remote port
@@ -2981,7 +2975,6 @@ bfa_fcs_rport_get_state(struct bfa_fcs_rport_s *rport)
 {
 	return bfa_sm_to_state(rport_sm_table, rport->sm);
 }
-
 
 /*
  *	brief
@@ -3430,10 +3423,9 @@ bfa_fcs_rpf_rpsc2_response(void *fcsarg, struct bfa_fcxp_s *fcxp, void *cbarg,
 		num_ents = be16_to_cpu(rpsc2_acc->num_pids);
 		bfa_trc(rport->fcs, num_ents);
 		if (num_ents > 0) {
-			WARN_ON(be32_to_cpu(rpsc2_acc->port_info[0].pid) !=
-						bfa_ntoh3b(rport->pid));
+			WARN_ON(rpsc2_acc->port_info[0].pid == rport->pid);
 			bfa_trc(rport->fcs,
-				be32_to_cpu(rpsc2_acc->port_info[0].pid));
+				be16_to_cpu(rpsc2_acc->port_info[0].pid));
 			bfa_trc(rport->fcs,
 				be16_to_cpu(rpsc2_acc->port_info[0].speed));
 			bfa_trc(rport->fcs,

@@ -35,7 +35,6 @@
 #include <linux/poll.h>
 #include <linux/mutex.h>
 #include <linux/of_device.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 
@@ -133,7 +132,6 @@ static void smu_start_cmd(void)
 	fend = faddr + smu->cmd_buf->length + 2;
 	flush_inval_dcache_range(faddr, fend);
 
-
 	/* We also disable NAP mode for the duration of the command
 	 * on U3 based machines.
 	 * This is slightly racy as it can be written back to 1 by a sysctl
@@ -155,7 +153,6 @@ static void smu_start_cmd(void)
 	/* Ring the SMU doorbell */
 	pmac_do_feature_call(PMAC_FTR_WRITE_GPIO, NULL, smu->doorbell, 4);
 }
-
 
 static irqreturn_t smu_db_intr(int irq, void *arg)
 {
@@ -239,7 +236,6 @@ static irqreturn_t smu_db_intr(int irq, void *arg)
 	return IRQ_HANDLED;
 }
 
-
 static irqreturn_t smu_msg_intr(int irq, void *arg)
 {
 	/* I don't quite know what to do with this one, we seem to never
@@ -252,7 +248,6 @@ static irqreturn_t smu_msg_intr(int irq, void *arg)
 	/* It's an edge interrupt, nothing to do */
 	return IRQ_HANDLED;
 }
-
 
 /*
  * Queued command management.
@@ -284,7 +279,6 @@ int smu_queue_cmd(struct smu_cmd *cmd)
 }
 EXPORT_SYMBOL(smu_queue_cmd);
 
-
 int smu_queue_simple(struct smu_simple_cmd *scmd, u8 command,
 		     unsigned int data_len,
 		     void (*done)(struct smu_cmd *cmd, void *misc),
@@ -315,7 +309,6 @@ int smu_queue_simple(struct smu_simple_cmd *scmd, u8 command,
 }
 EXPORT_SYMBOL(smu_queue_simple);
 
-
 void smu_poll(void)
 {
 	u8 gpio;
@@ -329,7 +322,6 @@ void smu_poll(void)
 }
 EXPORT_SYMBOL(smu_poll);
 
-
 void smu_done_complete(struct smu_cmd *cmd, void *misc)
 {
 	struct completion *comp = misc;
@@ -338,7 +330,6 @@ void smu_done_complete(struct smu_cmd *cmd, void *misc)
 }
 EXPORT_SYMBOL(smu_done_complete);
 
-
 void smu_spinwait_cmd(struct smu_cmd *cmd)
 {
 	while(cmd->status == 1)
@@ -346,19 +337,16 @@ void smu_spinwait_cmd(struct smu_cmd *cmd)
 }
 EXPORT_SYMBOL(smu_spinwait_cmd);
 
-
 /* RTC low level commands */
 static inline int bcd2hex (int n)
 {
 	return (((n & 0xf0) >> 4) * 10) + (n & 0xf);
 }
 
-
 static inline int hex2bcd (int n)
 {
 	return ((n / 10) << 4) + (n % 10);
 }
-
 
 static inline void smu_fill_set_rtc_cmd(struct smu_cmd_buf *cmd_buf,
 					struct rtc_time *time)
@@ -374,7 +362,6 @@ static inline void smu_fill_set_rtc_cmd(struct smu_cmd_buf *cmd_buf,
 	cmd_buf->data[6] = hex2bcd(time->tm_mon) + 1;
 	cmd_buf->data[7] = hex2bcd(time->tm_year - 100);
 }
-
 
 int smu_get_rtc_time(struct rtc_time *time, int spinwait)
 {
@@ -402,7 +389,6 @@ int smu_get_rtc_time(struct rtc_time *time, int spinwait)
 	return 0;
 }
 
-
 int smu_set_rtc_time(struct rtc_time *time, int spinwait)
 {
 	struct smu_simple_cmd cmd;
@@ -427,7 +413,6 @@ int smu_set_rtc_time(struct rtc_time *time, int spinwait)
 	return 0;
 }
 
-
 void smu_shutdown(void)
 {
 	struct smu_simple_cmd cmd;
@@ -442,7 +427,6 @@ void smu_shutdown(void)
 	for (;;)
 		;
 }
-
 
 void smu_restart(void)
 {
@@ -459,13 +443,11 @@ void smu_restart(void)
 		;
 }
 
-
 int smu_present(void)
 {
 	return smu != NULL;
 }
 EXPORT_SYMBOL(smu_present);
-
 
 int __init smu_init (void)
 {
@@ -568,7 +550,6 @@ fail_np:
 	of_node_put(np);
 	return ret;
 }
-
 
 static int smu_late_init(void)
 {
@@ -748,7 +729,6 @@ static void smu_i2c_complete_command(struct smu_i2c_cmd *cmd, int fail)
 
 }
 
-
 static void smu_i2c_retry(unsigned long data)
 {
 	struct smu_i2c_cmd	*cmd = smu->cmd_i2c_cur;
@@ -760,7 +740,6 @@ static void smu_i2c_retry(unsigned long data)
 	cmd->scmd.reply_len = sizeof(cmd->pdata);
 	smu_queue_cmd(&cmd->scmd);
 }
-
 
 static void smu_i2c_low_completion(struct smu_cmd *scmd, void *misc)
 {
@@ -814,7 +793,6 @@ static void smu_i2c_low_completion(struct smu_cmd *scmd, void *misc)
 	cmd->retries = 20;
 	smu_queue_cmd(scmd);
 }
-
 
 int smu_queue_i2c(struct smu_i2c_cmd *cmd)
 {
@@ -873,7 +851,6 @@ int smu_queue_i2c(struct smu_i2c_cmd *cmd)
 		cmd->read ? "read" : "write", cmd->info.datalen,
 		cmd->info.bus, cmd->info.caddr,
 		cmd->info.subaddr[0], cmd->info.type);
-
 
 	/* Enqueue command in i2c list, and if empty, enqueue also in
 	 * main command list
@@ -1047,11 +1024,9 @@ const struct smu_sdbp_header *smu_get_sdb_partition(int id, unsigned int *size)
 }
 EXPORT_SYMBOL(smu_get_sdb_partition);
 
-
 /*
  * Userland driver interface
  */
-
 
 static LIST_HEAD(smu_clist);
 static DEFINE_SPINLOCK(smu_clist_lock);
@@ -1072,7 +1047,6 @@ struct smu_private
 	wait_queue_head_t	wait;
 	u8			buffer[SMU_MAX_DATA];
 };
-
 
 static int smu_open(struct inode *inode, struct file *file)
 {
@@ -1096,14 +1070,12 @@ static int smu_open(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
 static void smu_user_cmd_done(struct smu_cmd *cmd, void *misc)
 {
 	struct smu_private *pp = misc;
 
 	wake_up_all(&pp->wait);
 }
-
 
 static ssize_t smu_write(struct file *file, const char __user *buf,
 			 size_t count, loff_t *ppos)
@@ -1162,7 +1134,6 @@ static ssize_t smu_write(struct file *file, const char __user *buf,
 	return count;
 }
 
-
 static ssize_t smu_read_command(struct file *file, struct smu_private *pp,
 				char __user *buf, size_t count)
 {
@@ -1218,7 +1189,6 @@ static ssize_t smu_read_command(struct file *file, struct smu_private *pp,
 	return rc;
 }
 
-
 static ssize_t smu_read_events(struct file *file, struct smu_private *pp,
 			       char __user *buf, size_t count)
 {
@@ -1226,7 +1196,6 @@ static ssize_t smu_read_events(struct file *file, struct smu_private *pp,
 	msleep_interruptible(1000);
 	return 0;
 }
-
 
 static ssize_t smu_read(struct file *file, char __user *buf,
 			size_t count, loff_t *ppos)
@@ -1304,7 +1273,6 @@ static int smu_release(struct inode *inode, struct file *file)
 
 	return 0;
 }
-
 
 static const struct file_operations smu_device_fops = {
 	.llseek		= no_llseek,

@@ -66,7 +66,6 @@ static inline void bfset_mem_set_bit(int nr, volatile unsigned long *vaddr)
 
 #define __set_bit(nr, vaddr)	set_bit(nr, vaddr)
 
-
 /*
  * clear_bit() doesn't provide any barrier for the compiler.
  */
@@ -112,7 +111,6 @@ static inline void bfclr_mem_clear_bit(int nr, volatile unsigned long *vaddr)
 
 #define __clear_bit(nr, vaddr)	clear_bit(nr, vaddr)
 
-
 static inline void bchg_reg_change_bit(int nr, volatile unsigned long *vaddr)
 {
 	char *p = (char *)vaddr + (nr ^ 31) / 8;
@@ -152,12 +150,10 @@ static inline void bfchg_mem_change_bit(int nr, volatile unsigned long *vaddr)
 
 #define __change_bit(nr, vaddr)	change_bit(nr, vaddr)
 
-
 static inline int test_bit(int nr, const unsigned long *vaddr)
 {
 	return (vaddr[nr >> 5] & (1UL << (nr & 31))) != 0;
 }
-
 
 static inline int bset_reg_test_and_set_bit(int nr,
 					    volatile unsigned long *vaddr)
@@ -208,7 +204,6 @@ static inline int bfset_mem_test_and_set_bit(int nr,
 
 #define __test_and_set_bit(nr, vaddr)	test_and_set_bit(nr, vaddr)
 
-
 static inline int bclr_reg_test_and_clear_bit(int nr,
 					      volatile unsigned long *vaddr)
 {
@@ -258,7 +253,6 @@ static inline int bfclr_mem_test_and_clear_bit(int nr,
 
 #define __test_and_clear_bit(nr, vaddr)	test_and_clear_bit(nr, vaddr)
 
-
 static inline int bchg_reg_test_and_change_bit(int nr,
 					       volatile unsigned long *vaddr)
 {
@@ -307,7 +301,6 @@ static inline int bfchg_mem_test_and_change_bit(int nr,
 #endif
 
 #define __test_and_change_bit(nr, vaddr) test_and_change_bit(nr, vaddr)
-
 
 /*
  *	The true 68020 and more advanced processors support the "bfffo"

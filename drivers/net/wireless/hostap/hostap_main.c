@@ -45,7 +45,6 @@ MODULE_LICENSE("GPL");
 /* FIX: */
 #define PRISM2_MAX_MTU (PRISM2_MAX_FRAME_SIZE - (6 /* LLC */ + 8 /* WEP */))
 
-
 struct net_device * hostap_add_interface(struct local_info *local,
 					 int type, int rtnl_locked,
 					 const char *prefix,
@@ -66,7 +65,7 @@ struct net_device * hostap_add_interface(struct local_info *local,
 	list_add(&iface->list, &local->hostap_interfaces);
 
 	mdev = local->dev;
-	eth_hw_addr_inherit(dev, mdev);
+	memcpy(dev->dev_addr, mdev->dev_addr, ETH_ALEN);
 	dev->base_addr = mdev->base_addr;
 	dev->irq = mdev->irq;
 	dev->mem_start = mdev->mem_start;
@@ -98,7 +97,6 @@ struct net_device * hostap_add_interface(struct local_info *local,
 	return dev;
 }
 
-
 void hostap_remove_interface(struct net_device *dev, int rtnl_locked,
 			     int remove_from_list)
 {
@@ -129,7 +127,6 @@ void hostap_remove_interface(struct net_device *dev, int rtnl_locked,
 	 * private data, when removing the device */
 }
 
-
 static inline int prism2_wds_special_addr(u8 *addr)
 {
 	if (addr[0] || addr[1] || addr[2] || addr[3] || addr[4] || addr[5])
@@ -137,7 +134,6 @@ static inline int prism2_wds_special_addr(u8 *addr)
 
 	return 1;
 }
-
 
 int prism2_wds_add(local_info_t *local, u8 *remote_addr,
 		   int rtnl_locked)
@@ -155,7 +151,8 @@ int prism2_wds_add(local_info_t *local, u8 *remote_addr,
 
 		if (prism2_wds_special_addr(iface->u.wds.remote_addr))
 			empty = iface;
-		else if (ether_addr_equal(iface->u.wds.remote_addr, remote_addr)) {
+		else if (memcmp(iface->u.wds.remote_addr, remote_addr,
+				ETH_ALEN) == 0) {
 			match = iface;
 			break;
 		}
@@ -199,7 +196,6 @@ int prism2_wds_add(local_info_t *local, u8 *remote_addr,
 	return 0;
 }
 
-
 int prism2_wds_del(local_info_t *local, u8 *remote_addr,
 		   int rtnl_locked, int do_not_remove)
 {
@@ -213,7 +209,8 @@ int prism2_wds_del(local_info_t *local, u8 *remote_addr,
 		if (iface->type != HOSTAP_INTERFACE_WDS)
 			continue;
 
-		if (ether_addr_equal(iface->u.wds.remote_addr, remote_addr)) {
+		if (memcmp(iface->u.wds.remote_addr, remote_addr,
+			   ETH_ALEN) == 0) {
 			selected = iface;
 			break;
 		}
@@ -233,7 +230,6 @@ int prism2_wds_del(local_info_t *local, u8 *remote_addr,
 
 	return selected ? 0 : -ENODEV;
 }
-
 
 u16 hostap_tx_callback_register(local_info_t *local,
 				void (*func)(struct sk_buff *, int ok, void *),
@@ -258,7 +254,6 @@ u16 hostap_tx_callback_register(local_info_t *local,
 	return entry->idx;
 }
 
-
 int hostap_tx_callback_unregister(local_info_t *local, u16 idx)
 {
 	unsigned long flags;
@@ -282,7 +277,6 @@ int hostap_tx_callback_unregister(local_info_t *local, u16 idx)
 	return cb ? 0 : -1;
 }
 
-
 /* val is in host byte order */
 int hostap_set_word(struct net_device *dev, int rid, u16 val)
 {
@@ -291,7 +285,6 @@ int hostap_set_word(struct net_device *dev, int rid, u16 val)
 	iface = netdev_priv(dev);
 	return iface->local->func->set_rid(dev, rid, &tmp, 2);
 }
-
 
 int hostap_set_string(struct net_device *dev, int rid, const char *val)
 {
@@ -310,7 +303,6 @@ int hostap_set_string(struct net_device *dev, int rid, const char *val)
 	return iface->local->func->set_rid(dev, rid, &buf, MAX_SSID_LEN + 2);
 }
 
-
 u16 hostap_get_porttype(local_info_t *local)
 {
 	if (local->iw_mode == IW_MODE_ADHOC && local->pseudo_adhoc)
@@ -325,7 +317,6 @@ u16 hostap_get_porttype(local_info_t *local)
 		return HFA384X_PORTTYPE_PSEUDO_IBSS;
 	return HFA384X_PORTTYPE_HOSTAP;
 }
-
 
 int hostap_set_encryption(local_info_t *local)
 {
@@ -418,7 +409,6 @@ int hostap_set_encryption(local_info_t *local)
 	return -1;
 }
 
-
 int hostap_set_antsel(local_info_t *local)
 {
 	u16 val;
@@ -475,7 +465,6 @@ int hostap_set_antsel(local_info_t *local)
 	return ret;
 }
 
-
 int hostap_set_roaming(local_info_t *local)
 {
 	u16 val;
@@ -495,7 +484,6 @@ int hostap_set_roaming(local_info_t *local)
 
 	return hostap_set_word(local->dev, HFA384X_RID_CNFROAMINGMODE, val);
 }
-
 
 int hostap_set_auth_algs(local_info_t *local)
 {
@@ -517,7 +505,6 @@ int hostap_set_auth_algs(local_info_t *local)
 
 	return 0;
 }
-
 
 void hostap_dump_rx_header(const char *name, const struct hfa384x_rx_frame *rx)
 {
@@ -549,7 +536,6 @@ void hostap_dump_rx_header(const char *name, const struct hfa384x_rx_frame *rx)
 	       __be16_to_cpu(rx->len));
 }
 
-
 void hostap_dump_tx_header(const char *name, const struct hfa384x_tx_frame *tx)
 {
 	u16 fc;
@@ -577,14 +563,12 @@ void hostap_dump_tx_header(const char *name, const struct hfa384x_tx_frame *tx)
 	       __be16_to_cpu(tx->len));
 }
 
-
 static int hostap_80211_header_parse(const struct sk_buff *skb,
 				     unsigned char *haddr)
 {
 	memcpy(haddr, skb_mac_header(skb) + 10, ETH_ALEN); /* addr2 */
 	return ETH_ALEN;
 }
-
 
 int hostap_80211_get_hdrlen(__le16 fc)
 {
@@ -597,7 +581,6 @@ int hostap_80211_get_hdrlen(__le16 fc)
 
 	return 24;
 }
-
 
 static int prism2_close(struct net_device *dev)
 {
@@ -651,7 +634,6 @@ static int prism2_close(struct net_device *dev)
 	return 0;
 }
 
-
 static int prism2_open(struct net_device *dev)
 {
 	struct hostap_interface *iface;
@@ -665,7 +647,7 @@ static int prism2_open(struct net_device *dev)
 	if (local->no_pri) {
 		printk(KERN_DEBUG "%s: could not set interface UP - no PRI "
 		       "f/w\n", dev->name);
-		return -ENODEV;
+		return 1;
 	}
 
 	if ((local->func->card_present && !local->func->card_present(local)) ||
@@ -680,7 +662,7 @@ static int prism2_open(struct net_device *dev)
 		printk(KERN_WARNING "%s: could not enable MAC port\n",
 		       dev->name);
 		prism2_close(dev);
-		return -ENODEV;
+		return 1;
 	}
 	if (!local->dev_enabled)
 		prism2_callback(local, PRISM2_CALLBACK_ENABLE);
@@ -698,7 +680,6 @@ static int prism2_open(struct net_device *dev)
 
 	return 0;
 }
-
 
 static int prism2_set_mac_address(struct net_device *dev, void *p)
 {
@@ -725,7 +706,6 @@ static int prism2_set_mac_address(struct net_device *dev, void *p)
 	return 0;
 }
 
-
 /* TODO: to be further implemented as soon as Prism2 fully supports
  *       GroupAddresses and correct documentation is available */
 void hostap_set_multicast_list_queue(struct work_struct *work)
@@ -740,7 +720,6 @@ void hostap_set_multicast_list_queue(struct work_struct *work)
 		       dev->name, local->is_promisc ? "en" : "dis");
 	}
 }
-
 
 static void hostap_set_multicast_list(struct net_device *dev)
 {
@@ -764,7 +743,6 @@ static void hostap_set_multicast_list(struct net_device *dev)
 #endif
 }
 
-
 static int prism2_change_mtu(struct net_device *dev, int new_mtu)
 {
 	if (new_mtu < PRISM2_MIN_MTU || new_mtu > PRISM2_MAX_MTU)
@@ -773,7 +751,6 @@ static int prism2_change_mtu(struct net_device *dev, int new_mtu)
 	dev->mtu = new_mtu;
 	return 0;
 }
-
 
 static void prism2_tx_timeout(struct net_device *dev)
 {
@@ -804,7 +781,6 @@ const struct header_ops hostap_80211_ops = {
 	.parse		= hostap_80211_header_parse,
 };
 EXPORT_SYMBOL(hostap_80211_ops);
-
 
 static const struct net_device_ops hostap_netdev_ops = {
 	.ndo_start_xmit		= hostap_data_start_xmit,
@@ -881,7 +857,6 @@ void hostap_setup_dev(struct net_device *dev, local_info_t *local,
 
 	dev->mtu = local->mtu;
 
-
 	SET_ETHTOOL_OPS(dev, &prism2_ethtool_ops);
 
 }
@@ -904,7 +879,6 @@ static int hostap_enable_hostapd(local_info_t *local, int rtnl_locked)
 	return 0;
 }
 
-
 static int hostap_disable_hostapd(local_info_t *local, int rtnl_locked)
 {
 	struct net_device *dev = local->dev;
@@ -916,7 +890,6 @@ static int hostap_disable_hostapd(local_info_t *local, int rtnl_locked)
 
 	return 0;
 }
-
 
 static int hostap_enable_hostapd_sta(local_info_t *local, int rtnl_locked)
 {
@@ -936,7 +909,6 @@ static int hostap_enable_hostapd_sta(local_info_t *local, int rtnl_locked)
 	return 0;
 }
 
-
 static int hostap_disable_hostapd_sta(local_info_t *local, int rtnl_locked)
 {
 	struct net_device *dev = local->dev;
@@ -948,7 +920,6 @@ static int hostap_disable_hostapd_sta(local_info_t *local, int rtnl_locked)
 
 	return 0;
 }
-
 
 int hostap_set_hostapd(local_info_t *local, int val, int rtnl_locked)
 {
@@ -974,7 +945,6 @@ int hostap_set_hostapd(local_info_t *local, int val, int rtnl_locked)
 	return ret;
 }
 
-
 int hostap_set_hostapd_sta(local_info_t *local, int val, int rtnl_locked)
 {
 	int ret;
@@ -996,10 +966,8 @@ int hostap_set_hostapd_sta(local_info_t *local, int val, int rtnl_locked)
 			local->hostapd_sta = 1;
 	}
 
-
 	return ret;
 }
-
 
 int prism2_update_comms_qual(struct net_device *dev)
 {
@@ -1038,7 +1006,6 @@ int prism2_update_comms_qual(struct net_device *dev)
 	return ret;
 }
 
-
 int prism2_sta_send_mgmt(local_info_t *local, u8 *dst, u16 stype,
 			 u8 *body, size_t bodylen)
 {
@@ -1074,7 +1041,6 @@ int prism2_sta_send_mgmt(local_info_t *local, u8 *dst, u16 stype,
 	return 0;
 }
 
-
 int prism2_sta_deauth(local_info_t *local, u16 reason)
 {
 	union iwreq_data wrqu;
@@ -1083,7 +1049,7 @@ int prism2_sta_deauth(local_info_t *local, u16 reason)
 
 	if (local->iw_mode != IW_MODE_INFRA ||
 	    is_zero_ether_addr(local->bssid) ||
-	    ether_addr_equal(local->bssid, "\x44\x44\x44\x44\x44\x44"))
+	    memcmp(local->bssid, "\x44\x44\x44\x44\x44\x44", ETH_ALEN) == 0)
 		return 0;
 
 	ret = prism2_sta_send_mgmt(local, local->bssid, IEEE80211_STYPE_DEAUTH,
@@ -1092,7 +1058,6 @@ int prism2_sta_deauth(local_info_t *local, u16 reason)
 	wireless_send_event(local->dev, SIOCGIWAP, &wrqu, NULL);
 	return ret;
 }
-
 
 struct proc_dir_entry *hostap_proc;
 
@@ -1109,7 +1074,6 @@ static int __init hostap_init(void)
 	return 0;
 }
 
-
 static void __exit hostap_exit(void)
 {
 	if (hostap_proc != NULL) {
@@ -1117,7 +1081,6 @@ static void __exit hostap_exit(void)
 		remove_proc_entry("hostap", init_net.proc_net);
 	}
 }
-
 
 EXPORT_SYMBOL(hostap_set_word);
 EXPORT_SYMBOL(hostap_set_string);

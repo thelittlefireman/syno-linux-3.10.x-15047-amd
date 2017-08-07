@@ -1,11 +1,7 @@
-/*
- * linux/fs/hfsplus/xattr.h
- *
- * Vyacheslav Dubeyko <slava@dubeyko.com>
- *
- * Logic of processing extended attributes
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #ifndef _LINUX_HFSPLUS_XATTR_H
 #define _LINUX_HFSPLUS_XATTR_H
 
@@ -14,6 +10,7 @@
 extern const struct xattr_handler hfsplus_xattr_osx_handler;
 extern const struct xattr_handler hfsplus_xattr_user_handler;
 extern const struct xattr_handler hfsplus_xattr_trusted_handler;
+ 
 extern const struct xattr_handler hfsplus_xattr_security_handler;
 
 extern const struct xattr_handler *hfsplus_xattr_handlers[];
@@ -27,23 +24,37 @@ static inline int hfsplus_setxattr(struct dentry *dentry, const char *name,
 	return __hfsplus_setxattr(dentry->d_inode, name, value, size, flags);
 }
 
-ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
+ssize_t hfsplus_getxattr(struct dentry *dentry, const char *name,
 			void *value, size_t size);
 
-static inline ssize_t hfsplus_getxattr(struct dentry *dentry,
-					const char *name,
-					void *value,
-					size_t size)
-{
-	return __hfsplus_getxattr(dentry->d_inode, name, value, size);
-}
-
 ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size);
+
+#ifdef MY_ABC_HERE
+int hfsplus_syno_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags);
+ssize_t hfsplus_syno_getxattr(struct dentry *dentry, const char *name, void *buffer, size_t size);
+#endif
+
+int hfsplus_removexattr(struct dentry *dentry, const char *name);
 
 int hfsplus_init_security(struct inode *inode, struct inode *dir,
 				const struct qstr *qstr);
 
-int hfsplus_init_inode_security(struct inode *inode, struct inode *dir,
-				const struct qstr *qstr);
+static inline int hfsplus_init_acl(struct inode *inode, struct inode *dir)
+{
+	 
+	return 0;
+}
+
+static inline int hfsplus_init_inode_security(struct inode *inode,
+						struct inode *dir,
+						const struct qstr *qstr)
+{
+	int err;
+
+	err = hfsplus_init_acl(inode, dir);
+	if (!err)
+		err = hfsplus_init_security(inode, dir, qstr);
+	return err;
+}
 
 #endif

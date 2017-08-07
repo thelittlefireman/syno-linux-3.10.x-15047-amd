@@ -35,7 +35,6 @@
 #include "rts51x_scsi.h"
 #include "rts51x_card.h"
 #include "rts51x_chip.h"
-#include "sd_cprm.h"
 #include "sd.h"
 
 #ifdef SUPPORT_CPRM
@@ -616,7 +615,6 @@ int ext_rts51x_sd_execute_write_data(struct rts51x_chip *chip, unsigned int lun,
 					     &sg, &offset, FROM_XFER_BUF);
 		else
 			memcpy(buf, data_buf, data_len);
-
 
 		if (data_len > 256) {
 			rts51x_init_cmd(chip);

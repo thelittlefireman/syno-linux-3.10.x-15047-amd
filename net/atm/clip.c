@@ -539,9 +539,9 @@ static int clip_create(int number)
 }
 
 static int clip_device_event(struct notifier_block *this, unsigned long event,
-			     void *ptr)
+			     void *arg)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = arg;
 
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
@@ -575,7 +575,6 @@ static int clip_inet_event(struct notifier_block *this, unsigned long event,
 			   void *ifa)
 {
 	struct in_device *in_dev;
-	struct netdev_notifier_info info;
 
 	in_dev = ((struct in_ifaddr *)ifa)->ifa_dev;
 	/*
@@ -584,21 +583,16 @@ static int clip_inet_event(struct notifier_block *this, unsigned long event,
 	 */
 	if (event != NETDEV_UP)
 		return NOTIFY_DONE;
-	netdev_notifier_info_init(&info, in_dev->dev);
-	return clip_device_event(this, NETDEV_CHANGE, &info);
+	return clip_device_event(this, NETDEV_CHANGE, in_dev->dev);
 }
 
 static struct notifier_block clip_dev_notifier = {
 	.notifier_call = clip_device_event,
 };
 
-
-
 static struct notifier_block clip_inet_notifier = {
 	.notifier_call = clip_inet_event,
 };
-
-
 
 static void atmarpd_close(struct atm_vcc *vcc)
 {
@@ -617,14 +611,12 @@ static struct atmdev_ops atmarpd_dev_ops = {
 	.close = atmarpd_close
 };
 
-
 static struct atm_dev atmarpd_dev = {
 	.ops =			&atmarpd_dev_ops,
 	.type =			"arpd",
 	.number = 		999,
 	.lock =			__SPIN_LOCK_UNLOCKED(atmarpd_dev.lock)
 };
-
 
 static int atm_init_atmarp(struct atm_vcc *vcc)
 {

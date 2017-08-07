@@ -160,7 +160,6 @@ struct mspro_block_data {
 	int                   (*mrq_handler)(struct memstick_dev *card,
 					     struct memstick_request **mrq);
 
-
 	/* Default request setup function for data access method preferred by
 	 * this host instance.
 	 */
@@ -202,7 +201,6 @@ static int mspro_block_bd_open(struct block_device *bdev, fmode_t mode)
 
 	return rc;
 }
-
 
 static void mspro_block_disk_release(struct gendisk *disk)
 {
@@ -758,7 +756,7 @@ static int mspro_block_complete_req(struct memstick_dev *card, int error)
 
 		if (error || (card->current_mrq.tpc == MSPRO_CMD_STOP)) {
 			if (msb->data_dir == READ) {
-				for (cnt = 0; cnt < msb->current_seg; cnt++)
+				for (cnt = 0; cnt < msb->current_seg; cnt++) {
 					t_len += msb->req_sg[cnt].length
 						 / msb->page_size;
 
@@ -766,6 +764,7 @@ static int mspro_block_complete_req(struct memstick_dev *card, int error)
 						t_len += msb->current_page - 1;
 
 					t_len *= msb->page_size;
+				}
 			}
 		} else
 			t_len = blk_rq_bytes(msb->block_req);
@@ -1023,8 +1022,8 @@ static int mspro_block_read_attributes(struct memstick_dev *card)
 	} else
 		attr_count = attr->count;
 
-	msb->attr_group.attrs = kcalloc(attr_count + 1,
-					sizeof(*msb->attr_group.attrs),
+	msb->attr_group.attrs = kzalloc((attr_count + 1)
+					* sizeof(struct attribute),
 					GFP_KERNEL);
 	if (!msb->attr_group.attrs) {
 		rc = -ENOMEM;
@@ -1438,7 +1437,6 @@ static struct memstick_device_id mspro_block_id_tbl[] = {
 	 MEMSTICK_CLASS_DUO},
 	{}
 };
-
 
 static struct memstick_driver mspro_block_driver = {
 	.driver = {

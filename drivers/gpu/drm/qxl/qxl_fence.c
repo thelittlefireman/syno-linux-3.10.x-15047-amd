@@ -23,7 +23,6 @@
  *          Alon Levy
  */
 
-
 #include "qxl_drv.h"
 
 /* QXL fencing-
@@ -49,11 +48,16 @@
 
    For some reason every so often qxl hw fails to release, things go wrong.
 */
-/* must be called with the fence lock held */
-void qxl_fence_add_release_locked(struct qxl_fence *qfence, uint32_t rel_id)
+
+int qxl_fence_add_release(struct qxl_fence *qfence, uint32_t rel_id)
 {
+	struct qxl_bo *bo = container_of(qfence, struct qxl_bo, fence);
+
+	spin_lock(&bo->tbo.bdev->fence_lock);
 	radix_tree_insert(&qfence->tree, rel_id, qfence);
 	qfence->num_active_releases++;
+	spin_unlock(&bo->tbo.bdev->fence_lock);
+	return 0;
 }
 
 int qxl_fence_remove_release(struct qxl_fence *qfence, uint32_t rel_id)
@@ -74,7 +78,6 @@ int qxl_fence_remove_release(struct qxl_fence *qfence, uint32_t rel_id)
 	spin_unlock(&bo->tbo.bdev->fence_lock);
 	return retval;
 }
-
 
 int qxl_fence_init(struct qxl_device *qdev, struct qxl_fence *qfence)
 {

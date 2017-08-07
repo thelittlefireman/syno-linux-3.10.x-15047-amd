@@ -6,11 +6,11 @@
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/cpumask.h>
 #include <linux/spinlock.h>
 #include <asm/cpudata.h>
 #include "cpumap.h"
-
 
 enum {
 	CPUINFO_LVL_ROOT = 0,
@@ -52,12 +52,10 @@ struct cpuinfo_tree {
 	struct cpuinfo_node  nodes[0];
 };
 
-
 static struct cpuinfo_tree *cpuinfo_tree;
 
 static u16 cpu_distribution_map[NR_CPUS];
 static DEFINE_SPINLOCK(cpu_map_lock);
-
 
 /* Niagara optimized cpuinfo tree traversal. */
 static const int niagara_iterate_method[] = {
@@ -90,7 +88,6 @@ static const int generic_iterate_method[] = {
 	[CPUINFO_LVL_CORE] = ROVER_INC_PARENT_ON_LOOP,
 	[CPUINFO_LVL_PROC] = ROVER_INC_ON_VISIT|ROVER_INC_PARENT_ON_LOOP,
 };
-
 
 static int cpuinfo_id(int cpu, int level)
 {
@@ -326,7 +323,6 @@ static int iterate_cpu(struct cpuinfo_tree *t, unsigned int root_index)
 	case SUN4V_CHIP_NIAGARA3:
 	case SUN4V_CHIP_NIAGARA4:
 	case SUN4V_CHIP_NIAGARA5:
-	case SUN4V_CHIP_SPARC64X:
 		rover_inc_table = niagara_iterate_method;
 		break;
 	default:

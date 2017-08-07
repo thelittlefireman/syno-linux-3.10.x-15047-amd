@@ -27,6 +27,7 @@
 #include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/firmware.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -413,7 +414,6 @@ static int speedtch_heavy_init(struct usbatm_data *usbatm, struct usb_interface 
 	return ret;
 }
 
-
 /**********
 **  ATM  **
 **********/
@@ -730,7 +730,6 @@ static int speedtch_post_reset(struct usb_interface *intf)
 	return 0;
 }
 
-
 /**********
 **  USB  **
 **********/
@@ -887,7 +886,7 @@ static int speedtch_bind(struct usbatm_data *usbatm,
 		usb_fill_int_urb(instance->int_urb, usb_dev,
 				 usb_rcvintpipe(usb_dev, ENDPOINT_INT),
 				 instance->int_data, sizeof(instance->int_data),
-				 speedtch_handle_int, instance, 16);
+				 speedtch_handle_int, instance, 50);
 	else
 		usb_dbg(usbatm, "%s: no memory for interrupt urb!\n", __func__);
 
@@ -929,7 +928,6 @@ static void speedtch_unbind(struct usbatm_data *usbatm, struct usb_interface *in
 	usb_free_urb(instance->int_urb);
 	kfree(instance);
 }
-
 
 /***********
 **  init  **

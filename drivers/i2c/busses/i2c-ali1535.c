@@ -48,7 +48,6 @@
     This driver does not use interrupts.
 */
 
-
 /* Note: we assume there can only be one ALI1535, with one SMBus interface */
 
 #include <linux/module.h>
@@ -58,9 +57,9 @@
 #include <linux/delay.h>
 #include <linux/ioport.h>
 #include <linux/i2c.h>
+#include <linux/init.h>
 #include <linux/acpi.h>
 #include <linux/io.h>
-
 
 /* ALI1535 SMBus address offsets */
 #define SMBHSTSTS	(0 + ali1535_smba)
@@ -475,7 +474,6 @@ EXIT:
 	return result;
 }
 
-
 static u32 ali1535_func(struct i2c_adapter *adapter)
 {
 	return I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE |
@@ -494,7 +492,7 @@ static struct i2c_adapter ali1535_adapter = {
 	.algo		= &smbus_algorithm,
 };
 
-static const struct pci_device_id ali1535_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(ali1535_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AL, PCI_DEVICE_ID_AL_M7101) },
 	{ },
 };

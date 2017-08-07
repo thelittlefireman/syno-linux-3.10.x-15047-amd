@@ -14,7 +14,6 @@
 #include "decl.h"
 #include "cmd.h"
 
-
 static int lbs_add_mesh(struct lbs_private *priv);
 
 /***************************************************************************
@@ -240,7 +239,7 @@ static ssize_t lbs_prb_rsp_limit_set(struct device *dev,
 	memset(&mesh_access, 0, sizeof(mesh_access));
 	mesh_access.data[0] = cpu_to_le32(CMD_ACT_SET);
 
-	if (!kstrtoul(buf, 10, &retry_limit))
+	if (!strict_strtoul(buf, 10, &retry_limit))
 		return -ENOTSUPP;
 	if (retry_limit > 15)
 		return -ENOTSUPP;
@@ -322,7 +321,6 @@ static struct attribute *lbs_mesh_sysfs_entries[] = {
 static const struct attribute_group lbs_mesh_attr_group = {
 	.attrs = lbs_mesh_sysfs_entries,
 };
-
 
 /***************************************************************************
  * Persistent configuration support
@@ -764,7 +762,6 @@ static ssize_t capability_set(struct device *dev, struct device_attribute *attr,
 	return strlen(buf);
 }
 
-
 static DEVICE_ATTR(bootflag, 0644, bootflag_get, bootflag_set);
 static DEVICE_ATTR(boottime, 0644, boottime_get, boottime_set);
 static DEVICE_ATTR(channel, 0644, channel_get, channel_set);
@@ -810,7 +807,6 @@ static void lbs_persist_config_remove(struct net_device *dev)
 	sysfs_remove_group(&(dev->dev.kobj), &boot_opts_group);
 	sysfs_remove_group(&(dev->dev.kobj), &mesh_ie_group);
 }
-
 
 /***************************************************************************
  * Initializing and starting, stopping mesh
@@ -898,7 +894,6 @@ int lbs_deinit_mesh(struct lbs_private *priv)
 	lbs_deb_leave_args(LBS_DEB_MESH, "ret %d", ret);
 	return ret;
 }
-
 
 /**
  * lbs_mesh_stop - close the mshX interface
@@ -1017,7 +1012,7 @@ static int lbs_add_mesh(struct lbs_private *priv)
 
 	mesh_dev->netdev_ops = &mesh_netdev_ops;
 	mesh_dev->ethtool_ops = &lbs_ethtool_ops;
-	eth_hw_addr_inherit(mesh_dev, priv->dev);
+	memcpy(mesh_dev->dev_addr, priv->dev->dev_addr, ETH_ALEN);
 
 	SET_NETDEV_DEV(priv->mesh_dev, priv->dev->dev.parent);
 
@@ -1073,7 +1068,6 @@ void lbs_remove_mesh(struct lbs_private *priv)
 	lbs_deb_leave(LBS_DEB_MESH);
 }
 
-
 /***************************************************************************
  * Sending and receiving
  */
@@ -1092,7 +1086,6 @@ struct net_device *lbs_mesh_set_dev(struct lbs_private *priv,
 	return dev;
 }
 
-
 void lbs_mesh_set_txpd(struct lbs_private *priv,
 	struct net_device *dev, struct txpd *txpd)
 {
@@ -1103,7 +1096,6 @@ void lbs_mesh_set_txpd(struct lbs_private *priv,
 			txpd->u.bss.bss_num = MESH_IFACE_ID;
 	}
 }
-
 
 /***************************************************************************
  * Ethtool related

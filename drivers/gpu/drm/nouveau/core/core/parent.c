@@ -49,7 +49,7 @@ nouveau_parent_sclass(struct nouveau_object *parent, u16 handle,
 
 	mask = nv_parent(parent)->engine;
 	while (mask) {
-		int i = __ffs64(mask);
+		int i = ffsll(mask) - 1;
 
 		if (nv_iclass(parent, NV_CLIENT_CLASS))
 			engine = nv_engine(nv_client(parent)->device);
@@ -119,7 +119,6 @@ nouveau_parent_destroy(struct nouveau_parent *parent)
 
 	nouveau_object_destroy(&parent->base);
 }
-
 
 void
 _nouveau_parent_dtor(struct nouveau_object *object)

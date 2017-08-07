@@ -57,9 +57,12 @@ static inline void pci_dma_burst_advice(struct pci_dev *pdev,
 extern int pci_mmap_page_range(struct pci_dev *dev, struct vm_area_struct *vma,
                                enum pci_mmap_state mmap_state, int write_combine);
 
+/*
+ * Dummy implementation; always return 0.
+ */
 static inline int pci_get_legacy_ide_irq(struct pci_dev *dev, int channel)
 {
-	return channel ? 15 : 14;
+	return 0;
 }
 
 #endif /* __KERNEL__ */

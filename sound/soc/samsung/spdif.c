@@ -18,6 +18,7 @@
 #include <sound/pcm_params.h>
 
 #include <linux/platform_data/asoc-s3c.h>
+#include <mach/dma.h>
 
 #include "dma.h"
 #include "spdif.h"
@@ -93,7 +94,7 @@ struct samsung_spdif_info {
 	struct s3c_dma_params	*dma_playback;
 };
 
-static struct s3c_dma_client spdif_dma_client_out = {
+static struct s3c2410_dma_client spdif_dma_client_out = {
 	.name		= "S/PDIF Stereo out",
 };
 
@@ -394,7 +395,7 @@ static int spdif_probe(struct platform_device *pdev)
 
 	spin_lock_init(&spdif->lock);
 
-	spdif->pclk = devm_clk_get(&pdev->dev, "spdif");
+	spdif->pclk = clk_get(&pdev->dev, "spdif");
 	if (IS_ERR(spdif->pclk)) {
 		dev_err(&pdev->dev, "failed to get peri-clock\n");
 		ret = -ENOENT;
@@ -402,7 +403,7 @@ static int spdif_probe(struct platform_device *pdev)
 	}
 	clk_prepare_enable(spdif->pclk);
 
-	spdif->sclk = devm_clk_get(&pdev->dev, "sclk_spdif");
+	spdif->sclk = clk_get(&pdev->dev, "sclk_spdif");
 	if (IS_ERR(spdif->sclk)) {
 		dev_err(&pdev->dev, "failed to get internal source clock\n");
 		ret = -ENOENT;
@@ -441,7 +442,7 @@ static int spdif_probe(struct platform_device *pdev)
 
 	spdif->dma_playback = &spdif_stereo_out;
 
-	ret = samsung_asoc_dma_platform_register(&pdev->dev);
+	ret = asoc_dma_platform_register(&pdev->dev);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to register DMA: %d\n", ret);
 		goto err5;
@@ -456,8 +457,10 @@ err3:
 	release_mem_region(mem_res->start, resource_size(mem_res));
 err2:
 	clk_disable_unprepare(spdif->sclk);
+	clk_put(spdif->sclk);
 err1:
 	clk_disable_unprepare(spdif->pclk);
+	clk_put(spdif->pclk);
 err0:
 	return ret;
 }
@@ -467,7 +470,7 @@ static int spdif_remove(struct platform_device *pdev)
 	struct samsung_spdif_info *spdif = &spdif_info;
 	struct resource *mem_res;
 
-	samsung_asoc_dma_platform_unregister(&pdev->dev);
+	asoc_dma_platform_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
 
 	iounmap(spdif->regs);
@@ -477,7 +480,9 @@ static int spdif_remove(struct platform_device *pdev)
 		release_mem_region(mem_res->start, resource_size(mem_res));
 
 	clk_disable_unprepare(spdif->sclk);
+	clk_put(spdif->sclk);
 	clk_disable_unprepare(spdif->pclk);
+	clk_put(spdif->pclk);
 
 	return 0;
 }

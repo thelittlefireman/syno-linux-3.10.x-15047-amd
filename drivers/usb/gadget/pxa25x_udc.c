@@ -24,6 +24,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
+#include <linux/init.h>
 #include <linux/timer.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
@@ -53,7 +54,6 @@
  */
 #ifdef CONFIG_ARCH_PXA
 #include <mach/pxa25x-udc.h>
-#include <mach/hardware.h>
 #endif
 
 #ifdef CONFIG_ARCH_LUBBOCK
@@ -88,11 +88,9 @@
 #define	DRIVER_VERSION	"30-June-2007"
 #define	DRIVER_DESC	"PXA 25x USB Device Controller driver"
 
-
 static const char driver_name [] = "pxa25x_udc";
 
 static const char ep0name [] = "ep0";
-
 
 #ifdef CONFIG_ARCH_IXP4XX
 
@@ -110,7 +108,6 @@ static const char ep0name [] = "ep0";
 #endif
 
 #include "pxa25x_udc.h"
-
 
 #ifdef	CONFIG_USB_PXA25X_SMALL
 #define SIZE_STR	" (small)"
@@ -310,7 +307,6 @@ pxa25x_ep_alloc_request (struct usb_ep *_ep, gfp_t gfp_flags)
 	return &req->req;
 }
 
-
 /*
  *	pxa25x_ep_free_request - deallocate a request data structure
  */
@@ -350,7 +346,6 @@ static void done(struct pxa25x_ep *ep, struct pxa25x_request *req, int status)
 	req->req.complete(&ep->ep, &req->req);
 	ep->stopped = stopped;
 }
-
 
 static inline void ep0_idle (struct pxa25x_udc *dev)
 {
@@ -499,7 +494,6 @@ write_ep0_fifo (struct pxa25x_ep *ep, struct pxa25x_request *req)
 		ep0start(ep->dev, 0, "IN");
 	return is_short;
 }
-
 
 /*
  * read_fifo -  unload packet(s) from the fifo we use for usb OUT
@@ -731,7 +725,6 @@ pxa25x_ep_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_flags)
 	return 0;
 }
 
-
 /*
  *	nuke - dequeue ALL requests
  */
@@ -749,7 +742,6 @@ static void nuke(struct pxa25x_ep *ep, int status)
 	if (ep->ep.desc)
 		pio_irq_disable (ep->bEndpointAddress);
 }
-
 
 /* dequeue JUST ONE request */
 static int pxa25x_ep_dequeue(struct usb_ep *_ep, struct usb_request *_req)
@@ -881,7 +873,6 @@ static void pxa25x_ep_fifo_flush(struct usb_ep *_ep)
 			? 0 : UDCCS_BI_SST);
 }
 
-
 static struct usb_ep_ops pxa25x_ep_ops = {
 	.enable		= pxa25x_ep_enable,
 	.disable	= pxa25x_ep_disable,
@@ -896,7 +887,6 @@ static struct usb_ep_ops pxa25x_ep_ops = {
 	.fifo_status	= pxa25x_ep_fifo_status,
 	.fifo_flush	= pxa25x_ep_fifo_flush,
 };
-
 
 /* ---------------------------------------------------------------------------
  *	device-scoped parts of the api to the usb controller hardware
@@ -1169,7 +1159,6 @@ static void udc_disable(struct pxa25x_udc *dev)
 	dev->gadget.speed = USB_SPEED_UNKNOWN;
 }
 
-
 /*
  *	udc_reinit - initialize software state
  */
@@ -1193,7 +1182,6 @@ static void udc_reinit(struct pxa25x_udc *dev)
 		ep->stopped = 0;
 		INIT_LIST_HEAD (&ep->queue);
 		ep->pio_irqs = 0;
-		usb_ep_set_maxpacket_limit(&ep->ep, ep->ep.maxpacket);
 	}
 
 	/* the rest was statically initialized, and is read-only */
@@ -1248,7 +1236,6 @@ static void udc_enable (struct pxa25x_udc *dev)
 	/* if hardware supports it, pullup D+ and wait for reset */
 	pullup_on();
 }
-
 
 /* when a driver is successfully registered, it will receive
  * control requests including set_configuration(), which enables
@@ -1367,7 +1354,6 @@ lubbock_vbus_irq(int irq, void *_dev)
 }
 
 #endif
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -2055,7 +2041,7 @@ static struct pxa25x_udc memory = {
 /*
  *	probe - binds to the platform device
  */
-static int pxa25x_udc_probe(struct platform_device *pdev)
+static int __init pxa25x_udc_probe(struct platform_device *pdev)
 {
 	struct pxa25x_udc *dev = &memory;
 	int retval, irq;
@@ -2118,7 +2104,7 @@ static int pxa25x_udc_probe(struct platform_device *pdev)
 
 	/* other non-static parts of init */
 	dev->dev = &pdev->dev;
-	dev->mach = dev_get_platdata(&pdev->dev);
+	dev->mach = pdev->dev.platform_data;
 
 	dev->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 
@@ -2204,7 +2190,7 @@ static void pxa25x_udc_shutdown(struct platform_device *_dev)
 	pullup_off();
 }
 
-static int pxa25x_udc_remove(struct platform_device *pdev)
+static int __exit pxa25x_udc_remove(struct platform_device *pdev)
 {
 	struct pxa25x_udc *dev = platform_get_drvdata(pdev);
 
@@ -2295,8 +2281,7 @@ static int pxa25x_udc_resume(struct platform_device *dev)
 
 static struct platform_driver udc_driver = {
 	.shutdown	= pxa25x_udc_shutdown,
-	.probe		= pxa25x_udc_probe,
-	.remove		= pxa25x_udc_remove,
+	.remove		= __exit_p(pxa25x_udc_remove),
 	.suspend	= pxa25x_udc_suspend,
 	.resume		= pxa25x_udc_resume,
 	.driver		= {
@@ -2305,7 +2290,7 @@ static struct platform_driver udc_driver = {
 	},
 };
 
-module_platform_driver(udc_driver);
+module_platform_driver_probe(udc_driver, pxa25x_udc_probe);
 
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_AUTHOR("Frank Becker, Robert Schwebel, David Brownell");

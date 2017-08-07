@@ -21,6 +21,7 @@
 #include <linux/ioport.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/skbuff.h>
 #include <linux/spinlock.h>
@@ -549,7 +550,6 @@ rx_finished:
 	return received;
 }
 
-
 /**
  *	ks8695_poll - Receive packet by NAPI poll method
  *	@ksp: Private data for the KS8695 Ethernet
@@ -612,7 +612,6 @@ ks8695_link_irq(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
-
 
 /* KS8695 Device functions */
 
@@ -715,7 +714,6 @@ ks8695_shutdown(struct ks8695_priv *ksp)
 		}
 	}
 }
-
 
 /**
  *	ks8695_setup_irq - IRQ setup helper function
@@ -1599,6 +1597,7 @@ ks8695_drv_remove(struct platform_device *pdev)
 	struct net_device *ndev = platform_get_drvdata(pdev);
 	struct ks8695_priv *ksp = netdev_priv(ndev);
 
+	platform_set_drvdata(pdev, NULL);
 	netif_napi_del(&ksp->napi);
 
 	unregister_netdev(ndev);

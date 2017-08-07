@@ -24,7 +24,6 @@ static struct bus_type node_subsys = {
 	.dev_name = "node",
 };
 
-
 static ssize_t node_read_cpumap(struct device *dev, int type, char *buf)
 {
 	struct node *node_dev = to_node(dev);
@@ -125,7 +124,13 @@ static ssize_t node_read_meminfo(struct device *dev,
 		       nid, K(node_page_state(nid, NR_WRITEBACK)),
 		       nid, K(node_page_state(nid, NR_FILE_PAGES)),
 		       nid, K(node_page_state(nid, NR_FILE_MAPPED)),
+#ifdef CONFIG_TRANSPARENT_HUGEPAGE
+		       nid, K(node_page_state(nid, NR_ANON_PAGES)
+			+ node_page_state(nid, NR_ANON_TRANSPARENT_HUGEPAGES) *
+			HPAGE_PMD_NR),
+#else
 		       nid, K(node_page_state(nid, NR_ANON_PAGES)),
+#endif
 		       nid, K(node_page_state(nid, NR_SHMEM)),
 		       nid, node_page_state(nid, NR_KERNEL_STACK) *
 				THREAD_SIZE / 1024,
@@ -599,11 +604,7 @@ int register_one_node(int nid)
 
 void unregister_one_node(int nid)
 {
-	if (!node_devices[nid])
-		return;
-
 	unregister_node(node_devices[nid]);
-	kfree(node_devices[nid]);
 	node_devices[nid] = NULL;
 }
 

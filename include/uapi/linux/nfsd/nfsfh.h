@@ -117,6 +117,4 @@ struct knfsd_fh {
 #define	fh_auth			fh_base.fh_new.fb_auth
 #define	fh_fsid			fh_base.fh_new.fb_auth
 
-
-
 #endif /* _UAPI_LINUX_NFSD_FH_H */

@@ -187,7 +187,6 @@ static int dn_fib_get_nhs(struct dn_fib_info *fi, const struct nlattr *attr,
 	return 0;
 }
 
-
 static int dn_fib_check_nh(const struct rtmsg *r, struct dn_fib_info *fi, struct dn_fib_nh *nh)
 {
 	int err;
@@ -258,7 +257,6 @@ out:
 
 	return 0;
 }
-
 
 struct dn_fib_info *dn_fib_create_info(const struct rtmsg *r, struct nlattr *attrs[],
 				       const struct nlmsghdr *nlh, int *errp)
@@ -505,7 +503,7 @@ static int dn_fib_rtm_delroute(struct sk_buff *skb, struct nlmsghdr *nlh)
 	struct nlattr *attrs[RTA_MAX+1];
 	int err;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!netlink_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
 	if (!net_eq(net, &init_net))
@@ -530,7 +528,7 @@ static int dn_fib_rtm_newroute(struct sk_buff *skb, struct nlmsghdr *nlh)
 	struct nlattr *attrs[RTA_MAX+1];
 	int err;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!netlink_capable(skb, CAP_NET_ADMIN))
 		return -EPERM;
 
 	if (!net_eq(net, &init_net))
@@ -728,7 +726,6 @@ static int dn_fib_sync_down(__le16 local, struct net_device *dev, int force)
 	return ret;
 }
 
-
 static int dn_fib_sync_up(struct net_device *dev)
 {
 	int ret = 0;
@@ -775,7 +772,6 @@ void __exit dn_fib_cleanup(void)
 	unregister_dnaddr_notifier(&dn_fib_dnaddr_notifier);
 }
 
-
 void __init dn_fib_init(void)
 {
 	dn_fib_table_init();
@@ -786,5 +782,3 @@ void __init dn_fib_init(void)
 	rtnl_register(PF_DECnet, RTM_NEWROUTE, dn_fib_rtm_newroute, NULL, NULL);
 	rtnl_register(PF_DECnet, RTM_DELROUTE, dn_fib_rtm_delroute, NULL, NULL);
 }
-
-

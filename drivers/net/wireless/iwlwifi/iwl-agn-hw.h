@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2007 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2007 - 2013 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2005 - 2013 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -112,7 +112,6 @@
 #define OTP_MAX_LL_ITEMS_6x00		(4)	/* OTP blocks for 6x00 */
 #define OTP_MAX_LL_ITEMS_6x50		(7)	/* OTP blocks for 6x50 */
 #define OTP_MAX_LL_ITEMS_2x00		(4)	/* OTP blocks for 2x00 */
-
 
 #define IWLAGN_NUM_QUEUES		20
 

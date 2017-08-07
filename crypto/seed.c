@@ -439,7 +439,6 @@ static void seed_decrypt(struct crypto_tfm *tfm, u8 *out, const u8 *in)
 	dst[3] = cpu_to_be32(x2);
 }
 
-
 static struct crypto_alg seed_alg = {
 	.cra_name		=	"seed",
 	.cra_driver_name	=	"seed-generic",
@@ -476,3 +475,4 @@ module_exit(seed_fini);
 MODULE_DESCRIPTION("SEED Cipher Algorithm");
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Hye-Shik Chang <perky@FreeBSD.org>, Kim Hyun <hkim@kisa.or.kr>");
+MODULE_ALIAS_CRYPTO("seed");

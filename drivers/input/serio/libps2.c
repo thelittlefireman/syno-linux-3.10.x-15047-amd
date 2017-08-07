@@ -18,6 +18,7 @@
 #include <linux/input.h>
 #include <linux/serio.h>
 #include <linux/i8042.h>
+#include <linux/init.h>
 #include <linux/libps2.h>
 
 #define DRIVER_DESC	"PS/2 driver library"
@@ -316,7 +317,6 @@ int ps2_handle_ack(struct ps2dev *ps2dev, unsigned char data)
 		default:
 			return 0;
 	}
-
 
 	if (!ps2dev->nak) {
 		ps2dev->flags &= ~PS2_FLAG_NAK;

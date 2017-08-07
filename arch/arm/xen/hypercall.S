@@ -51,7 +51,6 @@
 #include <asm/opcodes-virt.h>
 #include <xen/interface/xen.h>
 
-
 #define XEN_IMM 0xEA1
 
 #define HYPERCALL_SIMPLE(hypercall)		\
@@ -88,7 +87,6 @@ HYPERCALL2(hvm_op);
 HYPERCALL2(memory_op);
 HYPERCALL2(physdev_op);
 HYPERCALL3(vcpu_op);
-HYPERCALL1(tmem_op);
 
 ENTRY(privcmd_call)
 	stmdb sp!, {r4}

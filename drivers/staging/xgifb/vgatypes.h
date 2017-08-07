@@ -2,8 +2,8 @@
 #define _VGATYPES_
 
 #include <linux/fb.h>	/* for struct fb_var_screeninfo for sis.h */
-#include "../../video/fbdev/sis/vgatypes.h"
-#include "../../video/fbdev/sis/sis.h"		/* for LCD_TYPE */
+#include "../../video/sis/vgatypes.h"
+#include "../../video/sis/sis.h"		/* for LCD_TYPE */
 
 #ifndef XGI_VB_CHIP_TYPE
 enum XGI_VB_CHIP_TYPE {
@@ -48,4 +48,3 @@ struct xgi_hw_device_info {
 /* Additional IOCTL for communication xgifb <> X driver        */
 /* If changing this, xgifb.h must also be changed (for xgifb) */
 #endif
-

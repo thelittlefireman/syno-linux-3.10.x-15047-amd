@@ -205,12 +205,12 @@ static u32 ath9k_hw_def_dump_eeprom(struct ath_hw *ah, bool dump_base_hdr,
 	struct base_eep_header *pBase = &eep->baseEepHeader;
 
 	if (!dump_base_hdr) {
-		len += scnprintf(buf + len, size - len,
-				 "%20s :\n", "2GHz modal Header");
+		len += snprintf(buf + len, size - len,
+				"%20s :\n", "2GHz modal Header");
 		len = ath9k_def_dump_modal_eeprom(buf, len, size,
 						   &eep->modalHeader[0]);
-		len += scnprintf(buf + len, size - len,
-				 "%20s :\n", "5GHz modal Header");
+		len += snprintf(buf + len, size - len,
+				"%20s :\n", "5GHz modal Header");
 		len = ath9k_def_dump_modal_eeprom(buf, len, size,
 						   &eep->modalHeader[1]);
 		goto out;
@@ -240,8 +240,8 @@ static u32 ath9k_hw_def_dump_eeprom(struct ath_hw *ah, bool dump_base_hdr,
 	PR_EEP("Cal Bin Build", (pBase->binBuildNumber >> 8) & 0xFF);
 	PR_EEP("OpenLoop Power Ctrl", pBase->openLoopPwrCntl);
 
-	len += scnprintf(buf + len, size - len, "%20s : %pM\n", "MacAddress",
-			 pBase->macAddr);
+	len += snprintf(buf + len, size - len, "%20s : %pM\n", "MacAddress",
+			pBase->macAddr);
 
 out:
 	if (len > size)
@@ -256,7 +256,6 @@ static u32 ath9k_hw_def_dump_eeprom(struct ath_hw *ah, bool dump_base_hdr,
 	return 0;
 }
 #endif
-
 
 static int ath9k_hw_def_check_eeprom(struct ath_hw *ah)
 {
@@ -674,7 +673,6 @@ static void ath9k_hw_def_set_board_values(struct ath_hw *ah,
 			      AR_PHY_CCK_TX_CTRL_TX_DAC_SCALE_CCK,
 			      pModal->miscBits);
 
-
 	if (AR_SREV_9280_20(ah) && AR5416_VER_MASK >= AR5416_EEP_MINOR_VER_20) {
 		if (IS_CHAN_2GHZ(chan))
 			REG_RMW_FIELD(ah, AR_AN_TOP1, AR_AN_TOP1_DACIPMODE,
@@ -902,7 +900,6 @@ static void ath9k_hw_set_def_power_cal_table(struct ath_hw *ah,
 				pRawDataset = pEepData->calPierData2G[i];
 			else
 				pRawDataset = pEepData->calPierData5G[i];
-
 
 			if (OLC_FOR_AR9280_20_LATER) {
 				u8 pcdacIdx;
@@ -1348,7 +1345,31 @@ static void ath9k_hw_def_set_txpower(struct ath_hw *ah,
 
 static u16 ath9k_hw_def_get_spur_channel(struct ath_hw *ah, u16 i, bool is2GHz)
 {
-	return ah->eeprom.def.modalHeader[is2GHz].spurChans[i].spurChan;
+#define EEP_DEF_SPURCHAN \
+	(ah->eeprom.def.modalHeader[is2GHz].spurChans[i].spurChan)
+	struct ath_common *common = ath9k_hw_common(ah);
+
+	u16 spur_val = AR_NO_SPUR;
+
+	ath_dbg(common, ANI, "Getting spur idx:%d is2Ghz:%d val:%x\n",
+		i, is2GHz, ah->config.spurchans[i][is2GHz]);
+
+	switch (ah->config.spurmode) {
+	case SPUR_DISABLE:
+		break;
+	case SPUR_ENABLE_IOCTL:
+		spur_val = ah->config.spurchans[i][is2GHz];
+		ath_dbg(common, ANI, "Getting spur val from new loc. %d\n",
+			spur_val);
+		break;
+	case SPUR_ENABLE_EEPROM:
+		spur_val = EEP_DEF_SPURCHAN;
+		break;
+	}
+
+	return spur_val;
+
+#undef EEP_DEF_SPURCHAN
 }
 
 const struct eeprom_ops eep_def_ops = {

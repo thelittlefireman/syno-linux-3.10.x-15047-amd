@@ -15,10 +15,9 @@
 #define pr_fmt(fmt) DRV_MODULE_NAME ": " fmt
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <asm/io.h>
 
 #include "hlwd-pic.h"
@@ -35,7 +34,6 @@
  */
 #define HW_BROADWAY_ICR		0x00
 #define HW_BROADWAY_IMR		0x04
-
 
 /*
  * IRQ chip hooks.
@@ -75,7 +73,6 @@ static void hlwd_pic_unmask(struct irq_data *d)
 
 	setbits32(io_base + HW_BROADWAY_IMR, 1 << irq);
 }
-
 
 static struct irq_chip hlwd_pic = {
 	.name		= "hlwd-pic",
@@ -182,7 +179,6 @@ struct irq_domain *hlwd_pic_init(struct device_node *np)
 					   &hlwd_irq_domain_ops, io_base);
 	if (!irq_domain) {
 		pr_err("failed to allocate irq_domain\n");
-		iounmap(io_base);
 		return NULL;
 	}
 
@@ -233,4 +229,3 @@ void hlwd_quiesce(void)
 
 	__hlwd_quiesce(io_base);
 }
-

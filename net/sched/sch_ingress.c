@@ -15,7 +15,6 @@
 #include <net/netlink.h>
 #include <net/pkt_sched.h>
 
-
 struct ingress_qdisc_data {
 	struct tcf_proto	*filter_list;
 };
@@ -100,7 +99,8 @@ static int ingress_dump(struct Qdisc *sch, struct sk_buff *skb)
 	nest = nla_nest_start(skb, TCA_OPTIONS);
 	if (nest == NULL)
 		goto nla_put_failure;
-	return nla_nest_end(skb, nest);
+	nla_nest_end(skb, nest);
+	return skb->len;
 
 nla_put_failure:
 	nla_nest_cancel(skb, nest);

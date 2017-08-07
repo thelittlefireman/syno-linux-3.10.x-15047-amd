@@ -189,7 +189,6 @@ static int jfs_create(struct inode *dip, struct dentry *dentry, umode_t mode,
 	return rc;
 }
 
-
 /*
  * NAME:	jfs_mkdir(dip, dentry, mode)
  *
@@ -315,7 +314,6 @@ static int jfs_mkdir(struct inode *dip, struct dentry *dentry, umode_t mode)
 
       out2:
 	free_UCSname(&dname);
-
 
       out1:
 
@@ -677,7 +675,6 @@ static s64 commitZeroLink(tid_t tid, struct inode *ip)
 
 	return 0;
 }
-
 
 /*
  * NAME:	jfs_free_zero_link()
@@ -1055,7 +1052,6 @@ static int jfs_symlink(struct inode *dip, struct dentry *dentry,
 	return rc;
 }
 
-
 /*
  * NAME:	jfs_rename
  *
@@ -1080,7 +1076,6 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	struct tblock *tblk;
 	s64 new_size = 0;
 	int commit_flag;
-
 
 	jfs_info("jfs_rename: %s %s", old_dentry->d_name.name,
 		 new_dentry->d_name.name);
@@ -1176,7 +1171,7 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 				if (!S_ISDIR(old_ip->i_mode) && new_ip)
 					IWRITE_UNLOCK(new_ip);
 				jfs_error(new_ip->i_sb,
-					  "new_ip->i_nlink != 0\n");
+					  "jfs_rename: new_ip->i_nlink != 0");
 				return -EIO;
 			}
 			tblk = tid_to_tblock(tid);
@@ -1332,7 +1327,6 @@ static int jfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	jfs_info("jfs_rename: returning %d", rc);
 	return rc;
 }
-
 
 /*
  * NAME:	jfs_mknod
@@ -1524,13 +1518,12 @@ const struct inode_operations jfs_dir_inode_operations = {
 	.setattr	= jfs_setattr,
 #ifdef CONFIG_JFS_POSIX_ACL
 	.get_acl	= jfs_get_acl,
-	.set_acl	= jfs_set_acl,
 #endif
 };
 
 const struct file_operations jfs_dir_operations = {
 	.read		= generic_read_dir,
-	.iterate	= jfs_readdir,
+	.readdir	= jfs_readdir,
 	.fsync		= jfs_fsync,
 	.unlocked_ioctl = jfs_ioctl,
 #ifdef CONFIG_COMPAT
@@ -1539,7 +1532,8 @@ const struct file_operations jfs_dir_operations = {
 	.llseek		= generic_file_llseek,
 };
 
-static int jfs_ci_hash(const struct dentry *dir, struct qstr *this)
+static int jfs_ci_hash(const struct dentry *dir, const struct inode *inode,
+		struct qstr *this)
 {
 	unsigned long hash;
 	int i;
@@ -1552,7 +1546,9 @@ static int jfs_ci_hash(const struct dentry *dir, struct qstr *this)
 	return 0;
 }
 
-static int jfs_ci_compare(const struct dentry *parent, const struct dentry *dentry,
+static int jfs_ci_compare(const struct dentry *parent,
+		const struct inode *pinode,
+		const struct dentry *dentry, const struct inode *inode,
 		unsigned int len, const char *str, const struct qstr *name)
 {
 	int i, result = 1;

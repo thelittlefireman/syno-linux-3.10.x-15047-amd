@@ -16,6 +16,7 @@
 #include <linux/bitops.h>
 #include <linux/completion.h>
 #include <linux/export.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
@@ -23,10 +24,9 @@
 #include <linux/string.h>
 #include <linux/vexpress.h>
 
-
 #define VEXPRESS_CONFIG_MAX_BRIDGES 2
 
-static struct vexpress_config_bridge {
+struct vexpress_config_bridge {
 	struct device_node *node;
 	struct vexpress_config_bridge_info *info;
 	struct list_head transactions;
@@ -84,7 +84,6 @@ void vexpress_config_bridge_unregister(struct vexpress_config_bridge *bridge)
 		cpu_relax();
 }
 EXPORT_SYMBOL(vexpress_config_bridge_unregister);
-
 
 struct vexpress_config_func {
 	struct vexpress_config_bridge *bridge;

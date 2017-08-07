@@ -1,6 +1,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <media/saa7146_vv.h>
+#include <media/v4l2-chip-ident.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ctrls.h>
 #include <linux/module.h>
@@ -320,7 +321,6 @@ static int saa7146_pgtable_build(struct saa7146_dev *dev, struct saa7146_buf *bu
 
 	return 0;
 }
-
 
 /********************************************************************************/
 /* file operations */
@@ -692,7 +692,6 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *fh, struct v4l2_forma
 	return 0;
 }
 
-
 static int vidioc_try_fmt_vid_overlay(struct file *file, void *fh, struct v4l2_format *f)
 {
 	struct saa7146_dev *dev = ((struct saa7146_fh *)fh)->dev;
@@ -987,6 +986,26 @@ static int vidioc_streamoff(struct file *file, void *__fh, enum v4l2_buf_type ty
 	return err;
 }
 
+static int vidioc_g_chip_ident(struct file *file, void *__fh,
+		struct v4l2_dbg_chip_ident *chip)
+{
+	struct saa7146_fh *fh = __fh;
+	struct saa7146_dev *dev = fh->dev;
+
+	chip->ident = V4L2_IDENT_NONE;
+	chip->revision = 0;
+	if (chip->match.type == V4L2_CHIP_MATCH_HOST) {
+		if (v4l2_chip_match_host(&chip->match))
+			chip->ident = V4L2_IDENT_SAA7146;
+		return 0;
+	}
+	if (chip->match.type != V4L2_CHIP_MATCH_I2C_DRIVER &&
+	    chip->match.type != V4L2_CHIP_MATCH_I2C_ADDR)
+		return -EINVAL;
+	return v4l2_device_call_until_err(&dev->v4l2_dev, 0,
+			core, g_chip_ident, chip);
+}
+
 const struct v4l2_ioctl_ops saa7146_video_ioctl_ops = {
 	.vidioc_querycap             = vidioc_querycap,
 	.vidioc_enum_fmt_vid_cap     = vidioc_enum_fmt_vid_cap,
@@ -997,6 +1016,7 @@ const struct v4l2_ioctl_ops saa7146_video_ioctl_ops = {
 	.vidioc_g_fmt_vid_overlay    = vidioc_g_fmt_vid_overlay,
 	.vidioc_try_fmt_vid_overlay  = vidioc_try_fmt_vid_overlay,
 	.vidioc_s_fmt_vid_overlay    = vidioc_s_fmt_vid_overlay,
+	.vidioc_g_chip_ident         = vidioc_g_chip_ident,
 
 	.vidioc_overlay 	     = vidioc_overlay,
 	.vidioc_g_fbuf  	     = vidioc_g_fbuf,
@@ -1017,6 +1037,7 @@ const struct v4l2_ioctl_ops saa7146_video_ioctl_ops = {
 const struct v4l2_ioctl_ops saa7146_vbi_ioctl_ops = {
 	.vidioc_querycap             = vidioc_querycap,
 	.vidioc_g_fmt_vbi_cap        = vidioc_g_fmt_vbi_cap,
+	.vidioc_g_chip_ident         = vidioc_g_chip_ident,
 
 	.vidioc_reqbufs              = vidioc_reqbufs,
 	.vidioc_querybuf             = vidioc_querybuf,
@@ -1210,7 +1231,6 @@ static void video_init(struct saa7146_dev *dev, struct saa7146_vv *vv)
 	vv->current_hps_sync = SAA7146_HPS_SYNC_PORT_A;
 }
 
-
 static int video_open(struct saa7146_dev *dev, struct file *file)
 {
 	struct saa7146_fh *fh = file->private_data;
@@ -1224,7 +1244,6 @@ static int video_open(struct saa7146_dev *dev, struct file *file)
 
 	return 0;
 }
-
 
 static void video_close(struct saa7146_dev *dev, struct file *file)
 {
@@ -1240,7 +1259,6 @@ static void video_close(struct saa7146_dev *dev, struct file *file)
 	videobuf_stop(q);
 	/* hmm, why is this function declared void? */
 }
-
 
 static void video_irq_done(struct saa7146_dev *dev, unsigned long st)
 {

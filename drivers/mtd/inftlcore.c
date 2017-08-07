@@ -50,7 +50,7 @@ static void inftl_add_mtd(struct mtd_blktrans_ops *tr, struct mtd_info *mtd)
 	struct INFTLrecord *inftl;
 	unsigned long temp;
 
-	if (!mtd_type_is_nand(mtd) || mtd->size > UINT_MAX)
+	if (mtd->type != MTD_NANDFLASH || mtd->size > UINT_MAX)
 		return;
 	/* OK, this is moderately ugly.  But probably safe.  Alternatives? */
 	if (memcmp(mtd->name, "DiskOnChip", 10))
@@ -533,7 +533,6 @@ static inline u16 INFTL_findwriteunit(struct INFTLrecord *inftl, unsigned block)
 hitused:
 		if (writeEUN != BLOCK_NIL)
 			return writeEUN;
-
 
 		/*
 		 * OK. We didn't find one in the existing chain, or there

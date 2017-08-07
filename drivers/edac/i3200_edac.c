@@ -65,7 +65,6 @@
 #define I3200_ERRSTS_CE		0x0001
 #define I3200_ERRSTS_BITS	(I3200_ERRSTS_UE | I3200_ERRSTS_CE)
 
-
 /* Intel  MMIO register space - device 0 function 0 - MMR space */
 
 #define I3200_C0DRB	0x200	/* Channel 0 DRAM Rank Boundary (16b x 4)
@@ -164,7 +163,6 @@ static const struct i3200_dev_info i3200_devs[] = {
 static struct pci_dev *mci_pdev;
 static int i3200_registered = 1;
 
-
 static void i3200_clear_error_info(struct mem_ctl_info *mci)
 {
 	struct pci_dev *pdev;
@@ -242,11 +240,11 @@ static void i3200_process_error_info(struct mem_ctl_info *mci,
 					     -1, -1,
 					     "i3000 UE", "");
 		} else if (log & I3200_ECCERRLOG_CE) {
-			edac_mc_handle_error(HW_EVENT_ERR_UNCORRECTED, mci, 1,
+			edac_mc_handle_error(HW_EVENT_ERR_CORRECTED, mci, 1,
 					     0, 0, eccerrlog_syndrome(log),
 					     eccerrlog_row(channel, log),
 					     -1, -1,
-					     "i3000 UE", "");
+					     "i3000 CE", "");
 		}
 	}
 }
@@ -260,7 +258,7 @@ static void i3200_check(struct mem_ctl_info *mci)
 	i3200_process_error_info(mci, &info);
 }
 
-static void __iomem *i3200_map_mchbar(struct pci_dev *pdev)
+void __iomem *i3200_map_mchbar(struct pci_dev *pdev)
 {
 	union {
 		u64 mchbar;
@@ -289,7 +287,6 @@ static void __iomem *i3200_map_mchbar(struct pci_dev *pdev)
 
 	return window;
 }
-
 
 static void i3200_get_drbs(void __iomem *window,
 	u16 drbs[I3200_CHANNELS][I3200_RANKS_PER_CHANNEL])
@@ -464,11 +461,9 @@ static void i3200_remove_one(struct pci_dev *pdev)
 	iounmap(priv->window);
 
 	edac_mc_free(mci);
-
-	pci_disable_device(pdev);
 }
 
-static const struct pci_device_id i3200_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(i3200_pci_tbl) = {
 	{
 		PCI_VEND_DEV(INTEL, 3200_HB), PCI_ANY_ID, PCI_ANY_ID, 0, 0,
 		I3200},

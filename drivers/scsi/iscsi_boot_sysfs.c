@@ -21,7 +21,6 @@
 #include <linux/capability.h>
 #include <linux/iscsi_boot_sysfs.h>
 
-
 MODULE_AUTHOR("Mike Christie <michaelc@cs.wisc.edu>");
 MODULE_DESCRIPTION("sysfs interface and helpers to export iSCSI boot information");
 MODULE_LICENSE("GPL");
@@ -490,6 +489,5 @@ void iscsi_boot_destroy_kset(struct iscsi_boot_kset *boot_kset)
 		iscsi_boot_remove_kobj(boot_kobj);
 
 	kset_unregister(boot_kset->kset);
-	kfree(boot_kset);
 }
 EXPORT_SYMBOL_GPL(iscsi_boot_destroy_kset);

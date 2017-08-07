@@ -37,6 +37,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -106,7 +107,6 @@ static int vsc_sata_scr_read(struct ata_link *link,
 	return 0;
 }
 
-
 static int vsc_sata_scr_write(struct ata_link *link,
 			      unsigned int sc_reg, u32 val)
 {
@@ -115,7 +115,6 @@ static int vsc_sata_scr_write(struct ata_link *link,
 	writel(val, link->ap->ioaddr.scr_addr + (sc_reg * 4));
 	return 0;
 }
-
 
 static void vsc_freeze(struct ata_port *ap)
 {
@@ -127,7 +126,6 @@ static void vsc_freeze(struct ata_port *ap)
 	writeb(0, mask_addr);
 }
 
-
 static void vsc_thaw(struct ata_port *ap)
 {
 	void __iomem *mask_addr;
@@ -137,7 +135,6 @@ static void vsc_thaw(struct ata_port *ap)
 
 	writeb(0xff, mask_addr);
 }
-
 
 static void vsc_intr_mask_update(struct ata_port *ap, u8 ctl)
 {
@@ -153,7 +150,6 @@ static void vsc_intr_mask_update(struct ata_port *ap, u8 ctl)
 		mask &= 0x7F;
 	writeb(mask, mask_addr);
 }
-
 
 static void vsc_sata_tf_load(struct ata_port *ap, const struct ata_taskfile *tf)
 {
@@ -194,7 +190,6 @@ static void vsc_sata_tf_load(struct ata_port *ap, const struct ata_taskfile *tf)
 
 	ata_wait_idle(ap);
 }
-
 
 static void vsc_sata_tf_read(struct ata_port *ap, struct ata_taskfile *tf)
 {
@@ -292,11 +287,9 @@ out:
 	return IRQ_RETVAL(handled);
 }
 
-
 static struct scsi_host_template vsc_sata_sht = {
 	ATA_BMDMA_SHT(DRV_NAME),
 };
-
 
 static struct ata_port_operations vsc_sata_ops = {
 	.inherits		= &ata_bmdma_port_ops,
@@ -331,7 +324,6 @@ static void vsc_sata_setup_port(struct ata_ioports *port, void __iomem *base)
 	writel(0, base + VSC_SATA_UP_DESCRIPTOR_OFFSET);
 	writel(0, base + VSC_SATA_UP_DATA_BUFFER_OFFSET);
 }
-
 
 static int vsc_sata_init_one(struct pci_dev *pdev,
 			     const struct pci_device_id *ent)

@@ -115,6 +115,8 @@ static bool mei_init(struct mei *me, const uuid_le *guid,
 	struct mei_client *cl;
 	struct mei_connect_client_data data;
 
+	mei_deinit(me);
+
 	me->verbose = verbose;
 
 	me->fd = open("/dev/mei", O_RDWR);
@@ -227,7 +229,6 @@ out:
 #define AMT_STATUS_HOST_IF_EMPTY_RESPONSE  0x4000
 #define AMT_STATUS_SDK_RESOURCES      0x1004
 
-
 #define AMT_BIOS_VERSION_LEN   65
 #define AMT_VERSIONS_NUMBER    50
 #define AMT_UNICODE_STRING_LEN 20
@@ -283,13 +284,11 @@ const struct amt_host_if_msg_header CODE_VERSION_REQ = {
 	.length = 0
 };
 
-
 struct amt_host_if {
 	struct mei mei_cl;
 	unsigned long send_timeout;
 	bool initialized;
 };
-
 
 static bool amt_host_if_init(struct amt_host_if *acmd,
 		      unsigned long send_timeout, bool verbose)
@@ -405,7 +404,6 @@ static uint32_t amt_host_if_call(struct amt_host_if *acmd,
 
 	return AMT_STATUS_SUCCESS;
 }
-
 
 static uint32_t amt_get_code_versions(struct amt_host_if *cmd,
 			       struct amt_code_versions *versions)

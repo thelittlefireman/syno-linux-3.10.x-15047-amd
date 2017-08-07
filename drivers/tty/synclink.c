@@ -171,7 +171,6 @@ struct tx_holding_buffer {
 	unsigned char *	buffer;
 };
 
-
 /*
  * Device instance data structure
  */
@@ -322,7 +321,6 @@ struct mgsl_struct {
  * I/O address of the specified USC registers.
  */
 
-
 #define DCPIN 2		/* Bit 1 of I/O address */
 #define SDPIN 4		/* Bit 2 of I/O address */
 
@@ -369,7 +367,6 @@ struct mgsl_struct {
 #define TCCR	0x3c	/* Transmit Character count Register */
 #define TC1R	0x3e	/* Time Constant 1 Register */
 
-
 /*
  * MACRO DEFINITIONS FOR DMA REGISTERS
  */
@@ -400,7 +397,6 @@ struct mgsl_struct {
 #define NRARL	0xbc	/* Next Receive Address Register (low) */
 #define NRARU	0xbe	/* Next Receive Address Register (high) */
 
-
 /*
  * MACRO DEFINITIONS FOR MODEM STATUS BITS
  */
@@ -411,7 +407,6 @@ struct mgsl_struct {
 #define MODEMSTATUS_CTS 0x10
 #define MODEMSTATUS_RI  0x04
 #define MODEMSTATUS_DCD 0x01
-
 
 /*
  * Channel Command/Address Register (CCAR) Command Codes
@@ -436,7 +431,6 @@ struct mgsl_struct {
 #define RTCmd_SerialDataMSBFirst	0xa800
 #define RTCmd_SelectBigEndian		0xb000
 #define RTCmd_SelectLittleEndian	0xb800
-
 
 /*
  * DMA Command/Address Register (DCAR) Command Codes
@@ -494,7 +488,6 @@ struct mgsl_struct {
 #define TRANSMIT_DATA		BIT2
 #define IO_PIN			BIT1
 #define MISC			BIT0
-
 
 /*
  * Receive status Bits in Receive Command/status Register RCSR
@@ -554,7 +547,6 @@ struct mgsl_struct {
 #define TXSTATUS_ALL			0x00fa
 #define usc_UnlatchTxstatusBits(a,b) usc_OutReg( (a), TCSR, (u16)((a)->tcsr_value + ((b) & 0x00FF)) )
 				
-
 #define MISCSTATUS_RXC_LATCHED		BIT15
 #define MISCSTATUS_RXC			BIT14
 #define MISCSTATUS_TXC_LATCHED		BIT13
@@ -577,22 +569,22 @@ struct mgsl_struct {
 
 #define SICR_RXC_ACTIVE			BIT15
 #define SICR_RXC_INACTIVE		BIT14
-#define SICR_RXC			(BIT15|BIT14)
+#define SICR_RXC			(BIT15+BIT14)
 #define SICR_TXC_ACTIVE			BIT13
 #define SICR_TXC_INACTIVE		BIT12
-#define SICR_TXC			(BIT13|BIT12)
+#define SICR_TXC			(BIT13+BIT12)
 #define SICR_RI_ACTIVE			BIT11
 #define SICR_RI_INACTIVE		BIT10
-#define SICR_RI				(BIT11|BIT10)
+#define SICR_RI				(BIT11+BIT10)
 #define SICR_DSR_ACTIVE			BIT9
 #define SICR_DSR_INACTIVE		BIT8
-#define SICR_DSR			(BIT9|BIT8)
+#define SICR_DSR			(BIT9+BIT8)
 #define SICR_DCD_ACTIVE			BIT7
 #define SICR_DCD_INACTIVE		BIT6
-#define SICR_DCD			(BIT7|BIT6)
+#define SICR_DCD			(BIT7+BIT6)
 #define SICR_CTS_ACTIVE			BIT5
 #define SICR_CTS_INACTIVE		BIT4
-#define SICR_CTS			(BIT5|BIT4)
+#define SICR_CTS			(BIT5+BIT4)
 #define SICR_RCC_UNDERFLOW		BIT3
 #define SICR_DPLL_NO_SYNC		BIT2
 #define SICR_BRG1_ZERO			BIT1
@@ -651,7 +643,6 @@ void usc_ClearIrqPendingBits( struct mgsl_struct *info, u16 IrqMask );
 /* Transmit status Bits in Transmit Control status Register (TCSR) */
 /* and Transmit Interrupt Control Register (TICR) (except BIT2, BIT0) */
 
-
 #define DISABLE_UNCONDITIONAL    0
 #define DISABLE_END_OF_FRAME     1
 #define ENABLE_UNCONDITIONAL     2
@@ -702,7 +693,6 @@ static void usc_enable_async_clock( struct mgsl_struct *info, u32 DataRate );
 static void usc_loopback_frame( struct mgsl_struct *info );
 
 static void mgsl_tx_timeout(unsigned long context);
-
 
 static void usc_loopmode_cancel_transmit( struct mgsl_struct * info );
 static void usc_loopmode_insert_request( struct mgsl_struct * info );
@@ -904,7 +894,6 @@ static struct tty_driver *serial_driver;
 
 /* number of characters left in xmit buffer before we ask for more */
 #define WAKEUP_CHARS 256
-
 
 static void mgsl_change_params(struct mgsl_struct *info);
 static void mgsl_wait_until_sent(struct tty_struct *tty, int timeout);
@@ -1161,7 +1150,7 @@ static void mgsl_isr_receive_status( struct mgsl_struct *info )
 {
 	u16 status = usc_InReg( info, RCSR );
 
-	if ( debug_level >= DEBUG_LEVEL_ISR )
+	if ( debug_level >= DEBUG_LEVEL_ISR )	
 		printk("%s(%d):mgsl_isr_receive_status status=%04X\n",
 			__FILE__,__LINE__,status);
 			
@@ -1181,7 +1170,7 @@ static void mgsl_isr_receive_status( struct mgsl_struct *info )
  			(usc_InReg(info, RICR) & ~RXSTATUS_ABORT_RECEIVED));
  	}
 
-	if (status & (RXSTATUS_EXITED_HUNT | RXSTATUS_IDLE_RECEIVED)) {
+	if (status & (RXSTATUS_EXITED_HUNT + RXSTATUS_IDLE_RECEIVED)) {
 		if (status & RXSTATUS_EXITED_HUNT)
 			info->icount.exithunt++;
 		if (status & RXSTATUS_IDLE_RECEIVED)
@@ -1463,21 +1452,21 @@ static void mgsl_isr_receive_data( struct mgsl_struct *info )
 
 		/* get the status of the received byte */
 		status = usc_InReg(info, RCSR);
-		if ( status & (RXSTATUS_FRAMING_ERROR | RXSTATUS_PARITY_ERROR |
-				RXSTATUS_OVERRUN | RXSTATUS_BREAK_RECEIVED) )
+		if ( status & (RXSTATUS_FRAMING_ERROR + RXSTATUS_PARITY_ERROR +
+				RXSTATUS_OVERRUN + RXSTATUS_BREAK_RECEIVED) )
 			usc_UnlatchRxstatusBits(info,RXSTATUS_ALL);
 		
 		icount->rx++;
 		
 		flag = 0;
-		if ( status & (RXSTATUS_FRAMING_ERROR | RXSTATUS_PARITY_ERROR |
-				RXSTATUS_OVERRUN | RXSTATUS_BREAK_RECEIVED) ) {
-			printk("rxerr=%04X\n",status);
+		if ( status & (RXSTATUS_FRAMING_ERROR + RXSTATUS_PARITY_ERROR +
+				RXSTATUS_OVERRUN + RXSTATUS_BREAK_RECEIVED) ) {
+			printk("rxerr=%04X\n",status);					
 			/* update error statistics */
 			if ( status & RXSTATUS_BREAK_RECEIVED ) {
-				status &= ~(RXSTATUS_FRAMING_ERROR | RXSTATUS_PARITY_ERROR);
+				status &= ~(RXSTATUS_FRAMING_ERROR + RXSTATUS_PARITY_ERROR);
 				icount->brk++;
-			} else if (status & RXSTATUS_PARITY_ERROR)
+			} else if (status & RXSTATUS_PARITY_ERROR) 
 				icount->parity++;
 			else if (status & RXSTATUS_FRAMING_ERROR)
 				icount->frame++;
@@ -1488,7 +1477,7 @@ static void mgsl_isr_receive_data( struct mgsl_struct *info )
 				icount->overrun++;
 			}
 
-			/* discard char if tty control flags say so */
+			/* discard char if tty control flags say so */					
 			if (status & info->ignore_status_mask)
 				continue;
 				
@@ -1545,8 +1534,8 @@ static void mgsl_isr_misc( struct mgsl_struct *info )
 		usc_EnableReceiver(info,DISABLE_UNCONDITIONAL);
 		usc_DmaCmd(info, DmaCmd_ResetRxChannel);
 		usc_UnlatchRxstatusBits(info, RXSTATUS_ALL);
-		usc_ClearIrqPendingBits(info, RECEIVE_DATA | RECEIVE_STATUS);
-		usc_DisableInterrupts(info, RECEIVE_DATA | RECEIVE_STATUS);
+		usc_ClearIrqPendingBits(info, RECEIVE_DATA + RECEIVE_STATUS);
+		usc_DisableInterrupts(info, RECEIVE_DATA + RECEIVE_STATUS);
 
 		/* schedule BH handler to restart receiver */
 		info->pending_bh |= BH_RECEIVE;
@@ -1595,7 +1584,7 @@ static void mgsl_isr_receive_dma( struct mgsl_struct *info )
 	u16 status;
 	
 	/* clear interrupt pending and IUS bit for Rx DMA IRQ */
-	usc_OutDmaReg( info, CDIR, BIT9 | BIT1 );
+	usc_OutDmaReg( info, CDIR, BIT9+BIT1 );
 
 	/* Read the receive DMA status to identify interrupt type. */
 	/* This also clears the status bits. */
@@ -1639,7 +1628,7 @@ static void mgsl_isr_transmit_dma( struct mgsl_struct *info )
 	u16 status;
 
 	/* clear interrupt pending and IUS bit for Tx DMA IRQ */
-	usc_OutDmaReg(info, CDIR, BIT8 | BIT0 );
+	usc_OutDmaReg(info, CDIR, BIT8+BIT0 );
 
 	/* Read the transmit DMA status to identify interrupt type. */
 	/* This also clears the status bits. */
@@ -1832,8 +1821,8 @@ static void shutdown(struct mgsl_struct * info)
 	usc_DisableMasterIrqBit(info);
 	usc_stop_receiver(info);
 	usc_stop_transmitter(info);
-	usc_DisableInterrupts(info,RECEIVE_DATA | RECEIVE_STATUS |
-		TRANSMIT_DATA | TRANSMIT_STATUS | IO_PIN | MISC );
+	usc_DisableInterrupts(info,RECEIVE_DATA + RECEIVE_STATUS +
+		TRANSMIT_DATA + TRANSMIT_STATUS + IO_PIN + MISC );
 	usc_DisableDmaInterrupts(info,DICR_MASTER + DICR_TRANSMIT + DICR_RECEIVE);
 
 	/* Disable DMAEN (Port 7, Bit 14) */
@@ -1886,7 +1875,7 @@ static void mgsl_program_hw(struct mgsl_struct *info)
 	info->ri_chkcount = 0;
 	info->dsr_chkcount = 0;
 
-	usc_EnableStatusIrqs(info,SICR_CTS+SICR_DSR+SICR_DCD+SICR_RI);
+	usc_EnableStatusIrqs(info,SICR_CTS+SICR_DSR+SICR_DCD+SICR_RI);		
 	usc_EnableInterrupts(info, IO_PIN);
 	usc_get_serial_signals(info);
 		
@@ -2717,7 +2706,6 @@ static int mgsl_wait_event(struct mgsl_struct * info, int __user * mask_ptr)
 	
 	spin_unlock_irqrestore(&info->irq_spinlock,flags);
 	
-
 	for(;;) {
 		schedule();
 		if (signal_pending(current)) {
@@ -2773,7 +2761,7 @@ static int mgsl_wait_event(struct mgsl_struct * info, int __user * mask_ptr)
 		if (!waitqueue_active(&info->event_wait_q)) {
 			/* disable enable exit hunt mode/idle rcvd IRQs */
 			usc_OutReg(info, RICR, usc_InReg(info,RICR) &
-				~(RXSTATUS_EXITED_HUNT | RXSTATUS_IDLE_RECEIVED));
+				~(RXSTATUS_EXITED_HUNT + RXSTATUS_IDLE_RECEIVED));
 		}
 		spin_unlock_irqrestore(&info->irq_spinlock,flags);
 	}
@@ -3092,7 +3080,7 @@ static void mgsl_close(struct tty_struct *tty, struct file * filp)
 		printk("%s(%d):mgsl_close(%s) entry, count=%d\n",
 			 __FILE__,__LINE__, info->device_name, info->port.count);
 
-	if (tty_port_close_start(&info->port, tty, filp) == 0)
+	if (tty_port_close_start(&info->port, tty, filp) == 0)			 
 		goto cleanup;
 
 	mutex_lock(&info->port.mutex);
@@ -3246,7 +3234,6 @@ static void dtr_rts(struct tty_port *port, int on)
  	usc_set_serial_signals(info);
 	spin_unlock_irqrestore(&info->irq_spinlock,flags);
 }
-
 
 /* block_til_ready()
  * 
@@ -3404,8 +3391,8 @@ static int mgsl_open(struct tty_struct *tty, struct file * filp)
 
 	/* If port is closing, signal caller to try again */
 	if (tty_hung_up_p(filp) || info->port.flags & ASYNC_CLOSING){
-		wait_event_interruptible_tty(tty, info->port.close_wait,
-				     !(info->port.flags & ASYNC_CLOSING));
+		if (info->port.flags & ASYNC_CLOSING)
+			interruptible_sleep_on(&info->port.close_wait);
 		retval = ((info->port.flags & ASYNC_HUP_NOTIFY) ?
 			-EAGAIN : -ERESTARTSYS);
 		goto cleanup;
@@ -3628,7 +3615,6 @@ static int mgsl_allocate_dma_buffers(struct mgsl_struct *info)
 	} else {
 		/* Calculate the number of PAGE_SIZE buffers needed for */
 		/* receive and transmit DMA buffers. */
-
 
 		/* Calculate the number of DMA buffers necessary to */
 		/* hold 7 max size receive frames and one max size transmit frame. */
@@ -3875,7 +3861,6 @@ static void mgsl_free_dma_buffers( struct mgsl_struct *info )
 
 }	/* end of mgsl_free_dma_buffers() */
 
-
 /*
  * mgsl_alloc_intermediate_rxbuffer_memory()
  * 
@@ -3986,7 +3971,6 @@ static void mgsl_free_intermediate_txbuffer_memory(struct mgsl_struct *info)
 	info->tx_holding_count = 0;
 
 }	/* end of mgsl_free_intermediate_txbuffer_memory() */
-
 
 /*
  * load_next_tx_holding_buffer()
@@ -4267,7 +4251,6 @@ static const struct tty_port_operations mgsl_port_ops = {
 	.dtr_rts = dtr_rts,
 };
 
-
 /* mgsl_allocate_device()
  * 
  * 	Allocate and initialize a device instance structure
@@ -4297,7 +4280,7 @@ static struct mgsl_struct* mgsl_allocate_device(void)
 		spin_lock_init(&info->irq_spinlock);
 		spin_lock_init(&info->netlock);
 		memcpy(&info->params,&default_params,sizeof(MGSL_PARAMS));
-		info->idle_mode = HDLC_TXIDLE_FLAGS;
+		info->idle_mode = HDLC_TXIDLE_FLAGS;		
 		info->num_tx_dma_buffers = 1;
 		info->num_tx_holding_buffers = 0;
 	}
@@ -4722,7 +4705,7 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 		else if ( info->params.flags & HDLC_FLAG_UNDERRUN_FLAG )
 			RegValue |= BIT15;
 		else if ( info->params.flags & HDLC_FLAG_UNDERRUN_CRC )
-			RegValue |= BIT15 | BIT14;
+			RegValue |= BIT15 + BIT14;
 		}
 
 		if ( info->params.preamble != HDLC_PREAMBLE_PATTERN_NONE )
@@ -4763,11 +4746,11 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 	switch ( info->params.encoding ) {
 	case HDLC_ENCODING_NRZB:               RegValue |= BIT13; break;
 	case HDLC_ENCODING_NRZI_MARK:          RegValue |= BIT14; break;
-	case HDLC_ENCODING_NRZI_SPACE:	       RegValue |= BIT14 | BIT13; break;
+	case HDLC_ENCODING_NRZI_SPACE:	       RegValue |= BIT14 + BIT13; break;
 	case HDLC_ENCODING_BIPHASE_MARK:       RegValue |= BIT15; break;
-	case HDLC_ENCODING_BIPHASE_SPACE:      RegValue |= BIT15 | BIT13; break;
-	case HDLC_ENCODING_BIPHASE_LEVEL:      RegValue |= BIT15 | BIT14; break;
-	case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT15 | BIT14 | BIT13; break;
+	case HDLC_ENCODING_BIPHASE_SPACE:      RegValue |= BIT15 + BIT13; break;
+	case HDLC_ENCODING_BIPHASE_LEVEL:      RegValue |= BIT15 + BIT14; break;
+	case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT15 + BIT14 + BIT13; break;
 	}
 
 	if ( (info->params.crc_type & HDLC_CRC_MASK) == HDLC_CRC_16_CCITT )
@@ -4838,22 +4821,21 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 	switch ( info->params.encoding ) {
 	case HDLC_ENCODING_NRZB:               RegValue |= BIT13; break;
 	case HDLC_ENCODING_NRZI_MARK:          RegValue |= BIT14; break;
-	case HDLC_ENCODING_NRZI_SPACE:         RegValue |= BIT14 | BIT13; break;
+	case HDLC_ENCODING_NRZI_SPACE:         RegValue |= BIT14 + BIT13; break;
 	case HDLC_ENCODING_BIPHASE_MARK:       RegValue |= BIT15; break;
-	case HDLC_ENCODING_BIPHASE_SPACE:      RegValue |= BIT15 | BIT13; break;
-	case HDLC_ENCODING_BIPHASE_LEVEL:      RegValue |= BIT15 | BIT14; break;
-	case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT15 | BIT14 | BIT13; break;
+	case HDLC_ENCODING_BIPHASE_SPACE:      RegValue |= BIT15 + BIT13; break;
+	case HDLC_ENCODING_BIPHASE_LEVEL:      RegValue |= BIT15 + BIT14; break;
+	case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT15 + BIT14 + BIT13; break;
 	}
 
 	if ( (info->params.crc_type & HDLC_CRC_MASK) == HDLC_CRC_16_CCITT )
-		RegValue |= BIT9 | BIT8;
+		RegValue |= BIT9 + BIT8;
 	else if ( (info->params.crc_type & HDLC_CRC_MASK) == HDLC_CRC_32_CCITT )
 		RegValue |= ( BIT12 | BIT10 | BIT9 | BIT8);
 
 	usc_OutReg( info, TMR, RegValue );
 
 	usc_set_txidle( info );
-
 
 	usc_TCmd( info, TCmd_SelectTicrdma_level );
 
@@ -4939,7 +4921,6 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 
 	usc_OutReg( info, CMCR, RegValue );
 
-
 	/* Hardware Configuration Register (HCR)
 	 *
 	 * <15..14>	00	CTR0 Divisor:00=32,01=16,10=8,11=4
@@ -4957,7 +4938,7 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 
 	RegValue = 0x0000;
 
-	if ( info->params.flags & (HDLC_FLAG_RXC_DPLL | HDLC_FLAG_TXC_DPLL) ) {
+	if ( info->params.flags & (HDLC_FLAG_RXC_DPLL + HDLC_FLAG_TXC_DPLL) ) {
 		u32 XtalSpeed;
 		u32 DpllDivisor;
 		u16 Tc;
@@ -5005,7 +4986,6 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
  		else
  			Tc = -1;
  				  
-
 		/* Write 16-bit Time Constant for BRG1 */
 		usc_OutReg( info, TC1R, Tc );
 
@@ -5019,12 +4999,11 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 		case HDLC_ENCODING_BIPHASE_MARK:
 		case HDLC_ENCODING_BIPHASE_SPACE: RegValue |= BIT9; break;
 		case HDLC_ENCODING_BIPHASE_LEVEL:
-		case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT9 | BIT8; break;
+		case HDLC_ENCODING_DIFF_BIPHASE_LEVEL: RegValue |= BIT9 + BIT8; break;
 		}
 	}
 
 	usc_OutReg( info, HCR, RegValue );
-
 
 	/* Channel Control/status Register (CCSR)
 	 *
@@ -5046,18 +5025,16 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 
 	usc_OutReg( info, CCSR, 0x1020 );
 
-
 	if ( info->params.flags & HDLC_FLAG_AUTO_CTS ) {
 		usc_OutReg( info, SICR,
 			    (u16)(usc_InReg(info,SICR) | SICR_CTS_INACTIVE) );
 	}
 	
-
 	/* enable Master Interrupt Enable bit (MIE) */
 	usc_EnableMasterIrqBit( info );
 
-	usc_ClearIrqPendingBits( info, RECEIVE_STATUS | RECEIVE_DATA |
-				TRANSMIT_STATUS | TRANSMIT_DATA | MISC);
+	usc_ClearIrqPendingBits( info, RECEIVE_STATUS + RECEIVE_DATA +
+				TRANSMIT_STATUS + TRANSMIT_DATA + MISC);
 
 	/* arm RCC underflow interrupt */
 	usc_OutReg(info, SICR, (u16)(usc_InReg(info,SICR) | BIT3));
@@ -5104,7 +5081,6 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 	else
 		usc_OutDmaReg( info, DCR, 0x800b );
 
-
 	/* Receive DMA mode Register (RDMR)
 	 *
 	 * <15..14>	11	DMA mode = Linked List Buffer mode
@@ -5120,7 +5096,6 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 
 	usc_OutDmaReg( info, RDMR, 0xf200 );
 
-
 	/* Transmit DMA mode Register (TDMR)
 	 *
 	 * <15..14>	11	DMA mode = Linked List Buffer mode
@@ -5135,7 +5110,6 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 	 */
 
 	usc_OutDmaReg( info, TDMR, 0xf200 );
-
 
 	/* DMA Interrupt Control Register (DICR)
 	 *
@@ -5175,18 +5149,17 @@ static void usc_set_sdlc_mode( struct mgsl_struct *info )
 	switch ( info->params.preamble_length ) {
 	case HDLC_PREAMBLE_LENGTH_16BITS: RegValue |= BIT10; break;
 	case HDLC_PREAMBLE_LENGTH_32BITS: RegValue |= BIT11; break;
-	case HDLC_PREAMBLE_LENGTH_64BITS: RegValue |= BIT11 | BIT10; break;
+	case HDLC_PREAMBLE_LENGTH_64BITS: RegValue |= BIT11 + BIT10; break;
 	}
 
 	switch ( info->params.preamble ) {
-	case HDLC_PREAMBLE_PATTERN_FLAGS: RegValue |= BIT8 | BIT12; break;
+	case HDLC_PREAMBLE_PATTERN_FLAGS: RegValue |= BIT8 + BIT12; break;
 	case HDLC_PREAMBLE_PATTERN_ONES:  RegValue |= BIT8; break;
 	case HDLC_PREAMBLE_PATTERN_10:    RegValue |= BIT9; break;
-	case HDLC_PREAMBLE_PATTERN_01:    RegValue |= BIT9 | BIT8; break;
+	case HDLC_PREAMBLE_PATTERN_01:    RegValue |= BIT9 + BIT8; break;
 	}
 
 	usc_OutReg( info, CCR, RegValue );
-
 
 	/*
 	 * Burst/Dwell Control Register
@@ -5221,7 +5194,7 @@ static void usc_enable_loopback(struct mgsl_struct *info, int enable)
 {
 	if (enable) {
 		/* blank external TXD output */
-		usc_OutReg(info,IOCR,usc_InReg(info,IOCR) | (BIT7 | BIT6));
+		usc_OutReg(info,IOCR,usc_InReg(info,IOCR) | (BIT7+BIT6));
 	
 		/* Clock mode Control Register (CMCR)
 		 *
@@ -5260,7 +5233,7 @@ static void usc_enable_loopback(struct mgsl_struct *info, int enable)
 		outw( 0x0300, info->io_base + CCAR );
 	} else {
 		/* enable external TXD output */
-		usc_OutReg(info,IOCR,usc_InReg(info,IOCR) & ~(BIT7 | BIT6));
+		usc_OutReg(info,IOCR,usc_InReg(info,IOCR) & ~(BIT7+BIT6));
 	
 		/* clear Internal Data loopback mode */
 		info->loopback_bits = 0;
@@ -5292,13 +5265,11 @@ static void usc_enable_aux_clock( struct mgsl_struct *info, u32 data_rate )
 		else
 			XtalSpeed = 14745600;
 
-
 		/* Tc = (Xtal/Speed) - 1 */
 		/* If twice the remainder of (Xtal/Speed) is greater than Speed */
 		/* then rounding up gives a more precise time constant. Instead */
 		/* of rounding up and then subtracting 1 we just don't subtract */
 		/* the one in this case. */
-
 
 		Tc = (u16)(XtalSpeed/data_rate);
 		if ( !(((XtalSpeed % data_rate) * 2) / data_rate) )
@@ -5447,13 +5418,13 @@ static void usc_process_rxoverrun_sync( struct mgsl_struct *info )
 		usc_OutDmaReg( info, NRARU, (u16)(phys_addr >> 16) );
 
 		usc_UnlatchRxstatusBits( info, RXSTATUS_ALL );
-		usc_ClearIrqPendingBits( info, RECEIVE_DATA | RECEIVE_STATUS );
+		usc_ClearIrqPendingBits( info, RECEIVE_DATA + RECEIVE_STATUS );
 		usc_EnableInterrupts( info, RECEIVE_STATUS );
 
 		/* 1. Arm End of Buffer (EOB) Receive DMA Interrupt (BIT2 of RDIAR) */
 		/* 2. Enable Receive DMA Interrupts (BIT1 of DICR) */
 
-		usc_OutDmaReg( info, RDIAR, BIT3 | BIT2 );
+		usc_OutDmaReg( info, RDIAR, BIT3 + BIT2 );
 		usc_OutDmaReg( info, DICR, (u16)(usc_InDmaReg(info,DICR) | BIT1) );
 		usc_DmaCmd( info, DmaCmd_InitRxChannel );
 		if ( info->params.flags & HDLC_FLAG_AUTO_DCD )
@@ -5488,8 +5459,8 @@ static void usc_stop_receiver( struct mgsl_struct *info )
 	usc_DmaCmd( info, DmaCmd_ResetRxChannel );
 
 	usc_UnlatchRxstatusBits( info, RXSTATUS_ALL );
-	usc_ClearIrqPendingBits( info, RECEIVE_DATA | RECEIVE_STATUS );
-	usc_DisableInterrupts( info, RECEIVE_DATA | RECEIVE_STATUS );
+	usc_ClearIrqPendingBits( info, RECEIVE_DATA + RECEIVE_STATUS );
+	usc_DisableInterrupts( info, RECEIVE_DATA + RECEIVE_STATUS );
 
 	usc_EnableReceiver(info,DISABLE_UNCONDITIONAL);
 
@@ -5536,13 +5507,13 @@ static void usc_start_receiver( struct mgsl_struct *info )
 		usc_OutDmaReg( info, NRARU, (u16)(phys_addr >> 16) );
 
 		usc_UnlatchRxstatusBits( info, RXSTATUS_ALL );
-		usc_ClearIrqPendingBits( info, RECEIVE_DATA | RECEIVE_STATUS );
+		usc_ClearIrqPendingBits( info, RECEIVE_DATA + RECEIVE_STATUS );
 		usc_EnableInterrupts( info, RECEIVE_STATUS );
 
 		/* 1. Arm End of Buffer (EOB) Receive DMA Interrupt (BIT2 of RDIAR) */
 		/* 2. Enable Receive DMA Interrupts (BIT1 of DICR) */
 
-		usc_OutDmaReg( info, RDIAR, BIT3 | BIT2 );
+		usc_OutDmaReg( info, RDIAR, BIT3 + BIT2 );
 		usc_OutDmaReg( info, DICR, (u16)(usc_InDmaReg(info,DICR) | BIT1) );
 		usc_DmaCmd( info, DmaCmd_InitRxChannel );
 		if ( info->params.flags & HDLC_FLAG_AUTO_DCD )
@@ -5551,7 +5522,7 @@ static void usc_start_receiver( struct mgsl_struct *info )
 			usc_EnableReceiver(info,ENABLE_UNCONDITIONAL);
 	} else {
 		usc_UnlatchRxstatusBits(info, RXSTATUS_ALL);
-		usc_ClearIrqPendingBits(info, RECEIVE_DATA | RECEIVE_STATUS);
+		usc_ClearIrqPendingBits(info, RECEIVE_DATA + RECEIVE_STATUS);
 		usc_EnableInterrupts(info, RECEIVE_DATA);
 
 		usc_RTCmd( info, RTCmd_PurgeRxFifo );
@@ -5599,7 +5570,6 @@ static void usc_start_transmitter( struct mgsl_struct *info )
 				info->drop_rts_on_tx_done = true;
 			}
 		}
-
 
 		if ( info->params.mode == MGSL_MODE_ASYNC ) {
 			if ( !info->tx_active ) {
@@ -5830,13 +5800,11 @@ static void usc_reset( struct mgsl_struct *info )
 	
 	outw( 0x000c,info->io_base + SDPIN );
 
-
 	outw( 0,info->io_base );
 	outw( 0,info->io_base + CCAR );
 
 	/* select little endian byte ordering */
 	usc_RTCmd( info, RTCmd_SelectLittleEndian );
-
 
 	/* Port Control Register (PCR)
 	 *
@@ -5853,7 +5821,6 @@ static void usc_reset( struct mgsl_struct *info )
 	 */
 
 	usc_OutReg( info, PCR, 0xf0f5 );
-
 
 	/*
 	 * Input/Output Control Register
@@ -5909,7 +5876,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 		RegValue |= BIT14;
 	usc_OutReg( info, CMR, RegValue );
 
-	
 	/* Receiver mode Register (RMR)
 	 *
 	 * <15..13>	000	encoding = None
@@ -5925,7 +5891,7 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 	RegValue = 0;
 
 	if ( info->params.data_bits != 8 )
-		RegValue |= BIT4 | BIT3 | BIT2;
+		RegValue |= BIT4+BIT3+BIT2;
 
 	if ( info->params.parity != ASYNC_PARITY_NONE ) {
 		RegValue |= BIT5;
@@ -5935,12 +5901,10 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_OutReg( info, RMR, RegValue );
 
-
 	/* Set IRQ trigger level */
 
 	usc_RCmd( info, RCmd_SelectRicrIntLevel );
 
-	
 	/* Receive Interrupt Control Register (RICR)
 	 *
 	 * <15..8>	?		RxFIFO IRQ Request Level
@@ -5966,7 +5930,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 	usc_UnlatchRxstatusBits( info, RXSTATUS_ALL );
 	usc_ClearIrqPendingBits( info, RECEIVE_STATUS );
 
-	
 	/* Transmit mode Register (TMR)
 	 *
 	 * <15..13>	000	encoding = None
@@ -5982,7 +5945,7 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 	RegValue = 0;
 
 	if ( info->params.data_bits != 8 )
-		RegValue |= BIT4 | BIT3 | BIT2;
+		RegValue |= BIT4+BIT3+BIT2;
 
 	if ( info->params.parity != ASYNC_PARITY_NONE ) {
 		RegValue |= BIT5;
@@ -5994,12 +5957,10 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_set_txidle( info );
 
-
 	/* Set IRQ trigger level */
 
 	usc_TCmd( info, TCmd_SelectTicrIntLevel );
 
-	
 	/* Transmit Interrupt Control Register (TICR)
 	 *
 	 * <15..8>	?	Transmit FIFO IRQ Level
@@ -6022,7 +5983,6 @@ static void usc_set_async_mode( struct mgsl_struct *info )
 
 	usc_enable_async_clock( info, info->params.data_rate );
 
-	
 	/* Channel Control/status Register (CCSR)
 	 *
 	 * <15>		X	RCC FIFO Overflow status (RO)
@@ -6129,7 +6089,7 @@ static void usc_loopback_frame( struct mgsl_struct *info )
 							
 	/* WAIT FOR RECEIVE COMPLETE */
 	for (i=0 ; i<1000 ; i++)
-		if (usc_InReg( info, RCSR ) & (BIT8 | BIT4 | BIT3 | BIT1))
+		if (usc_InReg( info, RCSR ) & (BIT8 + BIT4 + BIT3 + BIT1))
 			break;
 
 	/* clear Internal Data loopback mode */
@@ -6319,7 +6279,6 @@ static void usc_enable_async_clock( struct mgsl_struct *info, u32 data_rate )
 		
 		usc_OutReg( info, CMCR, 0x0f64 );
 
-
 		/*
 		 * Write 16-bit Time Constant for BRG0
 		 * Time Constant = (ClkSpeed / data_rate) - 1
@@ -6331,7 +6290,6 @@ static void usc_enable_async_clock( struct mgsl_struct *info, u32 data_rate )
 		else
 			usc_OutReg( info, TC0R, (u16)((921600/data_rate) - 1) );
 
-		
 		/*
 		 * Hardware Configuration Register (HCR)
 		 * Clear Bit 1, BRG0 mode = Continuous
@@ -6340,7 +6298,6 @@ static void usc_enable_async_clock( struct mgsl_struct *info, u32 data_rate )
 
 		usc_OutReg( info, HCR,
 			    (u16)((usc_InReg( info, HCR ) & ~BIT1) | BIT0) );
-
 
 		/* Input/Output Control Reg, <2..0> = 100, Drive RxC pin with BRG0 */
 
@@ -6574,13 +6531,12 @@ static bool mgsl_get_rx_frame(struct mgsl_struct *info)
 		}
 	}
 
-
 	/* check status of receive frame */
 	
 	status = info->rx_buffer_list[EndIndex].status;
 
-	if ( status & (RXSTATUS_SHORT_FRAME | RXSTATUS_OVERRUN |
-			RXSTATUS_CRC_ERROR | RXSTATUS_ABORT) ) {
+	if ( status & (RXSTATUS_SHORT_FRAME + RXSTATUS_OVERRUN +
+			RXSTATUS_CRC_ERROR + RXSTATUS_ABORT) ) {
 		if ( status & RXSTATUS_SHORT_FRAME )
 			info->icount.rxshort++;
 		else if ( status & RXSTATUS_ABORT )
@@ -6762,8 +6718,8 @@ static bool mgsl_get_raw_rx_frame(struct mgsl_struct *info)
 
 		status = info->rx_buffer_list[CurrentIndex].status;
 
-		if ( status & (RXSTATUS_SHORT_FRAME | RXSTATUS_OVERRUN |
-				RXSTATUS_CRC_ERROR | RXSTATUS_ABORT) ) {
+		if ( status & (RXSTATUS_SHORT_FRAME + RXSTATUS_OVERRUN +
+				RXSTATUS_CRC_ERROR + RXSTATUS_ABORT) ) {
 			if ( status & RXSTATUS_SHORT_FRAME )
 				info->icount.rxshort++;
 			else if ( status & RXSTATUS_ABORT )
@@ -6828,7 +6784,6 @@ static bool mgsl_get_raw_rx_frame(struct mgsl_struct *info)
 			framesize = framesize % DMABUFFERSIZE;
 		}
 
-
 		if ( debug_level >= DEBUG_LEVEL_BH )
 			printk("%s(%d):mgsl_get_raw_rx_frame(%s) status=%04X size=%d\n",
 				__FILE__,__LINE__,info->device_name,status,framesize);
@@ -6853,7 +6808,6 @@ static bool mgsl_get_raw_rx_frame(struct mgsl_struct *info)
 
 		ReturnCode = true;
 	}
-
 
 	if ( info->rx_enabled && info->rx_overflow ) {
 		/* The receiver needs to restarted because of
@@ -6899,7 +6853,7 @@ static void mgsl_load_tx_dma_buffer(struct mgsl_struct *info,
 		/* set CMR:13 to start transmit when
 		 * next GoAhead (abort) is received
 		 */
-	 	info->cmr_value |= BIT13;
+	 	info->cmr_value |= BIT13;			  
 	}
 		
 	/* begin loading the frame in the next available tx dma
@@ -7122,7 +7076,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 	
 	spin_unlock_irqrestore(&info->irq_spinlock,flags);
 
-
 	/* SETUP TRANSMIT AND RECEIVE DMA BUFFERS */
 
 	FrameSize = TESTFRAMESIZE;
@@ -7156,7 +7109,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 	info->tx_buffer_list[1].count = 0;
 	info->rx_buffer_list[1].count = 0;
 	
-
 	/***************************/
 	/* Program 16C32 receiver. */
 	/***************************/
@@ -7179,7 +7131,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 	usc_OutReg( info, RMR, (unsigned short)((usc_InReg(info, RMR) & 0xfffc) | 0x0002) );
 	
 	spin_unlock_irqrestore(&info->irq_spinlock,flags);
-
 
 	/*************************************************************/
 	/* WAIT FOR RECEIVER TO DMA ALL PARAMETERS FROM BUFFER ENTRY */
@@ -7205,7 +7156,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 			break;
 		}
 	}
-
 
 	/******************************/
 	/* Program 16C32 transmitter. */
@@ -7236,7 +7186,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 	
 	spin_unlock_irqrestore(&info->irq_spinlock,flags);
 
-
 	/**********************************/
 	/* WAIT FOR TRANSMIT FIFO TO FILL */
 	/**********************************/
@@ -7265,7 +7214,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 			}
 	}
 
-
 	if ( rc )
 	{
 		/* Enable 16C32 transmitter. */
@@ -7277,7 +7225,6 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 		usc_OutReg( info, TMR, (unsigned short)((usc_InReg(info, TMR) & 0xfffc) | 0x0002) );
 		
 		spin_unlock_irqrestore(&info->irq_spinlock,flags);
-
 
 		/******************************/
 		/* WAIT FOR TRANSMIT COMPLETE */
@@ -7292,7 +7239,7 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 		status = usc_InReg( info, TCSR );
 		spin_unlock_irqrestore(&info->irq_spinlock,flags);
 
-		while ( !(status & (BIT6 | BIT5 | BIT4 | BIT2 | BIT1)) ) {
+		while ( !(status & (BIT6+BIT5+BIT4+BIT2+BIT1)) ) {
 			if (time_after(jiffies, EndTime)) {
 				rc = false;
 				break;
@@ -7304,10 +7251,9 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 		}
 	}
 
-
 	if ( rc ){
 		/* CHECK FOR TRANSMIT ERRORS */
-		if ( status & (BIT5 | BIT1) )
+		if ( status & (BIT5 + BIT1) ) 
 			rc = false;
 	}
 
@@ -7328,12 +7274,11 @@ static bool mgsl_dma_test( struct mgsl_struct *info )
 		}
 	}
 
-
 	if ( rc ) {
 		/* CHECK FOR RECEIVE ERRORS */
 		status = info->rx_buffer_list[0].status;
 
-		if ( status & (BIT8 | BIT3 | BIT1) ) {
+		if ( status & (BIT8 + BIT3 + BIT1) ) {
 			/* receive error has occurred */
 			rc = false;
 		} else {
@@ -7447,7 +7392,6 @@ static bool mgsl_memory_test( struct mgsl_struct *info )
 	return true;
 
 }	/* End Of mgsl_memory_test() */
-
 
 /* mgsl_load_pci_memory()
  * 
@@ -7605,7 +7549,7 @@ static void usc_loopmode_send_done( struct mgsl_struct * info )
 {
  	info->loopmode_send_done_requested = false;
  	/* clear CMR:13 to 0 to start echoing RxData to TxData */
- 	info->cmr_value &= ~BIT13;
+ 	info->cmr_value &= ~BIT13;			  
  	usc_OutReg(info, CMR, info->cmr_value);
 }
 
@@ -7866,7 +7810,6 @@ static int hdlcdev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 					      HDLC_FLAG_TXC_TXCPIN | HDLC_FLAG_TXC_DPLL |
 					      HDLC_FLAG_TXC_BRG    | HDLC_FLAG_TXC_RXCPIN);
 
-		memset(&new_line, 0, sizeof(new_line));
 		switch (flags){
 		case (HDLC_FLAG_RXC_RXCPIN | HDLC_FLAG_TXC_TXCPIN): new_line.clock_type = CLOCK_EXT; break;
 		case (HDLC_FLAG_RXC_BRG    | HDLC_FLAG_TXC_BRG):    new_line.clock_type = CLOCK_INT; break;
@@ -8068,7 +8011,6 @@ static void hdlcdev_exit(struct mgsl_struct *info)
 
 #endif /* CONFIG_HDLC */
 
-
 static int synclink_init_one (struct pci_dev *dev,
 					const struct pci_device_id *ent)
 {
@@ -8124,4 +8066,3 @@ static int synclink_init_one (struct pci_dev *dev,
 static void synclink_remove_one (struct pci_dev *dev)
 {
 }
-

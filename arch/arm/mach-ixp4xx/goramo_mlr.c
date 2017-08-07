@@ -4,7 +4,6 @@
  */
 
 #include <linux/delay.h>
-#include <linux/gpio.h>
 #include <linux/hdlc.h>
 #include <linux/i2c-gpio.h>
 #include <linux/io.h>
@@ -80,19 +79,19 @@ static u8 control_value;
 
 static void set_scl(u8 value)
 {
-	gpio_set_value(GPIO_SCL, !!value);
+	gpio_line_set(GPIO_SCL, !!value);
 	udelay(3);
 }
 
 static void set_sda(u8 value)
 {
-	gpio_set_value(GPIO_SDA, !!value);
+	gpio_line_set(GPIO_SDA, !!value);
 	udelay(3);
 }
 
 static void set_str(u8 value)
 {
-	gpio_set_value(GPIO_STR, !!value);
+	gpio_line_set(GPIO_STR, !!value);
 	udelay(3);
 }
 
@@ -104,13 +103,12 @@ static inline void set_control(int line, int value)
 		control_value &= ~(1 << line);
 }
 
-
 static void output_control(void)
 {
 	int i;
 
-	gpio_direction_output(GPIO_SCL, 1);
-	gpio_direction_output(GPIO_SDA, 1);
+	gpio_line_config(GPIO_SCL, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_SDA, IXP4XX_GPIO_OUT);
 
 	for (i = 0; i < 8; i++) {
 		set_scl(0);
@@ -125,7 +123,6 @@ static void output_control(void)
 	set_sda(1);		/* Be ready for START */
 	set_scl(1);
 }
-
 
 static void (*set_carrier_cb_tab[2])(void *pdev, int carrier);
 
@@ -152,12 +149,11 @@ static int hss_set_clock(int port, unsigned int clock_type)
 
 static irqreturn_t hss_dcd_irq(int irq, void *pdev)
 {
-	int port = (irq == IXP4XX_GPIO_IRQ(GPIO_HSS1_DCD_N));
-	int i = gpio_get_value(port ? GPIO_HSS1_DCD_N : GPIO_HSS0_DCD_N);
+	int i, port = (irq == IXP4XX_GPIO_IRQ(GPIO_HSS1_DCD_N));
+	gpio_line_get(port ? GPIO_HSS1_DCD_N : GPIO_HSS0_DCD_N, &i);
 	set_carrier_cb_tab[port](pdev, !i);
 	return IRQ_HANDLED;
 }
-
 
 static int hss_open(int port, void *pdev,
 		    void (*set_carrier_cb)(void *pdev, int carrier))
@@ -169,7 +165,7 @@ static int hss_open(int port, void *pdev,
 	else
 		irq = IXP4XX_GPIO_IRQ(GPIO_HSS1_DCD_N);
 
-	i = gpio_get_value(port ? GPIO_HSS1_DCD_N : GPIO_HSS0_DCD_N);
+	gpio_line_get(port ? GPIO_HSS1_DCD_N : GPIO_HSS0_DCD_N, &i);
 	set_carrier_cb(pdev, !i);
 
 	set_carrier_cb_tab[!!port] = set_carrier_cb;
@@ -182,7 +178,7 @@ static int hss_open(int port, void *pdev,
 
 	set_control(port ? CONTROL_HSS1_DTR_N : CONTROL_HSS0_DTR_N, 0);
 	output_control();
-	gpio_set_value(port ? GPIO_HSS1_RTS_N : GPIO_HSS0_RTS_N, 0);
+	gpio_line_set(port ? GPIO_HSS1_RTS_N : GPIO_HSS0_RTS_N, 0);
 	return 0;
 }
 
@@ -194,9 +190,8 @@ static void hss_close(int port, void *pdev)
 
 	set_control(port ? CONTROL_HSS1_DTR_N : CONTROL_HSS0_DTR_N, 1);
 	output_control();
-	gpio_set_value(port ? GPIO_HSS1_RTS_N : GPIO_HSS0_RTS_N, 1);
+	gpio_line_set(port ? GPIO_HSS1_RTS_N : GPIO_HSS0_RTS_N, 1);
 }
-
 
 /* Flash memory */
 static struct flash_platform_data flash_data = {
@@ -216,7 +211,6 @@ static struct platform_device device_flash = {
 	.resource	= &flash_resource,
 };
 
-
 /* I^2C interface */
 static struct i2c_gpio_platform_data i2c_data = {
 	.sda_pin	= GPIO_SDA,
@@ -228,7 +222,6 @@ static struct platform_device device_i2c = {
 	.id		= 0,
 	.dev		= { .platform_data = &i2c_data },
 };
-
 
 /* IXP425 2 UART ports */
 static struct resource uart_resources[] = {
@@ -276,7 +269,6 @@ static struct platform_device device_uarts = {
 	.resource		= uart_resources,
 };
 
-
 /* Built-in 10/100 Ethernet MAC interfaces */
 static struct eth_plat_info eth_plat[] = {
 	{
@@ -301,7 +293,6 @@ static struct platform_device device_eth_tab[] = {
 		.dev.platform_data	= eth_plat + 1,
 	}
 };
-
 
 /* IXP425 2 synchronous serial ports */
 static struct hss_plat_info hss_plat[] = {
@@ -329,7 +320,6 @@ static struct platform_device device_hss_tab[] = {
 		.dev.platform_data	= hss_plat + 1,
 	}
 };
-
 
 static struct platform_device *device_tab[7] __initdata = {
 	&device_flash,		/* index 0 */
@@ -414,21 +404,13 @@ static void __init gmlr_init(void)
 	if (hw_bits & CFG_HW_HAS_EEPROM)
 		device_tab[devices++] = &device_i2c; /* max index 6 */
 
-	gpio_request(GPIO_SCL, "SCL/clock");
-	gpio_request(GPIO_SDA, "SDA/data");
-	gpio_request(GPIO_STR, "strobe");
-	gpio_request(GPIO_HSS0_RTS_N, "HSS0 RTS");
-	gpio_request(GPIO_HSS1_RTS_N, "HSS1 RTS");
-	gpio_request(GPIO_HSS0_DCD_N, "HSS0 DCD");
-	gpio_request(GPIO_HSS1_DCD_N, "HSS1 DCD");
-
-	gpio_direction_output(GPIO_SCL, 1);
-	gpio_direction_output(GPIO_SDA, 1);
-	gpio_direction_output(GPIO_STR, 0);
-	gpio_direction_output(GPIO_HSS0_RTS_N, 1);
-	gpio_direction_output(GPIO_HSS1_RTS_N, 1);
-	gpio_direction_input(GPIO_HSS0_DCD_N);
-	gpio_direction_input(GPIO_HSS1_DCD_N);
+	gpio_line_config(GPIO_SCL, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_SDA, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_STR, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_HSS0_RTS_N, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_HSS1_RTS_N, IXP4XX_GPIO_OUT);
+	gpio_line_config(GPIO_HSS0_DCD_N, IXP4XX_GPIO_IN);
+	gpio_line_config(GPIO_HSS1_DCD_N, IXP4XX_GPIO_IN);
 	irq_set_irq_type(IXP4XX_GPIO_IRQ(GPIO_HSS0_DCD_N), IRQ_TYPE_EDGE_BOTH);
 	irq_set_irq_type(IXP4XX_GPIO_IRQ(GPIO_HSS1_DCD_N), IRQ_TYPE_EDGE_BOTH);
 
@@ -445,7 +427,6 @@ static void __init gmlr_init(void)
 
 	platform_add_devices(device_tab, devices);
 }
-
 
 #ifdef CONFIG_PCI
 static void __init gmlr_pci_preinit(void)
@@ -500,7 +481,6 @@ static int __init gmlr_pci_init(void)
 
 subsys_initcall(gmlr_pci_init);
 #endif /* CONFIG_PCI */
-
 
 MACHINE_START(GORAMO_MLR, "MultiLink")
 	/* Maintainer: Krzysztof Halasa */

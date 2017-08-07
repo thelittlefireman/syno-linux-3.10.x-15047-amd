@@ -83,7 +83,6 @@ static struct clksrc_clk clk_mout_mpll = {
 	.reg_src        = { .reg = S5P_CLK_SRC0, .shift = 4, .size = 1 },
 };
 
-
 static struct clksrc_clk clk_mout_apll = {
 	.clk    = {
 		.name           = "mout_apll",
@@ -1358,4 +1357,6 @@ void __init s5pc100_register_clocks(void)
 		s3c_disable_clocks(clk_cdev[ptr], 1);
 
 	s3c24xx_register_clock(&dummy_apb_pclk);
+
+	s3c_pwmclk_init();
 }

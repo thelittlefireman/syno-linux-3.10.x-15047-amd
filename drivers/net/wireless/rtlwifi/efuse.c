@@ -229,7 +229,6 @@ void read_efuse_byte(struct ieee80211_hw *hw, u16 _offset, u8 *pbuf)
 
 	*pbuf = (u8) (value32 & 0xff);
 }
-EXPORT_SYMBOL_GPL(read_efuse_byte);
 
 void read_efuse(struct ieee80211_hw *hw, u16 _offset, u16 _size_byte, u8 *pbuf)
 {
@@ -262,9 +261,9 @@ void read_efuse(struct ieee80211_hw *hw, u16 _offset, u16 _size_byte, u8 *pbuf)
 			    sizeof(u8), GFP_ATOMIC);
 	if (!efuse_tbl)
 		return;
-	efuse_word = kzalloc(EFUSE_MAX_WORD_UNIT * sizeof(u16 *), GFP_ATOMIC);
+	efuse_word = kmalloc(EFUSE_MAX_WORD_UNIT * sizeof(u16 *), GFP_ATOMIC);
 	if (!efuse_word)
-		goto out;
+		goto done;
 	for (i = 0; i < EFUSE_MAX_WORD_UNIT; i++) {
 		efuse_word[i] = kmalloc(efuse_max_section * sizeof(u16),
 					GFP_ATOMIC);
@@ -378,7 +377,6 @@ done:
 	for (i = 0; i < EFUSE_MAX_WORD_UNIT; i++)
 		kfree(efuse_word[i]);
 	kfree(efuse_word);
-out:
 	kfree(efuse_tbl);
 }
 
@@ -1204,18 +1202,20 @@ static void efuse_power_switch(struct ieee80211_hw *hw, u8 write, u8 pwrstate)
 
 static u16 efuse_get_current_size(struct ieee80211_hw *hw)
 {
+	int continual = true;
 	u16 efuse_addr = 0;
 	u8 hworden;
 	u8 efuse_data, word_cnts;
 
-	while (efuse_one_byte_read(hw, efuse_addr, &efuse_data) &&
-	       efuse_addr < EFUSE_MAX_SIZE) {
-		if (efuse_data == 0xFF)
-			break;
-
-		hworden = efuse_data & 0x0F;
-		word_cnts = efuse_calculate_word_cnts(hworden);
-		efuse_addr = efuse_addr + (word_cnts * 2) + 1;
+	while (continual && efuse_one_byte_read(hw, efuse_addr, &efuse_data)
+	       && (efuse_addr < EFUSE_MAX_SIZE)) {
+		if (efuse_data != 0xFF) {
+			hworden = efuse_data & 0x0F;
+			word_cnts = efuse_calculate_word_cnts(hworden);
+			efuse_addr = efuse_addr + (word_cnts * 2) + 1;
+		} else {
+			continual = false;
+		}
 	}
 
 	return efuse_addr;
@@ -1234,4 +1234,3 @@ static u8 efuse_calculate_word_cnts(u8 word_en)
 		word_cnts++;
 	return word_cnts;
 }
-

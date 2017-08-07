@@ -58,6 +58,7 @@
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
+#include <linux/init.h>
 #include <linux/skbuff.h>
 #include <linux/netdevice.h>
 #include <linux/slab.h>
@@ -288,7 +289,6 @@ static __u8 get_turnaround_time(struct sk_buff *skb)
 	else
 		return 7;
 }
-
 
 /*------------------------------------------------------------------*/
 /*
@@ -1144,7 +1144,6 @@ static int stir421x_patch_device(struct irda_usb_cb *self)
         return ret;
 }
 
-
 /********************** IRDA DEVICE CALLBACKS **********************/
 /*
  * Main calls from the IrDA/Network subsystem.
@@ -1152,7 +1151,6 @@ static int stir421x_patch_device(struct irda_usb_cb *self)
  * We only deal with the IrDA side of the business, the USB side will
  * be dealt with below...
  */
-
 
 /*------------------------------------------------------------------*/
 /*

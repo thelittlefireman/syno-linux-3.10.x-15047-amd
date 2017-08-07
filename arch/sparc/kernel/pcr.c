@@ -219,7 +219,6 @@ static int __init register_perf_hsvc(void)
 			return -ENODEV;
 		}
 
-
 		perf_hsvc_major = 1;
 		perf_hsvc_minor = 0;
 		if (sun4v_hvapi_register(perf_hsvc_group,

@@ -9,7 +9,6 @@
  * Support routines for initializing a PCI subsystem.
  */
 
-
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/pci.h>

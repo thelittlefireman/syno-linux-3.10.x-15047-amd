@@ -81,7 +81,7 @@ static bool ast_get_vbios_mode_info(struct drm_crtc *crtc, struct drm_display_mo
 	u32 refresh_rate_index = 0, mode_id, color_index, refresh_rate;
 	u32 hborder, vborder;
 
-	switch (crtc->primary->fb->bits_per_pixel) {
+	switch (crtc->fb->bits_per_pixel) {
 	case 8:
 		vbios_mode->std_table = &vbios_stdtable[VGAModeIndex];
 		color_index = VGAModeIndex - 1;
@@ -176,7 +176,7 @@ static bool ast_get_vbios_mode_info(struct drm_crtc *crtc, struct drm_display_mo
 		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x8e, mode_id & 0xff);
 
 		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x91, 0xa8);
-		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x92, crtc->primary->fb->bits_per_pixel);
+		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x92, crtc->fb->bits_per_pixel);
 		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x93, adjusted_mode->clock / 1000);
 		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x94, adjusted_mode->crtc_hdisplay);
 		ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x95, adjusted_mode->crtc_hdisplay >> 8);
@@ -186,7 +186,6 @@ static bool ast_get_vbios_mode_info(struct drm_crtc *crtc, struct drm_display_mo
 	}
 
 	return true;
-
 
 }
 static void ast_set_std_reg(struct drm_crtc *crtc, struct drm_display_mode *mode,
@@ -340,7 +339,7 @@ static void ast_set_offset_reg(struct drm_crtc *crtc)
 
 	u16 offset;
 
-	offset = crtc->primary->fb->pitches[0] >> 3;
+	offset = crtc->fb->pitches[0] >> 3;
 	ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0x13, (offset & 0xff));
 	ast_set_index_reg(ast, AST_IO_CRTC_PORT, 0xb0, (offset >> 8) & 0x3f);
 }
@@ -365,7 +364,7 @@ static void ast_set_ext_reg(struct drm_crtc *crtc, struct drm_display_mode *mode
 	struct ast_private *ast = crtc->dev->dev_private;
 	u8 jregA0 = 0, jregA3 = 0, jregA8 = 0;
 
-	switch (crtc->primary->fb->bits_per_pixel) {
+	switch (crtc->fb->bits_per_pixel) {
 	case 8:
 		jregA0 = 0x70;
 		jregA3 = 0x01;
@@ -404,7 +403,7 @@ static void ast_set_ext_reg(struct drm_crtc *crtc, struct drm_display_mode *mode
 	}
 }
 
-static void ast_set_sync_reg(struct drm_device *dev, struct drm_display_mode *mode,
+void ast_set_sync_reg(struct drm_device *dev, struct drm_display_mode *mode,
 		      struct ast_vbios_mode_info *vbios_mode)
 {
 	struct ast_private *ast = dev->dev_private;
@@ -415,10 +414,10 @@ static void ast_set_sync_reg(struct drm_device *dev, struct drm_display_mode *mo
 	ast_io_write8(ast, AST_IO_MISC_PORT_WRITE, jreg);
 }
 
-static bool ast_set_dac_reg(struct drm_crtc *crtc, struct drm_display_mode *mode,
+bool ast_set_dac_reg(struct drm_crtc *crtc, struct drm_display_mode *mode,
 		     struct ast_vbios_mode_info *vbios_mode)
 {
-	switch (crtc->primary->fb->bits_per_pixel) {
+	switch (crtc->fb->bits_per_pixel) {
 	case 8:
 		break;
 	default:
@@ -427,7 +426,7 @@ static bool ast_set_dac_reg(struct drm_crtc *crtc, struct drm_display_mode *mode
 	return true;
 }
 
-static void ast_set_start_address_crt1(struct drm_crtc *crtc, unsigned offset)
+void ast_set_start_address_crt1(struct drm_crtc *crtc, unsigned offset)
 {
 	struct ast_private *ast = crtc->dev->dev_private;
 	u32 addr;
@@ -490,7 +489,7 @@ static int ast_crtc_do_set_base(struct drm_crtc *crtc,
 		ast_bo_unreserve(bo);
 	}
 
-	ast_fb = to_ast_framebuffer(crtc->primary->fb);
+	ast_fb = to_ast_framebuffer(crtc->fb);
 	obj = ast_fb->obj;
 	bo = gem_to_ast_bo(obj);
 
@@ -509,6 +508,8 @@ static int ast_crtc_do_set_base(struct drm_crtc *crtc,
 		ret = ttm_bo_kmap(&bo->bo, 0, bo->bo.num_pages, &bo->kmap);
 		if (ret)
 			DRM_ERROR("failed to kmap fbcon\n");
+		else
+			ast_fbdev_set_base(ast, gpu_addr);
 	}
 	ast_bo_unreserve(bo);
 
@@ -574,7 +575,6 @@ static void ast_crtc_commit(struct drm_crtc *crtc)
 	ast_set_index_reg_mask(ast, AST_IO_SEQ_PORT, 0x1, 0xdf, 0);
 }
 
-
 static const struct drm_crtc_helper_funcs ast_crtc_helper_funcs = {
 	.dpms = ast_crtc_dpms,
 	.mode_fixup = ast_crtc_mode_fixup,
@@ -607,7 +607,6 @@ static void ast_crtc_gamma_set(struct drm_crtc *crtc, u16 *red, u16 *green,
 	ast_crtc_load_lut(crtc);
 }
 
-
 static void ast_crtc_destroy(struct drm_crtc *crtc)
 {
 	drm_crtc_cleanup(crtc);
@@ -623,7 +622,7 @@ static const struct drm_crtc_funcs ast_crtc_funcs = {
 	.destroy = ast_crtc_destroy,
 };
 
-static int ast_crtc_init(struct drm_device *dev)
+int ast_crtc_init(struct drm_device *dev)
 {
 	struct ast_crtc *crtc;
 	int i;
@@ -650,7 +649,6 @@ static void ast_encoder_destroy(struct drm_encoder *encoder)
 	kfree(encoder);
 }
 
-
 static struct drm_encoder *ast_best_single_encoder(struct drm_connector *connector)
 {
 	int enc_id = connector->encoder_ids[0];
@@ -667,7 +665,6 @@ static struct drm_encoder *ast_best_single_encoder(struct drm_connector *connect
 	}
 	return NULL;
 }
-
 
 static const struct drm_encoder_funcs ast_enc_funcs = {
 	.destroy = ast_encoder_destroy,
@@ -701,7 +698,6 @@ static void ast_encoder_commit(struct drm_encoder *encoder)
 
 }
 
-
 static const struct drm_encoder_helper_funcs ast_enc_helper_funcs = {
 	.dpms = ast_encoder_dpms,
 	.mode_fixup = ast_mode_fixup,
@@ -710,7 +706,7 @@ static const struct drm_encoder_helper_funcs ast_enc_helper_funcs = {
 	.mode_set = ast_encoder_mode_set,
 };
 
-static int ast_encoder_init(struct drm_device *dev)
+int ast_encoder_init(struct drm_device *dev)
 {
 	struct ast_encoder *ast_encoder;
 
@@ -777,7 +773,7 @@ static const struct drm_connector_funcs ast_connector_funcs = {
 	.destroy = ast_connector_destroy,
 };
 
-static int ast_connector_init(struct drm_device *dev)
+int ast_connector_init(struct drm_device *dev)
 {
 	struct ast_connector *ast_connector;
 	struct drm_connector *connector;
@@ -810,7 +806,7 @@ static int ast_connector_init(struct drm_device *dev)
 }
 
 /* allocate cursor cache and pin at start of VRAM */
-static int ast_cursor_init(struct drm_device *dev)
+int ast_cursor_init(struct drm_device *dev)
 {
 	struct ast_private *ast = dev->dev_private;
 	int size;
@@ -847,7 +843,7 @@ fail:
 	return ret;
 }
 
-static void ast_cursor_fini(struct drm_device *dev)
+void ast_cursor_fini(struct drm_device *dev)
 {
 	struct ast_private *ast = dev->dev_private;
 	ttm_bo_kunmap(&ast->cache_kmap);
@@ -965,7 +961,7 @@ static void ast_i2c_destroy(struct ast_i2c_chan *i2c)
 	kfree(i2c);
 }
 
-static void ast_show_cursor(struct drm_crtc *crtc)
+void ast_show_cursor(struct drm_crtc *crtc)
 {
 	struct ast_private *ast = crtc->dev->dev_private;
 	u8 jreg;
@@ -976,7 +972,7 @@ static void ast_show_cursor(struct drm_crtc *crtc)
 	ast_set_index_reg_mask(ast, AST_IO_CRTC_PORT, 0xcb, 0xfc, jreg);
 }
 
-static void ast_hide_cursor(struct drm_crtc *crtc)
+void ast_hide_cursor(struct drm_crtc *crtc)
 {
 	struct ast_private *ast = crtc->dev->dev_private;
 	ast_set_index_reg_mask(ast, AST_IO_CRTC_PORT, 0xcb, 0xfc, 0x00);
@@ -1012,8 +1008,8 @@ static u32 copy_cursor_image(u8 *src, u8 *dst, int width, int height)
 			srcdata32[1].ul = *((u32 *)(srcxor + 4)) & 0xf0f0f0f0;
 			data32.b[0] = srcdata32[0].b[1] | (srcdata32[0].b[0] >> 4);
 			data32.b[1] = srcdata32[0].b[3] | (srcdata32[0].b[2] >> 4);
-			data32.b[2] = srcdata32[0].b[1] | (srcdata32[1].b[0] >> 4);
-			data32.b[3] = srcdata32[0].b[3] | (srcdata32[1].b[2] >> 4);
+			data32.b[2] = srcdata32[1].b[1] | (srcdata32[1].b[0] >> 4);
+			data32.b[3] = srcdata32[1].b[3] | (srcdata32[1].b[2] >> 4);
 
 			writel(data32.ul, dstxor);
 			csum += data32.ul;

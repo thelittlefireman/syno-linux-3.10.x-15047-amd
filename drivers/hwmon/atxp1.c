@@ -147,9 +147,10 @@ static ssize_t atxp1_storevcore(struct device *dev,
 
 	/* Calculate VID */
 	vid = vid_to_reg(vcore, data->vrm);
+
 	if (vid < 0) {
 		dev_err(dev, "VID calculation failed.\n");
-		return vid;
+		return -1;
 	}
 
 	/*
@@ -295,7 +296,6 @@ static const struct attribute_group atxp1_group = {
 	.attrs = atxp1_attributes,
 };
 
-
 /* Return 0 if detection is successful, -ENODEV otherwise */
 static int atxp1_detect(struct i2c_client *new_client,
 			struct i2c_board_info *info)
@@ -353,6 +353,8 @@ static int atxp1_probe(struct i2c_client *new_client,
 	data->vrm = vid_which_vrm();
 
 	i2c_set_clientdata(new_client, data);
+	data->valid = 0;
+
 	mutex_init(&data->update_lock);
 
 	/* Register sysfs hooks */

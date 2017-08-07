@@ -20,7 +20,6 @@
  * published by the Free Software Foundation.
  */
 
-
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
@@ -35,7 +34,6 @@
 #include <media/videobuf-dma-sg.h>
 
 #include <linux/omap-dma.h>
-
 
 #define DRIVER_NAME		"omap1-camera"
 #define DRIVER_VERSION		"0.0.2"
@@ -103,12 +101,10 @@
 
 /* end of OMAP1 Camera Interface registers */
 
-
 #define SOCAM_BUS_FLAGS	(V4L2_MBUS_MASTER | \
 			V4L2_MBUS_HSYNC_ACTIVE_HIGH | V4L2_MBUS_VSYNC_ACTIVE_HIGH | \
 			V4L2_MBUS_PCLK_SAMPLE_RISING | V4L2_MBUS_PCLK_SAMPLE_FALLING | \
 			V4L2_MBUS_DATA_ACTIVE_HIGH)
-
 
 #define FIFO_SIZE		((THRESHOLD_MASK >> THRESHOLD_SHIFT) + 1)
 #define FIFO_SHIFT		__fls(FIFO_SIZE)
@@ -129,9 +125,7 @@
 #define DMA_SYNC		OMAP_DMA_SYNC_FRAME
 #define THRESHOLD_LEVEL		DMA_FRAME_SIZE
 
-
 #define MAX_VIDEO_MEM		4	/* arbitrary video memory limit in MB */
-
 
 /*
  * Structures
@@ -150,6 +144,7 @@ struct omap1_cam_buf {
 
 struct omap1_cam_dev {
 	struct soc_camera_host		soc_host;
+	struct soc_camera_device	*icd;
 	struct clk			*clk;
 
 	unsigned int			irq;
@@ -178,7 +173,6 @@ struct omap1_cam_dev {
 
 	u32				reg_cache[0];
 };
-
 
 static void cam_write(struct omap1_cam_dev *pcdev, u16 reg, u32 val)
 {
@@ -563,7 +557,7 @@ static void videobuf_done(struct omap1_cam_dev *pcdev,
 {
 	struct omap1_cam_buf *buf = pcdev->active;
 	struct videobuf_buffer *vb;
-	struct device *dev = pcdev->soc_host.icd->parent;
+	struct device *dev = pcdev->icd->parent;
 
 	if (WARN_ON(!buf)) {
 		suspend_capture(pcdev);
@@ -789,7 +783,7 @@ out:
 static irqreturn_t cam_isr(int irq, void *data)
 {
 	struct omap1_cam_dev *pcdev = data;
-	struct device *dev = pcdev->soc_host.icd->parent;
+	struct device *dev = pcdev->icd->parent;
 	struct omap1_cam_buf *buf = pcdev->active;
 	u32 it_status;
 	unsigned long flags;
@@ -879,7 +873,6 @@ static struct videobuf_queue_ops omap1_videobuf_ops = {
 	.buf_release	= omap1_videobuf_release,
 };
 
-
 /*
  * SOC Camera host operations
  */
@@ -893,28 +886,18 @@ static void sensor_reset(struct omap1_cam_dev *pcdev, bool reset)
 		CAM_WRITE(pcdev, GPIO, !reset);
 }
 
-static int omap1_cam_add_device(struct soc_camera_device *icd)
-{
-	dev_dbg(icd->parent, "OMAP1 Camera driver attached to camera %d\n",
-			icd->devnum);
-
-	return 0;
-}
-
-static void omap1_cam_remove_device(struct soc_camera_device *icd)
-{
-	dev_dbg(icd->parent,
-		"OMAP1 Camera driver detached from camera %d\n", icd->devnum);
-}
-
 /*
  * The following two functions absolutely depend on the fact, that
  * there can be only one camera on OMAP1 camera sensor interface
  */
-static int omap1_cam_clock_start(struct soc_camera_host *ici)
+static int omap1_cam_add_device(struct soc_camera_device *icd)
 {
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct omap1_cam_dev *pcdev = ici->priv;
 	u32 ctrlclock;
+
+	if (pcdev->icd)
+		return -EBUSY;
 
 	clk_enable(pcdev->clk);
 
@@ -950,13 +933,20 @@ static int omap1_cam_clock_start(struct soc_camera_host *ici)
 
 	sensor_reset(pcdev, false);
 
+	pcdev->icd = icd;
+
+	dev_dbg(icd->parent, "OMAP1 Camera driver attached to camera %d\n",
+			icd->devnum);
 	return 0;
 }
 
-static void omap1_cam_clock_stop(struct soc_camera_host *ici)
+static void omap1_cam_remove_device(struct soc_camera_device *icd)
 {
+	struct soc_camera_host *ici = to_soc_camera_host(icd->parent);
 	struct omap1_cam_dev *pcdev = ici->priv;
 	u32 ctrlclock;
+
+	BUG_ON(icd != pcdev->icd);
 
 	suspend_capture(pcdev);
 	disable_capture(pcdev);
@@ -975,6 +965,11 @@ static void omap1_cam_clock_stop(struct soc_camera_host *ici)
 	CAM_WRITE(pcdev, CTRLCLOCK, ctrlclock & ~MCLK_EN);
 
 	clk_disable(pcdev->clk);
+
+	pcdev->icd = NULL;
+
+	dev_dbg(icd->parent,
+		"OMAP1 Camera driver detached from camera %d\n", icd->devnum);
 }
 
 /* Duplicate standard formats based on host capability of byte swapping */
@@ -1495,7 +1490,7 @@ static int omap1_cam_set_bus_param(struct soc_camera_device *icd)
 	if (ctrlclock & LCLK_EN)
 		CAM_WRITE(pcdev, CTRLCLOCK, ctrlclock);
 
-	/* select bus endianness */
+	/* select bus endianess */
 	xlate = soc_camera_xlate_by_fourcc(icd, pixfmt);
 	fmt = xlate->host_fmt;
 
@@ -1532,8 +1527,6 @@ static struct soc_camera_host_ops omap1_host_ops = {
 	.owner		= THIS_MODULE,
 	.add		= omap1_cam_add_device,
 	.remove		= omap1_cam_remove_device,
-	.clock_start	= omap1_cam_clock_start,
-	.clock_stop	= omap1_cam_clock_stop,
 	.get_formats	= omap1_cam_get_formats,
 	.set_crop	= omap1_cam_set_crop,
 	.set_fmt	= omap1_cam_set_fmt,

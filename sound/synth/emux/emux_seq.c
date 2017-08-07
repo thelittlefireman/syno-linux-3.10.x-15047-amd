@@ -42,7 +42,6 @@ static struct snd_midi_op emux_ops = {
 	snd_emux_sysex,
 };
 
-
 /*
  * number of MIDI channels
  */
@@ -113,7 +112,6 @@ snd_emux_init_seq(struct snd_emux *emu, struct snd_card *card, int index)
 	return 0;
 }
 
-
 /*
  * Detach from the ports that were set up for this synthesizer and
  * destroy the kernel client.
@@ -124,14 +122,11 @@ snd_emux_detach_seq(struct snd_emux *emu)
 	if (emu->voices)
 		snd_emux_terminate_all(emu);
 		
-	mutex_lock(&emu->register_mutex);
 	if (emu->client >= 0) {
 		snd_seq_delete_kernel_client(emu->client);
 		emu->client = -1;
 	}
-	mutex_unlock(&emu->register_mutex);
 }
-
 
 /*
  * create a sequencer port and channel_set
@@ -183,7 +178,6 @@ snd_emux_create_port(struct snd_emux *emu, char *name,
 	return p;
 }
 
-
 /*
  * release memory block for port
  */
@@ -202,7 +196,6 @@ free_port(void *private_data)
 	}
 }
 
-
 #define DEFAULT_DRUM_FLAGS	(1<<9)
 
 /*
@@ -216,7 +209,6 @@ snd_emux_init_port(struct snd_emux_port *p)
 
 	snd_emux_reset_port(p);
 }
-
 
 /*
  * reset port
@@ -246,7 +238,6 @@ snd_emux_reset_port(struct snd_emux_port *port)
 	}
 }
 
-
 /*
  * input sequencer event
  */
@@ -265,12 +256,11 @@ snd_emux_event_input(struct snd_seq_event *ev, int direct, void *private_data,
 	return 0;
 }
 
-
 /*
  * increment usage count
  */
-int
-snd_emux_inc_count(struct snd_emux *emu)
+static int
+__snd_emux_inc_count(struct snd_emux *emu)
 {
 	emu->used++;
 	if (!try_module_get(emu->ops.owner))
@@ -284,12 +274,21 @@ snd_emux_inc_count(struct snd_emux *emu)
 	return 1;
 }
 
+int snd_emux_inc_count(struct snd_emux *emu)
+{
+	int ret;
+
+	mutex_lock(&emu->register_mutex);
+	ret = __snd_emux_inc_count(emu);
+	mutex_unlock(&emu->register_mutex);
+	return ret;
+}
 
 /*
  * decrease usage count
  */
-void
-snd_emux_dec_count(struct snd_emux *emu)
+static void
+__snd_emux_dec_count(struct snd_emux *emu)
 {
 	module_put(emu->card->module);
 	emu->used--;
@@ -298,6 +297,12 @@ snd_emux_dec_count(struct snd_emux *emu)
 	module_put(emu->ops.owner);
 }
 
+void snd_emux_dec_count(struct snd_emux *emu)
+{
+	mutex_lock(&emu->register_mutex);
+	__snd_emux_dec_count(emu);
+	mutex_unlock(&emu->register_mutex);
+}
 
 /*
  * Routine that is called upon a first use of a particular port
@@ -317,7 +322,7 @@ snd_emux_use(void *private_data, struct snd_seq_port_subscribe *info)
 
 	mutex_lock(&emu->register_mutex);
 	snd_emux_init_port(p);
-	snd_emux_inc_count(emu);
+	__snd_emux_inc_count(emu);
 	mutex_unlock(&emu->register_mutex);
 	return 0;
 }
@@ -340,11 +345,10 @@ snd_emux_unuse(void *private_data, struct snd_seq_port_subscribe *info)
 
 	mutex_lock(&emu->register_mutex);
 	snd_emux_sounds_off_all(p);
-	snd_emux_dec_count(emu);
+	__snd_emux_dec_count(emu);
 	mutex_unlock(&emu->register_mutex);
 	return 0;
 }
-
 
 /*
  * attach virtual rawmidi devices

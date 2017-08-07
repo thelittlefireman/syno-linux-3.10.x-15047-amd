@@ -20,7 +20,6 @@
 extern int (*ixp4xx_pci_read)(u32 addr, u32 cmd, u32* data);
 extern int ixp4xx_pci_write(u32 addr, u32 cmd, u32 data);
 
-
 /*
  * IXP4xx provides two methods of accessing PCI memory space:
  *
@@ -48,10 +47,9 @@ extern int ixp4xx_pci_write(u32 addr, u32 cmd, u32 data);
  * fallback to the default.
  */
 
-extern unsigned long pcibios_min_mem;
 static inline int is_pci_memory(u32 addr)
 {
-	return (addr >= pcibios_min_mem) && (addr <= 0x4FFFFFFF);
+	return (addr >= PCIBIOS_MIN_MEM) && (addr <= 0x4FFFFFFF);
 }
 
 #define writeb(v, p)			__indirect_writeb(v, p)
@@ -201,7 +199,6 @@ static inline void __indirect_readsl(const volatile void __iomem *bus_addr,
 	while (count--)
 		*vaddr++ = readl(bus_addr);
 }
-
 
 /*
  * We can use the built-in functions b/c they end up calling writeb/readb

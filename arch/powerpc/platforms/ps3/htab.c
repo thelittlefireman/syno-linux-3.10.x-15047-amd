@@ -41,7 +41,6 @@ enum ps3_lpar_vas_id {
 	PS3_LPAR_VAS_ID_CURRENT = 0,
 };
 
-
 static DEFINE_SPINLOCK(ps3_htab_lock);
 
 static long ps3_hpte_insert(unsigned long hpte_group, unsigned long vpn,
@@ -109,8 +108,7 @@ static long ps3_hpte_remove(unsigned long hpte_group)
 }
 
 static long ps3_hpte_updatepp(unsigned long slot, unsigned long newpp,
-			      unsigned long vpn, int psize, int apsize,
-			      int ssize, int local)
+	unsigned long vpn, int psize, int ssize, int local)
 {
 	int result;
 	u64 hpte_v, want_v, hpte_rs;
@@ -163,7 +161,7 @@ static void ps3_hpte_updateboltedpp(unsigned long newpp, unsigned long ea,
 }
 
 static void ps3_hpte_invalidate(unsigned long slot, unsigned long vpn,
-				int psize, int apsize, int ssize, int local)
+	int psize, int ssize, int local)
 {
 	unsigned long flags;
 	int result;
@@ -204,4 +202,3 @@ void __init ps3_hpte_init(unsigned long htab_size)
 
 	ppc64_pft_size = __ilog2(htab_size);
 }
-

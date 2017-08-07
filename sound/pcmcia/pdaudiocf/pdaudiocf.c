@@ -112,8 +112,7 @@ static int snd_pdacf_probe(struct pcmcia_device *link)
 		return -ENODEV; /* disabled explicitly */
 
 	/* ok, create a card instance */
-	err = snd_card_new(&link->dev, index[i], id[i], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[i], id[i], THIS_MODULE, 0, &card);
 	if (err < 0) {
 		snd_printk(KERN_ERR "pdacf: cannot create a card instance\n");
 		return err;
@@ -132,6 +131,8 @@ static int snd_pdacf_probe(struct pcmcia_device *link)
 		return err;
 	}
 
+	snd_card_set_dev(card, &link->dev);
+
 	pdacf->index = i;
 	card_list[i] = card;
 
@@ -147,7 +148,6 @@ static int snd_pdacf_probe(struct pcmcia_device *link)
 
 	return pdacf_config(link);
 }
-
 
 /**
  * snd_pdacf_assign_resources - initialize the hardware and card instance.
@@ -187,7 +187,6 @@ static int snd_pdacf_assign_resources(struct snd_pdacf *pdacf, int port, int irq
 
 	return 0;
 }
-
 
 /*
  * snd_pdacf_detach - detach callback for cs

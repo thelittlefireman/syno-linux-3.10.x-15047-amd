@@ -33,7 +33,6 @@
 #include <linux/of_irq.h>
 #include <linux/regulator/consumer.h>
 #include <linux/of_platform.h>
-#include <linux/err.h>
 
 #include <linux/iio/iio.h>
 #include <linux/iio/machine.h>
@@ -262,7 +261,7 @@ static int exynos_adc_probe(struct platform_device *pdev)
 	if (!np)
 		return ret;
 
-	indio_dev = devm_iio_device_alloc(&pdev->dev, sizeof(struct exynos_adc));
+	indio_dev = iio_device_alloc(sizeof(struct exynos_adc));
 	if (!indio_dev) {
 		dev_err(&pdev->dev, "failed allocating iio device\n");
 		return -ENOMEM;
@@ -271,19 +270,24 @@ static int exynos_adc_probe(struct platform_device *pdev)
 	info = iio_priv(indio_dev);
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	info->regs = devm_ioremap_resource(&pdev->dev, mem);
-	if (IS_ERR(info->regs))
-		return PTR_ERR(info->regs);
+	info->regs = devm_request_and_ioremap(&pdev->dev, mem);
+	if (!info->regs) {
+		ret = -ENOMEM;
+		goto err_iio;
+	}
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	info->enable_reg = devm_ioremap_resource(&pdev->dev, mem);
-	if (IS_ERR(info->enable_reg))
-		return PTR_ERR(info->enable_reg);
+	info->enable_reg = devm_request_and_ioremap(&pdev->dev, mem);
+	if (!info->enable_reg) {
+		ret = -ENOMEM;
+		goto err_iio;
+	}
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq < 0) {
 		dev_err(&pdev->dev, "no irq resource?\n");
-		return irq;
+		ret = irq;
+		goto err_iio;
 	}
 
 	info->irq = irq;
@@ -295,7 +299,7 @@ static int exynos_adc_probe(struct platform_device *pdev)
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed requesting irq, irq = %d\n",
 							info->irq);
-		return ret;
+		goto err_iio;
 	}
 
 	writel(1, info->enable_reg);
@@ -361,6 +365,8 @@ err_iio_dev:
 	iio_device_unregister(indio_dev);
 err_irq:
 	free_irq(info->irq, info);
+err_iio:
+	iio_device_free(indio_dev);
 	return ret;
 }
 
@@ -376,6 +382,7 @@ static int exynos_adc_remove(struct platform_device *pdev)
 	writel(0, info->enable_reg);
 	iio_device_unregister(indio_dev);
 	free_irq(info->irq, info);
+	iio_device_free(indio_dev);
 
 	return 0;
 }

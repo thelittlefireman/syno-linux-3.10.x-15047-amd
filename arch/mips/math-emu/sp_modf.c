@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754sp.h"
 
 /* modf function is always exact for a finite number

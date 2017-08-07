@@ -709,8 +709,6 @@ static struct stv0299_config philips_su1278_tt_config = {
 	.set_symbol_rate = philips_su1278_tt_set_symbol_rate,
 };
 
-
-
 static int philips_tdm1316l_tuner_init(struct dvb_frontend *fe)
 {
 	struct budget_ci *budget_ci = (struct budget_ci *) fe->dvb->priv;
@@ -1280,7 +1278,7 @@ static struct stb0899_config tt3200_config = {
 	.demod_address 		= 0x68,
 
 	.xtal_freq		= 27000000,
-	.inversion		= IQ_SWAP_ON,
+	.inversion		= IQ_SWAP_ON, /* 1 */
 
 	.lo_clk			= 76500000,
 	.hi_clk			= 99000000,

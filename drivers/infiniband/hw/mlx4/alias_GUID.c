@@ -66,7 +66,6 @@ struct mlx4_next_alias_guid_work {
 	struct mlx4_sriov_alias_guid_info_rec_det rec_det;
 };
 
-
 void mlx4_ib_update_cache_on_guid_change(struct mlx4_ib_dev *dev, int block_num,
 					 u8 port_num, u8 *p_data)
 {
@@ -112,7 +111,6 @@ static __be64 get_cached_alias_guid(struct mlx4_ib_dev *dev, int port, int index
 	return *(__be64 *)&dev->sriov.demux[port - 1].guid_cache[index];
 }
 
-
 ib_sa_comp_mask mlx4_ib_get_aguid_comp_mask_from_ix(int index)
 {
 	return IB_SA_COMP_MASK(4 + index);
@@ -154,7 +152,7 @@ void mlx4_ib_notify_slaves_on_guid_change(struct mlx4_ib_dev *dev,
 			continue;
 
 		slave_id = (block_num * NUM_ALIAS_GUID_IN_REC) + i ;
-		if (slave_id >= dev->dev->num_vfs + 1)
+		if (slave_id >= dev->dev->num_slaves)
 			return;
 		tmp_cur_ag = *(__be64 *)&p_data[i * GUID_REC_SIZE];
 		form_cache_ag = get_cached_alias_guid(dev, port_num,
@@ -551,7 +549,6 @@ static void alias_guid_work(struct work_struct *work)
 out:
 	kfree(rec);
 }
-
 
 void mlx4_ib_init_alias_guid_work(struct mlx4_ib_dev *dev, int port)
 {

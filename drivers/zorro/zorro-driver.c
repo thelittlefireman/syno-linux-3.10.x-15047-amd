@@ -14,7 +14,6 @@
 #include <linux/module.h>
 #include <linux/zorro.h>
 
-
     /**
      *  zorro_match_device - Tell if a Zorro device structure has a matching
      *                       Zorro device id structure
@@ -39,7 +38,6 @@ zorro_match_device(const struct zorro_device_id *ids,
 }
 EXPORT_SYMBOL(zorro_match_device);
 
-
 static int zorro_device_probe(struct device *dev)
 {
 	int error = 0;
@@ -60,7 +58,6 @@ static int zorro_device_probe(struct device *dev)
 	return error;
 }
 
-
 static int zorro_device_remove(struct device *dev)
 {
 	struct zorro_dev *z = to_zorro_dev(dev);
@@ -73,7 +70,6 @@ static int zorro_device_remove(struct device *dev)
 	}
 	return 0;
 }
-
 
     /**
      *  zorro_register_driver - register a new Zorro driver
@@ -94,7 +90,6 @@ int zorro_register_driver(struct zorro_driver *drv)
 }
 EXPORT_SYMBOL(zorro_register_driver);
 
-
     /**
      *  zorro_unregister_driver - unregister a zorro driver
      *  @drv: the driver structure to unregister
@@ -110,7 +105,6 @@ void zorro_unregister_driver(struct zorro_driver *drv)
 	driver_unregister(&drv->driver);
 }
 EXPORT_SYMBOL(zorro_unregister_driver);
-
 
     /**
      *  zorro_bus_match - Tell if a Zorro device structure has a matching Zorro
@@ -161,15 +155,13 @@ static int zorro_uevent(struct device *dev, struct kobj_uevent_env *env)
 }
 
 struct bus_type zorro_bus_type = {
-	.name     = "zorro",
-	.dev_name = "zorro",
-	.match    = zorro_bus_match,
-	.uevent   = zorro_uevent,
-	.probe    = zorro_device_probe,
-	.remove   = zorro_device_remove,
+	.name	= "zorro",
+	.match	= zorro_bus_match,
+	.uevent	= zorro_uevent,
+	.probe	= zorro_device_probe,
+	.remove	= zorro_device_remove,
 };
 EXPORT_SYMBOL(zorro_bus_type);
-
 
 static int __init zorro_driver_init(void)
 {
@@ -177,4 +169,3 @@ static int __init zorro_driver_init(void)
 }
 
 postcore_initcall(zorro_driver_init);
-

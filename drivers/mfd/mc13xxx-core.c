@@ -158,6 +158,11 @@ int mc13xxx_reg_read(struct mc13xxx *mc13xxx, unsigned int offset, u32 *val)
 {
 	int ret;
 
+	BUG_ON(!mutex_is_locked(&mc13xxx->lock));
+
+	if (offset > MC13XXX_NUMREGS)
+		return -EINVAL;
+
 	ret = regmap_read(mc13xxx->regmap, offset, val);
 	dev_vdbg(mc13xxx->dev, "[0x%02x] -> 0x%06x\n", offset, *val);
 
@@ -167,9 +172,11 @@ EXPORT_SYMBOL(mc13xxx_reg_read);
 
 int mc13xxx_reg_write(struct mc13xxx *mc13xxx, unsigned int offset, u32 val)
 {
+	BUG_ON(!mutex_is_locked(&mc13xxx->lock));
+
 	dev_vdbg(mc13xxx->dev, "[0x%02x] <- 0x%06x\n", offset, val);
 
-	if (val >= BIT(24))
+	if (offset > MC13XXX_NUMREGS || val > 0xffffff)
 		return -EINVAL;
 
 	return regmap_write(mc13xxx->regmap, offset, val);
@@ -179,6 +186,7 @@ EXPORT_SYMBOL(mc13xxx_reg_write);
 int mc13xxx_reg_rmw(struct mc13xxx *mc13xxx, unsigned int offset,
 		u32 mask, u32 val)
 {
+	BUG_ON(!mutex_is_locked(&mc13xxx->lock));
 	BUG_ON(val & ~mask);
 	dev_vdbg(mc13xxx->dev, "[0x%02x] <- 0x%06x (mask: 0x%06x)\n",
 			offset, val, mask);
@@ -636,36 +644,42 @@ static inline int mc13xxx_probe_flags_dt(struct mc13xxx *mc13xxx)
 }
 #endif
 
-int mc13xxx_common_init(struct device *dev)
+int mc13xxx_common_init(struct mc13xxx *mc13xxx,
+		struct mc13xxx_platform_data *pdata, int irq)
 {
-	struct mc13xxx_platform_data *pdata = dev_get_platdata(dev);
-	struct mc13xxx *mc13xxx = dev_get_drvdata(dev);
 	int ret;
 	u32 revision;
 
-	mc13xxx->dev = dev;
+	mc13xxx_lock(mc13xxx);
 
 	ret = mc13xxx_reg_read(mc13xxx, MC13XXX_REVISION, &revision);
 	if (ret)
-		return ret;
+		goto err_revision;
 
 	mc13xxx->variant->print_revision(mc13xxx, revision);
 
 	/* mask all irqs */
 	ret = mc13xxx_reg_write(mc13xxx, MC13XXX_IRQMASK0, 0x00ffffff);
 	if (ret)
-		return ret;
+		goto err_mask;
 
 	ret = mc13xxx_reg_write(mc13xxx, MC13XXX_IRQMASK1, 0x00ffffff);
 	if (ret)
-		return ret;
+		goto err_mask;
 
-	ret = request_threaded_irq(mc13xxx->irq, NULL, mc13xxx_irq_thread,
+	ret = request_threaded_irq(irq, NULL, mc13xxx_irq_thread,
 			IRQF_ONESHOT | IRQF_TRIGGER_HIGH, "mc13xxx", mc13xxx);
-	if (ret)
-		return ret;
 
-	mutex_init(&mc13xxx->lock);
+	if (ret) {
+err_mask:
+err_revision:
+		mc13xxx_unlock(mc13xxx);
+		return ret;
+	}
+
+	mc13xxx->irq = irq;
+
+	mc13xxx_unlock(mc13xxx);
 
 	if (mc13xxx_probe_flags_dt(mc13xxx) < 0 && pdata)
 		mc13xxx->flags = pdata->flags;
@@ -701,17 +715,13 @@ int mc13xxx_common_init(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(mc13xxx_common_init);
 
-int mc13xxx_common_exit(struct device *dev)
+void mc13xxx_common_cleanup(struct mc13xxx *mc13xxx)
 {
-	struct mc13xxx *mc13xxx = dev_get_drvdata(dev);
-
 	free_irq(mc13xxx->irq, mc13xxx);
-	mfd_remove_devices(dev);
-	mutex_destroy(&mc13xxx->lock);
 
-	return 0;
+	mfd_remove_devices(mc13xxx->dev);
 }
-EXPORT_SYMBOL_GPL(mc13xxx_common_exit);
+EXPORT_SYMBOL_GPL(mc13xxx_common_cleanup);
 
 MODULE_DESCRIPTION("Core driver for Freescale MC13XXX PMIC");
 MODULE_AUTHOR("Uwe Kleine-Koenig <u.kleine-koenig@pengutronix.de>");

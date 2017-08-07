@@ -18,6 +18,8 @@
 
 #include "internal.h"
 
+#define PREFIX "ACPI: "
+
 ACPI_MODULE_NAME("cmos rtc");
 
 static const struct acpi_device_id acpi_cmos_rtc_ids[] = {

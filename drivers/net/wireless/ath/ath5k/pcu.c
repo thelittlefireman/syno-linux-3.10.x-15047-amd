@@ -144,13 +144,11 @@ ath5k_hw_get_frame_duration(struct ath5k_hw *ah, enum ieee80211_band band,
 		sifs = AR5K_INIT_SIFS_HALF_RATE;
 		preamble *= 2;
 		sym_time *= 2;
-		bitrate = DIV_ROUND_UP(bitrate, 2);
 		break;
 	case AR5K_BWMODE_5MHZ:
 		sifs = AR5K_INIT_SIFS_QUARTER_RATE;
 		preamble *= 4;
 		sym_time *= 4;
-		bitrate = DIV_ROUND_UP(bitrate, 4);
 		break;
 	default:
 		sifs = AR5K_INIT_SIFS_DEFAULT_BG;
@@ -252,7 +250,6 @@ ath5k_hw_update_mib_counters(struct ath5k_hw *ah)
 	stats->beacons += ath5k_hw_reg_read(ah, AR5K_BEACON_CNT);
 }
 
-
 /******************\
 * ACK/CTS Timeouts *
 \******************/
@@ -353,7 +350,6 @@ ath5k_hw_set_cts_timeout(struct ath5k_hw *ah, unsigned int timeout)
 
 	return 0;
 }
-
 
 /*******************\
 * RX filter Control *
@@ -543,7 +539,6 @@ ath5k_hw_set_rx_filter(struct ath5k_hw *ah, u32 filter)
 		ath5k_hw_reg_write(ah, data, AR5K_PHY_ERR_FIL);
 
 }
-
 
 /****************\
 * Beacon control *

@@ -56,7 +56,6 @@ static irqreturn_t aectc_irq(int irq, struct uio_info *dev_info)
 	void __iomem *int_flag = dev_info->priv + INTA_DRVR_ADDR;
 	unsigned char status = ioread8(int_flag);
 
-
 	if ((status & INTA_ENABLED_FLAG) && (status & INTA_FLAG)) {
 		/* application writes 0x00 to 0x2F to get next interrupt */
 		status = ioread8(dev_info->priv + MAILBOX);
@@ -147,6 +146,7 @@ static void remove(struct pci_dev *pdev)
 	uio_unregister_device(info);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 	iounmap(info->priv);
 
 	kfree(info);
@@ -159,5 +159,17 @@ static struct pci_driver pci_driver = {
 	.remove = remove,
 };
 
-module_pci_driver(pci_driver);
+static int __init aectc_init(void)
+{
+	return pci_register_driver(&pci_driver);
+}
+
+static void __exit aectc_exit(void)
+{
+	pci_unregister_driver(&pci_driver);
+}
+
 MODULE_LICENSE("GPL");
+
+module_init(aectc_init);
+module_exit(aectc_exit);

@@ -18,6 +18,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/dma-mapping.h>
@@ -69,7 +70,6 @@ int pxa2xx_spi_map_dma_buffers(struct driver_data *drv_data)
 		drv_data->rx_map_len = 4;
 	} else
 		drv_data->rx_map_len = drv_data->len;
-
 
 	/* Modify setup if tx buffer is null */
 	if (drv_data->tx == NULL) {

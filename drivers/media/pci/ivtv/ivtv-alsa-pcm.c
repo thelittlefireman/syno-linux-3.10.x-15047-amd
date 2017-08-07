@@ -159,6 +159,12 @@ static int snd_ivtv_pcm_capture_open(struct snd_pcm_substream *substream)
 
 	/* Instruct the CX2341[56] to start sending packets */
 	snd_ivtv_lock(itvsc);
+
+	if (ivtv_init_on_first_open(itv)) {
+		snd_ivtv_unlock(itvsc);
+		return -ENXIO;
+	}
+
 	s = &itv->streams[IVTV_ENC_STREAM_TYPE_PCM];
 
 	v4l2_fh_init(&item.fh, s->vdev);
@@ -178,7 +184,6 @@ static int snd_ivtv_pcm_capture_open(struct snd_pcm_substream *substream)
 		snd_ivtv_unlock(itvsc);
 		return 0;
 	}
-
 
 	runtime->hw = snd_ivtv_hw_capture;
 	snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
@@ -227,7 +232,6 @@ static int snd_ivtv_pcm_ioctl(struct snd_pcm_substream *substream,
 	snd_ivtv_unlock(itvsc);
 	return ret;
 }
-
 
 static int snd_pcm_alloc_vmalloc_buffer(struct snd_pcm_substream *subs,
 					size_t size)

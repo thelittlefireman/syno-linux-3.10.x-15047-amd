@@ -87,7 +87,6 @@ static int misc_seq_show(struct seq_file *seq, void *v)
 	return 0;
 }
 
-
 static const struct seq_operations misc_seq_ops = {
 	.start = misc_seq_start,
 	.next  = misc_seq_next,
@@ -114,7 +113,7 @@ static int misc_open(struct inode * inode, struct file * file)
 	int minor = iminor(inode);
 	struct miscdevice *c;
 	int err = -ENODEV;
-	const struct file_operations *new_fops = NULL;
+	const struct file_operations *old_fops, *new_fops = NULL;
 
 	mutex_lock(&misc_mtx);
 	
@@ -141,11 +140,17 @@ static int misc_open(struct inode * inode, struct file * file)
 	}
 
 	err = 0;
-	replace_fops(file, new_fops);
+	old_fops = file->f_op;
+	file->f_op = new_fops;
 	if (file->f_op->open) {
 		file->private_data = c;
-		err = file->f_op->open(inode,file);
+		err=file->f_op->open(inode,file);
+		if (err) {
+			fops_put(file->f_op);
+			file->f_op = fops_get(old_fops);
+		}
 	}
+	fops_put(old_fops);
 fail:
 	mutex_unlock(&misc_mtx);
 	return err;
@@ -187,8 +192,8 @@ int misc_register(struct miscdevice * misc)
 	if (misc->minor == MISC_DYNAMIC_MINOR) {
 		int i = find_first_zero_bit(misc_minors, DYNAMIC_MINORS);
 		if (i >= DYNAMIC_MINORS) {
-			err = -EBUSY;
-			goto out;
+			mutex_unlock(&misc_mtx);
+			return -EBUSY;
 		}
 		misc->minor = DYNAMIC_MINORS - i - 1;
 		set_bit(i, misc_minors);
@@ -197,8 +202,8 @@ int misc_register(struct miscdevice * misc)
 
 		list_for_each_entry(c, &misc_list, list) {
 			if (c->minor == misc->minor) {
-				err = -EBUSY;
-				goto out;
+				mutex_unlock(&misc_mtx);
+				return -EBUSY;
 			}
 		}
 	}

@@ -117,7 +117,6 @@ struct streamzap_ir {
 	char			phys[64];
 };
 
-
 /* local function prototypes */
 static int streamzap_probe(struct usb_interface *interface,
 			   const struct usb_device_id *id);
@@ -322,7 +321,7 @@ static struct rc_dev *streamzap_init_rc_dev(struct streamzap_ir *sz)
 	rdev->dev.parent = dev;
 	rdev->priv = sz;
 	rdev->driver_type = RC_DRIVER_IR_RAW;
-	rc_set_allowed_protocols(rdev, RC_BIT_ALL);
+	rdev->allowed_protos = RC_BIT_ALL;
 	rdev->driver_name = DRIVER_NAME;
 	rdev->map_name = RC_MAP_STREAMZAP;
 

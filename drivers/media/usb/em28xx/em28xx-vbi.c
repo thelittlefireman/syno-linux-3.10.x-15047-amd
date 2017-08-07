@@ -27,7 +27,6 @@
 #include <linux/init.h>
 
 #include "em28xx.h"
-#include "em28xx-v4l.h"
 
 static unsigned int vbibufs = 5;
 module_param(vbibufs, int, 0644);
@@ -100,7 +99,6 @@ vbi_buffer_queue(struct vb2_buffer *vb)
 	list_add_tail(&buf->list, &vbiq->active);
 	spin_unlock_irqrestore(&dev->slock, flags);
 }
-
 
 struct vb2_ops em28xx_vbi_qops = {
 	.queue_setup    = vbi_queue_setup,

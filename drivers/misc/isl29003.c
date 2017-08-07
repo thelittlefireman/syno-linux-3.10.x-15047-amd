@@ -26,6 +26,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/mutex.h>
@@ -207,11 +208,7 @@ static ssize_t isl29003_store_range(struct device *dev,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &val);
-	if (ret)
-		return ret;
-
-	if (val > 3)
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 3))
 		return -EINVAL;
 
 	ret = isl29003_set_range(client, val);
@@ -223,7 +220,6 @@ static ssize_t isl29003_store_range(struct device *dev,
 
 static DEVICE_ATTR(range, S_IWUSR | S_IRUGO,
 		   isl29003_show_range, isl29003_store_range);
-
 
 /* resolution */
 static ssize_t isl29003_show_resolution(struct device *dev,
@@ -242,11 +238,7 @@ static ssize_t isl29003_store_resolution(struct device *dev,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &val);
-	if (ret)
-		return ret;
-
-	if (val > 3)
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 3))
 		return -EINVAL;
 
 	ret = isl29003_set_resolution(client, val);
@@ -274,11 +266,7 @@ static ssize_t isl29003_store_mode(struct device *dev,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &val);
-	if (ret)
-		return ret;
-
-	if (val > 2)
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 2))
 		return -EINVAL;
 
 	ret = isl29003_set_mode(client, val);
@@ -290,7 +278,6 @@ static ssize_t isl29003_store_mode(struct device *dev,
 
 static DEVICE_ATTR(mode, S_IWUSR | S_IRUGO,
 		   isl29003_show_mode, isl29003_store_mode);
-
 
 /* power state */
 static ssize_t isl29003_show_power_state(struct device *dev,
@@ -309,11 +296,7 @@ static ssize_t isl29003_store_power_state(struct device *dev,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &val);
-	if (ret)
-		return ret;
-
-	if (val > 1)
+	if ((strict_strtoul(buf, 10, &val) < 0) || (val > 1))
 		return -EINVAL;
 
 	ret = isl29003_set_power_state(client, val);
@@ -322,7 +305,6 @@ static ssize_t isl29003_store_power_state(struct device *dev,
 
 static DEVICE_ATTR(power_state, S_IWUSR | S_IRUGO,
 		   isl29003_show_power_state, isl29003_store_power_state);
-
 
 /* lux */
 static ssize_t isl29003_show_lux(struct device *dev,

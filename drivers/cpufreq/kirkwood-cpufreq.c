@@ -14,7 +14,7 @@
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/cpufreq.h>
-#include <linux/of_device.h>
+#include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
 #include <asm/proc-fns.h>
@@ -43,9 +43,9 @@ static struct priv
  * table.
  */
 static struct cpufreq_frequency_table kirkwood_freq_table[] = {
-	{0, STATE_CPU_FREQ,	0}, /* CPU uses cpuclk */
-	{0, STATE_DDR_FREQ,	0}, /* CPU uses ddrclk */
-	{0, 0,			CPUFREQ_TABLE_END},
+	{STATE_CPU_FREQ,	0}, /* CPU uses cpuclk */
+	{STATE_DDR_FREQ,	0}, /* CPU uses ddrclk */
+	{0,			CPUFREQ_TABLE_END},
 };
 
 static unsigned int kirkwood_cpufreq_get_cpu_frequency(unsigned int cpu)
@@ -55,37 +55,69 @@ static unsigned int kirkwood_cpufreq_get_cpu_frequency(unsigned int cpu)
 	return kirkwood_freq_table[0].frequency;
 }
 
-static int kirkwood_cpufreq_target(struct cpufreq_policy *policy,
-			    unsigned int index)
+static void kirkwood_cpufreq_set_cpu_state(struct cpufreq_policy *policy,
+		unsigned int index)
 {
-	unsigned int state = kirkwood_freq_table[index].driver_data;
+	struct cpufreq_freqs freqs;
+	unsigned int state = kirkwood_freq_table[index].index;
 	unsigned long reg;
 
-	local_irq_disable();
+	freqs.old = kirkwood_cpufreq_get_cpu_frequency(0);
+	freqs.new = kirkwood_freq_table[index].frequency;
 
-	/* Disable interrupts to the CPU */
-	reg = readl_relaxed(priv.base);
-	reg |= CPU_SW_INT_BLK;
-	writel_relaxed(reg, priv.base);
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
-	switch (state) {
-	case STATE_CPU_FREQ:
-		clk_disable(priv.powersave_clk);
-		break;
-	case STATE_DDR_FREQ:
-		clk_enable(priv.powersave_clk);
-		break;
+	dev_dbg(priv.dev, "Attempting to set frequency to %i KHz\n",
+		kirkwood_freq_table[index].frequency);
+	dev_dbg(priv.dev, "old frequency was %i KHz\n",
+		kirkwood_cpufreq_get_cpu_frequency(0));
+
+	if (freqs.old != freqs.new) {
+		local_irq_disable();
+
+		/* Disable interrupts to the CPU */
+		reg = readl_relaxed(priv.base);
+		reg |= CPU_SW_INT_BLK;
+		writel_relaxed(reg, priv.base);
+
+		switch (state) {
+		case STATE_CPU_FREQ:
+			clk_disable(priv.powersave_clk);
+			break;
+		case STATE_DDR_FREQ:
+			clk_enable(priv.powersave_clk);
+			break;
+		}
+
+		/* Wait-for-Interrupt, while the hardware changes frequency */
+		cpu_do_idle();
+
+		/* Enable interrupts to the CPU */
+		reg = readl_relaxed(priv.base);
+		reg &= ~CPU_SW_INT_BLK;
+		writel_relaxed(reg, priv.base);
+
+		local_irq_enable();
 	}
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
+};
 
-	/* Wait-for-Interrupt, while the hardware changes frequency */
-	cpu_do_idle();
+static int kirkwood_cpufreq_verify(struct cpufreq_policy *policy)
+{
+	return cpufreq_frequency_table_verify(policy, kirkwood_freq_table);
+}
 
-	/* Enable interrupts to the CPU */
-	reg = readl_relaxed(priv.base);
-	reg &= ~CPU_SW_INT_BLK;
-	writel_relaxed(reg, priv.base);
+static int kirkwood_cpufreq_target(struct cpufreq_policy *policy,
+			    unsigned int target_freq,
+			    unsigned int relation)
+{
+	unsigned int index = 0;
 
-	local_irq_enable();
+	if (cpufreq_frequency_table_target(policy, kirkwood_freq_table,
+				target_freq, relation, &index))
+		return -EINVAL;
+
+	kirkwood_cpufreq_set_cpu_state(policy, index);
 
 	return 0;
 }
@@ -93,17 +125,41 @@ static int kirkwood_cpufreq_target(struct cpufreq_policy *policy,
 /* Module init and exit code */
 static int kirkwood_cpufreq_cpu_init(struct cpufreq_policy *policy)
 {
-	return cpufreq_generic_init(policy, kirkwood_freq_table, 5000);
+	int result;
+
+	/* cpuinfo and default policy values */
+	policy->cpuinfo.transition_latency = 5000; /* 5uS */
+	policy->cur = kirkwood_cpufreq_get_cpu_frequency(0);
+
+	result = cpufreq_frequency_table_cpuinfo(policy, kirkwood_freq_table);
+	if (result)
+		return result;
+
+	cpufreq_frequency_table_get_attr(kirkwood_freq_table, policy->cpu);
+
+	return 0;
 }
 
+static int kirkwood_cpufreq_cpu_exit(struct cpufreq_policy *policy)
+{
+	cpufreq_frequency_table_put_attr(policy->cpu);
+	return 0;
+}
+
+static struct freq_attr *kirkwood_cpufreq_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver kirkwood_cpufreq_driver = {
-	.flags	= CPUFREQ_NEED_INITIAL_FREQ_CHECK,
 	.get	= kirkwood_cpufreq_get_cpu_frequency,
-	.verify	= cpufreq_generic_frequency_table_verify,
-	.target_index = kirkwood_cpufreq_target,
+	.verify	= kirkwood_cpufreq_verify,
+	.target	= kirkwood_cpufreq_target,
 	.init	= kirkwood_cpufreq_cpu_init,
+	.exit	= kirkwood_cpufreq_cpu_exit,
 	.name	= "kirkwood-cpufreq",
-	.attr	= cpufreq_generic_attr,
+	.owner	= THIS_MODULE,
+	.attr	= kirkwood_cpufreq_attr,
 };
 
 static int kirkwood_cpufreq_probe(struct platform_device *pdev)
@@ -119,11 +175,9 @@ static int kirkwood_cpufreq_probe(struct platform_device *pdev)
 	if (IS_ERR(priv.base))
 		return PTR_ERR(priv.base);
 
-	np = of_cpu_device_node_get(0);
-	if (!np) {
-		dev_err(&pdev->dev, "failed to get cpu device node\n");
+	np = of_find_node_by_path("/cpus/cpu@0");
+	if (!np)
 		return -ENODEV;
-	}
 
 	priv.cpu_clk = of_clk_get_by_name(np, "cpu_clk");
 	if (IS_ERR(priv.cpu_clk)) {

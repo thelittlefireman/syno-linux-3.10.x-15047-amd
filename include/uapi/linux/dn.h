@@ -1,9 +1,7 @@
 #ifndef _LINUX_DN_H
 #define _LINUX_DN_H
 
-#include <linux/ioctl.h>
 #include <linux/types.h>
-#include <linux/if_ether.h>
 
 /*
 
@@ -21,7 +19,6 @@
 #define DNPROTO_EVL     5                       /* Evl protocol number (usr) */
 #define DNPROTO_EVR     6                       /* Evl protocol number (evl) */
 #define DNPROTO_NSPT    7                       /* NSP trace protocol number */
-
 
 #define DN_ADDL		2
 #define DN_MAXADDL	2 /* ULTRIX headers have 20 here, but pathworks has 2 */
@@ -56,7 +53,6 @@
 #define DSO_INFO	15       /* NSP Info field                      */
 #define DSO_MAX         15       /* Maximum option number               */
 
-
 /* LINK States */
 #define LL_INACTIVE	0
 #define LL_CONNECTING	1
@@ -71,7 +67,6 @@
 #define SDF_UICPROXY    4                  /* Use uic-based proxy       */
 
 /* Structures */
-
 
 struct dn_naddr {
 	__le16		a_len;
@@ -88,8 +83,6 @@ struct sockaddr_dn {
 };
 #define sdn_nodeaddrl   sdn_add.a_len   /* Node address length  */
 #define sdn_nodeaddr    sdn_add.a_addr  /* Node address         */
-
-
 
 /*
  * DECnet set/get DSO_CONDATA, DSO_DISDATA (optional data) structure
@@ -122,13 +115,12 @@ struct linkinfo_dn {
  * Ethernet address format (for DECnet)
  */
 union etheraddress {
-        __u8 dne_addr[ETH_ALEN];      /* Full ethernet address */
+        __u8 dne_addr[6];             /* Full ethernet address */
   struct {
                 __u8 dne_hiord[4];    /* DECnet HIORD prefix   */
                 __u8 dne_nodeaddr[2]; /* DECnet node address   */
   } dne_remote;
 };
-
 
 /*
  * DECnet physical socket address format

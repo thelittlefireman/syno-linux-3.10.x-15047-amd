@@ -86,7 +86,6 @@ static irqreturn_t charlcd_interrupt(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-
 static void charlcd_wait_complete_irq(struct charlcd *lcd)
 {
 	int ret;
@@ -291,13 +290,13 @@ static int __init charlcd_probe(struct platform_device *pdev)
 	lcd->virtbase = ioremap(lcd->phybase, lcd->physize);
 	if (!lcd->virtbase) {
 		ret = -ENOMEM;
-		goto out_no_memregion;
+		goto out_no_remap;
 	}
 
 	lcd->irq = platform_get_irq(pdev, 0);
 	/* If no IRQ is supplied, we'll survive without it */
 	if (lcd->irq >= 0) {
-		if (request_irq(lcd->irq, charlcd_interrupt, 0,
+		if (request_irq(lcd->irq, charlcd_interrupt, IRQF_DISABLED,
 				DRIVERNAME, lcd)) {
 			ret = -EIO;
 			goto out_no_irq;
@@ -320,6 +319,8 @@ static int __init charlcd_probe(struct platform_device *pdev)
 
 out_no_irq:
 	iounmap(lcd->virtbase);
+out_no_remap:
+	platform_set_drvdata(pdev, NULL);
 out_no_memregion:
 	release_mem_region(lcd->phybase, SZ_4K);
 out_no_resource:
@@ -335,6 +336,7 @@ static int __exit charlcd_remove(struct platform_device *pdev)
 		free_irq(lcd->irq, lcd);
 		iounmap(lcd->virtbase);
 		release_mem_region(lcd->phybase, lcd->physize);
+		platform_set_drvdata(pdev, NULL);
 		kfree(lcd);
 	}
 

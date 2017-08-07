@@ -53,8 +53,10 @@ void __init prom_init(void)
 	prom_init_cmdline();
 
 	memsize_str = prom_getenv("memsize");
-	if (!memsize_str || kstrtoul(memsize_str, 0, &memsize))
+	if (!memsize_str)
 		memsize = 0x04000000;
+	else
+		strict_strtoul(memsize_str, 0, &memsize);
 	add_memory_region(0, memsize, BOOT_MEM_RAM);
 }
 
@@ -239,8 +241,6 @@ static struct i2c_board_info gpr_i2c_info[] __initdata = {
 	}
 };
 
-
-
 static struct resource alchemy_pci_host_res[] = {
 	[0] = {
 		.start	= AU1500_PCI_PHYS_ADDR,
@@ -291,7 +291,6 @@ static int __init gpr_pci_init(void)
 }
 /* must be arch_initcall; MIPS PCI scans busses in a subsys_initcall */
 arch_initcall(gpr_pci_init);
-
 
 static int __init gpr_dev_init(void)
 {

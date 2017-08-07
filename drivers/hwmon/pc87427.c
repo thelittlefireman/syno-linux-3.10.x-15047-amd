@@ -1,7 +1,7 @@
 /*
  *  pc87427.c - hardware monitoring driver for the
  *              National Semiconductor PC87427 Super-I/O chip
- *  Copyright (C) 2006, 2008, 2010  Jean Delvare <jdelvare@suse.de>
+ *  Copyright (C) 2006, 2008, 2010  Jean Delvare <khali@linux-fr.org>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -952,7 +952,6 @@ static ssize_t show_name(struct device *dev, struct device_attribute
 }
 static DEVICE_ATTR(name, S_IRUGO, show_name, NULL);
 
-
 /*
  * Device detection, attach and detach
  */
@@ -983,7 +982,7 @@ static int pc87427_request_regions(struct platform_device *pdev,
 
 static void pc87427_init_device(struct device *dev)
 {
-	struct pc87427_sio_data *sio_data = dev_get_platdata(dev);
+	struct pc87427_sio_data *sio_data = dev->platform_data;
 	struct pc87427_data *data = dev_get_drvdata(dev);
 	int i;
 	u8 reg;
@@ -1075,7 +1074,7 @@ static void pc87427_remove_files(struct device *dev)
 
 static int pc87427_probe(struct platform_device *pdev)
 {
-	struct pc87427_sio_data *sio_data = dev_get_platdata(&pdev->dev);
+	struct pc87427_sio_data *sio_data = pdev->dev.platform_data;
 	struct pc87427_data *data;
 	int i, err, res_count;
 
@@ -1151,7 +1150,6 @@ static int pc87427_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 
 static struct platform_driver pc87427_driver = {
 	.driver = {
@@ -1347,7 +1345,7 @@ static void __exit pc87427_exit(void)
 	platform_driver_unregister(&pc87427_driver);
 }
 
-MODULE_AUTHOR("Jean Delvare <jdelvare@suse.de>");
+MODULE_AUTHOR("Jean Delvare <khali@linux-fr.org>");
 MODULE_DESCRIPTION("PC87427 hardware monitoring driver");
 MODULE_LICENSE("GPL");
 

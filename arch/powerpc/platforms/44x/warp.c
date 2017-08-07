@@ -16,6 +16,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/of_gpio.h>
+#include <linux/of_i2c.h>
 #include <linux/slab.h>
 #include <linux/export.h>
 
@@ -25,7 +26,6 @@
 #include <asm/time.h>
 #include <asm/uic.h>
 #include <asm/ppc4xx.h>
-
 
 static __initdata struct of_device_id warp_of_bus[] = {
 	{ .compatible = "ibm,plb4", },
@@ -64,7 +64,6 @@ define_machine(warp) {
 	.calibrate_decr = generic_calibrate_decr,
 };
 
-
 static int __init warp_post_info(void)
 {
 	struct device_node *np;
@@ -94,20 +93,17 @@ static int __init warp_post_info(void)
 	return 0;
 }
 
-
 #ifdef CONFIG_SENSORS_AD7414
 
 static LIST_HEAD(dtm_shutdown_list);
 static void __iomem *dtm_fpga;
 static unsigned green_led, red_led;
 
-
 struct dtm_shutdown {
 	struct list_head list;
 	void (*func)(void *arg);
 	void *arg;
 };
-
 
 int pika_dtm_register_shutdown(void (*func)(void *arg), void *arg)
 {

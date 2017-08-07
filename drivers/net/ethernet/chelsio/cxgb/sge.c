@@ -12,7 +12,8 @@
  * published by the Free Software Foundation.                                *
  *                                                                           *
  * You should have received a copy of the GNU General Public License along   *
- * with this program; if not, see <http://www.gnu.org/licenses/>.            *
+ * with this program; if not, write to the Free Software Foundation, Inc.,   *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.                 *
  *                                                                           *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED    *
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF      *
@@ -46,6 +47,7 @@
 #include <linux/etherdevice.h>
 #include <linux/if_vlan.h>
 #include <linux/skbuff.h>
+#include <linux/init.h>
 #include <linux/mm.h>
 #include <linux/tcp.h>
 #include <linux/ip.h>
@@ -241,7 +243,6 @@ struct sched {
 	struct tasklet_struct sched_tsk;/* tasklet used to run scheduler */
 };
 static void restart_sched(unsigned long);
-
 
 /*
  * Main SGE data structure
@@ -2094,7 +2095,6 @@ struct sge *t1_sge_create(struct adapter *adapter, struct sge_params *p)
 		if (adapter->params.nports > 1)
 			sge->espibug_timeout = HZ/100;
 	}
-
 
 	p->cmdQ_size[0] = SGE_CMDQ0_E_N;
 	p->cmdQ_size[1] = SGE_CMDQ1_E_N;

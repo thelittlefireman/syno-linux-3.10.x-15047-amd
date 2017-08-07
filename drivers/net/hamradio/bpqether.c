@@ -103,9 +103,8 @@ static struct packet_type bpq_packet_type __read_mostly = {
 };
 
 static struct notifier_block bpq_dev_notifier = {
-	.notifier_call = bpq_device_event,
+	.notifier_call =bpq_device_event,
 };
-
 
 struct bpqdev {
 	struct list_head bpq_list;	/* list of bpq devices chain */
@@ -140,7 +139,6 @@ static void bpq_set_lockdep_class(struct net_device *dev)
 
 /* ------------------------------------------------------------------------ */
 
-
 /*
  *	Get the ethernet device for a BPQ device
  */
@@ -171,7 +169,6 @@ static inline int dev_is_ethdev(struct net_device *dev)
 }
 
 /* ------------------------------------------------------------------------ */
-
 
 /*
  *	Receive an AX.25 frame via an ethernet interface.
@@ -208,7 +205,7 @@ static int bpq_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_ty
 	eth = eth_hdr(skb);
 
 	if (!(bpq->acpt_addr[0] & 0x01) &&
-	    !ether_addr_equal(eth->h_source, bpq->acpt_addr))
+	    memcmp(eth->h_source, bpq->acpt_addr, ETH_ALEN))
 		goto drop_unlock;
 
 	if (skb_cow(skb, sizeof(struct ethhdr)))
@@ -371,9 +368,7 @@ static int bpq_close(struct net_device *dev)
 	return 0;
 }
 
-
 /* ------------------------------------------------------------------------ */
-
 
 /*
  *	Proc filesystem
@@ -418,7 +413,6 @@ static void bpq_seq_stop(struct seq_file *seq, void *v)
 	rcu_read_unlock();
 }
 
-
 static int bpq_seq_show(struct seq_file *seq, void *v)
 {
 	if (v == SEQ_START_TOKEN)
@@ -459,7 +453,6 @@ static const struct file_operations bpq_info_fops = {
 	.llseek = seq_lseek,
 	.release = seq_release,
 };
-
 
 /* ------------------------------------------------------------------------ */
 
@@ -506,7 +499,6 @@ static int bpq_new_device(struct net_device *edev)
 	if (!ndev)
 		return -ENOMEM;
 
-		
 	bpq = netdev_priv(ndev);
 	dev_hold(edev);
 	bpq->ethdev = edev;
@@ -544,10 +536,9 @@ static void bpq_free_device(struct net_device *ndev)
 /*
  *	Handle device status changes.
  */
-static int bpq_device_event(struct notifier_block *this,
-			    unsigned long event, void *ptr)
+static int bpq_device_event(struct notifier_block *this,unsigned long event, void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = (struct net_device *)ptr;
 
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
@@ -576,7 +567,6 @@ static int bpq_device_event(struct notifier_block *this,
 
 	return NOTIFY_DONE;
 }
-
 
 /* ------------------------------------------------------------------------ */
 

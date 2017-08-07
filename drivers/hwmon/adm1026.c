@@ -310,7 +310,6 @@ static void adm1026_fixup_gpio(struct i2c_client *client);
 static struct adm1026_data *adm1026_update_device(struct device *dev);
 static void adm1026_init_client(struct i2c_client *client);
 
-
 static const struct i2c_device_id adm1026_id[] = {
 	{ "adm1026", 0 },
 	{ }
@@ -558,7 +557,6 @@ static void adm1026_fixup_gpio(struct i2c_client *client)
 	adm1026_print_gpio(client);
 }
 
-
 static struct adm1026_data *adm1026_update_device(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -616,7 +614,7 @@ static struct adm1026_data *adm1026_update_device(struct device *dev)
 		data->gpio = gpio;
 
 		data->last_reading = jiffies;
-	}	/* last_reading */
+	}; /* last_reading */
 
 	if (!data->valid ||
 	    time_after(jiffies, data->last_config + ADM1026_CONFIG_INTERVAL)) {
@@ -700,7 +698,7 @@ static struct adm1026_data *adm1026_update_device(struct device *dev)
 		}
 
 		data->last_config = jiffies;
-	}	/* last_config */
+	}; /* last_config */
 
 	data->valid = 1;
 	mutex_unlock(&data->update_lock);
@@ -779,7 +777,6 @@ static SENSOR_DEVICE_ATTR(in##offset##_min, S_IRUGO | S_IWUSR,	\
 		show_in_min, set_in_min, offset);		\
 static SENSOR_DEVICE_ATTR(in##offset##_max, S_IRUGO | S_IWUSR,	\
 		show_in_max, set_in_max, offset);
-
 
 in_reg(0);
 in_reg(1);
@@ -861,7 +858,6 @@ static SENSOR_DEVICE_ATTR(in16_min, S_IRUGO | S_IWUSR, show_in16_min,
 			  set_in16_min, 16);
 static SENSOR_DEVICE_ATTR(in16_max, S_IRUGO | S_IWUSR, show_in16_max,
 			  set_in16_max, 16);
-
 
 /* Now add fan read/write functions */
 
@@ -1077,7 +1073,6 @@ static SENSOR_DEVICE_ATTR(temp##offset##_min, S_IRUGO | S_IWUSR,	\
 		show_temp_min, set_temp_min, offset - 1);		\
 static SENSOR_DEVICE_ATTR(temp##offset##_max, S_IRUGO | S_IWUSR,	\
 		show_temp_max, set_temp_max, offset - 1);
-
 
 temp_reg(1);
 temp_reg(2);
@@ -1409,7 +1404,6 @@ static ssize_t set_alarm_mask(struct device *dev, struct device_attribute *attr,
 
 static DEVICE_ATTR(alarm_mask, S_IRUGO | S_IWUSR, show_alarm_mask,
 	set_alarm_mask);
-
 
 static ssize_t show_gpio(struct device *dev, struct device_attribute *attr,
 			 char *buf)
@@ -1791,7 +1785,7 @@ static int adm1026_detect(struct i2c_client *client,
 	if (!i2c_check_functionality(adapter, I2C_FUNC_SMBUS_BYTE_DATA)) {
 		/* We need to be able to do byte I/O */
 		return -ENODEV;
-	}
+	};
 
 	/* Now, we do the remaining detection. */
 

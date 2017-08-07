@@ -1257,7 +1257,6 @@ static int smb347_probe(struct i2c_client *client,
 	smb->battery.properties = smb347_battery_properties;
 	smb->battery.num_properties = ARRAY_SIZE(smb347_battery_properties);
 
-
 	ret = power_supply_register(dev, &smb->battery);
 	if (ret < 0) {
 		if (smb->pdata->use_usb)

@@ -51,8 +51,7 @@ typedef enum tagCMD_CODE {
     WLAN_CMD_REMOVE_ALLKEY,
     WLAN_CMD_MAC_DISPOWERSAVING,
     WLAN_CMD_11H_CHSW,
-    WLAN_CMD_RUN_AP,
-    WLAN_CMD_CONFIGURE_FILTER
+    WLAN_CMD_RUN_AP
 } CMD_CODE, *PCMD_CODE;
 
 #define CMD_Q_SIZE              32
@@ -97,7 +96,6 @@ typedef enum tagCMD_STATE {
     WLAN_CMD_REMOVE_ALLKEY_START,
     WLAN_CMD_MAC_DISPOWERSAVING_START,
     WLAN_CMD_11H_CHSW_START,
-    WLAN_CMD_CONFIGURE_FILTER_START,
     WLAN_CMD_IDLE
 } CMD_STATE, *PCMD_STATE;
 
@@ -107,6 +105,15 @@ void vResetCommandTimer(struct vnt_private *);
 
 int bScheduleCommand(struct vnt_private *, CMD_CODE eCommand, u8 *pbyItem0);
 
-void vRunCommand(struct work_struct *work);
+void vRunCommand(struct vnt_private *);
+
+/*
+void
+WCMDvCommandThread(
+    void * Context
+    );
+*/
+
+void BSSvSecondTxData(struct vnt_private *);
 
 #endif /* __WCMD_H__ */

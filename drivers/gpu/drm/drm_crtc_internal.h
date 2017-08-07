@@ -35,4 +35,3 @@ int drm_mode_object_get(struct drm_device *dev,
 			struct drm_mode_object *obj, uint32_t obj_type);
 void drm_mode_object_put(struct drm_device *dev,
 			 struct drm_mode_object *object);
-

@@ -164,4 +164,3 @@ union numachip_csr_g3_nc_att_map_select {
 #define CSR_G3_NC_ATT_MAP_SELECT_0 (0x800 + (3 << 12))
 
 #endif /* _ASM_X86_NUMACHIP_NUMACHIP_CSR_H */
-

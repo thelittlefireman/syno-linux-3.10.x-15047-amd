@@ -198,7 +198,6 @@ out:
 	return result;
 }
 
-
 /** Clean it up */
 void uwb_est_destroy(void)
 {
@@ -206,7 +205,6 @@ void uwb_est_destroy(void)
 	uwb_est = NULL;
 	uwb_est_size = uwb_est_used = 0;
 }
-
 
 /**
  * Double the capacity of the EST table
@@ -227,7 +225,6 @@ int uwb_est_grow(void)
 	uwb_est_size *= 2;
 	return 0;
 }
-
 
 /**
  * Register an event size table
@@ -290,7 +287,6 @@ out:
 }
 EXPORT_SYMBOL_GPL(uwb_est_register);
 
-
 /**
  * Unregister an event size table
  *
@@ -331,7 +327,6 @@ found:
 	return 0;
 }
 EXPORT_SYMBOL_GPL(uwb_est_unregister);
-
 
 /**
  * Get the size of an event from a table
@@ -408,7 +403,6 @@ out:
 	return size;
 }
 
-
 /**
  * Guesses the size of a WA event
  *
@@ -436,6 +430,7 @@ ssize_t uwb_est_find_size(struct uwb_rc *rc, const struct uwb_rceb *rceb,
 	unsigned long flags;
 	unsigned itr;
 	u16 type_event_high, event;
+	u8 *ptr = (u8 *) rceb;
 
 	read_lock_irqsave(&uwb_est_lock, flags);
 	size = -ENOSPC;
@@ -452,12 +447,12 @@ ssize_t uwb_est_find_size(struct uwb_rc *rc, const struct uwb_rceb *rceb,
 		if (size != -ENOENT)
 			goto out;
 	}
-	dev_dbg(dev,
-		"event 0x%02x/%04x/%02x: no handlers available; RCEB %4ph\n",
+	dev_dbg(dev, "event 0x%02x/%04x/%02x: no handlers available; "
+		"RCEB %02x %02x %02x %02x\n",
 		(unsigned) rceb->bEventType,
 		(unsigned) le16_to_cpu(rceb->wEvent),
 		(unsigned) rceb->bEventContext,
-		rceb);
+		ptr[0], ptr[1], ptr[2], ptr[3]);
 	size = -ENOENT;
 out:
 	read_unlock_irqrestore(&uwb_est_lock, flags);

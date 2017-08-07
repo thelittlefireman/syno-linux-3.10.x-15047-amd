@@ -319,7 +319,6 @@ static int cf_init(struct arasan_cf_dev *acdev)
 	ret = clk_set_rate(acdev->clk, 166000000);
 	if (ret) {
 		dev_warn(acdev->host->dev, "clock set rate failed");
-		clk_disable_unprepare(acdev->clk);
 		return ret;
 	}
 
@@ -356,7 +355,7 @@ static void cf_exit(struct arasan_cf_dev *acdev)
 
 static void dma_callback(void *dev)
 {
-	struct arasan_cf_dev *acdev = dev;
+	struct arasan_cf_dev *acdev = (struct arasan_cf_dev *) dev;
 
 	complete(&acdev->dma_completion);
 }
@@ -397,7 +396,8 @@ dma_xfer(struct arasan_cf_dev *acdev, dma_addr_t src, dma_addr_t dest, u32 len)
 	struct dma_async_tx_descriptor *tx;
 	struct dma_chan *chan = acdev->dma_chan;
 	dma_cookie_t cookie;
-	unsigned long flags = DMA_PREP_INTERRUPT;
+	unsigned long flags = DMA_PREP_INTERRUPT | DMA_COMPL_SKIP_SRC_UNMAP |
+		DMA_COMPL_SKIP_DEST_UNMAP;
 	int ret = 0;
 
 	tx = chan->device->device_prep_dma_memcpy(chan, dest, src, len, flags);
@@ -654,7 +654,7 @@ static void arasan_cf_freeze(struct ata_port *ap)
 	ata_sff_freeze(ap);
 }
 
-static void arasan_cf_error_handler(struct ata_port *ap)
+void arasan_cf_error_handler(struct ata_port *ap)
 {
 	struct arasan_cf_dev *acdev = ap->host->private_data;
 
@@ -683,7 +683,7 @@ static void arasan_cf_dma_start(struct arasan_cf_dev *acdev)
 	ata_sff_queue_work(&acdev->work);
 }
 
-static unsigned int arasan_cf_qc_issue(struct ata_queued_cmd *qc)
+unsigned int arasan_cf_qc_issue(struct ata_queued_cmd *qc)
 {
 	struct ata_port *ap = qc->ap;
 	struct arasan_cf_dev *acdev = ap->host->private_data;
@@ -908,7 +908,7 @@ free_clk:
 
 static int arasan_cf_remove(struct platform_device *pdev)
 {
-	struct ata_host *host = platform_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct arasan_cf_dev *acdev = host->ports[0]->private_data;
 
 	ata_host_detach(host);

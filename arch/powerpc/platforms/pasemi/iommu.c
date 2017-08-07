@@ -111,7 +111,6 @@ static int iobmap_build(struct iommu_table *tbl, long index,
 	return 0;
 }
 
-
 static void iobmap_free(struct iommu_table *tbl, long index,
 			long npages)
 {
@@ -132,17 +131,13 @@ static void iobmap_free(struct iommu_table *tbl, long index,
 	}
 }
 
-
 static void iommu_table_iobmap_setup(void)
 {
 	pr_debug(" -> %s\n", __func__);
 	iommu_table_iobmap.it_busno = 0;
 	iommu_table_iobmap.it_offset = 0;
-	iommu_table_iobmap.it_page_shift = IOBMAP_PAGE_SHIFT;
-
 	/* it_size is in number of entries */
-	iommu_table_iobmap.it_size =
-		0x80000000 >> iommu_table_iobmap.it_page_shift;
+	iommu_table_iobmap.it_size = 0x80000000 >> IOBMAP_PAGE_SHIFT;
 
 	/* Initialize the common IOMMU code */
 	iommu_table_iobmap.it_base = (unsigned long)iob_l2_base;
@@ -155,8 +150,6 @@ static void iommu_table_iobmap_setup(void)
 	pr_debug(" <- %s\n", __func__);
 }
 
-
-
 static void pci_dma_bus_setup_pasemi(struct pci_bus *bus)
 {
 	pr_debug("pci_dma_bus_setup, bus %p, bus->self %p\n", bus, bus->self);
@@ -166,7 +159,6 @@ static void pci_dma_bus_setup_pasemi(struct pci_bus *bus)
 		iommu_table_iobmap_setup();
 	}
 }
-
 
 static void pci_dma_dev_setup_pasemi(struct pci_dev *dev)
 {
@@ -230,7 +222,6 @@ int __init iob_init(struct device_node *dn)
 
 	return 0;
 }
-
 
 /* These are called very early. */
 void __init iommu_init_early_pasemi(void)

@@ -56,7 +56,6 @@ static unsigned char mcf_host_irq[] = {
 	0, 69, 69, 71, 71,
 };
 
-
 static inline void syncio(void)
 {
 	/* The ColdFire "nop" instruction waits for all bus IO to complete */
@@ -319,6 +318,8 @@ static int __init mcf_pci_init(void)
 	pci_fixup_irqs(pci_common_swizzle, mcf_pci_map_irq);
 	pci_bus_size_bridges(rootbus);
 	pci_bus_assign_resources(rootbus);
+	pci_enable_bridges(rootbus);
+	pci_bus_add_devices(rootbus);
 	return 0;
 }
 

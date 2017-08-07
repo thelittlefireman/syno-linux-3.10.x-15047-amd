@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2012 - 2013 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2012 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2012 - 2013 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -156,13 +156,13 @@ static void iwl_mvm_phy_ctxt_cmd_data(struct iwl_mvm *mvm,
 	idle_cnt = chains_static;
 	active_cnt = chains_dynamic;
 
-	cmd->rxchain_info = cpu_to_le32(mvm->fw->valid_rx_ant <<
+	cmd->rxchain_info = cpu_to_le32(iwl_fw_valid_rx_ant(mvm->fw) <<
 					PHY_RX_CHAIN_VALID_POS);
 	cmd->rxchain_info |= cpu_to_le32(idle_cnt << PHY_RX_CHAIN_CNT_POS);
 	cmd->rxchain_info |= cpu_to_le32(active_cnt <<
 					 PHY_RX_CHAIN_MIMO_CNT_POS);
 
-	cmd->txchain_info = cpu_to_le32(mvm->fw->valid_tx_ant);
+	cmd->txchain_info = cpu_to_le32(iwl_fw_valid_tx_ant(mvm->fw));
 }
 
 /*
@@ -195,6 +195,20 @@ static int iwl_mvm_phy_ctxt_apply(struct iwl_mvm *mvm,
 	return ret;
 }
 
+struct phy_ctx_used_data {
+	unsigned long used[BITS_TO_LONGS(NUM_PHY_CTX)];
+};
+
+static void iwl_mvm_phy_ctx_used_iter(struct ieee80211_hw *hw,
+				      struct ieee80211_chanctx_conf *ctx,
+				      void *_data)
+{
+	struct phy_ctx_used_data *data = _data;
+	struct iwl_mvm_phy_ctxt *phy_ctxt = (void *)ctx->drv_priv;
+
+	__set_bit(phy_ctxt->id, data->used);
+}
+
 /*
  * Send a command to add a PHY context based on the current HW configuration.
  */
@@ -202,28 +216,34 @@ int iwl_mvm_phy_ctxt_add(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt,
 			 struct cfg80211_chan_def *chandef,
 			 u8 chains_static, u8 chains_dynamic)
 {
-	int ret;
+	struct phy_ctx_used_data data = {
+		.used = { },
+	};
 
-	WARN_ON(!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status) &&
-		ctxt->ref);
+	/*
+	 * If this is a regular PHY context (not the ROC one)
+	 * skip the ROC PHY context's ID.
+	 */
+	if (ctxt != &mvm->phy_ctxt_roc)
+		__set_bit(mvm->phy_ctxt_roc.id, data.used);
+
 	lockdep_assert_held(&mvm->mutex);
+	ctxt->color++;
+
+	if (!test_bit(IWL_MVM_STATUS_IN_HW_RESTART, &mvm->status)) {
+		ieee80211_iter_chan_contexts_atomic(
+			mvm->hw, iwl_mvm_phy_ctx_used_iter, &data);
+
+		ctxt->id = find_first_zero_bit(data.used, NUM_PHY_CTX);
+		if (WARN_ONCE(ctxt->id == NUM_PHY_CTX,
+			      "Failed to init PHY context - no free ID!\n"))
+			return -EIO;
+	}
 
 	ctxt->channel = chandef->chan;
-	ret = iwl_mvm_phy_ctxt_apply(mvm, ctxt, chandef,
-				     chains_static, chains_dynamic,
-				     FW_CTXT_ACTION_ADD, 0);
-
-	return ret;
-}
-
-/*
- * Update the number of references to the given PHY context. This is valid only
- * in case the PHY context was already created, i.e., its reference count > 0.
- */
-void iwl_mvm_phy_ctxt_ref(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt)
-{
-	lockdep_assert_held(&mvm->mutex);
-	ctxt->ref++;
+	return iwl_mvm_phy_ctxt_apply(mvm, ctxt, chandef,
+				      chains_static, chains_dynamic,
+				      FW_CTXT_ACTION_ADD, 0);
 }
 
 /*
@@ -243,12 +263,23 @@ int iwl_mvm_phy_ctxt_changed(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt,
 				      FW_CTXT_ACTION_MODIFY, 0);
 }
 
-void iwl_mvm_phy_ctxt_unref(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt)
+/*
+ * Send a command to the FW to remove the given phy context.
+ * Once the command is sent, regardless of success or failure, the context is
+ * marked as invalid
+ */
+void iwl_mvm_phy_ctxt_remove(struct iwl_mvm *mvm, struct iwl_mvm_phy_ctxt *ctxt)
 {
+	struct iwl_phy_context_cmd cmd;
+	int ret;
+
 	lockdep_assert_held(&mvm->mutex);
 
-	if (WARN_ON_ONCE(!ctxt))
-		return;
-
-	ctxt->ref--;
+	iwl_mvm_phy_ctxt_cmd_hdr(ctxt, &cmd, FW_CTXT_ACTION_REMOVE, 0);
+	ret = iwl_mvm_send_cmd_pdu(mvm, PHY_CONTEXT_CMD, CMD_SYNC,
+				   sizeof(struct iwl_phy_context_cmd),
+				   &cmd);
+	if (ret)
+		IWL_ERR(mvm, "Failed to send PHY remove: ctxt id=%d\n",
+			ctxt->id);
 }

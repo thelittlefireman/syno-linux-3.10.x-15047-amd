@@ -18,7 +18,6 @@
  *
  */
 
-
 #ifndef __ASM_PARAVIRT_H
 #define __ASM_PARAVIRT_H
 
@@ -75,6 +74,7 @@ void *paravirt_get_gate_section(void);
 #ifdef CONFIG_PARAVIRT_GUEST
 
 #define PARAVIRT_HYPERVISOR_TYPE_DEFAULT	0
+#define PARAVIRT_HYPERVISOR_TYPE_XEN		1
 
 #ifndef __ASSEMBLY__
 
@@ -314,7 +314,6 @@ static inline unsigned long long paravirt_sched_clock(void)
 #define paravirt_do_steal_accounting(new_itm)		0
 
 #endif /* __ASSEMBLY__ */
-
 
 #endif /* CONFIG_PARAVIRT_GUEST */
 

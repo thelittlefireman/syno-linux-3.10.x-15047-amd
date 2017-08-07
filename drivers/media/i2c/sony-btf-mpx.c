@@ -30,7 +30,7 @@ MODULE_LICENSE("GPL v2");
 
 static int debug;
 module_param(debug, int, 0644);
-MODULE_PARM_DESC(debug, "debug level 0=off(default) 1=on");
+MODULE_PARM_DESC(debug, "debug level 0=off(default) 1=on\n");
 
 /* #define MPX_DEBUG */
 
@@ -40,7 +40,6 @@ MODULE_PARM_DESC(debug, "debug level 0=off(default) 1=on");
  * AS(IF/MPX) pin:      LOW      HIGH/OPEN
  * IF/MPX address:   0x42/0x40   0x43/0x44
  */
-
 
 static int force_mpx_mode = -1;
 module_param(force_mpx_mode, int, 0644);
@@ -275,7 +274,6 @@ static int mpx_setup(struct sony_btf_mpx *t)
 	return 0;
 }
 
-
 static int sony_btf_mpx_s_std(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct sony_btf_mpx *t = to_state(sd);
@@ -355,7 +353,7 @@ static int sony_btf_mpx_probe(struct i2c_client *client,
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 
-	t = devm_kzalloc(&client->dev, sizeof(*t), GFP_KERNEL);
+	t = kzalloc(sizeof(struct sony_btf_mpx), GFP_KERNEL);
 	if (t == NULL)
 		return -ENOMEM;
 
@@ -374,6 +372,7 @@ static int sony_btf_mpx_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 
 	v4l2_device_unregister_subdev(sd);
+	kfree(to_state(sd));
 
 	return 0;
 }

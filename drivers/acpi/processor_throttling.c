@@ -32,10 +32,13 @@
 #include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/cpufreq.h>
-#include <linux/acpi.h>
-#include <acpi/processor.h>
+
 #include <asm/io.h>
 #include <asm/uaccess.h>
+
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
+#include <acpi/processor.h>
 
 #define PREFIX "ACPI: "
 
@@ -1261,4 +1264,3 @@ int acpi_processor_get_throttling_info(struct acpi_processor *pr)
 
 	return result;
 }
-

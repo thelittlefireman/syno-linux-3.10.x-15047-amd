@@ -306,7 +306,6 @@ static irqreturn_t wdt_interrupt(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-
 /**
  *	wdt_write:
  *	@file: file handle to the watchdog
@@ -521,7 +520,6 @@ static int wdt_notify_sys(struct notifier_block *this, unsigned long code,
  *	Kernel Interfaces
  */
 
-
 static const struct file_operations wdt_fops = {
 	.owner		= THIS_MODULE,
 	.llseek		= no_llseek,
@@ -664,4 +662,6 @@ module_exit(wdt_exit);
 
 MODULE_AUTHOR("Alan Cox");
 MODULE_DESCRIPTION("Driver for ISA ICS watchdog cards (WDT500/501)");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
+MODULE_ALIAS_MISCDEV(TEMP_MINOR);
 MODULE_LICENSE("GPL");

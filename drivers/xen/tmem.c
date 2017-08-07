@@ -5,8 +5,6 @@
  * Author: Dan Magenheimer
  */
 
-#define pr_fmt(fmt) "xen:" KBUILD_MODNAME ": " fmt
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/types.h>
@@ -69,7 +67,6 @@ module_param(selfshrinking, bool, S_IRUGO);
 #define TMEM_POOL_SHARED           2
 #define TMEM_POOL_PAGESIZE_SHIFT   4
 #define TMEM_VERSION_SHIFT        24
-
 
 struct tmem_pool_uuid {
 	u64 uuid_lo;
@@ -156,7 +153,6 @@ static int xen_tmem_flush_object(u32 pool_id, struct tmem_oid oid)
 {
 	return xen_tmem_op(TMEM_FLUSH_OBJECT, pool_id, oid, 0, 0, 0, 0, 0);
 }
-
 
 #ifdef CONFIG_CLEANCACHE
 static int xen_tmem_destroy_pool(u32 pool_id)
@@ -390,8 +386,8 @@ static int xen_tmem_init(void)
 				return PTR_ERR(old_ops);
 			s = " (WARNING: frontswap_ops overridden)";
 		}
-		pr_info("frontswap enabled, RAM provided by Xen Transcendent Memory%s\n",
-			s);
+		printk(KERN_INFO "frontswap enabled, RAM provided by "
+				 "Xen Transcendent Memory%s\n", s);
 	}
 #endif
 #ifdef CONFIG_CLEANCACHE
@@ -402,8 +398,8 @@ static int xen_tmem_init(void)
 			cleancache_register_ops(&tmem_cleancache_ops);
 		if (old_ops)
 			s = " (WARNING: cleancache_ops overridden)";
-		pr_info("cleancache enabled, RAM provided by Xen Transcendent Memory%s\n",
-			s);
+		printk(KERN_INFO "cleancache enabled, RAM provided by "
+				 "Xen Transcendent Memory%s\n", s);
 	}
 #endif
 #ifdef CONFIG_XEN_SELFBALLOONING

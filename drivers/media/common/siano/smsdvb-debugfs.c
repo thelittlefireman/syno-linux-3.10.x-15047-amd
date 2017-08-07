@@ -1,6 +1,6 @@
 /***********************************************************************
  *
- * Copyright(c) 2013 Mauro Carvalho Chehab
+ * Copyright(c) 2013 Mauro Carvalho Chehab <mchehab@redhat.com>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -327,7 +327,6 @@ static void smsdvb_print_isdb_stats_ex(struct smsdvb_debugfs *debug_data,
 		n += snprintf(&buf[n], PAGE_SIZE - n, "tmcc_errors = %d\n",
 			      p->layer_info[i].tmcc_errors);
 	}
-
 
 	debug_data->stats_count = n;
 	spin_unlock(&debug_data->lock);

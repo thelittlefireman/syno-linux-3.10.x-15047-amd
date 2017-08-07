@@ -33,28 +33,25 @@
 #define UL(x) _AC(x, UL)
 
 /*
- * PAGE_OFFSET - the virtual address of the start of the kernel image (top
- *		 (VA_BITS - 1))
+ * PAGE_OFFSET - the virtual address of the start of the kernel image.
  * VA_BITS - the maximum number of bits for virtual addresses.
  * TASK_SIZE - the maximum size of a user space task.
  * TASK_UNMAPPED_BASE - the lower boundary of the mmap VM area.
  * The module space lives between the addresses given by TASK_SIZE
  * and PAGE_OFFSET - it must be within 128MB of the kernel text.
  */
-#ifdef CONFIG_ARM64_64K_PAGES
-#define VA_BITS			(42)
-#else
-#define VA_BITS			(39)
-#endif
-#define PAGE_OFFSET		(UL(0xffffffffffffffff) << (VA_BITS - 1))
+#define PAGE_OFFSET		UL(0xffffffc000000000)
 #define MODULES_END		(PAGE_OFFSET)
 #define MODULES_VADDR		(MODULES_END - SZ_64M)
-#define FIXADDR_TOP		(MODULES_VADDR - SZ_2M - PAGE_SIZE)
+#define EARLYCON_IOBASE		(MODULES_VADDR - SZ_4M)
+#define VA_BITS			(39)
 #define TASK_SIZE_64		(UL(1) << VA_BITS)
 
 #ifdef CONFIG_COMPAT
 #define TASK_SIZE_32		UL(0x100000000)
 #define TASK_SIZE		(test_thread_flag(TIF_32BIT) ? \
+				TASK_SIZE_32 : TASK_SIZE_64)
+#define TASK_SIZE_OF(tsk)	(test_tsk_thread_flag(tsk, TIF_32BIT) ? \
 				TASK_SIZE_32 : TASK_SIZE_64)
 #else
 #define TASK_SIZE		TASK_SIZE_64
@@ -94,12 +91,6 @@
 #define MT_DEVICE_GRE		2
 #define MT_NORMAL_NC		3
 #define MT_NORMAL		4
-
-/*
- * Memory types for Stage-2 translation
- */
-#define MT_S2_NORMAL		0xf
-#define MT_S2_DEVICE_nGnRE	0x1
 
 #ifndef __ASSEMBLY__
 
@@ -146,7 +137,8 @@ static inline void *phys_to_virt(phys_addr_t x)
 #define ARCH_PFN_OFFSET		PHYS_PFN_OFFSET
 
 #define virt_to_page(kaddr)	pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
-#define	virt_addr_valid(kaddr)	pfn_valid(__pa(kaddr) >> PAGE_SHIFT)
+#define	virt_addr_valid(kaddr)	(((void *)(kaddr) >= (void *)PAGE_OFFSET) && \
+				 ((void *)(kaddr) < (void *)high_memory))
 
 #endif
 

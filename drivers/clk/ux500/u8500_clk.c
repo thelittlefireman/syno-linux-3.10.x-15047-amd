@@ -174,7 +174,6 @@ void u8500_clk_init(u32 clkrst1_base, u32 clkrst2_base, u32 clkrst3_base,
 	clk_register_clkdev(clk, "dsihs2", "mcde");
 	clk_register_clkdev(clk, "dsihs2", "dsilink.2");
 
-
 	clk = clk_reg_prcmu_scalable("dsi0clk", "dsi_pll",
 				PRCMU_DSI0CLK, 0, CLK_SET_RATE_GATE);
 	clk_register_clkdev(clk, "dsihs0", "mcde");

@@ -27,11 +27,9 @@
 #include <asm/lv1call.h>
 #include <asm/ps3stor.h>
 
-
 #define DEVICE_NAME		"ps3flash"
 
 #define FLASH_BLOCK_SIZE	(256*1024)
-
 
 struct ps3flash_private {
 	struct mutex mutex;	/* Bounce buffer mutex */
@@ -98,8 +96,32 @@ static int ps3flash_fetch(struct ps3_storage_device *dev, u64 start_sector)
 static loff_t ps3flash_llseek(struct file *file, loff_t offset, int origin)
 {
 	struct ps3_storage_device *dev = ps3flash_dev;
-	return generic_file_llseek_size(file, offset, origin, MAX_LFS_FILESIZE,
-			dev->regions[dev->region_idx].size*dev->blk_size);
+	loff_t res;
+
+	mutex_lock(&file->f_mapping->host->i_mutex);
+	switch (origin) {
+	case 0:
+		break;
+	case 1:
+		offset += file->f_pos;
+		break;
+	case 2:
+		offset += dev->regions[dev->region_idx].size*dev->blk_size;
+		break;
+	default:
+		offset = -1;
+	}
+	if (offset < 0) {
+		res = -EINVAL;
+		goto out;
+	}
+
+	file->f_pos = offset;
+	res = file->f_pos;
+
+out:
+	mutex_unlock(&file->f_mapping->host->i_mutex);
+	return res;
 }
 
 static ssize_t ps3flash_read(char __user *userbuf, void *kernelbuf,
@@ -428,7 +450,6 @@ static int ps3flash_remove(struct ps3_system_bus_device *_dev)
 	return 0;
 }
 
-
 static struct ps3_system_bus_driver ps3flash = {
 	.match_id	= PS3_MATCH_ID_STOR_FLASH,
 	.core.name	= DEVICE_NAME,
@@ -437,7 +458,6 @@ static struct ps3_system_bus_driver ps3flash = {
 	.remove		= ps3flash_remove,
 	.shutdown	= ps3flash_remove,
 };
-
 
 static int __init ps3flash_init(void)
 {

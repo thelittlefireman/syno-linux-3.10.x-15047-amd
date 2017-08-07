@@ -26,7 +26,6 @@ enum vme_resource_type {
 #define VME_A64_MAX	0x10000000000000000ULL
 #define VME_CRCSR_MAX	0x1000000ULL
 
-
 /* VME Cycle Types */
 #define VME_SCT		0x1
 #define VME_BLT		0x2
@@ -164,12 +163,9 @@ int vme_lm_attach(struct vme_resource *, int, void (*callback)(int));
 int vme_lm_detach(struct vme_resource *, int);
 void vme_lm_free(struct vme_resource *);
 
-int vme_slot_num(struct vme_dev *);
-int vme_bus_num(struct vme_dev *);
+int vme_slot_get(struct vme_dev *);
 
 int vme_register_driver(struct vme_driver *, unsigned int);
 void vme_unregister_driver(struct vme_driver *);
 
-
 #endif /* _VME_H_ */
-

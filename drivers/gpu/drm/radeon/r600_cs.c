@@ -34,7 +34,6 @@
 static int r600_nomm;
 extern void r600_cs_legacy_get_tiling_conf(struct drm_device *dev, u32 *npipes, u32 *nbanks, u32 *group_size);
 
-
 struct r600_cs_track {
 	/* configuration we miror so that we use same code btw kms/ums */
 	u32			group_size;
@@ -525,7 +524,6 @@ static int r600_cs_track_validate_db(struct radeon_cs_parser *p)
 	int array_mode;
 	volatile u32 *ib = p->ib.ptr;
 
-
 	if (track->db_bo == NULL) {
 		dev_warn(p->dev, "z/stencil with no depth buffer\n");
 		return -EINVAL;
@@ -890,7 +888,7 @@ int r600_cs_common_vline_parse(struct radeon_cs_parser *p,
 	obj = drm_mode_object_find(p->rdev->ddev, crtc_id, DRM_MODE_OBJECT_CRTC);
 	if (!obj) {
 		DRM_ERROR("cannot find crtc %d\n", crtc_id);
-		return -ENOENT;
+		return -EINVAL;
 	}
 	crtc = obj_to_crtc(obj);
 	radeon_crtc = to_radeon_crtc(crtc);
@@ -1007,22 +1005,8 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 	case R_008C64_SQ_VSTMP_RING_SIZE:
 	case R_0288C8_SQ_GS_VERT_ITEMSIZE:
 		/* get value to populate the IB don't remove */
-		/*tmp =radeon_get_ib_value(p, idx);
-		  ib[idx] = 0;*/
-		break;
-	case SQ_ESGS_RING_BASE:
-	case SQ_GSVS_RING_BASE:
-	case SQ_ESTMP_RING_BASE:
-	case SQ_GSTMP_RING_BASE:
-	case SQ_PSTMP_RING_BASE:
-	case SQ_VSTMP_RING_BASE:
-		r = radeon_cs_packet_next_reloc(p, &reloc, 0);
-		if (r) {
-			dev_warn(p->dev, "bad SET_CONTEXT_REG "
-					"0x%04X\n", reg);
-			return -EINVAL;
-		}
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		tmp =radeon_get_ib_value(p, idx);
+		ib[idx] = 0;
 		break;
 	case SQ_CONFIG:
 		track->sq_config = radeon_get_ib_value(p, idx);
@@ -1043,7 +1027,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			track->db_depth_info = radeon_get_ib_value(p, idx);
 			ib[idx] &= C_028010_ARRAY_MODE;
 			track->db_depth_info &= C_028010_ARRAY_MODE;
-			if (reloc->tiling_flags & RADEON_TILING_MACRO) {
+			if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO) {
 				ib[idx] |= S_028010_ARRAY_MODE(V_028010_ARRAY_2D_TILED_THIN1);
 				track->db_depth_info |= S_028010_ARRAY_MODE(V_028010_ARRAY_2D_TILED_THIN1);
 			} else {
@@ -1084,9 +1068,9 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 		}
 		tmp = (reg - VGT_STRMOUT_BUFFER_BASE_0) / 16;
 		track->vgt_strmout_bo_offset[tmp] = radeon_get_ib_value(p, idx) << 8;
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		track->vgt_strmout_bo[tmp] = reloc->robj;
-		track->vgt_strmout_bo_mc[tmp] = reloc->gpu_offset;
+		track->vgt_strmout_bo_mc[tmp] = reloc->lobj.gpu_offset;
 		track->streamout_dirty = true;
 		break;
 	case VGT_STRMOUT_BUFFER_SIZE_0:
@@ -1105,7 +1089,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 					"0x%04X\n", reg);
 			return -EINVAL;
 		}
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		break;
 	case R_028238_CB_TARGET_MASK:
 		track->cb_target_mask = radeon_get_ib_value(p, idx);
@@ -1142,10 +1126,10 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			}
 			tmp = (reg - R_0280A0_CB_COLOR0_INFO) / 4;
 			track->cb_color_info[tmp] = radeon_get_ib_value(p, idx);
-			if (reloc->tiling_flags & RADEON_TILING_MACRO) {
+			if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO) {
 				ib[idx] |= S_0280A0_ARRAY_MODE(V_0280A0_ARRAY_2D_TILED_THIN1);
 				track->cb_color_info[tmp] |= S_0280A0_ARRAY_MODE(V_0280A0_ARRAY_2D_TILED_THIN1);
-			} else if (reloc->tiling_flags & RADEON_TILING_MICRO) {
+			} else if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO) {
 				ib[idx] |= S_0280A0_ARRAY_MODE(V_0280A0_ARRAY_1D_TILED_THIN1);
 				track->cb_color_info[tmp] |= S_0280A0_ARRAY_MODE(V_0280A0_ARRAY_1D_TILED_THIN1);
 			}
@@ -1214,7 +1198,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			}
 			track->cb_color_frag_bo[tmp] = reloc->robj;
 			track->cb_color_frag_offset[tmp] = (u64)ib[idx] << 8;
-			ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+			ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		}
 		if (G_0280A0_TILE_MODE(track->cb_color_info[tmp])) {
 			track->cb_dirty = true;
@@ -1245,7 +1229,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			}
 			track->cb_color_tile_bo[tmp] = reloc->robj;
 			track->cb_color_tile_offset[tmp] = (u64)ib[idx] << 8;
-			ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+			ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		}
 		if (G_0280A0_TILE_MODE(track->cb_color_info[tmp])) {
 			track->cb_dirty = true;
@@ -1281,10 +1265,10 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 		}
 		tmp = (reg - CB_COLOR0_BASE) / 4;
 		track->cb_color_bo_offset[tmp] = radeon_get_ib_value(p, idx) << 8;
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		track->cb_color_base_last[tmp] = ib[idx];
 		track->cb_color_bo[tmp] = reloc->robj;
-		track->cb_color_bo_mc[tmp] = reloc->gpu_offset;
+		track->cb_color_bo_mc[tmp] = reloc->lobj.gpu_offset;
 		track->cb_dirty = true;
 		break;
 	case DB_DEPTH_BASE:
@@ -1295,9 +1279,9 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			return -EINVAL;
 		}
 		track->db_offset = radeon_get_ib_value(p, idx) << 8;
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		track->db_bo = reloc->robj;
-		track->db_bo_mc = reloc->gpu_offset;
+		track->db_bo_mc = reloc->lobj.gpu_offset;
 		track->db_dirty = true;
 		break;
 	case DB_HTILE_DATA_BASE:
@@ -1308,7 +1292,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 			return -EINVAL;
 		}
 		track->htile_offset = radeon_get_ib_value(p, idx) << 8;
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		track->htile_bo = reloc->robj;
 		track->db_dirty = true;
 		break;
@@ -1377,7 +1361,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 					"0x%04X\n", reg);
 			return -EINVAL;
 		}
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		break;
 	case SX_MEMORY_EXPORT_BASE:
 		r = radeon_cs_packet_next_reloc(p, &reloc, r600_nomm);
@@ -1386,7 +1370,7 @@ static int r600_cs_check_reg(struct radeon_cs_parser *p, u32 reg, u32 idx)
 					"0x%04X\n", reg);
 			return -EINVAL;
 		}
-		ib[idx] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+		ib[idx] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		break;
 	case SX_MISC:
 		track->sx_misc_kill_all_prims = (radeon_get_ib_value(p, idx) & 0x1) != 0;
@@ -1672,7 +1656,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			return -EINVAL;
 		}
 
-		offset = reloc->gpu_offset +
+		offset = reloc->lobj.gpu_offset +
 		         (idx_value & 0xfffffff0) +
 		         ((u64)(tmp & 0xff) << 32);
 
@@ -1713,7 +1697,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			return -EINVAL;
 		}
 
-		offset = reloc->gpu_offset +
+		offset = reloc->lobj.gpu_offset +
 		         idx_value +
 		         ((u64)(radeon_get_ib_value(p, idx+1) & 0xff) << 32);
 
@@ -1765,7 +1749,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 				return -EINVAL;
 			}
 
-			offset = reloc->gpu_offset +
+			offset = reloc->lobj.gpu_offset +
 			         (radeon_get_ib_value(p, idx+1) & 0xfffffff0) +
 			         ((u64)(radeon_get_ib_value(p, idx+2) & 0xff) << 32);
 
@@ -1805,7 +1789,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			tmp = radeon_get_ib_value(p, idx) +
 				((u64)(radeon_get_ib_value(p, idx+1) & 0xff) << 32);
 
-			offset = reloc->gpu_offset + tmp;
+			offset = reloc->lobj.gpu_offset + tmp;
 
 			if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 				dev_warn(p->dev, "CP DMA src buffer too small (%llu %lu)\n",
@@ -1835,7 +1819,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			tmp = radeon_get_ib_value(p, idx+2) +
 				((u64)(radeon_get_ib_value(p, idx+3) & 0xff) << 32);
 
-			offset = reloc->gpu_offset + tmp;
+			offset = reloc->lobj.gpu_offset + tmp;
 
 			if ((tmp + size) > radeon_bo_size(reloc->robj)) {
 				dev_warn(p->dev, "CP DMA dst buffer too small (%llu %lu)\n",
@@ -1861,7 +1845,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 				DRM_ERROR("bad SURFACE_SYNC\n");
 				return -EINVAL;
 			}
-			ib[idx+2] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+			ib[idx+2] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		}
 		break;
 	case PACKET3_EVENT_WRITE:
@@ -1877,7 +1861,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 				DRM_ERROR("bad EVENT_WRITE\n");
 				return -EINVAL;
 			}
-			offset = reloc->gpu_offset +
+			offset = reloc->lobj.gpu_offset +
 			         (radeon_get_ib_value(p, idx+1) & 0xfffffff8) +
 			         ((u64)(radeon_get_ib_value(p, idx+2) & 0xff) << 32);
 
@@ -1899,7 +1883,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 			return -EINVAL;
 		}
 
-		offset = reloc->gpu_offset +
+		offset = reloc->lobj.gpu_offset +
 		         (radeon_get_ib_value(p, idx+1) & 0xfffffffc) +
 		         ((u64)(radeon_get_ib_value(p, idx+2) & 0xff) << 32);
 
@@ -1964,11 +1948,11 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					DRM_ERROR("bad SET_RESOURCE\n");
 					return -EINVAL;
 				}
-				base_offset = (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+				base_offset = (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 				if (!(p->cs_flags & RADEON_CS_KEEP_TILING_FLAGS)) {
-					if (reloc->tiling_flags & RADEON_TILING_MACRO)
+					if (reloc->lobj.tiling_flags & RADEON_TILING_MACRO)
 						ib[idx+1+(i*7)+0] |= S_038000_TILE_MODE(V_038000_ARRAY_2D_TILED_THIN1);
-					else if (reloc->tiling_flags & RADEON_TILING_MICRO)
+					else if (reloc->lobj.tiling_flags & RADEON_TILING_MICRO)
 						ib[idx+1+(i*7)+0] |= S_038000_TILE_MODE(V_038000_ARRAY_1D_TILED_THIN1);
 				}
 				texture = reloc->robj;
@@ -1978,13 +1962,13 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					DRM_ERROR("bad SET_RESOURCE\n");
 					return -EINVAL;
 				}
-				mip_offset = (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+				mip_offset = (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 				mipmap = reloc->robj;
 				r = r600_check_texture_resource(p,  idx+(i*7)+1,
 								texture, mipmap,
 								base_offset + radeon_get_ib_value(p, idx+1+(i*7)+2),
 								mip_offset + radeon_get_ib_value(p, idx+1+(i*7)+3),
-								reloc->tiling_flags);
+								reloc->lobj.tiling_flags);
 				if (r)
 					return r;
 				ib[idx+1+(i*7)+2] += base_offset;
@@ -2008,7 +1992,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					ib[idx+1+(i*7)+1] = radeon_bo_size(reloc->robj) - offset;
 				}
 
-				offset64 = reloc->gpu_offset + offset;
+				offset64 = reloc->lobj.gpu_offset + offset;
 				ib[idx+1+(i*8)+0] = offset64;
 				ib[idx+1+(i*8)+2] = (ib[idx+1+(i*8)+2] & 0xffffff00) |
 						    (upper_32_bits(offset64) & 0xff);
@@ -2118,7 +2102,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
-			ib[idx+1] += (u32)((reloc->gpu_offset >> 8) & 0xffffffff);
+			ib[idx+1] += (u32)((reloc->lobj.gpu_offset >> 8) & 0xffffffff);
 		}
 		break;
 	case PACKET3_SURFACE_BASE_UPDATE:
@@ -2151,7 +2135,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
-			offset += reloc->gpu_offset;
+			offset += reloc->lobj.gpu_offset;
 			ib[idx+1] = offset;
 			ib[idx+2] = upper_32_bits(offset) & 0xff;
 		}
@@ -2170,7 +2154,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
-			offset += reloc->gpu_offset;
+			offset += reloc->lobj.gpu_offset;
 			ib[idx+3] = offset;
 			ib[idx+4] = upper_32_bits(offset) & 0xff;
 		}
@@ -2199,7 +2183,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 				  offset + 8, radeon_bo_size(reloc->robj));
 			return -EINVAL;
 		}
-		offset += reloc->gpu_offset;
+		offset += reloc->lobj.gpu_offset;
 		ib[idx+0] = offset;
 		ib[idx+1] = upper_32_bits(offset) & 0xff;
 		break;
@@ -2224,7 +2208,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
-			offset += reloc->gpu_offset;
+			offset += reloc->lobj.gpu_offset;
 			ib[idx+1] = offset;
 			ib[idx+2] = upper_32_bits(offset) & 0xff;
 		} else {
@@ -2248,7 +2232,7 @@ static int r600_packet3_check(struct radeon_cs_parser *p,
 					  offset + 4, radeon_bo_size(reloc->robj));
 				return -EINVAL;
 			}
-			offset += reloc->gpu_offset;
+			offset += reloc->lobj.gpu_offset;
 			ib[idx+3] = offset;
 			ib[idx+4] = upper_32_bits(offset) & 0xff;
 		} else {
@@ -2345,8 +2329,13 @@ static void r600_cs_parser_fini(struct radeon_cs_parser *parser, int error)
 	unsigned i;
 
 	kfree(parser->relocs);
-	for (i = 0; i < parser->nchunks; i++)
-		drm_free_large(parser->chunks[i].kdata);
+	for (i = 0; i < parser->nchunks; i++) {
+		kfree(parser->chunks[i].kdata);
+		if (parser->rdev && (parser->rdev->flags & RADEON_IS_AGP)) {
+			kfree(parser->chunks[i].kpage[0]);
+			kfree(parser->chunks[i].kpage[1]);
+		}
+	}
 	kfree(parser->chunks);
 	kfree(parser->chunks_array);
 }
@@ -2403,12 +2392,13 @@ int r600_cs_legacy(struct drm_device *dev, void *data, struct drm_file *filp,
 	ib_chunk = &parser.chunks[parser.chunk_ib_idx];
 	parser.ib.length_dw = ib_chunk->length_dw;
 	*l = parser.ib.length_dw;
-	if (copy_from_user(ib, ib_chunk->user_ptr, ib_chunk->length_dw * 4)) {
-		r = -EFAULT;
+	r = r600_cs_parse(&parser);
+	if (r) {
+		DRM_ERROR("Invalid command stream !\n");
 		r600_cs_parser_fini(&parser, r);
 		return r;
 	}
-	r = r600_cs_parse(&parser);
+	r = radeon_cs_finish_pages(&parser);
 	if (r) {
 		DRM_ERROR("Invalid command stream !\n");
 		r600_cs_parser_fini(&parser, r);
@@ -2505,14 +2495,14 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset <<= 8;
 
-				ib[idx+1] += (u32)(dst_reloc->gpu_offset >> 8);
+				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
 				p->idx += count + 5;
 			} else {
 				dst_offset = radeon_get_ib_value(p, idx+1);
 				dst_offset |= ((u64)(radeon_get_ib_value(p, idx+2) & 0xff)) << 32;
 
-				ib[idx+1] += (u32)(dst_reloc->gpu_offset & 0xfffffffc);
-				ib[idx+2] += upper_32_bits(dst_reloc->gpu_offset) & 0xff;
+				ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
+				ib[idx+2] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
 				p->idx += count + 3;
 			}
 			if ((dst_offset + (count * 4)) > radeon_bo_size(dst_reloc->robj)) {
@@ -2539,22 +2529,22 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 					/* tiled src, linear dst */
 					src_offset = radeon_get_ib_value(p, idx+1);
 					src_offset <<= 8;
-					ib[idx+1] += (u32)(src_reloc->gpu_offset >> 8);
+					ib[idx+1] += (u32)(src_reloc->lobj.gpu_offset >> 8);
 
 					dst_offset = radeon_get_ib_value(p, idx+5);
 					dst_offset |= ((u64)(radeon_get_ib_value(p, idx+6) & 0xff)) << 32;
-					ib[idx+5] += (u32)(dst_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+6] += upper_32_bits(dst_reloc->gpu_offset) & 0xff;
+					ib[idx+5] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+6] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
 				} else {
 					/* linear src, tiled dst */
 					src_offset = radeon_get_ib_value(p, idx+5);
 					src_offset |= ((u64)(radeon_get_ib_value(p, idx+6) & 0xff)) << 32;
-					ib[idx+5] += (u32)(src_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+6] += upper_32_bits(src_reloc->gpu_offset) & 0xff;
+					ib[idx+5] += (u32)(src_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+6] += upper_32_bits(src_reloc->lobj.gpu_offset) & 0xff;
 
 					dst_offset = radeon_get_ib_value(p, idx+1);
 					dst_offset <<= 8;
-					ib[idx+1] += (u32)(dst_reloc->gpu_offset >> 8);
+					ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset >> 8);
 				}
 				p->idx += 7;
 			} else {
@@ -2564,10 +2554,10 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 					dst_offset = radeon_get_ib_value(p, idx+1);
 					dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0xff)) << 32;
 
-					ib[idx+1] += (u32)(dst_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+2] += (u32)(src_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+3] += upper_32_bits(dst_reloc->gpu_offset) & 0xff;
-					ib[idx+4] += upper_32_bits(src_reloc->gpu_offset) & 0xff;
+					ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+2] += (u32)(src_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+3] += upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff;
+					ib[idx+4] += upper_32_bits(src_reloc->lobj.gpu_offset) & 0xff;
 					p->idx += 5;
 				} else {
 					src_offset = radeon_get_ib_value(p, idx+2);
@@ -2575,10 +2565,10 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 					dst_offset = radeon_get_ib_value(p, idx+1);
 					dst_offset |= ((u64)(radeon_get_ib_value(p, idx+3) & 0xff0000)) << 16;
 
-					ib[idx+1] += (u32)(dst_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+2] += (u32)(src_reloc->gpu_offset & 0xfffffffc);
-					ib[idx+3] += upper_32_bits(src_reloc->gpu_offset) & 0xff;
-					ib[idx+3] += (upper_32_bits(dst_reloc->gpu_offset) & 0xff) << 16;
+					ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+2] += (u32)(src_reloc->lobj.gpu_offset & 0xfffffffc);
+					ib[idx+3] += upper_32_bits(src_reloc->lobj.gpu_offset) & 0xff;
+					ib[idx+3] += (upper_32_bits(dst_reloc->lobj.gpu_offset) & 0xff) << 16;
 					p->idx += 4;
 				}
 			}
@@ -2610,8 +2600,8 @@ int r600_dma_cs_parse(struct radeon_cs_parser *p)
 					 dst_offset + (count * 4), radeon_bo_size(dst_reloc->robj));
 				return -EINVAL;
 			}
-			ib[idx+1] += (u32)(dst_reloc->gpu_offset & 0xfffffffc);
-			ib[idx+3] += (upper_32_bits(dst_reloc->gpu_offset) << 16) & 0x00ff0000;
+			ib[idx+1] += (u32)(dst_reloc->lobj.gpu_offset & 0xfffffffc);
+			ib[idx+3] += (upper_32_bits(dst_reloc->lobj.gpu_offset) << 16) & 0x00ff0000;
 			p->idx += 4;
 			break;
 		case DMA_PACKET_NOP:

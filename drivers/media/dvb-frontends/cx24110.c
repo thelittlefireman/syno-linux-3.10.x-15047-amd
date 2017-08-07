@@ -30,7 +30,6 @@
 #include "dvb_frontend.h"
 #include "cx24110.h"
 
-
 struct cx24110_state {
 
 	struct i2c_adapter* i2c;
@@ -111,7 +110,6 @@ static struct {u8 reg; u8 data;} cx24110_regdata[]=
 	 {0x75,0x00}  /* @  " */
 		      /* the remaining registers are for SEC */
 	};
-
 
 static int cx24110_writereg (struct cx24110_state* state, int reg, int data)
 {
@@ -378,7 +376,7 @@ static int cx24110_set_voltage (struct dvb_frontend* fe, fe_sec_voltage_t voltag
 		return cx24110_writereg(state,0x76,(cx24110_readreg(state,0x76)&0x3b)|0x40);
 	default:
 		return -EINVAL;
-	}
+	};
 }
 
 static int cx24110_diseqc_send_burst(struct dvb_frontend* fe, fe_sec_mini_cmd_t burst)

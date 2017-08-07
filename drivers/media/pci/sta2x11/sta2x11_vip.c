@@ -86,7 +86,6 @@
 #define AUX_COUNT 3
 #define IRQ_COUNT 1
 
-
 struct vip_buffer {
 	struct vb2_buffer	vb;
 	struct list_head	list;
@@ -133,7 +132,6 @@ struct sta2x11_vip {
 	unsigned int register_save_area[IRQ_COUNT + SAVE_COUNT + AUX_COUNT];
 	struct v4l2_subdev *decoder;
 	struct v4l2_ctrl_handler ctrl_hdl;
-
 
 	struct v4l2_pix_format format;
 	v4l2_std_id std;
@@ -263,7 +261,6 @@ static void vip_active_buf_next(struct sta2x11_vip *vip)
 	}
 }
 
-
 /* Videobuf2 Operations */
 static int queue_setup(struct vb2_queue *vq, const struct v4l2_format *fmt,
 		       unsigned int *nbuffers, unsigned int *nplanes,
@@ -327,7 +324,7 @@ static void buffer_queue(struct vb2_buffer *vb)
 	}
 	spin_unlock(&vip->lock);
 }
-static void buffer_finish(struct vb2_buffer *vb)
+static int buffer_finish(struct vb2_buffer *vb)
 {
 	struct sta2x11_vip *vip = vb2_get_drv_priv(vb->vb2_queue);
 	struct vip_buffer *vip_buf = to_vip_buffer(vb);
@@ -337,8 +334,9 @@ static void buffer_finish(struct vb2_buffer *vb)
 	list_del_init(&vip_buf->list);
 	spin_unlock(&vip->lock);
 
-	if (vb2_is_streaming(vb->vb2_queue))
-		vip_active_buf_next(vip);
+	vip_active_buf_next(vip);
+
+	return 0;
 }
 
 static int start_streaming(struct vb2_queue *vq, unsigned int count)
@@ -387,7 +385,6 @@ static struct vb2_ops vip_video_qops = {
 	.stop_streaming		= stop_streaming,
 };
 
-
 /* File Operations */
 static const struct v4l2_file_operations vip_fops = {
 	.owner = THIS_MODULE,
@@ -398,7 +395,6 @@ static const struct v4l2_file_operations vip_fops = {
 	.mmap = vb2_fop_mmap,
 	.poll = vb2_fop_poll
 };
-
 
 /**
  * vidioc_querycap - return capabilities of device
@@ -872,7 +868,6 @@ static int sta2x11_vip_init_buffer(struct sta2x11_vip *vip)
 	INIT_LIST_HEAD(&vip->buffer_list);
 	spin_lock_init(&vip->lock);
 
-
 	vip->alloc_ctx = vb2_dma_contig_init_ctx(&vip->pdev->dev);
 	if (IS_ERR(vip->alloc_ctx)) {
 		v4l2_err(&vip->v4l2_dev, "Can't allocate buffer context");
@@ -1046,8 +1041,7 @@ static int sta2x11_vip_init_one(struct pci_dev *pdev,
 	ret = sta2x11_vip_init_controls(vip);
 	if (ret)
 		goto free_mem;
-	ret = v4l2_device_register(&pdev->dev, &vip->v4l2_dev);
-	if (ret)
+	if (v4l2_device_register(&pdev->dev, &vip->v4l2_dev))
 		goto free_mem;
 
 	dev_dbg(&pdev->dev, "BAR #0 at 0x%lx 0x%lx irq %d\n",
@@ -1302,7 +1296,7 @@ static int sta2x11_vip_resume(struct pci_dev *pdev)
 
 #endif
 
-static const struct pci_device_id sta2x11_vip_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(sta2x11_vip_pci_tbl) = {
 	{PCI_DEVICE(PCI_VENDOR_ID_STMICRO, PCI_DEVICE_ID_STMICRO_VIP)},
 	{0,}
 };

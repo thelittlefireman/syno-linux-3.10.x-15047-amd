@@ -23,7 +23,9 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ *     MA 02111-1307 USA
  *
  ********************************************************************/
 
@@ -629,7 +631,6 @@ static void ircomm_tty_watchdog_timer_expired(void *data)
 	ircomm_tty_do_event(self, IRCOMM_TTY_WD_TIMER_EXPIRED, NULL, NULL);
 }
 
-
 /*
  * Function ircomm_tty_do_event (self, event, skb)
  *
@@ -1006,4 +1007,3 @@ static int ircomm_tty_state_ready(struct ircomm_tty_cb *self,
 	}
 	return ret;
 }
-

@@ -77,7 +77,6 @@ static void omap_gem_dmabuf_release(struct dma_buf *buffer)
 	drm_gem_object_unreference_unlocked(obj);
 }
 
-
 static int omap_gem_dmabuf_begin_cpu_access(struct dma_buf *buffer,
 		size_t start, size_t len, enum dma_data_direction dir)
 {
@@ -99,7 +98,6 @@ static void omap_gem_dmabuf_end_cpu_access(struct dma_buf *buffer,
 	struct drm_gem_object *obj = buffer->priv;
 	omap_gem_put_pages(obj);
 }
-
 
 static void *omap_gem_dmabuf_kmap_atomic(struct dma_buf *buffer,
 		unsigned long page_num)
@@ -136,21 +134,44 @@ static void omap_gem_dmabuf_kunmap(struct dma_buf *buffer,
 	kunmap(pages[page_num]);
 }
 
+/*
+ * TODO maybe we can split up drm_gem_mmap to avoid duplicating
+ * some here.. or at least have a drm_dmabuf_mmap helper.
+ */
 static int omap_gem_dmabuf_mmap(struct dma_buf *buffer,
 		struct vm_area_struct *vma)
 {
 	struct drm_gem_object *obj = buffer->priv;
-	struct drm_device *dev = obj->dev;
 	int ret = 0;
 
 	if (WARN_ON(!obj->filp))
 		return -EINVAL;
 
-	mutex_lock(&dev->struct_mutex);
-	ret = drm_gem_mmap_obj(obj, omap_gem_mmap_size(obj), vma);
-	mutex_unlock(&dev->struct_mutex);
-	if (ret < 0)
-		return ret;
+	/* Check for valid size. */
+	if (omap_gem_mmap_size(obj) < vma->vm_end - vma->vm_start) {
+		ret = -EINVAL;
+		goto out_unlock;
+	}
+
+	if (!obj->dev->driver->gem_vm_ops) {
+		ret = -EINVAL;
+		goto out_unlock;
+	}
+
+	vma->vm_flags |= VM_IO | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP;
+	vma->vm_ops = obj->dev->driver->gem_vm_ops;
+	vma->vm_private_data = obj;
+	vma->vm_page_prot =  pgprot_writecombine(vm_get_page_prot(vma->vm_flags));
+
+	/* Take a ref for this mapping of the object, so that the fault
+	 * handler can dereference the mmap offset's pointer to the object.
+	 * This reference is cleaned up by the corresponding vm_close
+	 * (which should happen whether the vma was created by this call, or
+	 * by a vm_open due to mremap or partial unmap or whatever).
+	 */
+	vma->vm_ops->open(vma);
+
+out_unlock:
 
 	return omap_gem_mmap_obj(obj, vma);
 }

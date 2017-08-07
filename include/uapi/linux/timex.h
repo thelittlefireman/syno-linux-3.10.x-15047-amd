@@ -63,27 +63,27 @@
  */
 struct timex {
 	unsigned int modes;	/* mode selector */
-	__kernel_long_t offset;	/* time offset (usec) */
-	__kernel_long_t freq;	/* frequency offset (scaled ppm) */
-	__kernel_long_t maxerror;/* maximum error (usec) */
-	__kernel_long_t esterror;/* estimated error (usec) */
+	long offset;		/* time offset (usec) */
+	long freq;		/* frequency offset (scaled ppm) */
+	long maxerror;		/* maximum error (usec) */
+	long esterror;		/* estimated error (usec) */
 	int status;		/* clock command/status */
-	__kernel_long_t constant;/* pll time constant */
-	__kernel_long_t precision;/* clock precision (usec) (read only) */
-	__kernel_long_t tolerance;/* clock frequency tolerance (ppm)
-				   * (read only)
-				   */
+	long constant;		/* pll time constant */
+	long precision;		/* clock precision (usec) (read only) */
+	long tolerance;		/* clock frequency tolerance (ppm)
+				 * (read only)
+				 */
 	struct timeval time;	/* (read only, except for ADJ_SETOFFSET) */
-	__kernel_long_t tick;	/* (modified) usecs between clock ticks */
+	long tick;		/* (modified) usecs between clock ticks */
 
-	__kernel_long_t ppsfreq;/* pps frequency (scaled ppm) (ro) */
-	__kernel_long_t jitter; /* pps jitter (us) (ro) */
+	long ppsfreq;           /* pps frequency (scaled ppm) (ro) */
+	long jitter;            /* pps jitter (us) (ro) */
 	int shift;              /* interval duration (s) (shift) (ro) */
-	__kernel_long_t stabil;            /* pps stability (scaled ppm) (ro) */
-	__kernel_long_t jitcnt; /* jitter limit exceeded (ro) */
-	__kernel_long_t calcnt; /* calibration intervals (ro) */
-	__kernel_long_t errcnt; /* calibration errors (ro) */
-	__kernel_long_t stbcnt; /* stability limit exceeded (ro) */
+	long stabil;            /* pps stability (scaled ppm) (ro) */
+	long jitcnt;            /* jitter limit exceeded (ro) */
+	long calcnt;            /* calibration intervals (ro) */
+	long errcnt;            /* calibration errors (ro) */
+	long stbcnt;            /* stability limit exceeded (ro) */
 
 	int tai;		/* TAI offset (ro) */
 
@@ -123,7 +123,6 @@ struct timex {
 #define MOD_MICRO	ADJ_MICRO
 #define MOD_NANO	ADJ_NANO
 
-
 /*
  * Status codes (timex.status)
  */
@@ -161,6 +160,5 @@ struct timex {
 #define TIME_WAIT	4	/* leap second has occurred */
 #define TIME_ERROR	5	/* clock not synchronized */
 #define TIME_BAD	TIME_ERROR /* bw compat */
-
 
 #endif /* _UAPI_LINUX_TIMEX_H */

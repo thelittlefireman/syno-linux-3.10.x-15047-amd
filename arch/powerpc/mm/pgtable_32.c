@@ -121,10 +121,7 @@ pgtable_t pte_alloc_one(struct mm_struct *mm, unsigned long address)
 	ptepage = alloc_pages(flags, 0);
 	if (!ptepage)
 		return NULL;
-	if (!pgtable_page_ctor(ptepage)) {
-		__free_page(ptepage);
-		return NULL;
-	}
+	pgtable_page_ctor(ptepage);
 	return ptepage;
 }
 
@@ -299,7 +296,6 @@ int map_page(unsigned long va, phys_addr_t pa, int flags)
 		set_pte_at(&init_mm, va, pg, pfn_pte(pa >> PAGE_SHIFT,
 						     __pgprot(flags)));
 	}
-	smp_wmb();
 	return err;
 }
 
@@ -428,7 +424,6 @@ static int change_page_attr(struct page *page, int numpages, pgprot_t prot)
 	local_irq_restore(flags);
 	return err;
 }
-
 
 void kernel_map_pages(struct page *page, int numpages, int enable)
 {

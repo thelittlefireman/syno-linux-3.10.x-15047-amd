@@ -32,13 +32,11 @@
 #include <mach/hardware.h>
 #include <mach/at91sam9_smc.h>
 
-
 #include "at91_aic.h"
 #include "at91_shdwc.h"
 #include "board.h"
 #include "sam9_smc.h"
 #include "generic.h"
-
 
 static void __init ek_init_early(void)
 {
@@ -53,7 +51,6 @@ static struct usba_platform_data __initdata ek_usba_udc_data = {
 	.vbus_pin	= AT91_PIN_PA8,
 };
 
-
 /*
  * MCI (SD/MMC)
  */
@@ -64,7 +61,6 @@ static struct mci_platform_data __initdata mci0_data = {
 		.wp_pin		= -EINVAL,
 	},
 };
-
 
 /*
  * NAND flash
@@ -120,7 +116,6 @@ static void __init ek_add_device_nand(void)
 	at91_add_device_nand(&ek_nand_data);
 }
 
-
 /*
  * SPI devices
  */
@@ -132,7 +127,6 @@ static struct spi_board_info ek_spi_devices[] = {
 		.bus_num	= 0,
 	},
 };
-
 
 /*
  * LCD Controller
@@ -170,7 +164,7 @@ static struct fb_monspecs at91fb_default_monspecs = {
 					| ATMEL_LCDC_DISTYPE_TFT \
 					| ATMEL_LCDC_CLKMOD_ALWAYSACTIVE)
 
-static void at91_lcdc_power_control(struct atmel_lcdfb_pdata *pdata, int on)
+static void at91_lcdc_power_control(int on)
 {
 	if (on)
 		at91_set_gpio_value(AT91_PIN_PC1, 0);	/* power up */
@@ -179,7 +173,7 @@ static void at91_lcdc_power_control(struct atmel_lcdfb_pdata *pdata, int on)
 }
 
 /* Driver datas */
-static struct atmel_lcdfb_pdata __initdata ek_lcdc_data = {
+static struct atmel_lcdfb_info __initdata ek_lcdc_data = {
 	.lcdcon_is_backlight            = true,
 	.default_bpp			= 16,
 	.default_dmacon			= ATMEL_LCDC_DMAEN,
@@ -191,9 +185,8 @@ static struct atmel_lcdfb_pdata __initdata ek_lcdc_data = {
 };
 
 #else
-static struct atmel_lcdfb_pdata __initdata ek_lcdc_data;
+static struct atmel_lcdfb_info __initdata ek_lcdc_data;
 #endif
-
 
 /*
  * AC97
@@ -202,7 +195,6 @@ static struct atmel_lcdfb_pdata __initdata ek_lcdc_data;
 static struct ac97c_platform_data ek_ac97_data = {
 	.reset_pin	= -EINVAL,
 };
-
 
 /*
  * LEDs
@@ -227,7 +219,6 @@ static struct gpio_led ek_leds[] = {
 	}
 };
 
-
 /*
  * Touchscreen
  */
@@ -236,7 +227,6 @@ static struct at91_tsadcc_data ek_tsadcc_data = {
 	.pendet_debounce	= 0x0f,
 	.ts_sample_hold_time	= 0x03,
 };
-
 
 /*
  * GPIO Buttons
@@ -285,7 +275,6 @@ static void __init ek_add_device_buttons(void)
 #else
 static void __init ek_add_device_buttons(void) {}
 #endif
-
 
 static void __init ek_board_init(void)
 {

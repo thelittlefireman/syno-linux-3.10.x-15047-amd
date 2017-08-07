@@ -135,7 +135,7 @@ mISDN_sock_recvmsg(struct kiocb *iocb, struct socket *sock,
 		return err;
 
 	if (msg->msg_name) {
-		DECLARE_SOCKADDR(struct sockaddr_mISDN *, maddr, msg->msg_name);
+		struct sockaddr_mISDN *maddr = msg->msg_name;
 
 		maddr->family = AF_ISDN;
 		maddr->dev = _pms(sk)->dev->id;
@@ -179,6 +179,7 @@ mISDN_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 	struct sock		*sk = sock->sk;
 	struct sk_buff		*skb;
 	int			err = -ENOMEM;
+	struct sockaddr_mISDN	*maddr;
 
 	if (*debug & DEBUG_SOCKET)
 		printk(KERN_DEBUG "%s: len %d flags %x ch %d proto %x\n",
@@ -213,7 +214,7 @@ mISDN_sock_sendmsg(struct kiocb *iocb, struct socket *sock,
 
 	if (msg->msg_namelen >= sizeof(struct sockaddr_mISDN)) {
 		/* if we have a address, we use it */
-		DECLARE_SOCKADDR(struct sockaddr_mISDN *, maddr, msg->msg_name);
+		maddr = (struct sockaddr_mISDN *)msg->msg_name;
 		mISDN_HEAD_ID(skb) = maddr->channel;
 	} else { /* use default for L2 messages */
 		if ((sk->sk_protocol == ISDN_P_LAPD_TE) ||
@@ -754,7 +755,6 @@ static const struct proto_ops base_sock_ops = {
 	.accept		= sock_no_accept,
 	.mmap		= sock_no_mmap
 };
-
 
 static int
 base_sock_create(struct net *net, struct socket *sock, int protocol)

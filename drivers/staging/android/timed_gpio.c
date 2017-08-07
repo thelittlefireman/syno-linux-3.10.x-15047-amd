@@ -24,7 +24,6 @@
 #include "timed_output.h"
 #include "timed_gpio.h"
 
-
 struct timed_gpio_data {
 	struct timed_output_dev dev;
 	struct hrtimer timer;
@@ -90,9 +89,8 @@ static int timed_gpio_probe(struct platform_device *pdev)
 	if (!pdata)
 		return -EBUSY;
 
-	gpio_data = devm_kzalloc(&pdev->dev,
-				sizeof(struct timed_gpio_data) * pdata->num_gpios,
-				GFP_KERNEL);
+	gpio_data = kzalloc(sizeof(struct timed_gpio_data) * pdata->num_gpios,
+			GFP_KERNEL);
 	if (!gpio_data)
 		return -ENOMEM;
 
@@ -132,6 +130,7 @@ err_out:
 		timed_output_dev_unregister(&gpio_data[i].dev);
 		gpio_free(gpio_data[i].gpio);
 	}
+	kfree(gpio_data);
 
 	return ret;
 }
@@ -146,6 +145,8 @@ static int timed_gpio_remove(struct platform_device *pdev)
 		timed_output_dev_unregister(&gpio_data[i].dev);
 		gpio_free(gpio_data[i].gpio);
 	}
+
+	kfree(gpio_data);
 
 	return 0;
 }

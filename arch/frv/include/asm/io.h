@@ -243,7 +243,6 @@ static inline void writel(uint32_t datum, volatile void __iomem *addr)
 		__flush_PCI_writes();
 }
 
-
 /* Values for nocacheflag and cmode */
 #define IOMAP_FULL_CACHING		0
 #define IOMAP_NOCACHE_SER		1
@@ -374,7 +373,6 @@ struct pci_dev;
 static inline void pci_iounmap(struct pci_dev *dev, void __iomem *p)
 {
 }
-
 
 /*
  * Convert a physical pointer to a virtual kernel pointer for /dev/mem

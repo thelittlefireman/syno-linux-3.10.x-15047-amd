@@ -91,7 +91,6 @@ enum ipu_dc_map {
 	IPU_DC_MAP_RGB565,
 	IPU_DC_MAP_GBR24, /* TVEv2 */
 	IPU_DC_MAP_BGR666,
-	IPU_DC_MAP_BGR24,
 };
 
 struct ipu_dc {
@@ -153,8 +152,6 @@ static int ipu_pixfmt_to_map(u32 fmt)
 		return IPU_DC_MAP_GBR24;
 	case V4L2_PIX_FMT_BGR666:
 		return IPU_DC_MAP_BGR666;
-	case V4L2_PIX_FMT_BGR24:
-		return IPU_DC_MAP_BGR24;
 	default:
 		return -EINVAL;
 	}
@@ -164,15 +161,14 @@ int ipu_dc_init_sync(struct ipu_dc *dc, struct ipu_di *di, bool interlaced,
 		u32 pixel_fmt, u32 width)
 {
 	struct ipu_dc_priv *priv = dc->priv;
-	u32 reg = 0;
-	int map;
+	u32 reg = 0, map;
 
 	dc->di = ipu_di_get_num(di);
 
 	map = ipu_pixfmt_to_map(pixel_fmt);
 	if (map < 0) {
 		dev_dbg(priv->dev, "IPU_DISP: No MAP\n");
-		return map;
+		return -EINVAL;
 	}
 
 	if (interlaced) {
@@ -262,7 +258,7 @@ void ipu_dc_disable_channel(struct ipu_dc *dc)
 
 	/* Wait for DC triple buffer to empty */
 	while ((readl(priv->dc_reg + DC_STAT) & val) != val) {
-		usleep_range(2000, 20000);
+		msleep(2);
 		timeout -= 2;
 		if (timeout <= 0)
 			break;
@@ -316,7 +312,7 @@ struct ipu_dc *ipu_dc_get(struct ipu_soc *ipu, int channel)
 		return ERR_PTR(-EBUSY);
 	}
 
-	dc->in_use = true;
+	dc->in_use = 1;
 
 	mutex_unlock(&priv->mutex);
 
@@ -329,7 +325,7 @@ void ipu_dc_put(struct ipu_dc *dc)
 	struct ipu_dc_priv *priv = dc->priv;
 
 	mutex_lock(&priv->mutex);
-	dc->in_use = false;
+	dc->in_use = 0;
 	mutex_unlock(&priv->mutex);
 }
 EXPORT_SYMBOL_GPL(ipu_dc_put);
@@ -397,12 +393,6 @@ int ipu_dc_init(struct ipu_soc *ipu, struct device *dev,
 	ipu_dc_map_config(priv, IPU_DC_MAP_BGR666, 0, 5, 0xfc); /* blue */
 	ipu_dc_map_config(priv, IPU_DC_MAP_BGR666, 1, 11, 0xfc); /* green */
 	ipu_dc_map_config(priv, IPU_DC_MAP_BGR666, 2, 17, 0xfc); /* red */
-
-	/* bgr24 */
-	ipu_dc_map_clear(priv, IPU_DC_MAP_BGR24);
-	ipu_dc_map_config(priv, IPU_DC_MAP_BGR24, 2, 7, 0xff); /* red */
-	ipu_dc_map_config(priv, IPU_DC_MAP_BGR24, 1, 15, 0xff); /* green */
-	ipu_dc_map_config(priv, IPU_DC_MAP_BGR24, 0, 23, 0xff); /* blue */
 
 	return 0;
 }

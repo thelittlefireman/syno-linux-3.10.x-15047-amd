@@ -84,7 +84,6 @@ static int model_number = -1;
 module_param(model_number, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(model_number, "Use this model number, don't autodetect");
 
-
 /* HW-independent code functions */
 
 /* check whether carrier frequency is high frequency */
@@ -546,7 +545,6 @@ static void ite_s_idle(struct rc_dev *rcdev, bool enable)
 		spin_unlock_irqrestore(&dev->lock, flags);
 	}
 }
-
 
 /* IT8712F HW-specific functions */
 
@@ -1295,7 +1293,6 @@ static void it8709_init_hardware(struct ite_dev *dev)
 	ite_set_carrier_params(dev);
 }
 
-
 /* generic hardware setup/teardown code */
 
 /* activate the device for use */
@@ -1563,7 +1560,7 @@ static int ite_probe(struct pnp_dev *pdev, const struct pnp_device_id
 	/* set up ir-core props */
 	rdev->priv = itdev;
 	rdev->driver_type = RC_DRIVER_IR_RAW;
-	rc_set_allowed_protocols(rdev, RC_BIT_ALL);
+	rdev->allowed_protos = RC_BIT_ALL;
 	rdev->open = ite_open;
 	rdev->close = ite_close;
 	rdev->s_idle = ite_s_idle;

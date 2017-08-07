@@ -106,7 +106,6 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 	struct sta_info *sta = NULL;
 	const u8 *ra = NULL;
 	bool qos = false;
-	struct mac80211_qos_map *qos_map;
 
 	if (local->hw.queues < IEEE80211_NUM_ACS || skb->len < 6) {
 		skb->priority = 0; /* required for correct WPA/11i MIC */
@@ -161,11 +160,7 @@ u16 ieee80211_select_queue(struct ieee80211_sub_if_data *sdata,
 
 	/* use the data classifier to determine what 802.1d tag the
 	 * data frame has */
-	rcu_read_lock();
-	qos_map = rcu_dereference(sdata->qos_map);
-	skb->priority = cfg80211_classify8021d(skb, qos_map ?
-					       &qos_map->qos_map : NULL);
-	rcu_read_unlock();
+	skb->priority = cfg80211_classify8021d(skb);
 
 	return ieee80211_downgrade_queue(sdata, skb);
 }

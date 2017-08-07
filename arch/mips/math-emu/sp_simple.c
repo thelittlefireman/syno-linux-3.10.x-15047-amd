@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754sp.h"
 
 int ieee754sp_finite(ieee754sp x)
@@ -37,7 +36,6 @@ ieee754sp ieee754sp_copysign(ieee754sp x, ieee754sp y)
 	SPSIGN(x) = SPSIGN(y);
 	return x;
 }
-
 
 ieee754sp ieee754sp_neg(ieee754sp x)
 {
@@ -63,7 +61,6 @@ ieee754sp ieee754sp_neg(ieee754sp x)
 
 	return x;
 }
-
 
 ieee754sp ieee754sp_abs(ieee754sp x)
 {

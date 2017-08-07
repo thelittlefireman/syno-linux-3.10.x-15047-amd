@@ -63,7 +63,7 @@ static struct sock *__l2tp_ip6_bind_lookup(struct net *net,
 	struct sock *sk;
 
 	sk_for_each_bound(sk, &l2tp_ip6_bind_table) {
-		const struct in6_addr *addr = inet6_rcv_saddr(sk);
+		struct in6_addr *addr = inet6_rcv_saddr(sk);
 		struct l2tp_ip6_sock *l2tp = l2tp_ip6_sk(sk);
 
 		if (l2tp == NULL)
@@ -135,12 +135,11 @@ static int l2tp_ip6_recv(struct sk_buff *skb)
 	struct l2tp_tunnel *tunnel = NULL;
 	int length;
 
-	/* Point to L2TP header */
-	optr = ptr = skb->data;
-
 	if (!pskb_may_pull(skb, 4))
 		goto discard;
 
+	/* Point to L2TP header */
+	optr = ptr = skb->data;
 	session_id = ntohl(*((__be32 *) ptr));
 	ptr += 4;
 
@@ -168,6 +167,9 @@ static int l2tp_ip6_recv(struct sk_buff *skb)
 		if (!pskb_may_pull(skb, length))
 			goto discard;
 
+		/* Point to L2TP header */
+		optr = ptr = skb->data;
+		ptr += 4;
 		pr_debug("%s: ip recv\n", tunnel->name);
 		print_hex_dump_bytes("", DUMP_PREFIX_OFFSET, ptr, length);
 	}
@@ -331,7 +333,7 @@ static int l2tp_ip6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	rcu_read_unlock();
 
 	inet->inet_rcv_saddr = inet->inet_saddr = v4addr;
-	sk->sk_v6_rcv_saddr = addr->l2tp_addr;
+	np->rcv_saddr = addr->l2tp_addr;
 	np->saddr = addr->l2tp_addr;
 
 	l2tp_ip6_sk(sk)->conn_id = addr->l2tp_conn_id;
@@ -369,9 +371,6 @@ static int l2tp_ip6_connect(struct sock *sk, struct sockaddr *uaddr,
 		return -EINVAL;
 
 	if (addr_len < sizeof(*lsa))
-		return -EINVAL;
-
-	if (usin->sin6_family != AF_INET6)
 		return -EINVAL;
 
 	addr_type = ipv6_addr_type(&usin->sin6_addr);
@@ -424,14 +423,14 @@ static int l2tp_ip6_getname(struct socket *sock, struct sockaddr *uaddr,
 		if (!lsk->peer_conn_id)
 			return -ENOTCONN;
 		lsa->l2tp_conn_id = lsk->peer_conn_id;
-		lsa->l2tp_addr = sk->sk_v6_daddr;
+		lsa->l2tp_addr = np->daddr;
 		if (np->sndflow)
 			lsa->l2tp_flowinfo = np->flow_label;
 	} else {
-		if (ipv6_addr_any(&sk->sk_v6_rcv_saddr))
+		if (ipv6_addr_any(&np->rcv_saddr))
 			lsa->l2tp_addr = np->saddr;
 		else
-			lsa->l2tp_addr = sk->sk_v6_rcv_saddr;
+			lsa->l2tp_addr = np->rcv_saddr;
 
 		lsa->l2tp_conn_id = lsk->conn_id;
 	}
@@ -484,7 +483,8 @@ static int l2tp_ip6_sendmsg(struct kiocb *iocb, struct sock *sk,
 			    struct msghdr *msg, size_t len)
 {
 	struct ipv6_txoptions opt_space;
-	DECLARE_SOCKADDR(struct sockaddr_l2tpip6 *, lsa, msg->msg_name);
+	struct sockaddr_l2tpip6 *lsa =
+		(struct sockaddr_l2tpip6 *) msg->msg_name;
 	struct in6_addr *daddr, *final_p, final;
 	struct ipv6_pinfo *np = inet6_sk(sk);
 	struct ipv6_txoptions *opt = NULL;
@@ -530,6 +530,7 @@ static int l2tp_ip6_sendmsg(struct kiocb *iocb, struct sock *sk,
 				flowlabel = fl6_sock_lookup(sk, fl6.flowlabel);
 				if (flowlabel == NULL)
 					return -EINVAL;
+				daddr = &flowlabel->dst;
 			}
 		}
 
@@ -538,8 +539,8 @@ static int l2tp_ip6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		 * sk->sk_dst_cache.
 		 */
 		if (sk->sk_state == TCP_ESTABLISHED &&
-		    ipv6_addr_equal(daddr, &sk->sk_v6_daddr))
-			daddr = &sk->sk_v6_daddr;
+		    ipv6_addr_equal(daddr, &np->daddr))
+			daddr = &np->daddr;
 
 		if (addr_len >= sizeof(struct sockaddr_in6) &&
 		    lsa->l2tp_scope_id &&
@@ -549,7 +550,7 @@ static int l2tp_ip6_sendmsg(struct kiocb *iocb, struct sock *sk,
 		if (sk->sk_state != TCP_ESTABLISHED)
 			return -EDESTADDRREQ;
 
-		daddr = &sk->sk_v6_daddr;
+		daddr = &np->daddr;
 		fl6.flowlabel = np->flow_label;
 	}
 
@@ -599,7 +600,7 @@ static int l2tp_ip6_sendmsg(struct kiocb *iocb, struct sock *sk,
 
 	security_sk_classify_flow(sk, flowi6_to_flowi(&fl6));
 
-	dst = ip6_dst_lookup_flow(sk, &fl6, final_p);
+	dst = ip6_dst_lookup_flow(sk, &fl6, final_p, true);
 	if (IS_ERR(dst)) {
 		err = PTR_ERR(dst);
 		goto out;
@@ -654,7 +655,7 @@ static int l2tp_ip6_recvmsg(struct kiocb *iocb, struct sock *sk,
 			    int flags, int *addr_len)
 {
 	struct ipv6_pinfo *np = inet6_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_l2tpip6 *, lsa, msg->msg_name);
+	struct sockaddr_l2tpip6 *lsa = (struct sockaddr_l2tpip6 *)msg->msg_name;
 	size_t copied = 0;
 	int err = -EOPNOTSUPP;
 	struct sk_buff *skb;

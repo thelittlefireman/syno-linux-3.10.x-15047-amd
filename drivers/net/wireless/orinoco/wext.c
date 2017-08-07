@@ -444,7 +444,7 @@ static int orinoco_ioctl_setfreq(struct net_device *dev,
 		for (i = 0; i < (6 - frq->e); i++)
 			denom *= 10;
 
-		chan = ieee80211_frequency_to_channel(frq->m / denom);
+		chan = ieee80211_freq_to_dsss_chan(frq->m / denom);
 	}
 
 	if ((chan < 1) || (chan > NUM_CHANNELS) ||
@@ -1299,7 +1299,6 @@ static int orinoco_ioctl_getrid(struct net_device *dev,
 	return err;
 }
 
-
 /* Commit handler, called after set operations */
 static int orinoco_ioctl_commit(struct net_device *dev,
 				struct iw_request_info *info,
@@ -1340,7 +1339,6 @@ static const struct iw_priv_args orinoco_privtab[] = {
 	{ SIOCIWFIRSTPRIV + 0x9, 0, IW_PRIV_TYPE_BYTE | MAX_RID_LEN,
 	  "get_rid" },
 };
-
 
 /*
  * Structures to export the Wireless Handlers
@@ -1385,7 +1383,6 @@ static const iw_handler	orinoco_handler[] = {
 	IW_HANDLER(SIOCSIWENCODEEXT,	orinoco_ioctl_set_encodeext),
 	IW_HANDLER(SIOCGIWENCODEEXT,	orinoco_ioctl_get_encodeext),
 };
-
 
 /*
   Added typecasting since we no longer use iwreq_data -- Moustafa

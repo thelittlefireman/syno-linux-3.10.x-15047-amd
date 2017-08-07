@@ -138,7 +138,6 @@ extern unsigned long _dflt_cache_att;
 #define PAGE_KERNEL	__pgprot(_PAGE_PRESENT | _PAGE_READ | \
 				_PAGE_WRITE | _PAGE_EXECUTE | _dflt_cache_att)
 
-
 /*
  * Aliases for mapping mmap() protection bits to page protections.
  * These get used for static initialization, so using the _dflt_cache_att
@@ -399,7 +398,6 @@ static inline int pte_write(pte_t pte)
 	return pte_val(pte) & _PAGE_WRITE;
 }
 
-
 /* pte_exec - "is PTE marked as executable?" */
 static inline int pte_exec(pte_t pte)
 {
@@ -451,6 +449,10 @@ static inline int pte_exec(pte_t pte)
 #define ZERO_PAGE(vaddr) (virt_to_page(&empty_zero_page))
 
 #define __pte_offset(address) (((address) >> PAGE_SHIFT) & (PTRS_PER_PTE - 1))
+
+/* Nothing special about IO remapping at this point */
+#define io_remap_pfn_range(vma, vaddr, pfn, size, prot) \
+	remap_pfn_range(vma, vaddr, pfn, size, prot)
 
 /*  I think this is in case we have page table caches; needed by init/main.c  */
 #define pgtable_cache_init()    do { } while (0)

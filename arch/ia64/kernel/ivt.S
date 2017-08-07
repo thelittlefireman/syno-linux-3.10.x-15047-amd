@@ -46,7 +46,6 @@
  * Table is based upon EAS2.6 (Oct 1999)
  */
 
-
 #include <asm/asmmacro.h>
 #include <asm/break.h>
 #include <asm/kregs.h>
@@ -58,7 +57,7 @@
 #include <asm/unistd.h>
 #include <asm/errno.h>
 
-#if 0
+#if 1
 # define PSR_DEFAULT_BITS	psr.ac
 #else
 # define PSR_DEFAULT_BITS	0

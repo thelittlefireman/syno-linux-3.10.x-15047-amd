@@ -6,6 +6,7 @@
  * Copyright (C) 2000, 2001 Keith M Wesolowski
  */
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/types.h>
 #include <asm/pci.h>
@@ -35,7 +36,6 @@ static inline int mkaddr(struct pci_bus *bus, unsigned int devfn,
 		((devfn & 0xff) << 8) |
 		(reg & 0xfc);
 }
-
 
 static int
 mace_pci_read_config(struct pci_bus *bus, unsigned int devfn,

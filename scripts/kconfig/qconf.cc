@@ -69,11 +69,6 @@ static inline QString qgettext(const QString& str)
 	return QString::fromLocal8Bit(gettext(str.latin1()));
 }
 
-ConfigSettings::ConfigSettings()
-	: QSettings("kernel.org", "qconf")
-{
-}
-
 /**
  * Reads a list of integer values from the application settings.
  */
@@ -101,7 +96,6 @@ bool ConfigSettings::writeSizes(const QString& key, const Q3ValueList<int>& valu
 		stringList.push_back(QString::number(*it));
 	return writeEntry(key, stringList);
 }
-
 
 /*
  * set the new data

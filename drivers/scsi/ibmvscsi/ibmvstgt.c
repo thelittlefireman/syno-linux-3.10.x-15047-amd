@@ -589,7 +589,7 @@ static int crq_queue_create(struct crq_queue *queue, struct srp_target *target)
 	}
 
 	err = request_irq(vport->dma_dev->irq, &ibmvstgt_interrupt,
-			  0, "ibmvstgt", target);
+			  IRQF_DISABLED, "ibmvstgt", target);
 	if (err)
 		goto req_irq_failed;
 
@@ -721,7 +721,6 @@ static void handle_crq(struct work_struct *work)
 
 	handle_cmd_queue(target);
 }
-
 
 static int ibmvstgt_eh_abort_handler(struct scsi_cmnd *sc)
 {

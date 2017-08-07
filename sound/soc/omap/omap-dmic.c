@@ -57,16 +57,17 @@ struct omap_dmic {
 	struct mutex mutex;
 
 	struct snd_dmaengine_dai_dma_data dma_data;
+	unsigned int dma_req;
 };
 
 static inline void omap_dmic_write(struct omap_dmic *dmic, u16 reg, u32 val)
 {
-	writel_relaxed(val, dmic->io_base + reg);
+	__raw_writel(val, dmic->io_base + reg);
 }
 
 static inline int omap_dmic_read(struct omap_dmic *dmic, u16 reg)
 {
-	return readl_relaxed(dmic->io_base + reg);
+	return __raw_readl(dmic->io_base + reg);
 }
 
 static inline void omap_dmic_start(struct omap_dmic *dmic)
@@ -477,15 +478,26 @@ static int asoc_dmic_probe(struct platform_device *pdev)
 	}
 	dmic->dma_data.addr = res->start + OMAP_DMIC_DATA_REG;
 
-	dmic->dma_data.filter_data = "up_link";
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mpu");
-	dmic->io_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(dmic->io_base)) {
-		ret = PTR_ERR(dmic->io_base);
+	res = platform_get_resource(pdev, IORESOURCE_DMA, 0);
+	if (!res) {
+		dev_err(dmic->dev, "invalid dma resource\n");
+		ret = -ENODEV;
 		goto err_put_clk;
 	}
 
+	dmic->dma_req = res->start;
+	dmic->dma_data.filter_data = &dmic->dma_req;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mpu");
+	if (!res) {
+		dev_err(dmic->dev, "invalid memory resource\n");
+		ret = -ENODEV;
+		goto err_put_clk;
+	}
+
+	dmic->io_base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(dmic->io_base))
+		return PTR_ERR(dmic->io_base);
 
 	ret = snd_soc_register_component(&pdev->dev, &omap_dmic_component,
 					 &omap_dmic_dai, 1);

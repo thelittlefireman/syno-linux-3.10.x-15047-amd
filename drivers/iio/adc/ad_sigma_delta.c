@@ -25,7 +25,6 @@
 
 #include <asm/unaligned.h>
 
-
 #define AD_SD_COMM_CHAN_MASK	0x3
 
 #define AD_SD_REG_COMM		0x00
@@ -188,7 +187,7 @@ static int ad_sd_calibrate(struct ad_sigma_delta *sigma_delta,
 
 	spi_bus_lock(sigma_delta->spi->master);
 	sigma_delta->bus_locked = true;
-	reinit_completion(&sigma_delta->completion);
+	INIT_COMPLETION(sigma_delta->completion);
 
 	ret = ad_sigma_delta_set_mode(sigma_delta, mode);
 	if (ret < 0)
@@ -259,7 +258,7 @@ int ad_sigma_delta_single_conversion(struct iio_dev *indio_dev,
 
 	spi_bus_lock(sigma_delta->spi->master);
 	sigma_delta->bus_locked = true;
-	reinit_completion(&sigma_delta->completion);
+	INIT_COMPLETION(sigma_delta->completion);
 
 	ad_sigma_delta_set_mode(sigma_delta, AD_SD_MODE_SINGLE);
 
@@ -343,7 +342,7 @@ static int ad_sd_buffer_postdisable(struct iio_dev *indio_dev)
 {
 	struct ad_sigma_delta *sigma_delta = iio_device_get_drvdata(indio_dev);
 
-	reinit_completion(&sigma_delta->completion);
+	INIT_COMPLETION(sigma_delta->completion);
 	wait_for_completion_timeout(&sigma_delta->completion, HZ);
 
 	if (!sigma_delta->irq_dis) {
@@ -368,6 +367,10 @@ static irqreturn_t ad_sd_trigger_handler(int irq, void *p)
 
 	memset(data, 0x00, 16);
 
+	/* Guaranteed to be aligned with 8 byte boundary */
+	if (indio_dev->scan_timestamp)
+		((s64 *)data)[1] = pf->timestamp;
+
 	reg_size = indio_dev->channels[0].scan_type.realbits +
 			indio_dev->channels[0].scan_type.shift;
 	reg_size = DIV_ROUND_UP(reg_size, 8);
@@ -387,7 +390,7 @@ static irqreturn_t ad_sd_trigger_handler(int irq, void *p)
 		break;
 	}
 
-	iio_push_to_buffers_with_timestamp(indio_dev, data, pf->timestamp);
+	iio_push_to_buffers(indio_dev, (uint8_t *)data);
 
 	iio_trigger_notify_done(indio_dev->trig);
 	sigma_delta->irq_dis = false;
@@ -397,6 +400,7 @@ static irqreturn_t ad_sd_trigger_handler(int irq, void *p)
 }
 
 static const struct iio_buffer_setup_ops ad_sd_buffer_setup_ops = {
+	.preenable = &iio_sw_buffer_preenable,
 	.postenable = &ad_sd_buffer_postenable,
 	.predisable = &iio_triggered_buffer_predisable,
 	.postdisable = &ad_sd_buffer_postdisable,
@@ -472,7 +476,7 @@ static int ad_sd_probe_trigger(struct iio_dev *indio_dev)
 		goto error_free_irq;
 
 	/* select default trigger */
-	indio_dev->trig = sigma_delta->trig;
+	indio_dev->trig = iio_trigger_get(sigma_delta->trig);
 
 	return 0;
 

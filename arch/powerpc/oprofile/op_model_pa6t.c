@@ -22,6 +22,7 @@
  */
 
 #include <linux/oprofile.h>
+#include <linux/init.h>
 #include <linux/smp.h>
 #include <linux/percpu.h>
 #include <asm/processor.h>
@@ -85,7 +86,6 @@ static inline void ctr_write(unsigned int i, u64 val)
 		break;
 	}
 }
-
 
 /* precompute the values to stuff in the hardware registers */
 static int pa6t_reg_setup(struct op_counter_config *ctr,

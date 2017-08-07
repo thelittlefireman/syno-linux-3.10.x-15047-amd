@@ -19,8 +19,6 @@
 #include <math-emu/double.h>
 #include <math-emu/quad.h>
 
-#define FPC_VALID_MASK		0xF8F8FF03
-
 /*
  * I miss a macro to round a floating point number to the
  * nearest integer in the same floating point format.
@@ -1598,7 +1596,6 @@ static inline void emu_store_regd(int reg) {
 		: "a" (reg<<4), "a" (&current->thread.fp_regs.fprs[reg].d)
 		: "1");
 }
-
 
 static inline void emu_store_rege(int reg) {
 	if ((reg&9) != 0)	/* test if reg in {0,2,4,6} */

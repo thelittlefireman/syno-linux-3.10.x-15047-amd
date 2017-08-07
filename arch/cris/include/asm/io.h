@@ -122,7 +122,6 @@ static inline void writel(unsigned int b, volatile void __iomem *addr)
 #define memcpy_fromio(a,b,c)	memcpy((a),(void *)(b),(c))
 #define memcpy_toio(a,b,c)	memcpy((void *)(a),(b),(c))
 
-
 /* I/O port access. Normally there is no I/O space on CRIS but when
  * Cardbus/PCI is enabled the request is passed through the bridge.
  */
@@ -167,13 +166,6 @@ static inline void outsl(unsigned int port, const void *addr,
 	if (cris_iops)
 		cris_iops->write_io(port, (void *)addr, 4, count);
 }
-
-#define inb_p(port)             inb(port)
-#define inw_p(port)             inw(port)
-#define inl_p(port)             inl(port)
-#define outb_p(val, port)       outb((val), (port))
-#define outw_p(val, port)       outw((val), (port))
-#define outl_p(val, port)       outl((val), (port))
 
 /*
  * Convert a physical pointer to a virtual kernel pointer for /dev/mem

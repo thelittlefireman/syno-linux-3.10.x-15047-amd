@@ -4,12 +4,10 @@ TARGETS += efivarfs
 TARGETS += kcmp
 TARGETS += memory-hotplug
 TARGETS += mqueue
+TARGETS += mount
 TARGETS += net
 TARGETS += ptrace
-TARGETS += timers
 TARGETS += vm
-TARGETS += powerpc
-TARGETS += user
 
 all:
 	for TARGET in $(TARGETS); do \

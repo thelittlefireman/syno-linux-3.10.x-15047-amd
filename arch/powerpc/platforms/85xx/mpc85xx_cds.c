@@ -362,7 +362,6 @@ static void mpc85xx_cds_show_cpuinfo(struct seq_file *m)
 	seq_printf(m, "PLL setting\t: 0x%x\n", ((phid1 >> 24) & 0x3f));
 }
 
-
 /*
  * Called very early, device-tree isn't unflattened
  */
@@ -385,7 +384,6 @@ define_machine(mpc85xx_cds) {
 #ifdef CONFIG_PCI
 	.restart	= mpc85xx_cds_restart,
 	.pcibios_fixup_bus	= mpc85xx_cds_fixup_bus,
-	.pcibios_fixup_phb      = fsl_pcibios_fixup_phb,
 #else
 	.restart	= fsl_rstcr_restart,
 #endif

@@ -120,7 +120,6 @@ void arch_local_irq_restore(unsigned long flags);
 void __arch_local_irq_restore(unsigned long flags);
 #endif /* if defined(CONFIG_CPU_MIPSR2) && !defined(CONFIG_MIPS_MT_SMTC) */
 
-
 extern void smtc_ipi_replay(void);
 
 static inline void arch_local_irq_enable(void)
@@ -173,7 +172,6 @@ static inline unsigned long arch_local_save_flags(void)
 
 	return flags;
 }
-
 
 static inline int arch_irqs_disabled_flags(unsigned long flags)
 {

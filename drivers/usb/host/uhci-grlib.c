@@ -84,7 +84,6 @@ static const struct hc_driver uhci_grlib_hc_driver = {
 	.hub_control =		uhci_hub_control,
 };
 
-
 static int uhci_hcd_grlib_probe(struct platform_device *op)
 {
 	struct device_node *dn = op->dev.of_node;
@@ -141,7 +140,6 @@ static int uhci_hcd_grlib_probe(struct platform_device *op)
 	if (rv)
 		goto err_uhci;
 
-	device_wakeup_enable(hcd->self.controller);
 	return 0;
 
 err_uhci:
@@ -158,7 +156,9 @@ err_rmr:
 
 static int uhci_hcd_grlib_remove(struct platform_device *op)
 {
-	struct usb_hcd *hcd = platform_get_drvdata(op);
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
+
+	dev_set_drvdata(&op->dev, NULL);
 
 	dev_dbg(&op->dev, "stopping GRLIB GRUSBHC UHCI USB Controller\n");
 
@@ -182,7 +182,7 @@ static int uhci_hcd_grlib_remove(struct platform_device *op)
  */
 static void uhci_hcd_grlib_shutdown(struct platform_device *op)
 {
-	struct usb_hcd *hcd = platform_get_drvdata(op);
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
 
 	uhci_hc_died(hcd_to_uhci(hcd));
 }
@@ -193,7 +193,6 @@ static const struct of_device_id uhci_hcd_grlib_of_match[] = {
 	{},
 };
 MODULE_DEVICE_TABLE(of, uhci_hcd_grlib_of_match);
-
 
 static struct platform_driver uhci_grlib_driver = {
 	.probe		= uhci_hcd_grlib_probe,

@@ -358,13 +358,12 @@ void __reiserfs_panic(struct super_block *sb, const char *id,
 	dump_stack();
 #endif
 	if (sb)
-		printk(KERN_WARNING "REISERFS panic (device %s): %s%s%s: %s\n",
+		panic(KERN_WARNING "REISERFS panic (device %s): %s%s%s: %s\n",
 		      sb->s_id, id ? id : "", id ? " " : "",
 		      function, error_buf);
 	else
-		printk(KERN_WARNING "REISERFS panic: %s%s%s: %s\n",
+		panic(KERN_WARNING "REISERFS panic: %s%s%s: %s\n",
 		      id ? id : "", id ? " " : "", function, error_buf);
-	BUG();
 }
 
 void __reiserfs_error(struct super_block *sb, const char *id,

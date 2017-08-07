@@ -29,7 +29,6 @@ int usbip_detach(int argc, char *argv[]);
 int usbip_list(int argc, char *argv[]);
 int usbip_bind(int argc, char *argv[]);
 int usbip_unbind(int argc, char *argv[]);
-int usbip_port_show(int argc, char *argv[]);
 
 void usbip_attach_usage(void);
 void usbip_detach_usage(void);

@@ -3,6 +3,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/scatterlist.h>
 #include <linux/string.h>
+#include <linux/init.h>
 #include <linux/gfp.h>
 #include <linux/pci.h>
 #include <linux/mm.h>
@@ -79,7 +80,6 @@ static void nommu_sync_single_for_device(struct device *dev,
 {
 	flush_write_buffers();
 }
-
 
 static void nommu_sync_sg_for_device(struct device *dev,
 			struct scatterlist *sg, int nelems,

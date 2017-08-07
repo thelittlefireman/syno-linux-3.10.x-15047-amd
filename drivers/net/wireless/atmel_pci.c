@@ -15,13 +15,14 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with Atmel wireless lan drivers; if not, see
-    <http://www.gnu.org/licenses/>.
+    along with Atmel wireless lan drivers; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 ******************************************************************************/
 #include <linux/pci.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/netdevice.h>
 #include "atmel.h"
 
@@ -46,7 +47,6 @@ static struct pci_driver atmel_driver = {
 	.probe    = atmel_pci_probe,
 	.remove   = atmel_pci_remove,
 };
-
 
 static int atmel_pci_probe(struct pci_dev *pdev,
 				     const struct pci_device_id *pent)

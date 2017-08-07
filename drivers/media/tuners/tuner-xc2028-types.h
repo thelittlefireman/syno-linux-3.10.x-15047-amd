@@ -53,7 +53,6 @@
  */
 #define INPUT1		(1<<11)
 
-
 /* LCD firmwares exist only for MTS STD/MN (PAL or NTSC/M)
 	and for non-MTS STD/MN (PAL, NTSC/M or NTSC/Kr)
 	There are variants both with and without NOGD
@@ -95,7 +94,6 @@
   */
 #define SCODE_TYPES (SCODE | MTS)
 
-
 /* Newer types not defined on videodev2.h.
    The original idea were to move all those types to videodev2.h, but
    it seemed overkill, since, with the exception of SECAM/K3, the other
@@ -119,7 +117,7 @@
 #define V4L2_STD_A2		(V4L2_STD_A2_A    | V4L2_STD_A2_B)
 #define V4L2_STD_NICAM		(V4L2_STD_NICAM_A | V4L2_STD_NICAM_B)
 
-/* To preserve backward compatibility,
+/* To preserve backward compatibilty,
    (std & V4L2_STD_AUDIO) = 0 means that ALL audio stds are supported
  */
 

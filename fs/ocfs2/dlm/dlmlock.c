@@ -24,7 +24,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/types.h>
@@ -38,7 +37,6 @@
 #include <linux/inet.h>
 #include <linux/spinlock.h>
 #include <linux/delay.h>
-
 
 #include "cluster/heartbeat.h"
 #include "cluster/nodemanager.h"
@@ -91,14 +89,19 @@ void dlm_destroy_lock_cache(void)
 static int dlm_can_grant_new_lock(struct dlm_lock_resource *res,
 				  struct dlm_lock *lock)
 {
+	struct list_head *iter;
 	struct dlm_lock *tmplock;
 
-	list_for_each_entry(tmplock, &res->granted, list) {
+	list_for_each(iter, &res->granted) {
+		tmplock = list_entry(iter, struct dlm_lock, list);
+
 		if (!dlm_lock_compatible(tmplock->ml.type, lock->ml.type))
 			return 0;
 	}
 
-	list_for_each_entry(tmplock, &res->converting, list) {
+	list_for_each(iter, &res->converting) {
+		tmplock = list_entry(iter, struct dlm_lock, list);
+
 		if (!dlm_lock_compatible(tmplock->ml.type, lock->ml.type))
 			return 0;
 		if (!dlm_lock_compatible(tmplock->ml.convert_type,
@@ -173,7 +176,6 @@ static enum dlm_status dlmlock_master(struct dlm_ctxt *dlm,
 				     lock->ml.node);
 			}
 		} else {
-			status = DLM_NORMAL;
 			dlm_lock_get(lock);
 			list_add_tail(&lock->list, &res->blocked);
 			kick_thread = 1;
@@ -203,7 +205,6 @@ void dlm_revert_pending_lock(struct dlm_lock_resource *res,
 	list_del_init(&lock->list);
 	lock->lksb->flags &= ~DLM_LKSB_GET_LVB;
 }
-
 
 /*
  * locking:
@@ -289,7 +290,6 @@ static enum dlm_status dlmlock_remote(struct dlm_ctxt *dlm,
 	wake_up(&res->wq);
 	return status;
 }
-
 
 /* for remote lock creation.
  * locking:
@@ -536,7 +536,6 @@ leave:
 
 	return status;
 }
-
 
 /* fetch next node-local (u8 nodenum + u56 cookie) into u64 */
 static inline void dlm_get_next_cookie(u8 node_num, u64 *cookie)

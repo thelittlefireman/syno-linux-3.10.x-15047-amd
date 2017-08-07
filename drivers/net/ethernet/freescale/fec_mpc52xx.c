@@ -71,7 +71,6 @@ struct mpc52xx_fec_priv {
 	int seven_wire_mode;
 };
 
-
 static irqreturn_t mpc52xx_fec_interrupt(int, void *);
 static irqreturn_t mpc52xx_fec_rx_interrupt(int, void *);
 static irqreturn_t mpc52xx_fec_tx_interrupt(int, void *);
@@ -351,7 +350,6 @@ static void mpc52xx_fec_poll_controller(struct net_device *dev)
 	enable_irq(priv->r_irq);
 }
 #endif
-
 
 /* This handles BestComm transmit task interrupts
  */
@@ -760,7 +758,6 @@ static void mpc52xx_fec_reset(struct net_device *dev)
 	netif_wake_queue(dev);
 }
 
-
 /* ethtool interface */
 
 static int mpc52xx_fec_get_settings(struct net_device *dev, struct ethtool_cmd *cmd)
@@ -803,7 +800,6 @@ static const struct ethtool_ops mpc52xx_fec_ethtool_ops = {
 	.set_msglevel = mpc52xx_fec_set_msglevel,
 	.get_ts_info = ethtool_op_get_ts_info,
 };
-
 
 static int mpc52xx_fec_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 {
@@ -981,7 +977,7 @@ static int mpc52xx_fec_probe(struct platform_device *op)
 		goto err_node;
 
 	/* We're done ! */
-	platform_set_drvdata(op, ndev);
+	dev_set_drvdata(&op->dev, ndev);
 	netdev_info(ndev, "%s MAC %pM\n",
 		    op->dev.of_node->full_name, ndev->dev_addr);
 
@@ -1010,7 +1006,7 @@ mpc52xx_fec_remove(struct platform_device *op)
 	struct net_device *ndev;
 	struct mpc52xx_fec_priv *priv;
 
-	ndev = platform_get_drvdata(op);
+	ndev = dev_get_drvdata(&op->dev);
 	priv = netdev_priv(ndev);
 
 	unregister_netdev(ndev);
@@ -1030,13 +1026,14 @@ mpc52xx_fec_remove(struct platform_device *op)
 
 	free_netdev(ndev);
 
+	dev_set_drvdata(&op->dev, NULL);
 	return 0;
 }
 
 #ifdef CONFIG_PM
 static int mpc52xx_fec_of_suspend(struct platform_device *op, pm_message_t state)
 {
-	struct net_device *dev = platform_get_drvdata(op);
+	struct net_device *dev = dev_get_drvdata(&op->dev);
 
 	if (netif_running(dev))
 		mpc52xx_fec_close(dev);
@@ -1046,7 +1043,7 @@ static int mpc52xx_fec_of_suspend(struct platform_device *op, pm_message_t state
 
 static int mpc52xx_fec_of_resume(struct platform_device *op)
 {
-	struct net_device *dev = platform_get_drvdata(op);
+	struct net_device *dev = dev_get_drvdata(&op->dev);
 
 	mpc52xx_fec_hw_init(dev);
 	mpc52xx_fec_reset_stats(dev);
@@ -1081,7 +1078,6 @@ static struct platform_driver mpc52xx_fec_driver = {
 #endif
 };
 
-
 /* ======================================================================== */
 /* Module                                                                   */
 /* ======================================================================== */
@@ -1108,7 +1104,6 @@ mpc52xx_fec_exit(void)
 	platform_driver_unregister(&mpc52xx_fec_mdio_driver);
 #endif
 }
-
 
 module_init(mpc52xx_fec_init);
 module_exit(mpc52xx_fec_exit);

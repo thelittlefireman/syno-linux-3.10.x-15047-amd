@@ -10,6 +10,7 @@
 #include <linux/of_mdio.h>
 #include <linux/delay.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/gfp.h>
 #include <linux/phy.h>
 #include <linux/io.h>
@@ -109,7 +110,6 @@ static int octeon_mdiobus_read(struct mii_bus *bus, int phy_id, int regnum)
 		octeon_mdiobus_set_mode(p, C22);
 	}
 
-
 	smi_cmd.u64 = 0;
 	smi_cmd.s.phy_op = op;
 	smi_cmd.s.phy_adr = phy_id;
@@ -138,7 +138,6 @@ static int octeon_mdiobus_write(struct mii_bus *bus, int phy_id,
 	union cvmx_smix_wr_dat smi_wr;
 	unsigned int op = 0; /* MDIO_CLAUSE_22_WRITE */
 	int timeout = 1000;
-
 
 	if (regnum & MII_ADDR_C45) {
 		int r = octeon_mdiobus_c45_addr(p, phy_id, regnum);
@@ -221,7 +220,7 @@ static int octeon_mdiobus_probe(struct platform_device *pdev)
 	bus->mii_bus->read = octeon_mdiobus_read;
 	bus->mii_bus->write = octeon_mdiobus_write;
 
-	platform_set_drvdata(pdev, bus);
+	dev_set_drvdata(&pdev->dev, bus);
 
 	err = of_mdiobus_register(bus->mii_bus, pdev->dev.of_node);
 	if (err)
@@ -243,7 +242,7 @@ static int octeon_mdiobus_remove(struct platform_device *pdev)
 	struct octeon_mdiobus *bus;
 	union cvmx_smix_en smi_en;
 
-	bus = platform_get_drvdata(pdev);
+	bus = dev_get_drvdata(&pdev->dev);
 
 	mdiobus_unregister(bus->mii_bus);
 	mdiobus_free(bus->mii_bus);

@@ -34,7 +34,6 @@
 #include <asm/mach-types.h>
 #include <asm/page.h>
 #include <mach/time.h>
-#include "gpio-iop32x.h"
 
 /*
  * GLAN Tank timer tick configuration.
@@ -44,7 +43,6 @@ static void __init glantank_timer_init(void)
 	/* 33.333 MHz crystal.  */
 	iop_init_time(200000000);
 }
-
 
 /*
  * GLAN Tank I/O.
@@ -63,7 +61,6 @@ void __init glantank_map_io(void)
 	iop3xx_map_io();
 	iotable_init(glantank_io_desc, ARRAY_SIZE(glantank_io_desc));
 }
-
 
 /*
  * GLAN Tank PCI.
@@ -109,7 +106,6 @@ static int __init glantank_pci_init(void)
 }
 
 subsys_initcall(glantank_pci_init);
-
 
 /*
  * GLAN Tank machine initialization.
@@ -188,7 +184,6 @@ static void glantank_power_off(void)
 
 static void __init glantank_init_machine(void)
 {
-	register_iop32x_gpio();
 	platform_device_register(&iop3xx_i2c0_device);
 	platform_device_register(&iop3xx_i2c1_device);
 	platform_device_register(&glantank_flash_device);

@@ -10,12 +10,12 @@
 #endif
 
 #include <sys/types.h>
+#include <sysfs/libsysfs.h>
 
 #include <stdint.h>
 
-extern int usbip_port;
-extern char *usbip_port_string;
-void usbip_setup_port_number(char *arg);
+#define USBIP_PORT 3240
+#define USBIP_PORT_STRING "3240"
 
 /* ---------------------------------------------------------------------- */
 /* Common header for all the kinds of PDUs. */
@@ -96,7 +96,6 @@ struct op_export_reply {
 	int returncode;
 } __attribute__((packed));
 
-
 #define PACK_OP_EXPORT_REQUEST(pack, request)  do {\
 	usbip_net_pack_usb_device(pack, &(request)->udev);\
 } while (0)
@@ -140,7 +139,6 @@ struct op_crypkey_reply {
 	uint32_t __reserved;
 } __attribute__((packed));
 
-
 /* ---------------------------------------------------------------------- */
 /* Retrieve the list of exported USB devices. */
 #define OP_DEVLIST	0x05
@@ -179,7 +177,6 @@ int usbip_net_recv_op_common(int sockfd, uint16_t *code);
 int usbip_net_set_reuseaddr(int sockfd);
 int usbip_net_set_nodelay(int sockfd);
 int usbip_net_set_keepalive(int sockfd);
-int usbip_net_set_v6only(int sockfd);
 int usbip_net_tcp_connect(char *hostname, char *port);
 
 #endif /* __USBIP_NETWORK_H */

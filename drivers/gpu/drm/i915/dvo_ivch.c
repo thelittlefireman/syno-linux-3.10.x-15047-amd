@@ -148,13 +148,11 @@
 # define VR8F_POWER_MASK		(0x3c)
 # define VR8F_POWER_POS			(2)
 
-
 struct ivch_priv {
 	bool quiet;
 
 	uint16_t width, height;
 };
-
 
 static void ivch_dump_regs(struct intel_dvo_device *dvo);
 
@@ -195,7 +193,7 @@ static bool ivch_read(struct intel_dvo_device *dvo, int addr, uint16_t *data)
 	if (i2c_transfer(adapter, msgs, 3) == 3) {
 		*data = (in_buf[1] << 8) | in_buf[0];
 		return true;
-	};
+	}
 
 	if (!priv->quiet) {
 		DRM_DEBUG_KMS("Unable to read register 0x%02x from "

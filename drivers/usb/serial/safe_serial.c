@@ -67,6 +67,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/gfp.h>
+#include <linux/init.h>
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
 #include <linux/tty_flip.h>
@@ -75,7 +76,6 @@
 #include <linux/uaccess.h>
 #include <linux/usb.h>
 #include <linux/usb/serial.h>
-
 
 #ifndef CONFIG_USB_SERIAL_SAFE_PADDED
 #define CONFIG_USB_SERIAL_SAFE_PADDED 0
@@ -90,6 +90,13 @@ static bool padded = CONFIG_USB_SERIAL_SAFE_PADDED;
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
+
+static __u16 vendor;		/* no default */
+static __u16 product;		/* no default */
+module_param(vendor, ushort, 0);
+MODULE_PARM_DESC(vendor, "User specified USB idVendor (required)");
+module_param(product, ushort, 0);
+MODULE_PARM_DESC(product, "User specified USB idProduct (required)");
 
 module_param(safe, bool, 0);
 MODULE_PARM_DESC(safe, "Turn Safe Encapsulation On/Off");
@@ -112,7 +119,6 @@ MODULE_PARM_DESC(padded, "Pad to full wMaxPacketSize On/Off");
 #define LINEO_SAFESERIAL_CRC                    0x01
 #define LINEO_SAFESERIAL_CRC_PADDED             0x02
 
-
 #define MY_USB_DEVICE(vend, prod, dc, ic, isc) \
 	.match_flags = USB_DEVICE_ID_MATCH_DEVICE | \
 		       USB_DEVICE_ID_MATCH_DEV_CLASS | \
@@ -124,7 +130,7 @@ MODULE_PARM_DESC(padded, "Pad to full wMaxPacketSize On/Off");
 	.bInterfaceClass = (ic), \
 	.bInterfaceSubClass = (isc),
 
-static const struct usb_device_id id_table[] = {
+static struct usb_device_id id_table[] = {
 	{MY_USB_DEVICE(0x49f, 0xffff, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Itsy */
 	{MY_USB_DEVICE(0x3f0, 0x2101, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Calypso */
 	{MY_USB_DEVICE(0x4dd, 0x8001, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Iris */
@@ -132,6 +138,8 @@ static const struct usb_device_id id_table[] = {
 	{MY_USB_DEVICE(0x4dd, 0x8003, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Collie */
 	{MY_USB_DEVICE(0x4dd, 0x8004, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Collie */
 	{MY_USB_DEVICE(0x5f9, 0xffff, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},	/* Sharp tmp */
+	/* extra null entry for module vendor/produc parameters */
+	{MY_USB_DEVICE(0, 0, CDC_DEVICE_CLASS, LINEO_INTERFACE_CLASS, LINEO_INTERFACE_SUBCLASS_SAFESERIAL)},
 	{}			/* terminating entry  */
 };
 
@@ -262,19 +270,7 @@ static int safe_prepare_write_buffer(struct usb_serial_port *port,
 
 static int safe_startup(struct usb_serial *serial)
 {
-	struct usb_interface_descriptor	*desc;
-
-	if (serial->dev->descriptor.bDeviceClass != CDC_DEVICE_CLASS)
-		return -ENODEV;
-
-	desc = &serial->interface->cur_altsetting->desc;
-
-	if (desc->bInterfaceClass != LINEO_INTERFACE_CLASS)
-		return -ENODEV;
-	if (desc->bInterfaceSubClass != LINEO_INTERFACE_SUBCLASS_SAFESERIAL)
-		return -ENODEV;
-
-	switch (desc->bInterfaceProtocol) {
+	switch (serial->interface->cur_altsetting->desc.bInterfaceProtocol) {
 	case LINEO_SAFESERIAL_CRC:
 		break;
 	case LINEO_SAFESERIAL_CRC_PADDED:
@@ -302,4 +298,30 @@ static struct usb_serial_driver * const serial_drivers[] = {
 	&safe_device, NULL
 };
 
-module_usb_serial_driver(serial_drivers, id_table);
+static int __init safe_init(void)
+{
+	int i;
+
+	/* if we have vendor / product parameters patch them into id list */
+	if (vendor || product) {
+		pr_info("vendor: %x product: %x\n", vendor, product);
+
+		for (i = 0; i < ARRAY_SIZE(id_table); i++) {
+			if (!id_table[i].idVendor && !id_table[i].idProduct) {
+				id_table[i].idVendor = vendor;
+				id_table[i].idProduct = product;
+				break;
+			}
+		}
+	}
+
+	return usb_serial_register_drivers(serial_drivers, KBUILD_MODNAME, id_table);
+}
+
+static void __exit safe_exit(void)
+{
+	usb_serial_deregister_drivers(serial_drivers);
+}
+
+module_init(safe_init);
+module_exit(safe_exit);

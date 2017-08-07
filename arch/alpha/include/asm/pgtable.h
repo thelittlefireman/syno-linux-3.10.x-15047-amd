@@ -229,7 +229,6 @@ extern inline void pmd_set(pmd_t * pmdp, pte_t * ptep)
 extern inline void pgd_set(pgd_t * pgdp, pmd_t * pmdp)
 { pgd_val(*pgdp) = _PAGE_TABLE | ((((unsigned long) pmdp) - PAGE_OFFSET) << (32-PAGE_SHIFT)); }
 
-
 extern inline unsigned long
 pmd_page_vaddr(pmd_t pmd)
 {
@@ -353,6 +352,9 @@ extern inline pte_t mk_swap_pte(unsigned long type, unsigned long offset)
 #ifndef CONFIG_DISCONTIGMEM
 #define kern_addr_valid(addr)	(1)
 #endif
+
+#define io_remap_pfn_range(vma, start, pfn, size, prot)	\
+		remap_pfn_range(vma, start, pfn, size, prot)
 
 #define pte_ERROR(e) \
 	printk("%s:%d: bad pte %016lx.\n", __FILE__, __LINE__, pte_val(e))

@@ -6,8 +6,6 @@
 
 extern spinlock_t imx_ccm_lock;
 
-extern void imx_cscmr1_fixup(u32 *val);
-
 struct clk *imx_clk_pllv1(const char *name, const char *parent,
 		void __iomem *base);
 
@@ -20,6 +18,7 @@ enum imx_pllv3_type {
 	IMX_PLLV3_USB,
 	IMX_PLLV3_AV,
 	IMX_PLLV3_ENET,
+	IMX_PLLV3_MLB,
 };
 
 struct clk *imx_clk_pllv3(enum imx_pllv3_type type, const char *name,
@@ -29,9 +28,6 @@ struct clk *clk_register_gate2(struct device *dev, const char *name,
 		const char *parent_name, unsigned long flags,
 		void __iomem *reg, u8 bit_idx,
 		u8 clk_gate_flags, spinlock_t *lock);
-
-struct clk * imx_obtain_fixed_clock(
-			const char *name, unsigned long rate);
 
 static inline struct clk *imx_clk_gate2(const char *name, const char *parent,
 		void __iomem *reg, u8 shift)
@@ -50,14 +46,6 @@ struct clk *imx_clk_busy_divider(const char *name, const char *parent_name,
 struct clk *imx_clk_busy_mux(const char *name, void __iomem *reg, u8 shift,
 			     u8 width, void __iomem *busy_reg, u8 busy_shift,
 			     const char **parent_names, int num_parents);
-
-struct clk *imx_clk_fixup_divider(const char *name, const char *parent,
-				  void __iomem *reg, u8 shift, u8 width,
-				  void (*fixup)(u32 *val));
-
-struct clk *imx_clk_fixup_mux(const char *name, void __iomem *reg,
-			      u8 shift, u8 width, const char **parents,
-			      int num_parents, void (*fixup)(u32 *val));
 
 static inline struct clk *imx_clk_fixed(const char *name, int rate)
 {
@@ -89,8 +77,7 @@ static inline struct clk *imx_clk_gate(const char *name, const char *parent,
 static inline struct clk *imx_clk_mux(const char *name, void __iomem *reg,
 		u8 shift, u8 width, const char **parents, int num_parents)
 {
-	return clk_register_mux(NULL, name, parents, num_parents,
-			CLK_SET_RATE_NO_REPARENT, reg, shift,
+	return clk_register_mux(NULL, name, parents, num_parents, 0, reg, shift,
 			width, 0, &imx_ccm_lock);
 }
 
@@ -99,7 +86,7 @@ static inline struct clk *imx_clk_mux_flags(const char *name,
 		int num_parents, unsigned long flags)
 {
 	return clk_register_mux(NULL, name, parents, num_parents,
-			flags | CLK_SET_RATE_NO_REPARENT, reg, shift, width, 0,
+			flags, reg, shift, width, 0,
 			&imx_ccm_lock);
 }
 

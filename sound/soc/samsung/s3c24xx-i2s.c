@@ -24,18 +24,16 @@
 #include <sound/pcm_params.h>
 
 #include <mach/dma.h>
-#include <mach/gpio-samsung.h>
-#include <plat/gpio-cfg.h>
 #include "regs-iis.h"
 
 #include "dma.h"
 #include "s3c24xx-i2s.h"
 
-static struct s3c_dma_client s3c24xx_dma_client_out = {
+static struct s3c2410_dma_client s3c24xx_dma_client_out = {
 	.name = "I2S PCM Stereo out"
 };
 
-static struct s3c_dma_client s3c24xx_dma_client_in = {
+static struct s3c2410_dma_client s3c24xx_dma_client_in = {
 	.name = "I2S PCM Stereo in"
 };
 
@@ -436,7 +434,6 @@ static int s3c24xx_i2s_resume(struct snd_soc_dai *cpu_dai)
 #define s3c24xx_i2s_resume NULL
 #endif
 
-
 #define S3C24XX_I2S_RATES \
 	(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_11025 | SNDRV_PCM_RATE_16000 | \
 	SNDRV_PCM_RATE_22050 | SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_44100 | \
@@ -482,7 +479,7 @@ static int s3c24xx_iis_dev_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = samsung_asoc_dma_platform_register(&pdev->dev);
+	ret = asoc_dma_platform_register(&pdev->dev);
 	if (ret) {
 		pr_err("failed to register the dma: %d\n", ret);
 		goto err;
@@ -496,7 +493,7 @@ err:
 
 static int s3c24xx_iis_dev_remove(struct platform_device *pdev)
 {
-	samsung_asoc_dma_platform_unregister(&pdev->dev);
+	asoc_dma_platform_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }

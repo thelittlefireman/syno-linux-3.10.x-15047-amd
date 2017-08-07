@@ -364,6 +364,7 @@ static irqreturn_t smp_irq_move_cleanup_interrupt(int irq, void *dev_id)
 
 static struct irqaction irq_move_irqaction = {
 	.handler =	smp_irq_move_cleanup_interrupt,
+	.flags =	IRQF_DISABLED,
 	.name =		"irq_move"
 };
 
@@ -384,7 +385,6 @@ static cpumask_t vector_allocation_domain(int cpu)
 	return CPU_MASK_ALL;
 }
 #endif
-
 
 void destroy_and_reserve_irq(unsigned int irq)
 {
@@ -488,13 +488,14 @@ ia64_handle_irq (ia64_vector vector, struct pt_regs *regs)
 	ia64_srlz_d();
 	while (vector != IA64_SPURIOUS_INT_VECTOR) {
 		int irq = local_vector_to_irq(vector);
+		struct irq_desc *desc = irq_to_desc(irq);
 
 		if (unlikely(IS_LOCAL_TLB_FLUSH(vector))) {
 			smp_local_flush_tlb();
-			kstat_incr_irq_this_cpu(irq);
+			kstat_incr_irqs_this_cpu(irq, desc);
 		} else if (unlikely(IS_RESCHEDULE(vector))) {
 			scheduler_ipi();
-			kstat_incr_irq_this_cpu(irq);
+			kstat_incr_irqs_this_cpu(irq, desc);
 		} else {
 			ia64_setreg(_IA64_REG_CR_TPR, vector);
 			ia64_srlz_d();
@@ -547,12 +548,13 @@ void ia64_process_pending_intr(void)
 	  */
 	while (vector != IA64_SPURIOUS_INT_VECTOR) {
 		int irq = local_vector_to_irq(vector);
+		struct irq_desc *desc = irq_to_desc(irq);
 
 		if (unlikely(IS_LOCAL_TLB_FLUSH(vector))) {
 			smp_local_flush_tlb();
-			kstat_incr_irq_this_cpu(irq);
+			kstat_incr_irqs_this_cpu(irq, desc);
 		} else if (unlikely(IS_RESCHEDULE(vector))) {
-			kstat_incr_irq_this_cpu(irq);
+			kstat_incr_irqs_this_cpu(irq, desc);
 		} else {
 			struct pt_regs *old_regs = set_irq_regs(NULL);
 
@@ -589,7 +591,6 @@ void ia64_process_pending_intr(void)
 }
 #endif
 
-
 #ifdef CONFIG_SMP
 
 static irqreturn_t dummy_handler (int irq, void *dev_id)
@@ -599,6 +600,7 @@ static irqreturn_t dummy_handler (int irq, void *dev_id)
 
 static struct irqaction ipi_irqaction = {
 	.handler =	handle_IPI,
+	.flags =	IRQF_DISABLED,
 	.name =		"IPI"
 };
 
@@ -607,11 +609,13 @@ static struct irqaction ipi_irqaction = {
  */
 static struct irqaction resched_irqaction = {
 	.handler =	dummy_handler,
+	.flags =	IRQF_DISABLED,
 	.name =		"resched"
 };
 
 static struct irqaction tlb_irqaction = {
 	.handler =	dummy_handler,
+	.flags =	IRQF_DISABLED,
 	.name =		"tlb_flush"
 };
 

@@ -427,17 +427,12 @@ setup_rx_reqs(struct printer_dev *dev)
 		req->length = USB_BUFSIZE;
 		req->complete = rx_complete;
 
-		/* here, we unlock, and only unlock, to avoid deadlock. */
-		spin_unlock(&dev->lock);
 		error = usb_ep_queue(dev->out_ep, req, GFP_ATOMIC);
-		spin_lock(&dev->lock);
 		if (error) {
 			DBG(dev, "rx submit --> %d\n", error);
 			list_add(&req->list, &dev->rx_reqs);
 			break;
-		}
-		/* if the req is empty, then add it into dev->rx_reqs_active. */
-		else if (list_empty(&req->list)) {
+		} else {
 			list_add(&req->list, &dev->rx_reqs_active);
 		}
 	}
@@ -980,6 +975,15 @@ unknown:
 		break;
 	}
 	/* host either stalls (value < 0) or reports success */
+	if (value >= 0) {
+		req->length = value;
+		req->zero = value < wLength;
+		value = usb_ep_queue(cdev->gadget->ep0, req, GFP_ATOMIC);
+		if (value < 0) {
+			ERROR(dev, "%s:%d Error!\n", __func__, __LINE__);
+			req->status = 0;
+		}
+	}
 	return value;
 }
 
@@ -1138,7 +1142,6 @@ static int __init printer_bind_config(struct usb_configuration *c)
 				  NULL, "g_printer");
 	if (IS_ERR(dev->pdev)) {
 		ERROR(dev, "Failed to create device: g_printer\n");
-		status = PTR_ERR(dev->pdev);
 		goto fail;
 	}
 
@@ -1163,7 +1166,7 @@ static int __init printer_bind_config(struct usb_configuration *c)
 
 	usb_gadget_set_selfpowered(gadget);
 
-	if (gadget_is_otg(gadget)) {
+	if (gadget->is_otg) {
 		otg_descriptor.bmAttributes |= USB_OTG_HNP;
 		printer_cfg_driver.descriptors = otg_desc;
 		printer_cfg_driver.bmAttributes |= USB_CONFIG_ATT_WAKEUP;

@@ -37,6 +37,3 @@ void *dma_memcpy(void *pdst,
 
 	D(printk(KERN_DEBUG "done\n"));
 }
-
-
-

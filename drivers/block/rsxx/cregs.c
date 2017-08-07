@@ -47,7 +47,6 @@ struct creg_cmd {
 
 static struct kmem_cache *creg_cmd_pool;
 
-
 /*------------ Private Functions --------------*/
 
 #if defined(__LITTLE_ENDIAN)
@@ -82,7 +81,6 @@ static int copy_to_creg_data(struct rsxx_cardinfo *card,
 
 	return 0;
 }
-
 
 static int copy_from_creg_data(struct rsxx_cardinfo *card,
 				int cnt8,
@@ -225,13 +223,11 @@ static void creg_cmd_timed_out(unsigned long data)
 
 	kmem_cache_free(creg_cmd_pool, cmd);
 
-
 	spin_lock(&card->creg_ctrl.lock);
 	card->creg_ctrl.active = 0;
 	creg_kick_queue(card);
 	spin_unlock(&card->creg_ctrl.lock);
 }
-
 
 static void creg_cmd_done(struct work_struct *work)
 {
@@ -431,15 +427,6 @@ static int __issue_creg_rw(struct rsxx_cardinfo *card,
 	*hw_stat = completion.creg_status;
 
 	if (completion.st) {
-		/*
-		* This read is needed to verify that there has not been any
-		* extreme errors that might have occurred, i.e. EEH. The
-		* function iowrite32 will not detect EEH errors, so it is
-		* necessary that we recover if such an error is the reason
-		* for the timeout. This is a dummy read.
-		*/
-		ioread32(card->regmap + SCRATCH);
-
 		dev_warn(CARD_TO_DEV(card),
 			"creg command failed(%d x%08x)\n",
 			completion.st, addr);
@@ -538,7 +525,6 @@ int rsxx_issue_card_cmd(struct rsxx_cardinfo *card, u32 cmd)
 				   sizeof(cmd), &cmd, 0);
 }
 
-
 /*----------------- HW Log Functions -------------------*/
 static void hw_log_msg(struct rsxx_cardinfo *card, const char *str, int len)
 {
@@ -604,7 +590,6 @@ static int substrncpy(char *dest, const char *src, int count)
 	}
 	return max_cnt - count;
 }
-
 
 static void read_hw_log_done(struct rsxx_cardinfo *card,
 			     struct creg_cmd *cmd,
@@ -736,11 +721,6 @@ int rsxx_creg_setup(struct rsxx_cardinfo *card)
 {
 	card->creg_ctrl.active_cmd = NULL;
 
-	card->creg_ctrl.creg_wq =
-			create_singlethread_workqueue(DRIVER_NAME"_creg");
-	if (!card->creg_ctrl.creg_wq)
-		return -ENOMEM;
-
 	INIT_WORK(&card->creg_ctrl.done_work, creg_cmd_done);
 	mutex_init(&card->creg_ctrl.reset_lock);
 	INIT_LIST_HEAD(&card->creg_ctrl.queue);
@@ -787,7 +767,6 @@ void rsxx_creg_destroy(struct rsxx_cardinfo *card)
 
 	cancel_work_sync(&card->creg_ctrl.done_work);
 }
-
 
 int rsxx_creg_init(void)
 {

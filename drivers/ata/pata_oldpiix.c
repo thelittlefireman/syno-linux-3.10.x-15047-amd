@@ -16,6 +16,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -202,7 +203,6 @@ static unsigned int oldpiix_qc_issue(struct ata_queued_cmd *qc)
 	return ata_bmdma_qc_issue(qc);
 }
 
-
 static struct scsi_host_template oldpiix_sht = {
 	ATA_BMDMA_SHT(DRV_NAME),
 };
@@ -215,7 +215,6 @@ static struct ata_port_operations oldpiix_pata_ops = {
 	.set_dmamode		= oldpiix_set_dmamode,
 	.prereset		= oldpiix_pre_reset,
 };
-
 
 /**
  *	oldpiix_init_one - Register PIIX ATA PCI device with kernel services

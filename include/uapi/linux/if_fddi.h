@@ -100,5 +100,4 @@ struct fddihdr {
 		} hdr;
 } __attribute__((packed));
 
-
 #endif /* _UAPI_LINUX_IF_FDDI_H */

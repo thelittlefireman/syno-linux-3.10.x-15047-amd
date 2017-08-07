@@ -51,17 +51,16 @@ static void process_signal_queue(unsigned long dummy);
 
 static DECLARE_TASKLET_DISABLED(tipc_tasklet, process_signal_queue, 0);
 
-
 unsigned int tipc_k_signal(Handler routine, unsigned long argument)
 {
 	struct queue_item *item;
 
-	spin_lock_bh(&qitem_lock);
 	if (!handler_enabled) {
-		spin_unlock_bh(&qitem_lock);
+		pr_err("Signal request ignored by handler\n");
 		return -ENOPROTOOPT;
 	}
 
+	spin_lock_bh(&qitem_lock);
 	item = kmem_cache_alloc(tipc_queue_item_cache, GFP_ATOMIC);
 	if (!item) {
 		pr_err("Signal queue out of memory\n");
@@ -112,14 +111,10 @@ void tipc_handler_stop(void)
 	struct list_head *l, *n;
 	struct queue_item *item;
 
-	spin_lock_bh(&qitem_lock);
-	if (!handler_enabled) {
-		spin_unlock_bh(&qitem_lock);
+	if (!handler_enabled)
 		return;
-	}
-	handler_enabled = 0;
-	spin_unlock_bh(&qitem_lock);
 
+	handler_enabled = 0;
 	tasklet_kill(&tipc_tasklet);
 
 	spin_lock_bh(&qitem_lock);

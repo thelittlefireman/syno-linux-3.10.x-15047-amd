@@ -96,7 +96,6 @@ static const struct v4l2_pix_format sif_mode[] = {
 #define SPCA500_OFFSET_AUGPIO    12
 #define SPCA500_OFFSET_DATA      16
 
-
 static const __u16 spca500_visual_defaults[][3] = {
 	{0x00, 0x0003, 0x816b},	/* SSI not active sync with vsync,
 				 * hue (H byte) = 0,
@@ -608,8 +607,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 	__u8 xmult, ymult;
 
 	/* create the JPEG header */
-	jpeg_define(sd->jpeg_hdr, gspca_dev->pixfmt.height,
-			gspca_dev->pixfmt.width,
+	jpeg_define(sd->jpeg_hdr, gspca_dev->height, gspca_dev->width,
 			0x22);		/* JPEG 411 */
 	jpeg_set_qual(sd->jpeg_hdr, QUALITY);
 

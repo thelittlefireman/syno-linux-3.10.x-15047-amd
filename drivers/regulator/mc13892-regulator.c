@@ -249,7 +249,6 @@ static const unsigned int mc13892_pwgtdrv[] = {
 static struct regulator_ops mc13892_gpo_regulator_ops;
 static struct regulator_ops mc13892_sw_regulator_ops;
 
-
 #define MC13892_FIXED_DEFINE(name, reg, voltages)		\
 	MC13xxx_FIXED_DEFINE(MC13892_, name, reg, voltages,	\
 			mc13xxx_fixed_regulator_ops)
@@ -274,25 +273,25 @@ static struct mc13xxx_regulator mc13892_regulators[] = {
 	MC13892_SW_DEFINE(SW4, SWITCHERS3, SWITCHERS3, mc13892_sw),
 	MC13892_FIXED_DEFINE(SWBST, SWITCHERS5, mc13892_swbst),
 	MC13892_FIXED_DEFINE(VIOHI, REGULATORMODE0, mc13892_viohi),
-	MC13892_DEFINE_REGU(VPLL, REGULATORMODE0, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VPLL, REGULATORMODE0, REGULATORSETTING0,	\
 		mc13892_vpll),
-	MC13892_DEFINE_REGU(VDIG, REGULATORMODE0, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VDIG, REGULATORMODE0, REGULATORSETTING0,	\
 		mc13892_vdig),
-	MC13892_DEFINE_REGU(VSD, REGULATORMODE1, REGULATORSETTING1,
+	MC13892_DEFINE_REGU(VSD, REGULATORMODE1, REGULATORSETTING1,	\
 		mc13892_vsd),
-	MC13892_DEFINE_REGU(VUSB2, REGULATORMODE0, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VUSB2, REGULATORMODE0, REGULATORSETTING0,	\
 		mc13892_vusb2),
-	MC13892_DEFINE_REGU(VVIDEO, REGULATORMODE1, REGULATORSETTING1,
+	MC13892_DEFINE_REGU(VVIDEO, REGULATORMODE1, REGULATORSETTING1,	\
 		mc13892_vvideo),
-	MC13892_DEFINE_REGU(VAUDIO, REGULATORMODE1, REGULATORSETTING1,
+	MC13892_DEFINE_REGU(VAUDIO, REGULATORMODE1, REGULATORSETTING1,	\
 		mc13892_vaudio),
-	MC13892_DEFINE_REGU(VCAM, REGULATORMODE1, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VCAM, REGULATORMODE1, REGULATORSETTING0,	\
 		mc13892_vcam),
-	MC13892_DEFINE_REGU(VGEN1, REGULATORMODE0, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VGEN1, REGULATORMODE0, REGULATORSETTING0,	\
 		mc13892_vgen1),
-	MC13892_DEFINE_REGU(VGEN2, REGULATORMODE0, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VGEN2, REGULATORMODE0, REGULATORSETTING0,	\
 		mc13892_vgen2),
-	MC13892_DEFINE_REGU(VGEN3, REGULATORMODE1, REGULATORSETTING0,
+	MC13892_DEFINE_REGU(VGEN3, REGULATORMODE1, REGULATORSETTING0,	\
 		mc13892_vgen3),
 	MC13892_FIXED_DEFINE(VUSB, USB1, mc13892_vusb),
 	MC13892_GPO_DEFINE(GPO1, POWERMISC, mc13892_gpo),
@@ -390,7 +389,6 @@ static int mc13892_gpo_regulator_is_enabled(struct regulator_dev *rdev)
 	return (val & mc13892_regulators[id].enable_bit) != 0;
 }
 
-
 static struct regulator_ops mc13892_gpo_regulator_ops = {
 	.enable = mc13892_gpo_regulator_enable,
 	.disable = mc13892_gpo_regulator_disable,
@@ -476,8 +474,8 @@ static int mc13892_sw_regulator_set_voltage_sel(struct regulator_dev *rdev,
 	}
 
 	mc13xxx_lock(priv->mc13xxx);
-	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg,
-			      mask, reg_value);
+	ret = mc13xxx_reg_rmw(priv->mc13xxx, mc13892_regulators[id].vsel_reg, mask,
+			      reg_value);
 	mc13xxx_unlock(priv->mc13xxx);
 
 	return ret;
@@ -525,7 +523,6 @@ static unsigned int mc13892_vcam_get_mode(struct regulator_dev *rdev)
 
 	return REGULATOR_MODE_NORMAL;
 }
-
 
 static int mc13892_regulator_probe(struct platform_device *pdev)
 {
@@ -611,20 +608,37 @@ static int mc13892_regulator_probe(struct platform_device *pdev)
 		config.driver_data = priv;
 		config.of_node = node;
 
-		priv->regulators[i] = devm_regulator_register(&pdev->dev, desc,
-							      &config);
+		priv->regulators[i] = regulator_register(desc, &config);
 		if (IS_ERR(priv->regulators[i])) {
 			dev_err(&pdev->dev, "failed to register regulator %s\n",
 				mc13892_regulators[i].desc.name);
-			return PTR_ERR(priv->regulators[i]);
+			ret = PTR_ERR(priv->regulators[i]);
+			goto err;
 		}
 	}
 
 	return 0;
+err:
+	while (--i >= 0)
+		regulator_unregister(priv->regulators[i]);
+	return ret;
 
 err_unlock:
 	mc13xxx_unlock(mc13892);
 	return ret;
+}
+
+static int mc13892_regulator_remove(struct platform_device *pdev)
+{
+	struct mc13xxx_regulator_priv *priv = platform_get_drvdata(pdev);
+	int i;
+
+	platform_set_drvdata(pdev, NULL);
+
+	for (i = 0; i < priv->num_regulators; i++)
+		regulator_unregister(priv->regulators[i]);
+
+	return 0;
 }
 
 static struct platform_driver mc13892_regulator_driver = {
@@ -632,6 +646,7 @@ static struct platform_driver mc13892_regulator_driver = {
 		.name	= "mc13892-regulator",
 		.owner	= THIS_MODULE,
 	},
+	.remove	= mc13892_regulator_remove,
 	.probe	= mc13892_regulator_probe,
 };
 

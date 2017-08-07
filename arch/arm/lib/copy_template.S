@@ -66,7 +66,6 @@
  *	than one 32bit instruction in Thumb-2)
  */
 
-
 		enter	r4, lr
 
 		subs	r2, r2, #4
@@ -174,7 +173,6 @@
 		beq	17f
 		bgt	18f
 
-
 		.macro	forward_copy_shift pull push
 
 		subs	r2, r2, #28
@@ -197,24 +195,24 @@
 
 12:	PLD(	pld	[r1, #124]		)
 13:		ldr4w	r1, r4, r5, r6, r7, abort=19f
-		mov	r3, lr, lspull #\pull
+		mov	r3, lr, pull #\pull
 		subs	r2, r2, #32
 		ldr4w	r1, r8, r9, ip, lr, abort=19f
-		orr	r3, r3, r4, lspush #\push
-		mov	r4, r4, lspull #\pull
-		orr	r4, r4, r5, lspush #\push
-		mov	r5, r5, lspull #\pull
-		orr	r5, r5, r6, lspush #\push
-		mov	r6, r6, lspull #\pull
-		orr	r6, r6, r7, lspush #\push
-		mov	r7, r7, lspull #\pull
-		orr	r7, r7, r8, lspush #\push
-		mov	r8, r8, lspull #\pull
-		orr	r8, r8, r9, lspush #\push
-		mov	r9, r9, lspull #\pull
-		orr	r9, r9, ip, lspush #\push
-		mov	ip, ip, lspull #\pull
-		orr	ip, ip, lr, lspush #\push
+		orr	r3, r3, r4, push #\push
+		mov	r4, r4, pull #\pull
+		orr	r4, r4, r5, push #\push
+		mov	r5, r5, pull #\pull
+		orr	r5, r5, r6, push #\push
+		mov	r6, r6, pull #\pull
+		orr	r6, r6, r7, push #\push
+		mov	r7, r7, pull #\pull
+		orr	r7, r7, r8, push #\push
+		mov	r8, r8, pull #\pull
+		orr	r8, r8, r9, push #\push
+		mov	r9, r9, pull #\pull
+		orr	r9, r9, ip, push #\push
+		mov	ip, ip, pull #\pull
+		orr	ip, ip, lr, push #\push
 		str8w	r0, r3, r4, r5, r6, r7, r8, r9, ip, , abort=19f
 		bge	12b
 	PLD(	cmn	r2, #96			)
@@ -225,10 +223,10 @@
 14:		ands	ip, r2, #28
 		beq	16f
 
-15:		mov	r3, lr, lspull #\pull
+15:		mov	r3, lr, pull #\pull
 		ldr1w	r1, lr, abort=21f
 		subs	ip, ip, #4
-		orr	r3, r3, lr, lspush #\push
+		orr	r3, r3, lr, push #\push
 		str1w	r0, r3, abort=21f
 		bgt	15b
 	CALGN(	cmp	r2, #0			)
@@ -239,13 +237,11 @@
 
 		.endm
 
-
 		forward_copy_shift	pull=8	push=24
 
 17:		forward_copy_shift	pull=16	push=16
 
 18:		forward_copy_shift	pull=24	push=8
-
 
 /*
  * Abort preamble and completion macros.
@@ -264,4 +260,3 @@
 	.macro	copy_abort_end
 	ldmfd	sp!, {r4, pc}
 	.endm
-

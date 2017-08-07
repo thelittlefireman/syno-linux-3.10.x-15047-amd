@@ -1,5 +1,6 @@
 #include <linux/kernel.h>
 #include <linux/stddef.h>
+#include <linux/init.h>
 #include <linux/sched.h>
 #include <linux/signal.h>
 #include <linux/irq.h>
@@ -10,7 +11,6 @@
 #include <asm/8xx_immap.h>
 
 #include "mpc8xx_pic.h"
-
 
 #define PIC_VEC_SPURRIOUS      15
 
@@ -95,7 +95,6 @@ static int mpc8xx_pic_host_map(struct irq_domain *h, unsigned int virq,
 	return 0;
 }
 
-
 static int mpc8xx_pic_host_xlate(struct irq_domain *h, struct device_node *ct,
 			    const u32 *intspec, unsigned int intsize,
 			    irq_hw_number_t *out_hwirq, unsigned int *out_flags)
@@ -118,7 +117,6 @@ static int mpc8xx_pic_host_xlate(struct irq_domain *h, struct device_node *ct,
 
 	return 0;
 }
-
 
 static struct irq_domain_ops mpc8xx_pic_host_ops = {
 	.map = mpc8xx_pic_host_map,

@@ -115,14 +115,14 @@ static struct sk_buff *rtllib_ADDBA(struct rtllib_device *ieee, u8 *Dst,
 
 	if (ACT_ADDBARSP == type) {
 		RT_TRACE(COMP_DBG, "====>to send ADDBARSP\n");
-		tmp = StatusCode;
+		tmp = cpu_to_le16(StatusCode);
 		memcpy(tag, (u8 *)&tmp, 2);
 		tag += 2;
 	}
-	tmp = pBA->BaParamSet.shortData;
+	tmp = cpu_to_le16(pBA->BaParamSet.shortData);
 	memcpy(tag, (u8 *)&tmp, 2);
 	tag += 2;
-	tmp = pBA->BaTimeoutValue;
+	tmp = cpu_to_le16(pBA->BaTimeoutValue);
 	memcpy(tag, (u8 *)&tmp, 2);
 	tag += 2;
 
@@ -178,10 +178,10 @@ static struct sk_buff *rtllib_DELBA(struct rtllib_device *ieee, u8 *dst,
 	*tag ++= ACT_CAT_BA;
 	*tag ++= ACT_DELBA;
 
-	tmp = DelbaParamSet.shortData;
+	tmp = cpu_to_le16(DelbaParamSet.shortData);
 	memcpy(tag, (u8 *)&tmp, 2);
 	tag += 2;
-	tmp = ReasonCode;
+	tmp = cpu_to_le16(ReasonCode);
 	memcpy(tag, (u8 *)&tmp, 2);
 	tag += 2;
 
@@ -359,7 +359,6 @@ int rtllib_rx_ADDBARsp(struct rtllib_device *ieee, struct sk_buff *skb)
 		goto OnADDBARsp_Reject;
 	}
 
-
 	if (!GetTs(ieee, (struct ts_common_info **)(&pTS), dst,
 		   (u8)(pBaParamSet->field.TID), TX_DIR, false)) {
 		RTLLIB_DEBUG(RTLLIB_DL_ERR, "can't get TS in %s()\n", __func__);
@@ -370,7 +369,6 @@ int rtllib_rx_ADDBARsp(struct rtllib_device *ieee, struct sk_buff *skb)
 	pTS->bAddBaReqInProgress = false;
 	pPendingBA = &pTS->TxPendingBARecord;
 	pAdmittedBA = &pTS->TxAdmittedBARecord;
-
 
 	if ((pAdmittedBA->bValid == true)) {
 		RTLLIB_DEBUG(RTLLIB_DL_BA, "OnADDBARsp(): Recv ADDBA Rsp."
@@ -388,7 +386,6 @@ int rtllib_rx_ADDBARsp(struct rtllib_device *ieee, struct sk_buff *skb)
 		DeActivateBAEntry(ieee, pPendingBA);
 	}
 
-
 	if (*pStatusCode == ADDBA_STATUS_SUCCESS) {
 		if (pBaParamSet->field.BAPolicy == BA_POLICY_DELAYED) {
 			pTS->bAddBaReqDelayed = true;
@@ -396,7 +393,6 @@ int rtllib_rx_ADDBARsp(struct rtllib_device *ieee, struct sk_buff *skb)
 			ReasonCode = DELBA_REASON_END_BA;
 			goto OnADDBARsp_Reject;
 		}
-
 
 		pAdmittedBA->DialogToken = *pDialogToken;
 		pAdmittedBA->BaTimeoutValue = *pBaTimeoutVal;

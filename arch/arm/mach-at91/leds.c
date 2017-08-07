@@ -17,7 +17,6 @@
 
 #include "board.h"
 
-
 /* ------------------------------------------------------------------------- */
 
 #if defined(CONFIG_NEW_LEDS)
@@ -52,7 +51,6 @@ void __init at91_gpio_leds(struct gpio_led *leds, int nr)
 #else
 void __init at91_gpio_leds(struct gpio_led *leds, int nr) {}
 #endif
-
 
 /* ------------------------------------------------------------------------- */
 

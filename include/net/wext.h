@@ -6,13 +6,13 @@
 struct net;
 
 #ifdef CONFIG_WEXT_CORE
-int wext_handle_ioctl(struct net *net, struct ifreq *ifr, unsigned int cmd,
-		      void __user *arg);
-int compat_wext_handle_ioctl(struct net *net, unsigned int cmd,
-			     unsigned long arg);
+extern int wext_handle_ioctl(struct net *net, struct ifreq *ifr, unsigned int cmd,
+			     void __user *arg);
+extern int compat_wext_handle_ioctl(struct net *net, unsigned int cmd,
+				    unsigned long arg);
 
-struct iw_statistics *get_wireless_stats(struct net_device *dev);
-int call_commit_handler(struct net_device *dev);
+extern struct iw_statistics *get_wireless_stats(struct net_device *dev);
+extern int call_commit_handler(struct net_device *dev);
 #else
 static inline int wext_handle_ioctl(struct net *net, struct ifreq *ifr, unsigned int cmd,
 				    void __user *arg)
@@ -27,8 +27,8 @@ static inline int compat_wext_handle_ioctl(struct net *net, unsigned int cmd,
 #endif
 
 #ifdef CONFIG_WEXT_PROC
-int wext_proc_init(struct net *net);
-void wext_proc_exit(struct net *net);
+extern int wext_proc_init(struct net *net);
+extern void wext_proc_exit(struct net *net);
 #else
 static inline int wext_proc_init(struct net *net)
 {
@@ -55,6 +55,5 @@ int iw_handler_get_private(struct net_device *		dev,
 #define ioctl_private_call NULL
 #define compat_private_call NULL
 #endif
-
 
 #endif /* __NET_WEXT_H */

@@ -48,7 +48,7 @@ struct drm_exynos_ipp_cmd_work {
 /*
  * A structure of command node.
  *
- * @priv: IPP private information.
+ * @priv: IPP private infomation.
  * @list: list head to command queue information.
  * @event_list: list head of event.
  * @mem_list: list head to source,destination memory queue information.
@@ -92,7 +92,7 @@ struct drm_exynos_ipp_buf_info {
 };
 
 /*
- * A structure of wb setting information.
+ * A structure of wb setting infomation.
  *
  * @enable: enable flag for wb.
  * @refresh: HZ of the refresh rate.
@@ -249,4 +249,3 @@ static inline int exynos_drm_ippnb_send_event(unsigned long val, void *v)
 #endif
 
 #endif /* _EXYNOS_DRM_IPP_H_ */
-

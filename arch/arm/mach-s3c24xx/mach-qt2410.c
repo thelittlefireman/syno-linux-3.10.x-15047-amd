@@ -31,7 +31,6 @@
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_gpio.h>
 #include <linux/io.h>
@@ -50,11 +49,11 @@
 
 #include <linux/platform_data/leds-s3c24xx.h>
 #include <mach/regs-lcd.h>
+#include <plat/regs-serial.h>
 #include <mach/fb.h>
 #include <linux/platform_data/mtd-nand-s3c2410.h>
 #include <linux/platform_data/usb-s3c2410_udc.h>
 #include <linux/platform_data/i2c-s3c2410.h>
-#include <mach/gpio-samsung.h>
 
 #include <plat/gpio-cfg.h>
 #include <plat/devs.h>
@@ -168,7 +167,6 @@ static struct s3c2410fb_display qt2410_lcd_cfg[] __initdata = {
 		.vsync_len	= 4,
 	},
 };
-
 
 static struct s3c2410fb_mach_info qt2410_fb_info __initdata = {
 	.displays 	= qt2410_lcd_cfg,

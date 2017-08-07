@@ -55,7 +55,6 @@ void platform_restart(void)
 	/* Flush and reset the mmu, simulate a processor reset, and
 	 * jump to the reset vector. */
 
-
 	__asm__ __volatile__ ("movi	a2, 15\n\t"
 			      "wsr	a2, icountlevel\n\t"
 			      "movi	a2, 0\n\t"
@@ -135,11 +134,11 @@ static void __init update_local_mac(struct device_node *node)
 
 static int __init machine_setup(void)
 {
-	struct device_node *clock;
+	struct device_node *serial;
 	struct device_node *eth = NULL;
 
-	for_each_node_by_name(clock, "main-oscillator")
-		update_clock_frequency(clock);
+	for_each_compatible_node(serial, NULL, "ns16550a")
+		update_clock_frequency(serial);
 
 	if ((eth = of_find_compatible_node(eth, NULL, "opencores,ethoc")))
 		update_local_mac(eth);
@@ -163,12 +162,12 @@ void platform_heartbeat(void)
 
 #ifdef CONFIG_XTENSA_CALIBRATE_CCOUNT
 
-void __init platform_calibrate_ccount(void)
+void platform_calibrate_ccount(void)
 {
 	long clk_freq = 0;
 #ifdef CONFIG_OF
 	struct device_node *cpu =
-		of_find_compatible_node(NULL, NULL, "cdns,xtensa-cpu");
+		of_find_compatible_node(NULL, NULL, "xtensa,cpu");
 	if (cpu) {
 		u32 freq;
 		update_clock_frequency(cpu);
@@ -179,7 +178,8 @@ void __init platform_calibrate_ccount(void)
 	if (!clk_freq)
 		clk_freq = *(long *)XTFPGA_CLKFRQ_VADDR;
 
-	ccount_freq = clk_freq;
+	ccount_per_jiffy = clk_freq / HZ;
+	nsec_per_ccount = 1000000000UL / clk_freq;
 }
 
 #endif
@@ -271,7 +271,6 @@ static struct platform_device *platform_devices[] __initdata = {
 	&xtavnet_uart,
 };
 
-
 static int __init xtavnet_init(void)
 {
 	/* Ethernet MAC address.  */
@@ -282,7 +281,6 @@ static int __init xtavnet_init(void)
 	 */
 	serial_platform_data[0].uartclk = *(long *)XTFPGA_CLKFRQ_VADDR;
 
-
 	/* register platform devices */
 	platform_add_devices(platform_devices, ARRAY_SIZE(platform_devices));
 
@@ -290,7 +288,6 @@ static int __init xtavnet_init(void)
 	 * knows whether they set it correctly on the DIP switches.
 	 */
 	pr_info("XTFPGA: Ethernet MAC %pM\n", ethoc_pdata.hwaddr);
-	ethoc_pdata.eth_clkfreq = *(long *)XTFPGA_CLKFRQ_VADDR;
 
 	return 0;
 }

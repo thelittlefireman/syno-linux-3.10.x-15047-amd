@@ -89,6 +89,7 @@ struct svc_xprt_class svc_rdma_class = {
 	.xcl_owner = THIS_MODULE,
 	.xcl_ops = &svc_rdma_ops,
 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+	.xcl_ident = XPRT_TRANSPORT_RDMA,
 };
 
 struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
@@ -477,7 +478,8 @@ struct page *svc_rdma_get_page(void)
 
 	while ((page = alloc_page(GFP_KERNEL)) == NULL) {
 		/* If we can't get memory, wait a bit and try again */
-		printk(KERN_INFO "svcrdma: out of memory...retrying in 1s\n");
+		printk(KERN_INFO "svcrdma: out of memory...retrying in 1000 "
+		       "jiffies.\n");
 		schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
 	}
 	return page;

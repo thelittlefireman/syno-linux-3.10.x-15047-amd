@@ -25,6 +25,14 @@ struct xfs_inode;
 struct attrlist_cursor_kern;
 
 /*
+ * Return values for xfs_inactive.  A return value of
+ * VN_INACTIVE_NOCACHE implies that the file system behavior
+ * has disassociated its state and bhv_desc_t from the vnode.
+ */
+#define	VN_INACTIVE_CACHE	0
+#define	VN_INACTIVE_NOCACHE	1
+
+/*
  * Flags for read/write calls - same values as IRIX
  */
 #define IO_ISDIRECT	0x00004		/* bypass page cache */
@@ -35,12 +43,20 @@ struct attrlist_cursor_kern;
 	{ IO_INVIS,	"INVIS"}
 
 /*
+ * Flush/Invalidate options for vop_toss/flush/flushinval_pages.
+ */
+#define FI_NONE			0	/* none */
+#define FI_REMAPF		1	/* Do a remapf prior to the operation */
+#define FI_REMAPF_LOCKED	2	/* Do a remapf prior to the operation.
+					   Prevent VM access to the pages until
+					   the operation completes. */
+
+/*
  * Some useful predicates.
  */
 #define VN_MAPPED(vp)	mapping_mapped(vp->i_mapping)
 #define VN_CACHED(vp)	(vp->i_mapping->nrpages)
 #define VN_DIRTY(vp)	mapping_tagged(vp->i_mapping, \
 					PAGECACHE_TAG_DIRTY)
-
 
 #endif	/* __XFS_VNODE_H__ */

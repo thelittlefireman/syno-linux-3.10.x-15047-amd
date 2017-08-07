@@ -607,7 +607,7 @@ static void octeon_irq_ciu_gpio_ack(struct irq_data *data)
 
 static void octeon_irq_handle_gpio(unsigned int irq, struct irq_desc *desc)
 {
-	if (irq_get_trigger_type(irq) & IRQ_TYPE_EDGE_BOTH)
+	if (irqd_get_trigger_type(irq_desc_get_irq_data(desc)) & IRQ_TYPE_EDGE_BOTH)
 		handle_edge_irq(irq, desc);
 	else
 		handle_level_irq(irq, desc);
@@ -635,7 +635,7 @@ static void octeon_irq_cpu_offline_ciu(struct irq_data *data)
 		cpumask_clear(&new_affinity);
 		cpumask_set_cpu(cpumask_first(cpu_online_mask), &new_affinity);
 	}
-	__irq_set_affinity_locked(data, &new_affinity);
+	irq_set_affinity_locked(data, &new_affinity, false);
 }
 
 static int octeon_irq_ciu_set_affinity(struct irq_data *data,
@@ -660,7 +660,6 @@ static int octeon_irq_ciu_set_affinity(struct irq_data *data,
 
 	if (!enable_one)
 		return 0;
-
 
 	for_each_online_cpu(cpu) {
 		int coreid = octeon_coreid_for_cpu(cpu);
@@ -864,7 +863,6 @@ static void octeon_irq_ciu1_wd_enable_v2(struct irq_data *data)
 	cvmx_write_csr(CVMX_CIU_INTX_EN1_W1S(coreid * 2 + 1), 1ull << coreid);
 }
 
-
 static struct irq_chip octeon_irq_chip_ciu_wd_v2 = {
 	.name = "CIU-W",
 	.irq_enable = octeon_irq_ciu1_wd_enable_v2,
@@ -975,6 +973,10 @@ static int octeon_irq_ciu_xlat(struct irq_domain *d,
 	if (ciu > 1 || bit > 63)
 		return -EINVAL;
 
+	/* These are the GPIO lines */
+	if (ciu == 0 && bit >= 16 && bit < 32)
+		return -EINVAL;
+
 	*out_hwirq = (ciu << 6) | bit;
 	*out_type = 0;
 
@@ -1002,10 +1004,6 @@ static int octeon_irq_ciu_map(struct irq_domain *d,
 
 	if (!octeon_irq_virq_in_range(virq))
 		return -EINVAL;
-
-	/* Don't map irq if it is reserved for GPIO. */
-	if (line == 0 && bit >= 16 && bit <32)
-		return 0;
 
 	if (line > 1 || octeon_irq_ciu_to_irq[line][bit] != 0)
 		return -EINVAL;
@@ -1095,7 +1093,7 @@ static void octeon_irq_ip3_ciu(void)
 
 static bool octeon_irq_use_ip4;
 
-static void octeon_irq_local_enable_ip4(void *arg)
+static void __cpuinit octeon_irq_local_enable_ip4(void *arg)
 {
 	set_c0_status(STATUSF_IP4);
 }
@@ -1110,24 +1108,23 @@ static void (*octeon_irq_ip2)(void);
 static void (*octeon_irq_ip3)(void);
 static void (*octeon_irq_ip4)(void);
 
-void (*octeon_irq_setup_secondary)(void);
+void __cpuinitdata (*octeon_irq_setup_secondary)(void);
 
-void octeon_irq_set_ip4_handler(octeon_irq_ip4_handler_t h)
+void __cpuinit octeon_irq_set_ip4_handler(octeon_irq_ip4_handler_t h)
 {
 	octeon_irq_ip4 = h;
 	octeon_irq_use_ip4 = true;
 	on_each_cpu(octeon_irq_local_enable_ip4, NULL, 1);
 }
 
-static void octeon_irq_percpu_enable(void)
+static void __cpuinit octeon_irq_percpu_enable(void)
 {
 	irq_cpu_online();
 }
 
-static void octeon_irq_init_ciu_percpu(void)
+static void __cpuinit octeon_irq_init_ciu_percpu(void)
 {
 	int coreid = cvmx_get_core_num();
-
 
 	__get_cpu_var(octeon_irq_ciu0_en_mirror) = 0;
 	__get_cpu_var(octeon_irq_ciu1_en_mirror) = 0;
@@ -1167,7 +1164,7 @@ static void octeon_irq_init_ciu2_percpu(void)
 	cvmx_read_csr(CVMX_CIU2_SUM_PPX_IP2(coreid));
 }
 
-static void octeon_irq_setup_secondary_ciu(void)
+static void __cpuinit octeon_irq_setup_secondary_ciu(void)
 {
 	octeon_irq_init_ciu_percpu();
 	octeon_irq_percpu_enable();
@@ -1525,6 +1522,10 @@ static int octeon_irq_ciu2_xlat(struct irq_domain *d,
 	ciu = intspec[0];
 	bit = intspec[1];
 
+	/* Line 7  are the GPIO lines */
+	if (ciu > 6 || bit > 63)
+		return -EINVAL;
+
 	*out_hwirq = (ciu << 6) | bit;
 	*out_type = 0;
 
@@ -1566,14 +1567,8 @@ static int octeon_irq_ciu2_map(struct irq_domain *d,
 	if (!octeon_irq_virq_in_range(virq))
 		return -EINVAL;
 
-	/*
-	 * Don't map irq if it is reserved for GPIO.
-	 * (Line 7 are the GPIO lines.)
-	 */
-	if (line == 7)
-		return 0;
-
-	if (line > 7 || octeon_irq_ciu_to_irq[line][bit] != 0)
+	/* Line 7  are the GPIO lines */
+	if (line > 6 || octeon_irq_ciu_to_irq[line][bit] != 0)
 		return -EINVAL;
 
 	if (octeon_irq_ciu2_is_edge(line, bit))
@@ -1778,7 +1773,7 @@ asmlinkage void plat_irq_dispatch(void)
 
 #ifdef CONFIG_HOTPLUG_CPU
 
-void octeon_fixup_irqs(void)
+void fixup_irqs(void)
 {
 	irq_cpu_offline();
 }

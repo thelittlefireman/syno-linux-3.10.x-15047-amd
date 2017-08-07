@@ -53,7 +53,7 @@ int hdmi_avi_infoframe_init(struct hdmi_avi_infoframe *frame)
 
 	frame->type = HDMI_INFOFRAME_TYPE_AVI;
 	frame->version = 2;
-	frame->length = HDMI_AVI_INFOFRAME_SIZE;
+	frame->length = 13;
 
 	return 0;
 }
@@ -96,18 +96,13 @@ ssize_t hdmi_avi_infoframe_pack(struct hdmi_avi_infoframe *frame, void *buffer,
 
 	ptr[0] = ((frame->colorspace & 0x3) << 5) | (frame->scan_mode & 0x3);
 
-	/*
-	 * Data byte 1, bit 4 has to be set if we provide the active format
-	 * aspect ratio
-	 */
-	if (frame->active_aspect & 0xf)
+	if (frame->active_info_valid)
 		ptr[0] |= BIT(4);
 
-	/* Bit 3 and 2 indicate if we transmit horizontal/vertical bar data */
-	if (frame->top_bar || frame->bottom_bar)
+	if (frame->horizontal_bar_valid)
 		ptr[0] |= BIT(3);
 
-	if (frame->left_bar || frame->right_bar)
+	if (frame->vertical_bar_valid)
 		ptr[0] |= BIT(2);
 
 	ptr[1] = ((frame->colorimetry & 0x3) << 6) |
@@ -157,7 +152,7 @@ int hdmi_spd_infoframe_init(struct hdmi_spd_infoframe *frame,
 
 	frame->type = HDMI_INFOFRAME_TYPE_SPD;
 	frame->version = 1;
-	frame->length = HDMI_SPD_INFOFRAME_SIZE;
+	frame->length = 25;
 
 	strncpy(frame->vendor, vendor, sizeof(frame->vendor));
 	strncpy(frame->product, product, sizeof(frame->product));
@@ -224,7 +219,7 @@ int hdmi_audio_infoframe_init(struct hdmi_audio_infoframe *frame)
 
 	frame->type = HDMI_INFOFRAME_TYPE_AUDIO;
 	frame->version = 1;
-	frame->length = HDMI_AUDIO_INFOFRAME_SIZE;
+	frame->length = 10;
 
 	return 0;
 }

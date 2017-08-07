@@ -120,7 +120,6 @@ static int omap_wake_irq(struct irq_data *d, unsigned int enable)
 	return 0;
 }
 
-
 /*
  * Allows tuning the IRQ type and priority
  *

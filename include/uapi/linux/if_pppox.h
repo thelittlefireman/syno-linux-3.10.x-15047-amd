@@ -16,7 +16,6 @@
 #ifndef _UAPI__LINUX_IF_PPPOX_H
 #define _UAPI__LINUX_IF_PPPOX_H
 
-
 #include <linux/types.h>
 #include <asm/byteorder.h>
 
@@ -46,7 +45,7 @@ struct pppoe_addr {
  * PPTP addressing definition
  */
 struct pptp_addr {
-	__u16		call_id;
+	__be16		call_id;
 	struct in_addr	sin_addr;
 };
 
@@ -151,6 +150,5 @@ struct pppoe_hdr {
 
 /* Length of entire PPPoE + PPP header */
 #define PPPOE_SES_HLEN	8
-
 
 #endif /* _UAPI__LINUX_IF_PPPOX_H */

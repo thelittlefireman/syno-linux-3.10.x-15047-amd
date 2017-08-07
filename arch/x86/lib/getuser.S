@@ -107,7 +107,6 @@ ENTRY(__get_user_8)
 	CFI_ENDPROC
 ENDPROC(__get_user_8)
 
-
 bad_get_user:
 	CFI_STARTPROC
 	xor %edx,%edx

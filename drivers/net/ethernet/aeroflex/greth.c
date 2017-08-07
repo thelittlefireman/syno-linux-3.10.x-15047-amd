@@ -25,6 +25,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/module.h>
 #include <linux/uaccess.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -205,7 +206,6 @@ static void greth_clean_rings(struct greth_private *greth)
 			greth->tx_free += nr_frags+1;
 			dev_kfree_skb(skb);
 		}
-
 
 	} else { /* 10/100 Mbps MAC */
 
@@ -412,7 +412,6 @@ greth_start_xmit(struct sk_buff *skb, struct net_device *dev)
 	if (netif_msg_pktdata(greth))
 		greth_print_tx_packet(skb);
 
-
 	if (unlikely(skb->len > MAX_FRAME_SIZE)) {
 		dev->stats.tx_errors++;
 		goto out;
@@ -446,7 +445,6 @@ out:
 	dev_kfree_skb(skb);
 	return err;
 }
-
 
 static netdev_tx_t
 greth_start_xmit_gbit(struct sk_buff *skb, struct net_device *dev)
@@ -494,7 +492,6 @@ greth_start_xmit_gbit(struct sk_buff *skb, struct net_device *dev)
 	status |= skb_headlen(skb) & GRETH_BD_LEN;
 	if (greth->tx_next == GRETH_TXBD_NUM_MASK)
 		status |= GRETH_BD_WR;
-
 
 	bdp = greth->tx_bd_base + greth->tx_next;
 	greth_write_bd(&bdp->stat, status);
@@ -1213,6 +1210,11 @@ static int greth_mdio_write(struct mii_bus *bus, int phy, int reg, u16 val)
 	return 0;
 }
 
+static int greth_mdio_reset(struct mii_bus *bus)
+{
+	return 0;
+}
+
 static void greth_link_change(struct net_device *dev)
 {
 	struct greth_private *greth = netdev_priv(dev);
@@ -1327,6 +1329,7 @@ static int greth_mdio_init(struct greth_private *greth)
 	snprintf(greth->mdio->id, MII_BUS_ID_SIZE, "%s-%d", greth->mdio->name, greth->irq);
 	greth->mdio->read = greth_mdio_read;
 	greth->mdio->write = greth_mdio_write;
+	greth->mdio->reset = greth_mdio_reset;
 	greth->mdio->priv = greth;
 
 	greth->mdio->irq = greth->mdio_irqs;
@@ -1354,7 +1357,7 @@ static int greth_mdio_init(struct greth_private *greth)
 		timeout = jiffies + 6*HZ;
 		while (!phy_aneg_done(greth->phy) && time_before(jiffies, timeout)) {
 		}
-		phy_read_status(greth->phy);
+		genphy_read_status(greth->phy);
 		greth_link_change(greth->netdev);
 	}
 
@@ -1457,18 +1460,18 @@ static int greth_of_probe(struct platform_device *ofdev)
 	}
 
 	/* Allocate TX descriptor ring in coherent memory */
-	greth->tx_bd_base = dma_zalloc_coherent(greth->dev, 1024,
-						&greth->tx_bd_base_phys,
-						GFP_KERNEL);
+	greth->tx_bd_base = dma_alloc_coherent(greth->dev, 1024,
+					       &greth->tx_bd_base_phys,
+					       GFP_KERNEL | __GFP_ZERO);
 	if (!greth->tx_bd_base) {
 		err = -ENOMEM;
 		goto error3;
 	}
 
 	/* Allocate RX descriptor ring in coherent memory */
-	greth->rx_bd_base = dma_zalloc_coherent(greth->dev, 1024,
-						&greth->rx_bd_base_phys,
-						GFP_KERNEL);
+	greth->rx_bd_base = dma_alloc_coherent(greth->dev, 1024,
+					       &greth->rx_bd_base_phys,
+					       GFP_KERNEL | __GFP_ZERO);
 	if (!greth->rx_bd_base) {
 		err = -ENOMEM;
 		goto error4;
@@ -1558,13 +1561,15 @@ error1:
 
 static int greth_of_remove(struct platform_device *of_dev)
 {
-	struct net_device *ndev = platform_get_drvdata(of_dev);
+	struct net_device *ndev = dev_get_drvdata(&of_dev->dev);
 	struct greth_private *greth = netdev_priv(ndev);
 
 	/* Free descriptor areas */
 	dma_free_coherent(&of_dev->dev, 1024, greth->rx_bd_base, greth->rx_bd_base_phys);
 
 	dma_free_coherent(&of_dev->dev, 1024, greth->tx_bd_base, greth->tx_bd_base_phys);
+
+	dev_set_drvdata(&of_dev->dev, NULL);
 
 	if (greth->phy)
 		phy_stop(greth->phy);

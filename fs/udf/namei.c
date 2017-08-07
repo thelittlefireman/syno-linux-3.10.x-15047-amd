@@ -1,24 +1,7 @@
-/*
- * namei.c
- *
- * PURPOSE
- *      Inode name handling routines for the OSTA-UDF(tm) filesystem.
- *
- * COPYRIGHT
- *      This file is distributed under the terms of the GNU General Public
- *      License (GPL). Copies of the GPL can be obtained from:
- *              ftp://prep.ai.mit.edu/pub/gnu/GPL
- *      Each contributing author retains all rights to their own work.
- *
- *  (C) 1998-2004 Ben Fennema
- *  (C) 1999-2000 Stelias Computing Inc
- *
- * HISTORY
- *
- *  12/12/98 blf  Created. Split out the lookup code from dir.c
- *  04/19/99 blf  link, mknod, symlink support
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include "udfdecl.h"
 
 #include "udf_i.h"
@@ -32,11 +15,21 @@
 #include <linux/crc-itu-t.h>
 #include <linux/exportfs.h>
 
+#ifdef MY_ABC_HERE
+static inline int udf_match(int len1, const unsigned char *name1, int len2,
+			    const unsigned char *name2, int iCaseless)
+#else
 static inline int udf_match(int len1, const unsigned char *name1, int len2,
 			    const unsigned char *name2)
+#endif
 {
 	if (len1 != len2)
 		return 0;
+#ifdef MY_ABC_HERE
+	if (iCaseless) {
+		return !strncasecmp(name1, name2, len1);
+	}
+#endif
 
 	return !memcmp(name1, name2, len1);
 }
@@ -199,7 +192,7 @@ static struct fileIdentDesc *udf_find_entry(struct inode *dir,
 		if (fibh->sbh == fibh->ebh) {
 			nameptr = fi->fileIdent + liu;
 		} else {
-			int poffset;	/* Unpaded ending offset */
+			int poffset;	 
 
 			poffset = fibh->soffset + sizeof(struct fileIdentDesc) +
 					liu + lfi;
@@ -234,8 +227,14 @@ static struct fileIdentDesc *udf_find_entry(struct inode *dir,
 			continue;
 
 		flen = udf_get_filename(dir->i_sb, nameptr, fname, lfi);
+#ifdef MY_ABC_HERE
+		if (flen && udf_match(flen, fname, child->len, child->name,
+					UDF_QUERY_FLAG(dir->i_sb, SYNO_UDF_FLAG_CASELESS)))
+			goto out_ok;
+#else
 		if (flen && udf_match(flen, fname, child->len, child->name))
 			goto out_ok;
+#endif
 	}
 
 out_err:
@@ -261,7 +260,7 @@ static struct dentry *udf_lookup(struct inode *dir, struct dentry *dentry,
 		return ERR_PTR(-ENAMETOOLONG);
 
 #ifdef UDF_RECOVERY
-	/* temporary shorthand for specifying files by inode number */
+	 
 	if (!strncmp(dentry->d_name.name, ".B=", 3)) {
 		struct kernel_lb_addr lb = {
 			.logicalBlockNum = 0,
@@ -274,7 +273,7 @@ static struct dentry *udf_lookup(struct inode *dir, struct dentry *dentry,
 			return ERR_PTR(-EACCES);
 		}
 	} else
-#endif /* UDF_RECOVERY */
+#endif  
 
 	if (udf_find_entry(dir, &dentry->d_name, &fibh, &cfi)) {
 		struct kernel_lb_addr loc;
@@ -418,11 +417,10 @@ add:
 			goto out_err;
 		epos.block = dinfo->i_location;
 		epos.offset = udf_file_entry_alloc_offset(dir);
-		/* Load extent udf_expand_dir_adinicb() has created */
+		 
 		udf_current_aext(dir, &epos, &eloc, &elen, 1);
 	}
 
-	/* Entry fits into current block? */
 	if (sb->s_blocksize - fibh->eoffset >= nfidlen) {
 		fibh->soffset = fibh->eoffset;
 		fibh->eoffset += nfidlen;
@@ -446,7 +444,7 @@ add:
 				(fibh->sbh->b_data + fibh->soffset);
 		}
 	} else {
-		/* Round up last extent in the file */
+		 
 		elen = (elen + sb->s_blocksize - 1) & ~(sb->s_blocksize - 1);
 		if (dinfo->i_alloc_type == ICBTAG_FLAG_AD_SHORT)
 			epos.offset -= sizeof(struct short_ad);
@@ -469,14 +467,14 @@ add:
 				f_pos >> dir->i_sb->s_blocksize_bits, 1, err);
 		if (!fibh->ebh)
 			goto out_err;
-		/* Extents could have been merged, invalidate our position */
+		 
 		brelse(epos.bh);
 		epos.bh = NULL;
 		epos.block = dinfo->i_location;
 		epos.offset = udf_file_entry_alloc_offset(dir);
 
 		if (!fibh->soffset) {
-			/* Find the freshly allocated block */
+			 
 			while (udf_next_aext(dir, &epos, &eloc, &elen, 1) ==
 				(EXT_RECORDED_ALLOCATED >> 30))
 				;
@@ -507,7 +505,7 @@ add:
 		if (dinfo->i_alloc_type == ICBTAG_FLAG_AD_IN_ICB)
 			dinfo->i_lenAlloc += nfidlen;
 		else {
-			/* Find the last extent and truncate it to proper size */
+			 
 			while (udf_next_aext(dir, &epos, &eloc, &elen, 1) ==
 				(EXT_RECORDED_ALLOCATED >> 30))
 				;
@@ -591,29 +589,6 @@ static int udf_create(struct inode *dir, struct dentry *dentry, umode_t mode,
 	brelse(fibh.sbh);
 	d_instantiate(dentry, inode);
 
-	return 0;
-}
-
-static int udf_tmpfile(struct inode *dir, struct dentry *dentry, umode_t mode)
-{
-	struct inode *inode;
-	struct udf_inode_info *iinfo;
-	int err;
-
-	inode = udf_new_inode(dir, mode, &err);
-	if (!inode)
-		return err;
-
-	iinfo = UDF_I(inode);
-	if (iinfo->i_alloc_type == ICBTAG_FLAG_AD_IN_ICB)
-		inode->i_data.a_ops = &udf_adinicb_aops;
-	else
-		inode->i_data.a_ops = &udf_aops;
-	inode->i_op = &udf_file_inode_operations;
-	inode->i_fop = &udf_file_operations;
-	mark_inode_dirty(inode);
-
-	d_tmpfile(dentry, inode);
 	return 0;
 }
 
@@ -1010,7 +985,6 @@ static int udf_symlink(struct inode *dir, struct dentry *dentry,
 	else
 		udf_truncate_tail_extent(inode);
 	mark_inode_dirty(inode);
-	up_write(&iinfo->i_data_sem);
 
 	fi = udf_add_entry(dir, dentry, &fibh, &cfi, &err);
 	if (!fi)
@@ -1024,6 +998,7 @@ static int udf_symlink(struct inode *dir, struct dentry *dentry,
 	udf_write_fi(dir, &cfi, fi, &fibh, NULL, NULL);
 	if (UDF_I(dir)->i_alloc_type == ICBTAG_FLAG_AD_IN_ICB)
 		mark_inode_dirty(dir);
+	up_write(&iinfo->i_data_sem);
 	if (fibh.sbh != fibh.ebh)
 		brelse(fibh.ebh);
 	brelse(fibh.sbh);
@@ -1075,9 +1050,6 @@ static int udf_link(struct dentry *old_dentry, struct inode *dir,
 	return 0;
 }
 
-/* Anybody can rename anything with this: the permission checks are left to the
- * higher-level routines.
- */
 static int udf_rename(struct inode *old_dir, struct dentry *old_dentry,
 		      struct inode *new_dir, struct dentry *new_dentry)
 {
@@ -1148,22 +1120,14 @@ static int udf_rename(struct inode *old_dir, struct dentry *old_dentry,
 			goto end_rename;
 	}
 
-	/*
-	 * Like most other Unix systems, set the ctime for inodes on a
-	 * rename.
-	 */
 	old_inode->i_ctime = current_fs_time(old_inode->i_sb);
 	mark_inode_dirty(old_inode);
 
-	/*
-	 * ok, that's it
-	 */
 	ncfi.fileVersionNum = ocfi.fileVersionNum;
 	ncfi.fileCharacteristics = ocfi.fileCharacteristics;
 	memcpy(&(ncfi.icb), &(ocfi.icb), sizeof(struct long_ad));
 	udf_write_fi(new_dir, &ncfi, nfi, &nfibh, NULL, NULL);
 
-	/* The old fid may have moved - find it again */
 	ofi = udf_find_entry(old_dir, &old_dentry->d_name, &ofibh, &ocfi);
 	udf_delete_entry(old_dir, ofi, &ofibh, &ocfi);
 
@@ -1236,7 +1200,6 @@ static struct dentry *udf_get_parent(struct dentry *child)
 out_unlock:
 	return ERR_PTR(-EACCES);
 }
-
 
 static struct dentry *udf_nfs_get_inode(struct super_block *sb, u32 block,
 					u16 partref, __u32 generation)
@@ -1334,7 +1297,6 @@ const struct inode_operations udf_dir_inode_operations = {
 	.rmdir				= udf_rmdir,
 	.mknod				= udf_mknod,
 	.rename				= udf_rename,
-	.tmpfile			= udf_tmpfile,
 };
 const struct inode_operations udf_symlink_inode_operations = {
 	.readlink	= generic_readlink,

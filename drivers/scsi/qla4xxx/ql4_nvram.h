@@ -1,6 +1,6 @@
 /*
  * QLogic iSCSI HBA Driver
- * Copyright (c)  2003-2013 QLogic Corporation
+ * Copyright (c)  2003-2012 QLogic Corporation
  *
  * See LICENSE.qla4xxx for copyright and licensing details.
  */
@@ -249,6 +249,5 @@ struct eeprom_data {
 		} __attribute__ ((packed)) isp4022;
 	};
 };
-
 
 #endif	/* _QL4XNVRM_H_ */

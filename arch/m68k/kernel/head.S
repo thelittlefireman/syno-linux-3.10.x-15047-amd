@@ -23,7 +23,7 @@
 ** 98/04/25 Phil Blundell: added HP300 support
 ** 1998/08/30 David Kilzer: Added support for font_desc structures
 **            for linux-2.1.115
-** 1999/02/11  Richard Zidlicky: added Q40 support (initial version 99/01/01)
+** 9/02/11  Richard Zidlicky: added Q40 support (initial vesion 99/01/01)
 ** 2004/05/13 Kars de Jong: Finalised HP300 support
 **
 ** This file is subject to the terms and conditions of the GNU General Public
@@ -257,12 +257,6 @@
 #include <linux/linkage.h>
 #include <linux/init.h>
 #include <asm/bootinfo.h>
-#include <asm/bootinfo-amiga.h>
-#include <asm/bootinfo-atari.h>
-#include <asm/bootinfo-hp300.h>
-#include <asm/bootinfo-mac.h>
-#include <asm/bootinfo-q40.h>
-#include <asm/bootinfo-vme.h>
 #include <asm/setup.h>
 #include <asm/entry.h>
 #include <asm/pgtable.h>
@@ -275,6 +269,7 @@
 
 #ifdef CONFIG_FRAMEBUFFER_CONSOLE
 #define CONSOLE
+#define CONSOLE_PENGUIN
 #endif
 
 #ifdef CONFIG_EARLY_PRINTK
@@ -657,9 +652,29 @@ ENTRY(__start)
 	movel	%a0@,%a1@
 #endif
 
+#if 0
+	/*
+	 * Clear the screen
+	 */
+	lea	%pc@(L(mac_videobase)),%a0
+	movel	%a0@,%a1
+	lea	%pc@(L(mac_dimensions)),%a0
+	movel	%a0@,%d1
+	swap	%d1		/* #rows is high bytes */
+	andl	#0xFFFF,%d1	/* rows */
+	subl	#10,%d1
+	lea	%pc@(L(mac_rowbytes)),%a0
+loopy2:
+	movel	%a0@,%d0
+	subql	#1,%d0
+loopx2:
+	moveb	#0x55, %a1@+
+	dbra	%d0,loopx2
+	dbra	%d1,loopy2
+#endif
+
 L(test_notmac):
 #endif /* CONFIG_MAC */
-
 
 /*
  * There are ultimately two pieces of information we want for all kinds of
@@ -885,16 +900,15 @@ L(nothp):
  */
 #ifdef CONFIG_MAC
 	is_not_mac(L(nocon))
-#  ifdef CONSOLE
+#ifdef CONSOLE
 	console_init
-#    ifdef CONFIG_LOGO
+#ifdef CONSOLE_PENGUIN
 	console_put_penguin
-#    endif /* CONFIG_LOGO */
+#endif	/* CONSOLE_PENGUIN */
 	console_put_stats
-#  endif /* CONSOLE */
+#endif	/* CONSOLE */
 L(nocon):
-#endif /* CONFIG_MAC */
-
+#endif	/* CONFIG_MAC */
 
 	putc	'\n'
 	putc	'A'
@@ -1516,7 +1530,7 @@ L(cache_done):
 
 /*
  * Find a tag record in the bootinfo structure
- * The bootinfo structure is located right after the kernel
+ * The bootinfo structure is located right after the kernel bss
  * Returns: d0: size (-1 if not found)
  *          a0: data pointer (end-of-records if not found)
  */
@@ -1538,7 +1552,6 @@ func_start	get_bi_record,%d1
 	lea	%a0@(BIR_SIZE),%a0
 4:
 func_return	get_bi_record
-
 
 /*
  *	MMU Initialization Begins Here
@@ -1896,7 +1909,6 @@ mmu_print_done:
 
 func_return	mmu_print
 
-
 mmu_030_print_helper:
 	moveml	%d0-%d1,%sp@-
 	movel	%a4,%d0
@@ -1922,7 +1934,6 @@ mmu_print_tuple_invalidate:
 mmu_print_tuple_invalidate_exit:
 	moveml	%sp@+,%a0/%d7
 	rts
-
 
 mmu_print_tuple:
 	moveml	%d0-%d7/%a0,%sp@-
@@ -2582,8 +2593,6 @@ func_start	mmu_get_root_table_entry,%d0/%a1
 
 func_return	mmu_get_root_table_entry
 
-
-
 func_start	mmu_get_ptr_table_entry,%d0/%a1
 
 #if 0
@@ -2642,7 +2651,6 @@ func_start	mmu_get_ptr_table_entry,%d0/%a1
 #endif
 
 func_return	mmu_get_ptr_table_entry
-
 
 func_start	mmu_get_page_table_entry,%d0/%a1
 
@@ -2724,8 +2732,6 @@ func_start	get_new_page,%d0/%a1
 	dputc	'\n'
 
 func_return	get_new_page
-
-
 
 /*
  * Debug output support
@@ -2893,9 +2899,7 @@ func_start	serial_init,%d0/%d1/%a0/%a1
 
 #if defined(MAC_USE_SCC_A) || defined(MAC_USE_SCC_B)
 	movel	%pc@(L(mac_sccbase)),%a0
-	/* Reset SCC register pointer */
-	moveb	%a0@(mac_scc_cha_a_ctrl_offset),%d0
-	/* Reset SCC device: write register pointer then register value */
+	/* Reset SCC device */
 	moveb	#9,%a0@(mac_scc_cha_a_ctrl_offset)
 	moveb	#0xc0,%a0@(mac_scc_cha_a_ctrl_offset)
 	/* Wait for 5 PCLK cycles, which is about 68 CPU cycles */
@@ -3302,13 +3306,14 @@ func_return	set_leds
 #define Lconsole_struct_num_columns	8
 #define Lconsole_struct_num_rows	12
 #define Lconsole_struct_left_edge	16
+#define Lconsole_struct_penguin_putc	20
 
 func_start	console_init,%a0-%a4/%d0-%d7
 	/*
 	 *	Some of the register usage that follows
 	 *		a0 = pointer to boot_info
 	 *		a1 = pointer to screen
-	 *		a2 = pointer to console_globals
+	 *		a2 = pointer to Lconsole_globals
 	 *		d3 = pixel width of screen
 	 *		d4 = pixel height of screen
 	 *		(d3,d4) ~= (x,y) of a point just below
@@ -3433,7 +3438,7 @@ func_start	console_put_stats,%a0/%d7
 
 func_return	console_put_stats
 
-#ifdef CONFIG_LOGO
+#ifdef CONSOLE_PENGUIN
 func_start	console_put_penguin,%a0-%a1/%d0-%d7
 	/*
 	 *	Get 'that_penguin' onto the screen in the upper right corner
@@ -3540,7 +3545,6 @@ L(console_scroll_clear_loop):
 
 1:
 func_return	console_scroll
-
 
 func_start	console_putc,%a0/%a1/%d0-%d7
 
@@ -3776,6 +3780,38 @@ L(console_plot_pixel_exit):
 func_return	console_plot_pixel
 #endif /* CONSOLE */
 
+#if 0
+/*
+ * This is some old code lying around.  I don't believe
+ * it's used or important anymore.  My guess is it contributed
+ * to getting to this point, but it's done for now.
+ * It was still in the 2.1.77 head.S, so it's still here.
+ * (And still not used!)
+ */
+L(showtest):
+	moveml	%a0/%d7,%sp@-
+	puts	"A="
+	putn	%a1
+
+	.long	0xf0119f15		| ptestr	#5,%a1@,#7,%a0
+
+	puts	"DA="
+	putn	%a0
+
+	puts	"D="
+	putn	%a0@
+
+	puts	"S="
+	lea	%pc@(L(mmu)),%a0
+	.long	0xf0106200		| pmove		%psr,%a0@
+	clrl	%d7
+	movew	%a0@,%d7
+	putn	%d7
+
+	putc	'\n'
+	moveml	%sp@+,%a0/%d7
+	rts
+#endif	/* 0 */
 
 __INITDATA
 	.align	4
@@ -3794,6 +3830,7 @@ L(console_globals):
 	.long	0		/* max num columns */
 	.long	0		/* max num rows */
 	.long	0		/* left edge */
+	.long	0		/* mac putc */
 L(console_font):
 	.long	0		/* pointer to console font (struct font_desc) */
 L(console_font_data):
@@ -3848,6 +3885,8 @@ BVME_SCC_DATA_A	= 0xffb0000f
 #endif
 
 #if defined(CONFIG_MAC)
+L(mac_booter_data):
+	.long	0
 L(mac_videobase):
 	.long	0
 L(mac_videodepth):

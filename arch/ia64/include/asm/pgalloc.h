@@ -13,7 +13,6 @@
  * Copyright (C) 2000, Goutham Rao <goutham.rao@intel.com>
  */
 
-
 #include <linux/compiler.h>
 #include <linux/mm.h>
 #include <linux/page-flags.h>
@@ -91,10 +90,7 @@ static inline pgtable_t pte_alloc_one(struct mm_struct *mm, unsigned long addr)
 	if (!pg)
 		return NULL;
 	page = virt_to_page(pg);
-	if (!pgtable_page_ctor(page)) {
-		quicklist_free(0, NULL, pg);
-		return NULL;
-	}
+	pgtable_page_ctor(page);
 	return page;
 }
 

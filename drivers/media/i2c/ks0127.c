@@ -42,6 +42,7 @@
 #include <linux/videodev2.h>
 #include <linux/slab.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 #include "ks0127.h"
 
 MODULE_DESCRIPTION("KS0127 video decoder driver");
@@ -51,7 +52,6 @@ MODULE_LICENSE("GPL");
 /* Addresses */
 #define I2C_KS0127_ADDON   0xD8
 #define I2C_KS0127_ONBOARD 0xDA
-
 
 /* ks0127 control registers */
 #define KS_STAT     0x00
@@ -183,7 +183,6 @@ MODULE_LICENSE("GPL");
 #define KS_GAMMAD30 0x7e
 #define KS_GAMMAD31 0x7f
 
-
 /****************************************************************************
 * mga_dev : represents one ks0127 chip.
 ****************************************************************************/
@@ -199,6 +198,7 @@ struct adjust {
 struct ks0127 {
 	struct v4l2_subdev sd;
 	v4l2_std_id	norm;
+	int		ident;
 	u8 		regs[256];
 };
 
@@ -206,7 +206,6 @@ static inline struct ks0127 *to_ks0127(struct v4l2_subdev *sd)
 {
 	return container_of(sd, struct ks0127, sd);
 }
-
 
 static int debug; /* insmod parameter */
 
@@ -296,7 +295,6 @@ static void init_reg_defaults(void)
 	table[KS_CMDF]     = 0x02;
 }
 
-
 /* We need to manually read because of a bug in the KS0127 chip.
  *
  * An explanation from kayork@mail.utexas.edu:
@@ -310,7 +308,6 @@ static void init_reg_defaults(void)
  * So we have to do the read ourself.  Big deal.
  *	   workaround in i2c-algo-bit
  */
-
 
 static u8 ks0127_read(struct v4l2_subdev *sd, u8 reg)
 {
@@ -338,7 +335,6 @@ static u8 ks0127_read(struct v4l2_subdev *sd, u8 reg)
 	return val;
 }
 
-
 static void ks0127_write(struct v4l2_subdev *sd, u8 reg, u8 val)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
@@ -351,7 +347,6 @@ static void ks0127_write(struct v4l2_subdev *sd, u8 reg, u8 val)
 	ks->regs[reg] = val;
 }
 
-
 /* generic bit-twiddling */
 static void ks0127_and_or(struct v4l2_subdev *sd, u8 reg, u8 and_v, u8 or_v)
 {
@@ -362,15 +357,16 @@ static void ks0127_and_or(struct v4l2_subdev *sd, u8 reg, u8 and_v, u8 or_v)
 	ks0127_write(sd, reg, val);
 }
 
-
-
 /****************************************************************************
 * ks0127 private api
 ****************************************************************************/
 static void ks0127_init(struct v4l2_subdev *sd)
 {
+	struct ks0127 *ks = to_ks0127(sd);
 	u8 *table = reg_defaults;
 	int i;
+
+	ks->ident = V4L2_IDENT_KS0127;
 
 	v4l2_dbg(1, debug, sd, "reset\n");
 	msleep(1);
@@ -390,8 +386,8 @@ static void ks0127_init(struct v4l2_subdev *sd)
 	for (i = 58; i < 64; i++)
 		ks0127_write(sd, i, table[i]);
 
-
 	if ((ks0127_read(sd, KS_STAT) & 0x80) == 0) {
+		ks->ident = V4L2_IDENT_KS0122S;
 		v4l2_dbg(1, debug, sd, "ks0122s found\n");
 		return;
 	}
@@ -402,6 +398,7 @@ static void ks0127_init(struct v4l2_subdev *sd)
 		break;
 
 	case 9:
+		ks->ident = V4L2_IDENT_KS0127B;
 		v4l2_dbg(1, debug, sd, "ks0127B Revision A found\n");
 		break;
 
@@ -609,24 +606,17 @@ static int ks0127_status(struct v4l2_subdev *sd, u32 *pstatus, v4l2_std_id *pstd
 {
 	int stat = V4L2_IN_ST_NO_SIGNAL;
 	u8 status;
-	v4l2_std_id std = pstd ? *pstd : V4L2_STD_ALL;
+	v4l2_std_id std = V4L2_STD_ALL;
 
 	status = ks0127_read(sd, KS_STAT);
 	if (!(status & 0x20))		 /* NOVID not set */
 		stat = 0;
-	if (!(status & 0x01)) {		      /* CLOCK set */
+	if (!(status & 0x01))		      /* CLOCK set */
 		stat |= V4L2_IN_ST_NO_COLOR;
-		std = V4L2_STD_UNKNOWN;
-	} else {
-		if ((status & 0x08))		   /* PALDET set */
-			std &= V4L2_STD_PAL;
-		else
-			std &= V4L2_STD_NTSC;
-	}
-	if ((status & 0x10))		   /* PALDET set */
-		std &= V4L2_STD_525_60;
+	if ((status & 0x08))		   /* PALDET set */
+		std = V4L2_STD_PAL;
 	else
-		std &= V4L2_STD_625_50;
+		std = V4L2_STD_NTSC;
 	if (pstd)
 		*pstd = std;
 	if (pstatus)
@@ -646,9 +636,18 @@ static int ks0127_g_input_status(struct v4l2_subdev *sd, u32 *status)
 	return ks0127_status(sd, status, NULL);
 }
 
+static int ks0127_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct ks0127 *ks = to_ks0127(sd);
+
+	return v4l2_chip_ident_i2c_client(client, chip, ks->ident, 0);
+}
+
 /* ----------------------------------------------------------------------- */
 
 static const struct v4l2_subdev_core_ops ks0127_core_ops = {
+	.g_chip_ident = ks0127_g_chip_ident,
 	.s_std = ks0127_s_std,
 };
 
@@ -666,7 +665,6 @@ static const struct v4l2_subdev_ops ks0127_ops = {
 
 /* ----------------------------------------------------------------------- */
 
-
 static int ks0127_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct ks0127 *ks;
@@ -676,7 +674,7 @@ static int ks0127_probe(struct i2c_client *client, const struct i2c_device_id *i
 		client->addr == (I2C_KS0127_ADDON >> 1) ? "addon" : "on-board",
 		client->addr << 1, client->adapter->name);
 
-	ks = devm_kzalloc(&client->dev, sizeof(*ks), GFP_KERNEL);
+	ks = kzalloc(sizeof(*ks), GFP_KERNEL);
 	if (ks == NULL)
 		return -ENOMEM;
 	sd = &ks->sd;
@@ -699,6 +697,7 @@ static int ks0127_remove(struct i2c_client *client)
 	v4l2_device_unregister_subdev(sd);
 	ks0127_write(sd, KS_OFMTA, 0x20); /* tristate */
 	ks0127_write(sd, KS_CMDA, 0x2c | 0x80); /* power down */
+	kfree(to_ks0127(sd));
 	return 0;
 }
 

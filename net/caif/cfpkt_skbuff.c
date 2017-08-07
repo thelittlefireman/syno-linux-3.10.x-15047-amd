@@ -181,7 +181,6 @@ int cfpkt_add_body(struct cfpkt *pkt, const void *data, u16 len)
 	u8 *to;
 	u16 addlen = 0;
 
-
 	if (unlikely(is_erronous(pkt)))
 		return -EPROTO;
 
@@ -203,10 +202,20 @@ int cfpkt_add_body(struct cfpkt *pkt, const void *data, u16 len)
 			PKT_ERROR(pkt, "cow failed\n");
 			return -EPROTO;
 		}
+		/*
+		 * Is the SKB non-linear after skb_cow_data()? If so, we are
+		 * going to add data to the last SKB, so we need to adjust
+		 * lengths of the top SKB.
+		 */
+		if (lastskb != skb) {
+			pr_warn("Packet is non-linear\n");
+			skb->len += len;
+			skb->data_len += len;
+		}
 	}
 
 	/* All set to put the last SKB and optionally write data there. */
-	to = pskb_put(skb, lastskb, len);
+	to = skb_put(lastskb, len);
 	if (likely(data))
 		memcpy(to, data, len);
 	return 0;
@@ -275,7 +284,6 @@ inline u16 cfpkt_iterate(struct cfpkt *pkt,
 int cfpkt_setlen(struct cfpkt *pkt, u16 len)
 {
 	struct sk_buff *skb = pkt_to_skb(pkt);
-
 
 	if (unlikely(is_erronous(pkt)))
 		return -EPROTO;
@@ -359,7 +367,6 @@ struct cfpkt *cfpkt_split(struct cfpkt *pkt, u16 pos)
 	if (tmppkt == NULL)
 		return NULL;
 	skb2 = pkt_to_skb(tmppkt);
-
 
 	if (skb2 == NULL)
 		return NULL;

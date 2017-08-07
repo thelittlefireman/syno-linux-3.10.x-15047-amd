@@ -52,7 +52,6 @@
 #define DRV_VERSION		"1.3"
 #define DRV_RELDATE		"Mar 22, 2004"
 
-
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
@@ -369,7 +368,6 @@ struct cp_private {
 	readl(cp->regs + (reg));		\
 	} while (0)
 
-
 static void __cp_set_rx_mode (struct net_device *dev);
 static void cp_tx (struct cp_private *cp);
 static void cp_clean_rings (struct cp_private *cp);
@@ -407,7 +405,6 @@ static struct {
 	{ "tx_underrun" },
 	{ "rx_frags" },
 };
-
 
 static inline void cp_set_rxbufsize (struct cp_private *cp)
 {
@@ -476,7 +473,7 @@ rx_status_loop:
 	rx = 0;
 	cpw16(IntrStatus, cp_rx_intr_mask);
 
-	while (rx < budget) {
+	while (1) {
 		u32 status, len;
 		dma_addr_t mapping, new_mapping;
 		struct sk_buff *skb, *new_skb;
@@ -554,6 +551,9 @@ rx_next:
 		else
 			desc->opts1 = cpu_to_le32(DescOwn | cp->rx_buf_sz);
 		rx_tail = NEXT_RX(rx_tail);
+
+		if (rx >= budget)
+			break;
 	}
 
 	cp->rx_tail = rx_tail;
@@ -617,7 +617,6 @@ static irqreturn_t cp_interrupt (int irq, void *dev_instance)
 		cp_tx(cp);
 	if (status & LinkChg)
 		mii_check_media(&cp->mii_if, netif_msg_link(cp), false);
-
 
 	if (status & PciErr) {
 		u16 pci_status;
@@ -1316,7 +1315,6 @@ static int mdio_read(struct net_device *dev, int phy_id, int location)
 	       readw(cp->regs + mii_2_8139_map[location]) : 0;
 }
 
-
 static void mdio_write(struct net_device *dev, int phy_id, int location,
 		       int value)
 {
@@ -1856,7 +1854,7 @@ static int cp_set_eeprom(struct net_device *dev,
 /* Put the board into D3cold state and wait for WakeUp signal */
 static void cp_set_d3_state (struct cp_private *cp)
 {
-	pci_enable_wake(cp->pdev, PCI_D0, 1); /* Enable PME# generation */
+	pci_enable_wake (cp->pdev, 0, 1); /* Enable PME# generation */
 	pci_set_power_state (cp->pdev, PCI_D3hot);
 }
 
@@ -2048,6 +2046,7 @@ static void cp_remove_one (struct pci_dev *pdev)
 	pci_release_regions(pdev);
 	pci_clear_mwi(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 	free_netdev(dev);
 }
 

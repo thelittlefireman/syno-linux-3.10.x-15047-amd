@@ -35,7 +35,6 @@
 #include "dma.h"
 #include "pio.h"
 
-
 /* Extract the bitrate out of a CCK PLCP header. */
 static u8 b43legacy_plcp_get_bitrate_idx_cck(struct b43legacy_plcp_hdr6 *plcp)
 {
@@ -215,7 +214,7 @@ static int generate_txhdr_fw3(struct b43legacy_wldev *dev,
 	rate_fb_ofdm = b43legacy_is_ofdm_rate(rate_fb->hw_value);
 
 	txhdr->mac_frame_ctl = wlhdr->frame_control;
-	memcpy(txhdr->tx_receiver, wlhdr->addr1, ETH_ALEN);
+	memcpy(txhdr->tx_receiver, wlhdr->addr1, 6);
 
 	/* Calculate duration for fallback rate */
 	if ((rate_fb->hw_value == rate) ||
@@ -254,7 +253,7 @@ static int generate_txhdr_fw3(struct b43legacy_wldev *dev,
 				   B43legacy_TX4_MAC_KEYALG_SHIFT) &
 				   B43legacy_TX4_MAC_KEYALG;
 			wlhdr_len = ieee80211_hdrlen(wlhdr->frame_control);
-			iv_len = min_t(size_t, info->control.hw_key->iv_len,
+			iv_len = min((size_t)info->control.hw_key->iv_len,
 				     ARRAY_SIZE(txhdr->iv));
 			memcpy(txhdr->iv, ((u8 *)wlhdr) + wlhdr_len, iv_len);
 		} else {
@@ -658,7 +657,6 @@ return;
 	/* FIXME kill magic */
 	b43legacy_write16(dev, 0x688,
 			  b43legacy_read16(dev, 0x688) | 0x4);
-
 
 	/*TODO: We might need some stack support here to get the values. */
 }

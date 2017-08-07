@@ -36,7 +36,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 #define WDT_ENABLE 0x9C
 #define WDT_DISABLE 0x8C
 
@@ -414,7 +413,7 @@ err_out:
 module_init(alim7101_wdt_init);
 module_exit(alim7101_wdt_unload);
 
-static const struct pci_device_id alim7101_pci_tbl[] __used = {
+static DEFINE_PCI_DEVICE_TABLE(alim7101_pci_tbl) __used = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AL, PCI_DEVICE_ID_AL_M1533) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_AL, PCI_DEVICE_ID_AL_M7101) },
 	{ }
@@ -425,3 +424,4 @@ MODULE_DEVICE_TABLE(pci, alim7101_pci_tbl);
 MODULE_AUTHOR("Steve Hill");
 MODULE_DESCRIPTION("ALi M7101 PMU Computer Watchdog Timer driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

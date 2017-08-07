@@ -627,7 +627,7 @@ static DEVICE_ATTR(disable_kp, 0644, lm8323_show_disable, lm8323_set_disable);
 static int lm8323_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
-	struct lm8323_platform_data *pdata = dev_get_platdata(&client->dev);
+	struct lm8323_platform_data *pdata = client->dev.platform_data;
 	struct input_dev *idev;
 	struct lm8323_chip *lm;
 	int pwm;
@@ -858,4 +858,3 @@ MODULE_AUTHOR("Daniel Stone");
 MODULE_AUTHOR("Felipe Balbi <felipe.balbi@nokia.com>");
 MODULE_DESCRIPTION("LM8323 keypad driver");
 MODULE_LICENSE("GPL");
-

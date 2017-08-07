@@ -62,7 +62,6 @@ enum {
 	BATTERY_INT_MASK        = BATTERY_STATUS_CHANGED | AC_STATUS_CHANGED,
 };
 
-
 static int goldfish_ac_get_property(struct power_supply *psy,
 			enum power_supply_property psp,
 			union power_supply_propval *val)
@@ -146,7 +145,6 @@ static irqreturn_t goldfish_battery_interrupt(int irq, void *dev_id)
 	spin_unlock_irqrestore(&data->lock, irq_flags);
 	return status ? IRQ_HANDLED : IRQ_NONE;
 }
-
 
 static int goldfish_battery_probe(struct platform_device *pdev)
 {

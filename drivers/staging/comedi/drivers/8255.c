@@ -14,6 +14,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 /*
 Driver: 8255
@@ -73,8 +78,10 @@ I/O port base address can be found in the output of 'lspci -v'.
    will copy the latched value to a Comedi buffer.
  */
 
-#include <linux/module.h>
 #include "../comedidev.h"
+
+#include <linux/ioport.h>
+#include <linux/slab.h>
 
 #include "comedi_fc.h"
 #include "8255.h"
@@ -94,7 +101,7 @@ I/O port base address can be found in the output of 'lspci -v'.
 
 struct subdev_8255_private {
 	unsigned long iobase;
-	int (*io)(int, int, int, unsigned long);
+	int (*io) (int, int, int, unsigned long);
 };
 
 static int subdev_8255_io(int dir, int port, int data, unsigned long iobase)
@@ -112,7 +119,7 @@ void subdev_8255_interrupt(struct comedi_device *dev,
 {
 	struct subdev_8255_private *spriv = s->private;
 	unsigned long iobase = spriv->iobase;
-	unsigned short d;
+	short d;
 
 	d = spriv->io(0, _8255_DATA, 0, iobase);
 	d |= (spriv->io(0, _8255_DATA + 1, 0, iobase) << 8);
@@ -126,24 +133,30 @@ EXPORT_SYMBOL_GPL(subdev_8255_interrupt);
 
 static int subdev_8255_insn(struct comedi_device *dev,
 			    struct comedi_subdevice *s,
-			    struct comedi_insn *insn,
-			    unsigned int *data)
+			    struct comedi_insn *insn, unsigned int *data)
 {
 	struct subdev_8255_private *spriv = s->private;
 	unsigned long iobase = spriv->iobase;
 	unsigned int mask;
+	unsigned int bits;
 	unsigned int v;
 
-	mask = comedi_dio_update_state(s, data);
+	mask = data[0];
+	bits = data[1];
+
 	if (mask) {
+		v = s->state;
+		v &= ~mask;
+		v |= (bits & mask);
+
 		if (mask & 0xff)
-			spriv->io(1, _8255_DATA, s->state & 0xff, iobase);
+			spriv->io(1, _8255_DATA, v & 0xff, iobase);
 		if (mask & 0xff00)
-			spriv->io(1, _8255_DATA + 1, (s->state >> 8) & 0xff,
-				  iobase);
+			spriv->io(1, _8255_DATA + 1, (v >> 8) & 0xff, iobase);
 		if (mask & 0xff0000)
-			spriv->io(1, _8255_DATA + 2, (s->state >> 16) & 0xff,
-				  iobase);
+			spriv->io(1, _8255_DATA + 2, (v >> 16) & 0xff, iobase);
+
+		s->state = v;
 	}
 
 	v = spriv->io(0, _8255_DATA, 0, iobase);
@@ -178,29 +191,39 @@ static void subdev_8255_do_config(struct comedi_device *dev,
 
 static int subdev_8255_insn_config(struct comedi_device *dev,
 				   struct comedi_subdevice *s,
-				   struct comedi_insn *insn,
-				   unsigned int *data)
+				   struct comedi_insn *insn, unsigned int *data)
 {
-	unsigned int chan = CR_CHAN(insn->chanspec);
 	unsigned int mask;
-	int ret;
+	unsigned int bits;
 
-	if (chan < 8)
-		mask = 0x0000ff;
-	else if (chan < 16)
-		mask = 0x00ff00;
-	else if (chan < 20)
-		mask = 0x0f0000;
+	mask = 1 << CR_CHAN(insn->chanspec);
+	if (mask & 0x0000ff)
+		bits = 0x0000ff;
+	else if (mask & 0x00ff00)
+		bits = 0x00ff00;
+	else if (mask & 0x0f0000)
+		bits = 0x0f0000;
 	else
-		mask = 0xf00000;
+		bits = 0xf00000;
 
-	ret = comedi_dio_insn_config(dev, s, insn, data, mask);
-	if (ret)
-		return ret;
+	switch (data[0]) {
+	case INSN_CONFIG_DIO_INPUT:
+		s->io_bits &= ~bits;
+		break;
+	case INSN_CONFIG_DIO_OUTPUT:
+		s->io_bits |= bits;
+		break;
+	case INSN_CONFIG_DIO_QUERY:
+		data[1] = (s->io_bits & bits) ? COMEDI_OUTPUT : COMEDI_INPUT;
+		return insn->n;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	subdev_8255_do_config(dev, s);
 
-	return insn->n;
+	return 1;
 }
 
 static int subdev_8255_cmdtest(struct comedi_device *dev,
@@ -262,17 +285,19 @@ static int subdev_8255_cancel(struct comedi_device *dev,
 }
 
 int subdev_8255_init(struct comedi_device *dev, struct comedi_subdevice *s,
-		     int (*io)(int, int, int, unsigned long),
+		     int (*io) (int, int, int, unsigned long),
 		     unsigned long iobase)
 {
 	struct subdev_8255_private *spriv;
 
-	spriv = comedi_alloc_spriv(s, sizeof(*spriv));
+	spriv = kzalloc(sizeof(*spriv), GFP_KERNEL);
 	if (!spriv)
 		return -ENOMEM;
 
 	spriv->iobase	= iobase;
 	spriv->io	= io ? io : subdev_8255_io;
+
+	s->private	= spriv;
 
 	s->type		= COMEDI_SUBD_DIO;
 	s->subdev_flags	= SDF_READABLE | SDF_WRITABLE;
@@ -282,6 +307,9 @@ int subdev_8255_init(struct comedi_device *dev, struct comedi_subdevice *s,
 	s->insn_bits	= subdev_8255_insn;
 	s->insn_config	= subdev_8255_insn_config;
 
+	s->state	= 0;
+	s->io_bits	= 0;
+
 	subdev_8255_do_config(dev, s);
 
 	return 0;
@@ -289,7 +317,7 @@ int subdev_8255_init(struct comedi_device *dev, struct comedi_subdevice *s,
 EXPORT_SYMBOL_GPL(subdev_8255_init);
 
 int subdev_8255_init_irq(struct comedi_device *dev, struct comedi_subdevice *s,
-			 int (*io)(int, int, int, unsigned long),
+			 int (*io) (int, int, int, unsigned long),
 			 unsigned long iobase)
 {
 	int ret;
@@ -363,6 +391,7 @@ static void dev_8255_detach(struct comedi_device *dev)
 			spriv = s->private;
 			release_region(spriv->iobase, _8255_SIZE);
 		}
+		comedi_spriv_free(dev, i);
 	}
 }
 

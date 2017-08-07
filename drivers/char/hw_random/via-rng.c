@@ -29,14 +29,10 @@
 #include <linux/kernel.h>
 #include <linux/hw_random.h>
 #include <linux/delay.h>
-#include <asm/cpu_device_id.h>
 #include <asm/io.h>
 #include <asm/msr.h>
 #include <asm/cpufeature.h>
 #include <asm/i387.h>
-
-
-
 
 enum {
 	VIA_STRFILT_CNT_SHIFT	= 16,
@@ -187,14 +183,12 @@ static int via_rng_init(struct hwrng *rng)
 	return 0;
 }
 
-
 static struct hwrng via_rng = {
 	.name		= "via",
 	.init		= via_rng_init,
 	.data_present	= via_rng_data_present,
 	.data_read	= via_rng_data_read,
 };
-
 
 static int __init mod_init(void)
 {
@@ -221,11 +215,5 @@ static void __exit mod_exit(void)
 module_init(mod_init);
 module_exit(mod_exit);
 
-static struct x86_cpu_id __maybe_unused via_rng_cpu_id[] = {
-	X86_FEATURE_MATCH(X86_FEATURE_XSTORE),
-	{}
-};
-
 MODULE_DESCRIPTION("H/W RNG driver for VIA CPU with PadLock");
 MODULE_LICENSE("GPL");
-MODULE_DEVICE_TABLE(x86cpu, via_rng_cpu_id);

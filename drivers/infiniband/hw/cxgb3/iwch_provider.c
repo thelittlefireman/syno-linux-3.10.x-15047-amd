@@ -226,7 +226,6 @@ static struct ib_cq *iwch_create_cq(struct ib_device *ibdev, int entries, int ve
 			mm->len = PAGE_ALIGN(((1UL << uresp.size_log2) + 1) *
 					     sizeof(struct t3_cqe));
 			uresp.memsize = mm->len;
-			uresp.reserved = 0;
 			resplen = sizeof uresp;
 		}
 		if (ib_copy_to_udata(udata, &uresp, resplen)) {
@@ -612,19 +611,19 @@ static int iwch_reregister_phys_mem(struct ib_mr *mr,
 	return 0;
 }
 
-
 static struct ib_mr *iwch_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 				      u64 virt, int acc, struct ib_udata *udata)
 {
 	__be64 *pages;
 	int shift, n, len;
-	int i, k, entry;
+	int i, j, k;
 	int err = 0;
+	struct ib_umem_chunk *chunk;
 	struct iwch_dev *rhp;
 	struct iwch_pd *php;
 	struct iwch_mr *mhp;
 	struct iwch_reg_user_mr_resp uresp;
-	struct scatterlist *sg;
+
 	PDBG("%s ib_pd %p\n", __func__, pd);
 
 	php = to_iwch_pd(pd);
@@ -644,7 +643,9 @@ static struct ib_mr *iwch_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 
 	shift = ffs(mhp->umem->page_size) - 1;
 
-	n = mhp->umem->nmap;
+	n = 0;
+	list_for_each_entry(chunk, &mhp->umem->chunk_list, list)
+		n += chunk->nents;
 
 	err = iwch_alloc_pbl(mhp, n);
 	if (err)
@@ -658,10 +659,12 @@ static struct ib_mr *iwch_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 
 	i = n = 0;
 
-	for_each_sg(mhp->umem->sg_head.sgl, sg, mhp->umem->nmap, entry) {
-			len = sg_dma_len(sg) >> shift;
+	list_for_each_entry(chunk, &mhp->umem->chunk_list, list)
+		for (j = 0; j < chunk->nmap; ++j) {
+			len = sg_dma_len(&chunk->page_list[j]) >> shift;
 			for (k = 0; k < len; ++k) {
-				pages[i++] = cpu_to_be64(sg_dma_address(sg) +
+				pages[i++] = cpu_to_be64(sg_dma_address(
+					&chunk->page_list[j]) +
 					mhp->umem->page_size * k);
 				if (i == PAGE_SIZE / sizeof *pages) {
 					err = iwch_write_pbl(mhp, pages, i, n);
@@ -671,7 +674,7 @@ static struct ib_mr *iwch_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 					i = 0;
 				}
 			}
-	}
+		}
 
 	if (i)
 		err = iwch_write_pbl(mhp, pages, i, n);
@@ -1072,7 +1075,6 @@ static int iwch_ib_modify_qp(struct ib_qp *ibqp, struct ib_qp_attr *attr,
 				IB_ACCESS_REMOTE_WRITE) ? 1 : 0;
 	attrs.enable_bind = (attr->qp_access_flags & IB_ACCESS_MW_BIND) ? 1 : 0;
 
-
 	mask |= (attr_mask & IB_QP_STATE) ? IWCH_QP_ATTR_NEXT_STATE : 0;
 	mask |= (attr_mask & IB_QP_ACCESS_FLAGS) ?
 			(IWCH_QP_ATTR_ENABLE_RDMA_READ |
@@ -1100,7 +1102,6 @@ static struct ib_qp *iwch_get_qp(struct ib_device *dev, int qpn)
 	PDBG("%s ib_dev %p qpn 0x%x\n", __func__, dev, qpn);
 	return (struct ib_qp *)get_qhp(to_iwch_dev(dev), qpn);
 }
-
 
 static int iwch_query_pkey(struct ib_device *ibdev,
 			   u8 port, u16 index, u16 * pkey)

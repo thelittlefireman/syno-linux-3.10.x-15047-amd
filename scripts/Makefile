@@ -27,10 +27,10 @@ always		:= $(hostprogs-y) $(hostprogs-m)
 hostprogs-y += unifdef docproc
 
 # These targets are used internally to avoid "is up to date" messages
-PHONY += build_unifdef build_docproc
-build_unifdef: $(obj)/unifdef
+PHONY += build_unifdef
+build_unifdef: scripts/unifdef FORCE
 	@:
-build_docproc: $(obj)/docproc
+build_docproc: scripts/docproc FORCE
 	@:
 
 subdir-$(CONFIG_MODVERSIONS) += genksyms

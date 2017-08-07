@@ -23,6 +23,7 @@
 #ifdef __IN_PCMCIA_PACKAGE__
 #include <pcmcia/k_compat.h>
 #endif
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/ptrace.h>
@@ -38,7 +39,6 @@
 #include <linux/io.h>
 
 #include "airo.h"
-
 
 /*====================================================================*/
 
@@ -97,7 +97,6 @@ static int airo_cs_config_check(struct pcmcia_device *p_dev, void *priv_data)
 
 	return pcmcia_request_io(p_dev);
 }
-
 
 static int airo_config(struct pcmcia_device *link)
 {

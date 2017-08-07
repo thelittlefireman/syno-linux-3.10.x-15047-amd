@@ -26,7 +26,6 @@
 
 struct xfs_buf;
 struct xfs_mount;
-struct xfs_trans;
 
 #define	XFS_SB_MAGIC		0x58465342	/* 'XFSB' */
 #define	XFS_SB_VERSION_1	1		/* 5.3, 6.0.1, 6.1 */
@@ -84,13 +83,11 @@ struct xfs_trans;
 #define XFS_SB_VERSION2_PARENTBIT	0x00000010	/* parent pointers */
 #define XFS_SB_VERSION2_PROJID32BIT	0x00000080	/* 32 bit project id */
 #define XFS_SB_VERSION2_CRCBIT		0x00000100	/* metadata CRCs */
-#define XFS_SB_VERSION2_FTYPE		0x00000200	/* inode type in dir */
 
 #define	XFS_SB_VERSION2_OKREALFBITS	\
 	(XFS_SB_VERSION2_LAZYSBCOUNTBIT	| \
 	 XFS_SB_VERSION2_ATTR2BIT	| \
-	 XFS_SB_VERSION2_PROJID32BIT	| \
-	 XFS_SB_VERSION2_FTYPE)
+	 XFS_SB_VERSION2_PROJID32BIT)
 #define	XFS_SB_VERSION2_OKSASHFBITS	\
 	(0)
 #define XFS_SB_VERSION2_OKREALBITS	\
@@ -181,8 +178,6 @@ typedef struct xfs_sb {
 
 	/* must be padded to 64 bit alignment */
 } xfs_sb_t;
-
-#define XFS_SB_CRC_OFF		offsetof(struct xfs_sb, sb_crc)
 
 /*
  * Superblock - on disk version.  Must match the in core version above.
@@ -330,7 +325,6 @@ typedef enum {
 	 XFS_SB_FEATURES_RO_COMPAT | XFS_SB_FEATURES_INCOMPAT | \
 	 XFS_SB_FEATURES_LOG_INCOMPAT | XFS_SB_PQUOTINO)
 
-
 /*
  * Misc. Flags - warning - these will be cleared by xfs_repair unless
  * a feature bit is set when the flag is used.
@@ -359,8 +353,15 @@ static inline int xfs_sb_good_version(xfs_sb_t *sbp)
 		     (sbp->sb_features2 & ~XFS_SB_VERSION2_OKREALBITS)))
 			return 0;
 
+#ifdef __KERNEL__
 		if (sbp->sb_shared_vn > XFS_SB_MAX_SHARED_VN)
 			return 0;
+#else
+		if ((sbp->sb_versionnum & XFS_SB_VERSION_SHAREDBIT) &&
+		    sbp->sb_shared_vn > XFS_SB_MAX_SHARED_VN)
+			return 0;
+#endif
+
 		return 1;
 	}
 	if (XFS_SB_VERSION_NUM(sbp) == XFS_SB_VERSION_5)
@@ -552,11 +553,9 @@ static inline int xfs_sb_version_hasprojid32bit(xfs_sb_t *sbp)
 		(sbp->sb_features2 & XFS_SB_VERSION2_PROJID32BIT));
 }
 
-static inline void xfs_sb_version_addprojid32bit(xfs_sb_t *sbp)
+static inline int xfs_sb_version_hascrc(xfs_sb_t *sbp)
 {
-	sbp->sb_versionnum |= XFS_SB_VERSION_MOREBITSBIT;
-	sbp->sb_features2 |= XFS_SB_VERSION2_PROJID32BIT;
-	sbp->sb_bad_features2 |= XFS_SB_VERSION2_PROJID32BIT;
+	return XFS_SB_VERSION_NUM(sbp) == XFS_SB_VERSION_5;
 }
 
 /*
@@ -597,10 +596,7 @@ xfs_sb_has_ro_compat_feature(
 	return (sbp->sb_features_ro_compat & feature) != 0;
 }
 
-#define XFS_SB_FEAT_INCOMPAT_FTYPE	(1 << 0)	/* filetype in dirent */
-#define XFS_SB_FEAT_INCOMPAT_ALL \
-		(XFS_SB_FEAT_INCOMPAT_FTYPE)
-
+#define XFS_SB_FEAT_INCOMPAT_ALL 0
 #define XFS_SB_FEAT_INCOMPAT_UNKNOWN	~XFS_SB_FEAT_INCOMPAT_ALL
 static inline bool
 xfs_sb_has_incompat_feature(
@@ -621,37 +617,8 @@ xfs_sb_has_incompat_log_feature(
 }
 
 /*
- * V5 superblock specific feature checks
- */
-static inline int xfs_sb_version_hascrc(xfs_sb_t *sbp)
-{
-	return XFS_SB_VERSION_NUM(sbp) == XFS_SB_VERSION_5;
-}
-
-static inline int xfs_sb_version_has_pquotino(xfs_sb_t *sbp)
-{
-	return XFS_SB_VERSION_NUM(sbp) == XFS_SB_VERSION_5;
-}
-
-static inline int xfs_sb_version_hasftype(struct xfs_sb *sbp)
-{
-	return (XFS_SB_VERSION_NUM(sbp) == XFS_SB_VERSION_5 &&
-		xfs_sb_has_incompat_feature(sbp, XFS_SB_FEAT_INCOMPAT_FTYPE)) ||
-	       (xfs_sb_version_hasmorebits(sbp) &&
-		 (sbp->sb_features2 & XFS_SB_VERSION2_FTYPE));
-}
-
-/*
  * end of superblock version macros
  */
-
-static inline bool
-xfs_is_quota_inode(struct xfs_sb *sbp, xfs_ino_t ino)
-{
-	return (ino == sbp->sb_uquotino ||
-		ino == sbp->sb_gquotino ||
-		ino == sbp->sb_pquotino);
-}
 
 #define XFS_SB_DADDR		((xfs_daddr_t)0) /* daddr in filesystem/ag */
 #define	XFS_SB_BLOCK(mp)	XFS_HDR_BLOCK(mp, XFS_SB_DADDR)
@@ -684,21 +651,5 @@ xfs_is_quota_inode(struct xfs_sb *sbp, xfs_ino_t ino)
 	((((__uint64_t)(b)) + (mp)->m_blockmask) >> (mp)->m_sb.sb_blocklog)
 #define XFS_B_TO_FSBT(mp,b)	(((__uint64_t)(b)) >> (mp)->m_sb.sb_blocklog)
 #define XFS_B_FSB_OFFSET(mp,b)	((b) & (mp)->m_blockmask)
-
-/*
- * perag get/put wrappers for ref counting
- */
-extern struct xfs_perag *xfs_perag_get(struct xfs_mount *, xfs_agnumber_t);
-extern struct xfs_perag *xfs_perag_get_tag(struct xfs_mount *, xfs_agnumber_t,
-					   int tag);
-extern void	xfs_perag_put(struct xfs_perag *pag);
-extern int	xfs_initialize_perag_data(struct xfs_mount *, xfs_agnumber_t);
-
-extern void	xfs_sb_calc_crc(struct xfs_buf	*);
-extern void	xfs_mod_sb(struct xfs_trans *, __int64_t);
-extern void	xfs_sb_mount_common(struct xfs_mount *, struct xfs_sb *);
-extern void	xfs_sb_from_disk(struct xfs_sb *, struct xfs_dsb *);
-extern void	xfs_sb_to_disk(struct xfs_dsb *, struct xfs_sb *, __int64_t);
-extern void	xfs_sb_quota_from_disk(struct xfs_sb *sbp);
 
 #endif	/* __XFS_SB_H__ */

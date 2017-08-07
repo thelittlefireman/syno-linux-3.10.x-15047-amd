@@ -32,7 +32,6 @@
 
 typedef long intptr_t;
 
-
 /*
  * Constants
  */
@@ -85,7 +84,6 @@ typedef struct {
 	int64_t fwi_bootarea_size;	/* size of boot area */
 } cfe_fwinfo_t;
 
-
 /*
  * Defines and prototypes for functions which take no arguments.
  */
@@ -115,8 +113,8 @@ int cfe_read(int handle, unsigned char *buffer, int length);
 int cfe_readblk(int handle, int64_t offset, unsigned char *buffer,
 		int length);
 int cfe_setenv(char *name, char *val);
-int cfe_write(int handle, const char *buffer, int length);
-int cfe_writeblk(int handle, int64_t offset, const char *buffer,
+int cfe_write(int handle, unsigned char *buffer, int length);
+int cfe_writeblk(int handle, int64_t offset, unsigned char *buffer,
 		 int length);
 
 #endif				/* CFE_API_H */

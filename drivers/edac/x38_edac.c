@@ -63,7 +63,6 @@
 #define X38_ERRSTS_CE		0x0001
 #define X38_ERRSTS_BITS	(X38_ERRSTS_UE | X38_ERRSTS_CE)
 
-
 /* Intel  MMIO register space - device 0 function 0 - MMR space */
 
 #define X38_C0DRB	0x200	/* Channel 0 DRAM Rank Boundary (16b x 4)
@@ -145,7 +144,6 @@ static const struct x38_dev_info x38_devs[] = {
 
 static struct pci_dev *mci_pdev;
 static int x38_registered = 1;
-
 
 static void x38_clear_error_info(struct mem_ctl_info *mci)
 {
@@ -248,7 +246,7 @@ static void x38_check(struct mem_ctl_info *mci)
 	x38_process_error_info(mci, &info);
 }
 
-static void __iomem *x38_map_mchbar(struct pci_dev *pdev)
+void __iomem *x38_map_mchbar(struct pci_dev *pdev)
 {
 	union {
 		u64 mchbar;
@@ -278,7 +276,6 @@ static void __iomem *x38_map_mchbar(struct pci_dev *pdev)
 
 	return window;
 }
-
 
 static void x38_get_drbs(void __iomem *window,
 			u16 drbs[X38_CHANNELS][X38_RANKS_PER_CHANNEL])
@@ -448,7 +445,7 @@ static void x38_remove_one(struct pci_dev *pdev)
 	edac_mc_free(mci);
 }
 
-static const struct pci_device_id x38_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(x38_pci_tbl) = {
 	{
 	 PCI_VEND_DEV(INTEL, X38_HB), PCI_ANY_ID, PCI_ANY_ID, 0, 0,
 	 X38},

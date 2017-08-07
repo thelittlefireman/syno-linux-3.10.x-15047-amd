@@ -892,6 +892,7 @@ static void pti_pci_remove(struct pci_dev *pdev)
 	}
 
 	iounmap(drv_data->pti_ioaddr);
+	pci_set_drvdata(pdev, NULL);
 	kfree(drv_data);
 	pci_release_region(pdev, 1);
 	pci_disable_device(pdev);
@@ -985,4 +986,3 @@ module_exit(pti_exit);
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Ken Mills, Jay Freyensee");
 MODULE_DESCRIPTION("PTI Driver");
-

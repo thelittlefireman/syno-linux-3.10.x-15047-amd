@@ -171,7 +171,6 @@ static inline struct si476x_core *i2c_mfd_cell_to_core(struct device *dev)
 	return i2c_get_clientdata(client);
 }
 
-
 /**
  * si476x_core_lock() - lock the core device to get an exclusive access
  * to it.
@@ -249,8 +248,6 @@ static inline int si476x_to_v4l2(struct si476x_core *core, u16 freq)
 	return hz_to_v4l2(si476x_to_hz(core, freq));
 }
 
-
-
 /**
  * struct si476x_func_info - structure containing result of the
  * FUNC_INFO command.
@@ -316,7 +313,7 @@ enum si476x_smoothmetrics {
  * response to 'FM_RD_STATUS' command
  * @rdstpptyint: Traffic program flag(TP) and/or program type(PTY)
  * code has changed.
- * @rdspiint: Program identification(PI) code has changed.
+ * @rdspiint: Program indentifiaction(PI) code has changed.
  * @rdssyncint: RDS synchronization has changed.
  * @rdsfifoint: RDS was received and the RDS FIFO has at least
  * 'FM_RDS_INTERRUPT_FIFO_COUNT' elements in it.
@@ -386,7 +383,6 @@ enum si476x_i2c_type {
 int si476x_core_i2c_xfer(struct si476x_core *,
 			 enum si476x_i2c_type,
 			 char *, int);
-
 
 /* -------------------- si476x-cmd.c ----------------------- */
 
@@ -526,7 +522,6 @@ enum si476x_prop_fm_rds_config_bits {
 	SI476X_PROP_RDSEN_MASK	= 0x1,
 	SI476X_PROP_RDSEN	= 0x1,
 };
-
 
 struct regmap *devm_regmap_init_si476x(struct si476x_core *);
 

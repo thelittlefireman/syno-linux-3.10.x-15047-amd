@@ -65,6 +65,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
+#include <linux/init.h>
 #include <linux/input.h>
 #include <linux/serio.h>
 #include <linux/workqueue.h>
@@ -99,8 +100,6 @@ static int lk201_compose_is_alt;
 module_param(lk201_compose_is_alt, int, 0);
 MODULE_PARM_DESC(lk201_compose_is_alt,
 		 "If set non-zero, LK201' Compose key will act as an Alt key");
-
-
 
 #undef LKKBD_DEBUG
 #ifdef LKKBD_DEBUG

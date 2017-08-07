@@ -6,7 +6,6 @@
 
 #define NRURBS	        2	
 
-
 #define URBS_AsyncSeq 10
 #define URB_DataLen_AsyncSeq 32
 struct snd_usX2Y_AsyncSeq {
@@ -36,7 +35,7 @@ struct usX2Ydev {
 	unsigned int		rate,
 				format;
 	int			chip_status;
-	struct mutex		pcm_mutex;
+	struct mutex		prepare_mutex;
 	struct us428ctls_sharedmem	*us428ctls_sharedmem;
 	int			wait_iso_frame;
 	wait_queue_head_t	us428ctls_wait_queue_head;
@@ -48,7 +47,6 @@ struct usX2Ydev {
 	struct list_head	pcm_list;
 	int			pcm_devs;
 };
-
 
 struct snd_usX2Y_substream {
 	struct usX2Ydev	*usX2Y;
@@ -74,7 +72,6 @@ struct snd_usX2Y_substream {
 	struct urb		*completed_urb;
 	char			*tmpbuf;			/* temporary buffer for playback */
 };
-
 
 #define usX2Y(c) ((struct usX2Ydev *)(c)->private_data)
 

@@ -22,7 +22,6 @@
  * 				midi emulation.
  */
 
-
 #ifdef CONFIG_SND_SEQUENCER_OSS
 
 #include <linux/export.h>
@@ -58,7 +57,6 @@ static struct snd_seq_oss_callback oss_callback = {
 	.reset = snd_emux_reset_seq_oss,
 };
 
-
 /*
  * register OSS synth
  */
@@ -69,7 +67,8 @@ snd_emux_init_seq_oss(struct snd_emux *emu)
 	struct snd_seq_oss_reg *arg;
 	struct snd_seq_device *dev;
 
-	if (snd_seq_device_new(emu->card, 0, SNDRV_SEQ_DEV_ID_OSS,
+	/* using device#1 here for avoiding conflicts with OPL3 */
+	if (snd_seq_device_new(emu->card, 1, SNDRV_SEQ_DEV_ID_OSS,
 			       sizeof(struct snd_seq_oss_reg), &dev) < 0)
 		return;
 
@@ -86,7 +85,6 @@ snd_emux_init_seq_oss(struct snd_emux *emu)
 	snd_device_register(emu->card, dev);
 }
 
-
 /*
  * unregister
  */
@@ -98,7 +96,6 @@ snd_emux_detach_seq_oss(struct snd_emux *emu)
 		emu->oss_synth = NULL;
 	}
 }
-
 
 /* use port number as a unique soundfont client number */
 #define SF_CLIENT_NO(p)	((p) + 0x1000)
@@ -118,12 +115,8 @@ snd_emux_open_seq_oss(struct snd_seq_oss_arg *arg, void *closure)
 	if (snd_BUG_ON(!arg || !emu))
 		return -ENXIO;
 
-	mutex_lock(&emu->register_mutex);
-
-	if (!snd_emux_inc_count(emu)) {
-		mutex_unlock(&emu->register_mutex);
+	if (!snd_emux_inc_count(emu))
 		return -EFAULT;
-	}
 
 	memset(&callback, 0, sizeof(callback));
 	callback.owner = THIS_MODULE;
@@ -135,7 +128,6 @@ snd_emux_open_seq_oss(struct snd_seq_oss_arg *arg, void *closure)
 	if (p == NULL) {
 		snd_printk(KERN_ERR "can't create port\n");
 		snd_emux_dec_count(emu);
-		mutex_unlock(&emu->register_mutex);
 		return -ENOMEM;
 	}
 
@@ -148,11 +140,8 @@ snd_emux_open_seq_oss(struct snd_seq_oss_arg *arg, void *closure)
 	reset_port_mode(p, arg->seq_mode);
 
 	snd_emux_reset_port(p);
-
-	mutex_unlock(&emu->register_mutex);
 	return 0;
 }
-
 
 #define DEFAULT_DRUM_FLAGS	((1<<9) | (1<<25))
 
@@ -175,7 +164,6 @@ reset_port_mode(struct snd_emux_port *port, int midi_mode)
 	}
 }
 
-
 /*
  * close port
  */
@@ -195,16 +183,13 @@ snd_emux_close_seq_oss(struct snd_seq_oss_arg *arg)
 	if (snd_BUG_ON(!emu))
 		return -ENXIO;
 
-	mutex_lock(&emu->register_mutex);
 	snd_emux_sounds_off_all(p);
 	snd_soundfont_close_check(emu->sflist, SF_CLIENT_NO(p->chset.port));
 	snd_seq_event_port_detach(p->chset.client, p->chset.port);
 	snd_emux_dec_count(emu);
 
-	mutex_unlock(&emu->register_mutex);
 	return 0;
 }
-
 
 /*
  * load patch
@@ -250,7 +235,6 @@ snd_emux_load_patch_seq_oss(struct snd_seq_oss_arg *arg, int format,
 	return rc;
 }
 
-
 /*
  * ioctl
  */
@@ -284,7 +268,6 @@ snd_emux_ioctl_seq_oss(struct snd_seq_oss_arg *arg, unsigned int cmd, unsigned l
 	return 0;
 }
 
-
 /*
  * reset device
  */
@@ -301,7 +284,6 @@ snd_emux_reset_seq_oss(struct snd_seq_oss_arg *arg)
 	snd_emux_reset_port(p);
 	return 0;
 }
-
 
 /*
  * receive raw events: only SEQ_PRIVATE is accepted.
@@ -334,7 +316,6 @@ snd_emux_event_oss_input(struct snd_seq_event *ev, int direct, void *private_dat
 		gusspec_control(emu, p, cmd, data, atomic, hop);
 	return 0;
 }
-
 
 /*
  * OSS/AWE driver specific h/w controls
@@ -497,7 +478,6 @@ gusspec_control(struct snd_emux *emu, struct snd_emux_port *port, int cmd,
 		return;
 	}
 }
-
 
 /*
  * send an event to midi emulation

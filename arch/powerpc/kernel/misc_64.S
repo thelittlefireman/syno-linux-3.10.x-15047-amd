@@ -40,12 +40,14 @@ _GLOBAL(call_do_softirq)
 	mtlr	r0
 	blr
 
-_GLOBAL(call_do_irq)
+_GLOBAL(call_handle_irq)
+	ld	r8,0(r6)
 	mflr	r0
 	std	r0,16(r1)
-	stdu	r1,THREAD_SIZE-STACK_FRAME_OVERHEAD(r4)
-	mr	r1,r4
-	bl	.__do_irq
+	mtctr	r8
+	stdu	r1,THREAD_SIZE-STACK_FRAME_OVERHEAD(r5)
+	mr	r1,r5
+	bctrl
 	ld	r1,0(r1)
 	ld	r0,16(r1)
 	mtlr	r0
@@ -65,11 +67,8 @@ PPC64_CACHES:
  *   flush all bytes from start through stop-1 inclusive
  */
 
-_KPROBE(flush_icache_range)
-BEGIN_FTR_SECTION
-	PURGE_PREFETCHED_INS
-	blr
-END_FTR_SECTION_IFSET(CPU_FTR_COHERENT_ICACHE)
+_KPROBE(__flush_icache_range)
+
 /*
  * Flush the data cache to memory 
  * 
@@ -197,7 +196,6 @@ _GLOBAL(flush_inval_dcache_range)
 	isync
 	blr
 
-
 /*
  * Flush a particular page from the data cache to RAM.
  * Note: this is necessary because the instruction cache does *not*
@@ -211,11 +209,6 @@ _GLOBAL(__flush_dcache_icache)
  * 
  * Different systems have different cache line sizes
  */
-
-BEGIN_FTR_SECTION
-	PURGE_PREFETCHED_INS
-	blr
-END_FTR_SECTION_IFSET(CPU_FTR_COHERENT_ICACHE)
 
 /* Flush the dcache */
  	ld	r7,PPC64_CACHES@toc(r2)
@@ -252,41 +245,7 @@ _GLOBAL(__bswapdi2)
 	or	r3,r7,r9
 	blr
 
-
-#ifdef CONFIG_PPC_EARLY_DEBUG_BOOTX
-_GLOBAL(rmci_on)
-	sync
-	isync
-	li	r3,0x100
-	rldicl	r3,r3,32,0
-	mfspr	r5,SPRN_HID4
-	or	r5,r5,r3
-	sync
-	mtspr	SPRN_HID4,r5
-	isync
-	slbia
-	isync
-	sync
-	blr
-
-_GLOBAL(rmci_off)
-	sync
-	isync
-	li	r3,0x100
-	rldicl	r3,r3,32,0
-	mfspr	r5,SPRN_HID4
-	andc	r5,r5,r3
-	sync
-	mtspr	SPRN_HID4,r5
-	isync
-	slbia
-	isync
-	sync
-	blr
-#endif /* CONFIG_PPC_EARLY_DEBUG_BOOTX */
-
 #if defined(CONFIG_PPC_PMAC) || defined(CONFIG_PPC_MAPLE)
-
 /*
  * Do an IO access in real mode
  */
@@ -384,7 +343,6 @@ _GLOBAL(real_205_writeb)
 
 #endif /* CONFIG_PPC_PASEMI */
 
-
 #if defined(CONFIG_CPU_FREQ_PMAC64) || defined(CONFIG_CPU_FREQ_MAPLE)
 /*
  * SCOM access functions for 970 (FX only for now)
@@ -429,7 +387,6 @@ _GLOBAL(scom970_read)
 	mtmsrd	r4,1
 	blr
 
-
 _GLOBAL(scom970_write)
 	/* interrupts off */
 	mfmsr	r5
@@ -455,6 +412,18 @@ _GLOBAL(scom970_write)
 	mtmsrd	r5,1
 	blr
 #endif /* CONFIG_CPU_FREQ_PMAC64 || CONFIG_CPU_FREQ_MAPLE */
+
+/*
+ * disable_kernel_fp()
+ * Disable the FPU.
+ */
+_GLOBAL(disable_kernel_fp)
+	mfmsr	r3
+	rldicl	r0,r3,(63-MSR_FP_LG),1
+	rldicl	r3,r0,(MSR_FP_LG+1),0
+	mtmsrd	r3			/* disable use of fpu now */
+	isync
+	blr
 
 /* kexec_wait(phys_cpu)
  *
@@ -484,7 +453,6 @@ _GLOBAL(kexec_wait)
  */
 kexec_flag:
 	.long	0
-
 
 #ifdef CONFIG_KEXEC
 
@@ -527,7 +495,6 @@ real_mode:	/* assume normal blr return */
 	mtspr	SPRN_SRR1,r10
 	mtspr	SPRN_SRR0,r11
 	rfid
-
 
 /*
  * kexec_sequence(newstack, start, image, control, clear_all())

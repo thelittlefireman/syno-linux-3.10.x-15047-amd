@@ -53,7 +53,6 @@ static inline int ioctl_return(int __user *addr, int value)
 	return value < 0 ? value : put_user(value, addr);
 }
 
-
     /*
      *  Configuration
      */
@@ -203,7 +202,6 @@ static inline int dmasound_set_gain(int gain)
 	return dmasound.mach.setGain ? dmasound.mach.setGain(gain) : 100;
 }
 
-
     /*
      * Sound queue stuff, the heart of the driver
      */
@@ -239,6 +237,7 @@ struct sound_queue {
     int busy, syncing, xruns, died;
 };
 
+#define SLEEP(queue)		interruptible_sleep_on_timeout(&queue, HZ)
 #define WAKE_UP(queue)		(wake_up_interruptible(&queue))
 
 extern struct sound_queue dmasound_write_sq;

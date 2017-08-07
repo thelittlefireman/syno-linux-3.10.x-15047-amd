@@ -8,11 +8,9 @@
  * This could probably be made into a module, because it is not often in use.
  */
 
-
 #define EXT3FS_DEBUG
 
 #include "ext3.h"
-
 
 #define outside(b, first, last)	((b) < (first) || (b) >= (last))
 #define inside(b, first, last)	((b) >= (first) && (b) < (last))

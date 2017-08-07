@@ -327,4 +327,3 @@ MACHINE_START(INCOME, "Income s.r.o. SH-Dmaster PXA270 SBC")
 	.init_time	= pxa_timer_init,
 	.restart	= pxa_restart,
 MACHINE_END
-

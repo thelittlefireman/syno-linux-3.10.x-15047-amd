@@ -153,7 +153,6 @@ static ssize_t dummy_looptest(struct device *dev,
 	else
 		pr_info("Simple test 6: SUCCESS!\n");
 
-
 	/*
 	 * Force chip to 16 bit mode
 	 * WARNING: NEVER DO THIS IN REAL DRIVER CODE, THIS SHOULD BE STATIC!
@@ -263,22 +262,28 @@ static int pl022_dummy_remove(struct spi_device *spi)
 	return 0;
 }
 
-static const struct of_device_id pl022_dummy_dt_match[] = {
-	{ .compatible = "arm,pl022-dummy" },
-	{},
-};
-
 static struct spi_driver pl022_dummy_driver = {
 	.driver = {
 		.name	= "spi-dummy",
 		.owner	= THIS_MODULE,
-		.of_match_table = pl022_dummy_dt_match,
 	},
 	.probe	= pl022_dummy_probe,
 	.remove	= pl022_dummy_remove,
 };
 
-module_spi_driver(pl022_dummy_driver);
+static int __init pl022_init_dummy(void)
+{
+	return spi_register_driver(&pl022_dummy_driver);
+}
+
+static void __exit pl022_exit_dummy(void)
+{
+	spi_unregister_driver(&pl022_dummy_driver);
+}
+
+module_init(pl022_init_dummy);
+module_exit(pl022_exit_dummy);
+
 MODULE_AUTHOR("Linus Walleij <linus.walleij@stericsson.com>");
 MODULE_DESCRIPTION("PL022 SSP/SPI DUMMY Linux driver");
 MODULE_LICENSE("GPL");

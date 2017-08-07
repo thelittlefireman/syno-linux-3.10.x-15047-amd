@@ -1,21 +1,7 @@
-/*
- * Copyright (C) 2007 Oracle.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License v2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 021110-1307, USA.
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #ifndef __BTRFS_TRANSACTION__
 #define __BTRFS_TRANSACTION__
 #include "btrfs_inode.h"
@@ -34,32 +20,34 @@ enum btrfs_trans_state {
 
 struct btrfs_transaction {
 	u64 transid;
-	/*
-	 * total external writers(USERSPACE/START/ATTACH) in this
-	 * transaction, it must be zero before the transaction is
-	 * being committed
-	 */
+	 
 	atomic_t num_extwriters;
-	/*
-	 * total writers in this transaction, it must be zero before the
-	 * transaction can end
-	 */
+	 
 	atomic_t num_writers;
 	atomic_t use_count;
+	atomic_t pending_ordered;
 
-	/* Be protected by fs_info->trans_lock when we want to change it. */
 	enum btrfs_trans_state state;
 	struct list_head list;
 	struct extent_io_tree dirty_pages;
 	unsigned long start_time;
 	wait_queue_head_t writer_wait;
 	wait_queue_head_t commit_wait;
+	wait_queue_head_t pending_wait;
 	struct list_head pending_snapshots;
-	struct list_head ordered_operations;
 	struct list_head pending_chunks;
 	struct list_head switch_commits;
+	struct list_head dirty_bgs;
+	struct list_head io_bgs;
+
+	struct mutex cache_write_mutex;
+	spinlock_t dirty_bgs_lock;
 	struct btrfs_delayed_ref_root delayed_refs;
 	int aborted;
+#ifdef MY_ABC_HERE
+	bool clear_full;
+#endif
+	int dirty_bg_run;
 };
 
 #define __TRANS_FREEZABLE	(1U << 0)
@@ -69,6 +57,7 @@ struct btrfs_transaction {
 #define __TRANS_ATTACH		(1U << 10)
 #define __TRANS_JOIN		(1U << 11)
 #define __TRANS_JOIN_NOLOCK	(1U << 12)
+#define __TRANS_DUMMY		(1U << 13)
 
 #define TRANS_USERSPACE		(__TRANS_USERSPACE | __TRANS_FREEZABLE)
 #define TRANS_START		(__TRANS_START | __TRANS_FREEZABLE)
@@ -84,6 +73,7 @@ struct btrfs_transaction {
 struct btrfs_trans_handle {
 	u64 transid;
 	u64 bytes_reserved;
+	u64 chunk_bytes_reserved;
 	u64 qgroup_reserved;
 	unsigned long use_count;
 	unsigned long blocks_reserved;
@@ -98,15 +88,15 @@ struct btrfs_trans_handle {
 	bool reloc_reserved;
 	bool sync;
 	unsigned int type;
-	/*
-	 * this root is only needed to validate that the root passed to
-	 * start_transaction is the same as the one passed to end_transaction.
-	 * Subvolume quota depends on this
-	 */
+	 
 	struct btrfs_root *root;
 	struct seq_list delayed_ref_elem;
 	struct list_head qgroup_ref_list;
 	struct list_head new_bgs;
+#ifdef MY_ABC_HERE
+	struct btrfs_pending_snapshot *pending_snap;
+	bool pending_snap_rm;
+#endif  
 };
 
 struct btrfs_pending_snapshot {
@@ -115,10 +105,10 @@ struct btrfs_pending_snapshot {
 	struct btrfs_root *root;
 	struct btrfs_root *snap;
 	struct btrfs_qgroup_inherit *inherit;
-	/* block reservation for the operation */
+	 
 	struct btrfs_block_rsv block_rsv;
 	u64 qgroup_reserved;
-	/* extra metadata reseration for relocation */
+	 
 	int error;
 	bool readonly;
 	struct list_head list;
@@ -127,15 +117,21 @@ struct btrfs_pending_snapshot {
 static inline void btrfs_set_inode_last_trans(struct btrfs_trans_handle *trans,
 					      struct inode *inode)
 {
+	spin_lock(&BTRFS_I(inode)->lock);
 	BTRFS_I(inode)->last_trans = trans->transaction->transid;
 	BTRFS_I(inode)->last_sub_trans = BTRFS_I(inode)->root->log_transid;
 	BTRFS_I(inode)->last_log_commit = BTRFS_I(inode)->root->last_log_commit;
+	spin_unlock(&BTRFS_I(inode)->lock);
 }
 
 int btrfs_end_transaction(struct btrfs_trans_handle *trans,
 			  struct btrfs_root *root);
 struct btrfs_trans_handle *btrfs_start_transaction(struct btrfs_root *root,
 						   int num_items);
+struct btrfs_trans_handle *btrfs_start_transaction_fallback_global_rsv(
+					struct btrfs_root *root,
+					unsigned int num_items,
+					int min_factor);
 struct btrfs_trans_handle *btrfs_start_transaction_lflush(
 					struct btrfs_root *root, int num_items);
 struct btrfs_trans_handle *btrfs_join_transaction(struct btrfs_root *root);

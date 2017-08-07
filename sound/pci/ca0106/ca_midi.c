@@ -46,7 +46,7 @@ static void ca_midi_clear_rx(struct snd_ca_midi *midi)
 		ca_midi_read_data(midi);
 #ifdef CONFIG_SND_DEBUG
 	if (timeout <= 0)
-		pr_err("ca_midi_clear_rx: timeout (status = 0x%x)\n",
+		snd_printk(KERN_ERR "ca_midi_clear_rx: timeout (status = 0x%x)\n",
 			   ca_midi_read_stat(midi));
 #endif
 }
@@ -68,7 +68,6 @@ static void ca_midi_interrupt(struct snd_ca_midi *midi, unsigned int status)
 			byte = ca_midi_read_data(midi);
 			if(midi->substream_input)
 				snd_rawmidi_receive(midi->substream_input, &byte, 1);
-
 
 		}
 	}
@@ -113,7 +112,7 @@ static void ca_midi_cmd(struct snd_ca_midi *midi, unsigned char cmd, int ack)
 	}
 	spin_unlock_irqrestore(&midi->input_lock, flags);
 	if (!ok)
-		pr_err("ca_midi_cmd: 0x%x failed at 0x%x (status = 0x%x, data = 0x%x)!!!\n",
+		snd_printk(KERN_ERR "ca_midi_cmd: 0x%x failed at 0x%x (status = 0x%x, data = 0x%x)!!!\n",
 			   cmd,
 			   midi->get_dev_id_port(midi->dev_id),
 			   ca_midi_read_stat(midi),
@@ -313,4 +312,3 @@ int ca_midi_init(void *dev_id, struct snd_ca_midi *midi, int device, char *name)
 	midi->rmidi = rmidi;
 	return 0;
 }
-

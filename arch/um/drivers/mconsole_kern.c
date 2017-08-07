@@ -41,7 +41,6 @@ static int do_unlink_socket(struct notifier_block *notifier,
 	return mconsole_unlink_socket();
 }
 
-
 static struct notifier_block reboot_notifier = {
 	.notifier_call		= do_unlink_socket,
 	.priority		= 0,
@@ -645,9 +644,11 @@ void mconsole_sysrq(struct mc_request *req)
 
 static void stack_proc(void *arg)
 {
-	struct task_struct *task = arg;
+	struct task_struct *from = current, *to = arg;
 
-	show_stack(task, NULL);
+	to->thread.saved_task = from;
+	rcu_user_hooks_switch(from, to);
+	switch_to(from, to, from);
 }
 
 /*

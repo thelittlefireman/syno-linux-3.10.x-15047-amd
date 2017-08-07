@@ -43,7 +43,6 @@ extern void vdso_init_from_auxv(void *auxv);
 extern void vdso_init_from_sysinfo_ehdr(uintptr_t base);
 extern void *vdso_sym(const char *version, const char *name);
 
-
 /* And here's the code. */
 
 #ifndef __x86_64__

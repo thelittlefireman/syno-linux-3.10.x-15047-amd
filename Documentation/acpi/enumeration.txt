@@ -207,7 +207,7 @@ passing those. One idea is to return this in _DSM method like:
 			Return (Local0)
 		}
 
-Then the at25 SPI driver can get this configuration by calling _DSM on its
+Then the at25 SPI driver can get this configation by calling _DSM on its
 ACPI handle like:
 
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
@@ -228,9 +228,19 @@ ACPI handle like:
 I2C serial bus support
 ~~~~~~~~~~~~~~~~~~~~~~
 The slaves behind I2C bus controller only need to add the ACPI IDs like
-with the platform and SPI drivers. The I2C core automatically enumerates
-any slave devices behind the controller device once the adapter is
-registered.
+with the platform and SPI drivers. However the I2C bus controller driver
+needs to call acpi_i2c_register_devices() after it has added the adapter.
+
+An I2C bus (controller) driver does:
+
+	...
+	ret = i2c_add_numbered_adapter(adapter);
+	if (ret)
+		/* handle error */
+
+	of_i2c_register_devices(adapter);
+	/* Enumerate the slave devices behind this bus via ACPI */
+	acpi_i2c_register_devices(adapter);
 
 Below is an example of how to add ACPI support to the existing mpu3050
 input driver:
@@ -293,28 +303,32 @@ the device to the driver. For example:
 
 These GPIO numbers are controller relative and path "\\_SB.PCI0.GPI0"
 specifies the path to the controller. In order to use these GPIOs in Linux
-we need to translate them to the corresponding Linux GPIO descriptors.
+we need to translate them to the Linux GPIO numbers.
 
-There is a standard GPIO API for that and is documented in
-Documentation/gpio.txt.
+The driver can do this by including <linux/acpi_gpio.h> and then calling
+acpi_get_gpio(path, gpio). This will return the Linux GPIO number or
+negative errno if there was no translation found.
 
-In the above example we can get the corresponding two GPIO descriptors with
-a code like this:
+In a simple case of just getting the Linux GPIO number from device
+resources one can use acpi_get_gpio_by_index() helper function. It takes
+pointer to the device and index of the GpioIo/GpioInt descriptor in the
+device resources list. For example:
 
-	#include <linux/gpio/consumer.h>
-	...
+	int gpio_irq, gpio_power;
+	int ret;
 
-	struct gpio_desc *irq_desc, *power_desc;
-
-	irq_desc = gpiod_get_index(dev, NULL, 1);
-	if (IS_ERR(irq_desc))
+	gpio_irq = acpi_get_gpio_by_index(dev, 1, NULL);
+	if (gpio_irq < 0)
 		/* handle error */
 
-	power_desc = gpiod_get_index(dev, NULL, 0);
-	if (IS_ERR(power_desc))
+	gpio_power = acpi_get_gpio_by_index(dev, 0, NULL);
+	if (gpio_power < 0)
 		/* handle error */
 
-	/* Now we can use the GPIO descriptors */
+	/* Now we can use the GPIO numbers */
 
-There are also devm_* versions of these functions which release the
-descriptors once the device is released.
+Other GpioIo parameters must be converted first by the driver to be
+suitable to the gpiolib before passing them.
+
+In case of GpioInt resource an additional call to gpio_to_irq() must be
+done before calling request_irq().

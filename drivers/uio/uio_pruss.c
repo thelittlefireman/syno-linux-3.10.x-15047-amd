@@ -121,7 +121,7 @@ static int pruss_probe(struct platform_device *dev)
 	struct uio_pruss_dev *gdev;
 	struct resource *regs_prussio;
 	int ret = -ENODEV, cnt = 0, len;
-	struct uio_pruss_pdata *pdata = dev_get_platdata(&dev->dev);
+	struct uio_pruss_pdata *pdata = dev->dev.platform_data;
 
 	gdev = kzalloc(sizeof(struct uio_pruss_dev), GFP_KERNEL);
 	if (!gdev)
@@ -136,9 +136,9 @@ static int pruss_probe(struct platform_device *dev)
 	gdev->pruss_clk = clk_get(&dev->dev, "pruss");
 	if (IS_ERR(gdev->pruss_clk)) {
 		dev_err(&dev->dev, "Failed to get clock\n");
-		ret = PTR_ERR(gdev->pruss_clk);
 		kfree(gdev->info);
 		kfree(gdev);
+		ret = PTR_ERR(gdev->pruss_clk);
 		return ret;
 	} else {
 		clk_enable(gdev->pruss_clk);
@@ -158,12 +158,14 @@ static int pruss_probe(struct platform_device *dev)
 	if (pdata->sram_pool) {
 		gdev->sram_pool = pdata->sram_pool;
 		gdev->sram_vaddr =
-			(unsigned long)gen_pool_dma_alloc(gdev->sram_pool,
-					sram_pool_sz, &gdev->sram_paddr);
+			gen_pool_alloc(gdev->sram_pool, sram_pool_sz);
 		if (!gdev->sram_vaddr) {
 			dev_err(&dev->dev, "Could not allocate SRAM pool\n");
 			goto out_free;
 		}
+		gdev->sram_paddr =
+			gen_pool_virt_to_phys(gdev->sram_pool,
+					      gdev->sram_vaddr);
 	}
 
 	gdev->ddr_vaddr = dma_alloc_coherent(&dev->dev, extram_pool_sz,
@@ -222,6 +224,7 @@ static int pruss_remove(struct platform_device *dev)
 	struct uio_pruss_dev *gdev = platform_get_drvdata(dev);
 
 	pruss_cleanup(dev, gdev);
+	platform_set_drvdata(dev, NULL);
 	return 0;
 }
 

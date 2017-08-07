@@ -1,12 +1,15 @@
 /*
  * Versatile Express V2M Motherboard Support
  */
+#include <linux/clocksource.h>
 #include <linux/device.h>
 #include <linux/amba/bus.h>
 #include <linux/amba/mmci.h>
 #include <linux/io.h>
+#include <linux/clocksource.h>
 #include <linux/smp.h>
 #include <linux/init.h>
+#include <linux/irqchip.h>
 #include <linux/of_address.h>
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
@@ -20,6 +23,7 @@
 #include <linux/regulator/fixed.h>
 #include <linux/regulator/machine.h>
 #include <linux/vexpress.h>
+#include <linux/clk-provider.h>
 #include <linux/clkdev.h>
 
 #include <asm/mach-types.h>
@@ -62,7 +66,6 @@ static void __init v2m_sp804_init(void __iomem *base, unsigned int irq)
 	sp804_clocksource_init(base + TIMER_2_BASE, "v2m-timer1");
 	sp804_clockevents_init(base + TIMER_1_BASE, irq, "v2m-timer0");
 }
-
 
 static struct resource v2m_pcie_i2c_resource = {
 	.start	= V2M_SERIAL_BUS_PCI,
@@ -419,8 +422,16 @@ void __init v2m_dt_init_early(void)
 			pr_warning("vexpress: DT HBI (%x) is not matching "
 					"hardware (%x)!\n", dt_hbi, hbi);
 	}
+}
 
-	versatile_sched_clock_init(vexpress_get_24mhz_clock_base(), 24000000);
+static void __init v2m_dt_timer_init(void)
+{
+	of_clk_init(NULL);
+
+	clocksource_of_init();
+
+	versatile_sched_clock_init(vexpress_get_24mhz_clock_base(),
+				24000000);
 }
 
 static const struct of_device_id v2m_dt_bus_match[] __initconst = {
@@ -444,8 +455,9 @@ static const char * const v2m_dt_match[] __initconst = {
 DT_MACHINE_START(VEXPRESS_DT, "ARM-Versatile Express")
 	.dt_compat	= v2m_dt_match,
 	.smp		= smp_ops(vexpress_smp_ops),
-	.smp_init	= smp_init_ops(vexpress_smp_init_ops),
 	.map_io		= v2m_dt_map_io,
 	.init_early	= v2m_dt_init_early,
+	.init_irq	= irqchip_init,
+	.init_time	= v2m_dt_timer_init,
 	.init_machine	= v2m_dt_init,
 MACHINE_END

@@ -63,7 +63,7 @@ MODULE_LICENSE("GPL");
 /*
  * PCI ID of the Intel ICH7 LPC Device within which the GPIO block lives.
  */
-static const struct pci_device_id ich7_lpc_pci_id[] = {
+static DEFINE_PCI_DEVICE_TABLE(ich7_lpc_pci_id) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ICH7_0) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ICH7_1) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ICH7_30) },
@@ -78,7 +78,7 @@ static int __init ss4200_led_dmi_callback(const struct dmi_system_id *id)
 	return 1;
 }
 
-static bool nodetect;
+static bool __initdata nodetect;
 module_param_named(nodetect, nodetect, bool, 0);
 MODULE_PARM_DESC(nodetect, "Skip DMI-based hardware detection");
 
@@ -91,7 +91,7 @@ MODULE_PARM_DESC(nodetect, "Skip DMI-based hardware detection");
  * detected as working, but in reality it is not) as low as
  * possible.
  */
-static struct dmi_system_id nas_led_whitelist[] __initdata = {
+static struct dmi_system_id __initdata nas_led_whitelist[] = {
 	{
 		.callback = ss4200_led_dmi_callback,
 		.ident = "Intel SS4200-E",
@@ -197,7 +197,7 @@ static void nasgpio_led_set_attr(struct led_classdev *led_cdev,
 	spin_unlock(&nasgpio_gpio_lock);
 }
 
-static u32 nasgpio_led_get_attr(struct led_classdev *led_cdev, u32 port)
+u32 nasgpio_led_get_attr(struct led_classdev *led_cdev, u32 port)
 {
 	struct nasgpio_led *led = led_classdev_to_nasgpio_led(led_cdev);
 	u32 gpio_in;
@@ -255,7 +255,6 @@ static int nasgpio_led_set_blink(struct led_classdev *led_cdev,
 
 	return 0;
 }
-
 
 /*
  * Initialize the ICH7 GPIO registers for NAS usage.  The BIOS should have
@@ -422,7 +421,6 @@ static struct led_classdev *get_classdev_for_led_nr(int nr)
 	struct led_classdev *led = &nas_led->led_cdev;
 	return led;
 }
-
 
 static void set_power_light_amber_noblink(void)
 {

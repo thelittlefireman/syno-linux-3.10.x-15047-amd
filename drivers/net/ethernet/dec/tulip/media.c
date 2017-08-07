@@ -12,10 +12,10 @@
 
 #include <linux/kernel.h>
 #include <linux/mii.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/pci.h>
 #include "tulip.h"
-
 
 /* The maximum data clock rate is 2.5 Mhz.  The minimum timing is usually
    met by back-to-back PCI I/O cycles, but we insert a delay to avoid
@@ -35,7 +35,6 @@
 static const unsigned char comet_miireg2offset[32] = {
 	0xB4, 0xB8, 0xBC, 0xC0,  0xC4, 0xC8, 0xCC, 0,  0,0,0,0,  0,0,0,0,
 	0,0xD0,0,0,  0,0,0,0,  0,0,0,0, 0, 0xD4, 0xD8, 0xDC, };
-
 
 /* MII transceiver control section.
    Read and write the MII registers using software-generated serial
@@ -161,7 +160,6 @@ void tulip_mdio_write(struct net_device *dev, int phy_id, int location, int val)
 
 	spin_unlock_irqrestore(&tp->mii_lock, flags);
 }
-
 
 /* Set up the transceiver control registers for the selected media type. */
 void tulip_select_media(struct net_device *dev, int startup)
@@ -457,7 +455,7 @@ void tulip_find_mii(struct net_device *dev, int board_idx)
 	/* Find the connected MII xcvrs.
 	   Doing this in open() would allow detecting external xcvrs later,
 	   but takes much time. */
-	for (phyn = 1; phyn <= 32 && phy_idx < ARRAY_SIZE(tp->phys); phyn++) {
+	for (phyn = 1; phyn <= 32 && phy_idx < sizeof (tp->phys); phyn++) {
 		int phy = phyn & 0x1f;
 		int mii_status = tulip_mdio_read (dev, phy, MII_BMSR);
 		if ((mii_status & 0x8301) == 0x8001 ||

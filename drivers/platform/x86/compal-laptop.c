@@ -83,7 +83,6 @@
 #include <linux/power_supply.h>
 #include <linux/fb.h>
 
-
 /* ======= */
 /* Defines */
 /* ======= */
@@ -167,13 +166,13 @@
 #define BAT_STOP_CHRG1_OVERVOLTAGE	(1 << 6)
 #define BAT_STOP_CHRG1_OVERTEMPERATURE	(1 << 7)
 
-
 /* ======= */
 /* Structs */
 /* ======= */
 struct compal_data{
 	/* Fan control */
-	int pwm_enable; /* 0:full on, 1:set by pwm1, 2:control by motherboard */
+	struct device *hwmon_dev;
+	int pwm_enable; /* 0:full on, 1:set by pwm1, 2:control by moterboard */
 	unsigned char curr_pwm;
 
 	/* Power supply */
@@ -183,7 +182,6 @@ struct compal_data{
 	char bat_manufacturer_name[BAT_MANUFACTURER_NAME_LEN + 1];
 	char bat_serial_number[BAT_SERIAL_NUMBER_LEN + 1];
 };
-
 
 /* =============== */
 /* General globals */
@@ -228,9 +226,6 @@ static const unsigned char pwm_lookup_table[256] = {
 	187, 187, 193, 50
 };
 
-
-
-
 /* ========================= */
 /* Hardware access functions */
 /* ========================= */
@@ -267,7 +262,6 @@ static void ec_read_sequence(u8 addr, u8 *buf, int len)
 		ec_read(addr + i, buf + i);
 }
 
-
 /* Backlight access */
 static int set_backlight_level(int level)
 {
@@ -289,7 +283,6 @@ static void set_backlight_state(bool on)
 	u8 data = on ? BACKLIGHT_STATE_ON_DATA : BACKLIGHT_STATE_OFF_DATA;
 	ec_transaction(BACKLIGHT_STATE_ADDR, &data, 1, NULL, 0);
 }
-
 
 /* Fan control access */
 static void pwm_enable_control(void)
@@ -315,9 +308,6 @@ static int get_fan_rpm(void)
 	ec_transaction(FAN_ADDRESS, &data, 1, &value, 1);
 	return 100 * (int)value;
 }
-
-
-
 
 /* =================== */
 /* Interface functions */
@@ -345,7 +335,6 @@ static const struct backlight_ops compalbl_ops = {
 	.get_brightness = bl_get_brightness,
 	.update_status	= bl_update_status,
 };
-
 
 /* Wireless interface */
 static int compal_rfkill_set(void *data, bool blocked)
@@ -375,7 +364,6 @@ static const struct rfkill_ops compal_rfkill_ops = {
 	.set_block = compal_rfkill_set,
 };
 
-
 /* Wake_up interface */
 #define SIMPLE_MASKED_STORE_SHOW(NAME, ADDR, MASK)			\
 static ssize_t NAME##_show(struct device *dev,				\
@@ -401,6 +389,13 @@ SIMPLE_MASKED_STORE_SHOW(wake_up_wlan,	WAKE_UP_ADDR, WAKE_UP_WLAN)
 SIMPLE_MASKED_STORE_SHOW(wake_up_key,	WAKE_UP_ADDR, WAKE_UP_KEY)
 SIMPLE_MASKED_STORE_SHOW(wake_up_mouse,	WAKE_UP_ADDR, WAKE_UP_MOUSE)
 
+/* General hwmon interface */
+static ssize_t hwmon_name_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%s\n", DRIVER_NAME);
+}
+
 /* Fan control interface */
 static ssize_t pwm_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -415,8 +410,7 @@ static ssize_t pwm_enable_store(struct device *dev,
 	struct compal_data *data = dev_get_drvdata(dev);
 	long val;
 	int err;
-
-	err = kstrtol(buf, 10, &val);
+	err = strict_strtol(buf, 10, &val);
 	if (err)
 		return err;
 	if (val < 0)
@@ -454,8 +448,7 @@ static ssize_t pwm_store(struct device *dev, struct device_attribute *attr,
 	struct compal_data *data = dev_get_drvdata(dev);
 	long val;
 	int err;
-
-	err = kstrtol(buf, 10, &val);
+	err = strict_strtol(buf, 10, &val);
 	if (err)
 		return err;
 	if (val < 0 || val > 255)
@@ -475,7 +468,6 @@ static ssize_t fan_show(struct device *dev, struct device_attribute *attr,
 {
 	return sprintf(buf, "%d\n", get_fan_rpm());
 }
-
 
 /* Temperature interface */
 #define TEMPERATURE_SHOW_TEMP_AND_LABEL(POSTFIX, ADDRESS, LABEL)	\
@@ -497,7 +489,6 @@ TEMPERATURE_SHOW_TEMP_AND_LABEL(cpu_DTS,    TEMP_CPU_DTS,    "CPU_DTS");
 TEMPERATURE_SHOW_TEMP_AND_LABEL(northbridge,TEMP_NORTHBRIDGE,"NorthBridge");
 TEMPERATURE_SHOW_TEMP_AND_LABEL(vga,        TEMP_VGA,        "VGA_TEMP");
 TEMPERATURE_SHOW_TEMP_AND_LABEL(SKIN,       TEMP_SKIN,       "SKIN_TEMP90");
-
 
 /* Power supply interface */
 static int bat_status(void)
@@ -635,10 +626,6 @@ static int bat_get_property(struct power_supply *psy,
 	return 0;
 }
 
-
-
-
-
 /* ============== */
 /* Driver Globals */
 /* ============== */
@@ -655,55 +642,55 @@ static DEVICE_ATTR(wake_up_key,
 static DEVICE_ATTR(wake_up_mouse,
 		0644, wake_up_mouse_show,	wake_up_mouse_store);
 
-static DEVICE_ATTR(fan1_input,  S_IRUGO, fan_show,          NULL);
-static DEVICE_ATTR(temp1_input, S_IRUGO, temp_cpu,          NULL);
-static DEVICE_ATTR(temp2_input, S_IRUGO, temp_cpu_local,    NULL);
-static DEVICE_ATTR(temp3_input, S_IRUGO, temp_cpu_DTS,      NULL);
-static DEVICE_ATTR(temp4_input, S_IRUGO, temp_northbridge,  NULL);
-static DEVICE_ATTR(temp5_input, S_IRUGO, temp_vga,          NULL);
-static DEVICE_ATTR(temp6_input, S_IRUGO, temp_SKIN,         NULL);
-static DEVICE_ATTR(temp1_label, S_IRUGO, label_cpu,         NULL);
-static DEVICE_ATTR(temp2_label, S_IRUGO, label_cpu_local,   NULL);
-static DEVICE_ATTR(temp3_label, S_IRUGO, label_cpu_DTS,     NULL);
-static DEVICE_ATTR(temp4_label, S_IRUGO, label_northbridge, NULL);
-static DEVICE_ATTR(temp5_label, S_IRUGO, label_vga,         NULL);
-static DEVICE_ATTR(temp6_label, S_IRUGO, label_SKIN,        NULL);
-static DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, pwm_show, pwm_store);
-static DEVICE_ATTR(pwm1_enable,
-		   S_IRUGO | S_IWUSR, pwm_enable_show, pwm_enable_store);
+static SENSOR_DEVICE_ATTR(name,        S_IRUGO, hwmon_name_show,   NULL, 1);
+static SENSOR_DEVICE_ATTR(fan1_input,  S_IRUGO, fan_show,          NULL, 1);
+static SENSOR_DEVICE_ATTR(temp1_input, S_IRUGO, temp_cpu,          NULL, 1);
+static SENSOR_DEVICE_ATTR(temp2_input, S_IRUGO, temp_cpu_local,    NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_input, S_IRUGO, temp_cpu_DTS,      NULL, 1);
+static SENSOR_DEVICE_ATTR(temp4_input, S_IRUGO, temp_northbridge,  NULL, 1);
+static SENSOR_DEVICE_ATTR(temp5_input, S_IRUGO, temp_vga,          NULL, 1);
+static SENSOR_DEVICE_ATTR(temp6_input, S_IRUGO, temp_SKIN,         NULL, 1);
+static SENSOR_DEVICE_ATTR(temp1_label, S_IRUGO, label_cpu,         NULL, 1);
+static SENSOR_DEVICE_ATTR(temp2_label, S_IRUGO, label_cpu_local,   NULL, 1);
+static SENSOR_DEVICE_ATTR(temp3_label, S_IRUGO, label_cpu_DTS,     NULL, 1);
+static SENSOR_DEVICE_ATTR(temp4_label, S_IRUGO, label_northbridge, NULL, 1);
+static SENSOR_DEVICE_ATTR(temp5_label, S_IRUGO, label_vga,         NULL, 1);
+static SENSOR_DEVICE_ATTR(temp6_label, S_IRUGO, label_SKIN,        NULL, 1);
+static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, pwm_show, pwm_store, 1);
+static SENSOR_DEVICE_ATTR(pwm1_enable,
+		S_IRUGO | S_IWUSR, pwm_enable_show, pwm_enable_store, 0);
 
-static struct attribute *compal_platform_attrs[] = {
+static struct attribute *compal_attributes[] = {
 	&dev_attr_wake_up_pme.attr,
 	&dev_attr_wake_up_modem.attr,
 	&dev_attr_wake_up_lan.attr,
 	&dev_attr_wake_up_wlan.attr,
 	&dev_attr_wake_up_key.attr,
 	&dev_attr_wake_up_mouse.attr,
+	/* Maybe put the sensor-stuff in a separate hwmon-driver? That way,
+	 * the hwmon sysfs won't be cluttered with the above files. */
+	&sensor_dev_attr_name.dev_attr.attr,
+	&sensor_dev_attr_pwm1_enable.dev_attr.attr,
+	&sensor_dev_attr_pwm1.dev_attr.attr,
+	&sensor_dev_attr_fan1_input.dev_attr.attr,
+	&sensor_dev_attr_temp1_input.dev_attr.attr,
+	&sensor_dev_attr_temp2_input.dev_attr.attr,
+	&sensor_dev_attr_temp3_input.dev_attr.attr,
+	&sensor_dev_attr_temp4_input.dev_attr.attr,
+	&sensor_dev_attr_temp5_input.dev_attr.attr,
+	&sensor_dev_attr_temp6_input.dev_attr.attr,
+	&sensor_dev_attr_temp1_label.dev_attr.attr,
+	&sensor_dev_attr_temp2_label.dev_attr.attr,
+	&sensor_dev_attr_temp3_label.dev_attr.attr,
+	&sensor_dev_attr_temp4_label.dev_attr.attr,
+	&sensor_dev_attr_temp5_label.dev_attr.attr,
+	&sensor_dev_attr_temp6_label.dev_attr.attr,
 	NULL
-};
-static struct attribute_group compal_platform_attr_group = {
-	.attrs = compal_platform_attrs
 };
 
-static struct attribute *compal_hwmon_attrs[] = {
-	&dev_attr_pwm1_enable.attr,
-	&dev_attr_pwm1.attr,
-	&dev_attr_fan1_input.attr,
-	&dev_attr_temp1_input.attr,
-	&dev_attr_temp2_input.attr,
-	&dev_attr_temp3_input.attr,
-	&dev_attr_temp4_input.attr,
-	&dev_attr_temp5_input.attr,
-	&dev_attr_temp6_input.attr,
-	&dev_attr_temp1_label.attr,
-	&dev_attr_temp2_label.attr,
-	&dev_attr_temp3_label.attr,
-	&dev_attr_temp4_label.attr,
-	&dev_attr_temp5_label.attr,
-	&dev_attr_temp6_label.attr,
-	NULL
+static struct attribute_group compal_attribute_group = {
+	.attrs = compal_attributes
 };
-ATTRIBUTE_GROUPS(compal_hwmon);
 
 static int compal_probe(struct platform_device *);
 static int compal_remove(struct platform_device *);
@@ -743,10 +730,6 @@ static struct platform_device *compal_device;
 
 static struct rfkill *wifi_rfkill;
 static struct rfkill *bt_rfkill;
-
-
-
-
 
 /* =================================== */
 /* Initialization & clean-up functions */
@@ -1011,28 +994,30 @@ static int compal_probe(struct platform_device *pdev)
 {
 	int err;
 	struct compal_data *data;
-	struct device *hwmon_dev;
 
 	if (!extra_features)
 		return 0;
 
 	/* Fan control */
-	data = devm_kzalloc(&pdev->dev, sizeof(struct compal_data), GFP_KERNEL);
+	data = kzalloc(sizeof(struct compal_data), GFP_KERNEL);
 	if (!data)
 		return -ENOMEM;
 
 	initialize_fan_control_data(data);
 
-	err = sysfs_create_group(&pdev->dev.kobj, &compal_platform_attr_group);
-	if (err)
+	err = sysfs_create_group(&pdev->dev.kobj, &compal_attribute_group);
+	if (err) {
+		kfree(data);
 		return err;
+	}
 
-	hwmon_dev = hwmon_device_register_with_groups(&pdev->dev,
-						      DRIVER_NAME, data,
-						      compal_hwmon_groups);
-	if (IS_ERR(hwmon_dev)) {
-		err = PTR_ERR(hwmon_dev);
-		goto remove;
+	data->hwmon_dev = hwmon_device_register(&pdev->dev);
+	if (IS_ERR(data->hwmon_dev)) {
+		err = PTR_ERR(data->hwmon_dev);
+		sysfs_remove_group(&pdev->dev.kobj,
+				&compal_attribute_group);
+		kfree(data);
+		return err;
 	}
 
 	/* Power supply */
@@ -1042,10 +1027,6 @@ static int compal_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, data);
 
 	return 0;
-
-remove:
-	sysfs_remove_group(&pdev->dev.kobj, &compal_platform_attr_group);
-	return err;
 }
 
 static void __exit compal_cleanup(void)
@@ -1072,13 +1053,16 @@ static int compal_remove(struct platform_device *pdev)
 	pwm_disable_control();
 
 	data = platform_get_drvdata(pdev);
+	hwmon_device_unregister(data->hwmon_dev);
 	power_supply_unregister(&data->psy);
 
-	sysfs_remove_group(&pdev->dev.kobj, &compal_platform_attr_group);
+	platform_set_drvdata(pdev, NULL);
+	kfree(data);
+
+	sysfs_remove_group(&pdev->dev.kobj, &compal_attribute_group);
 
 	return 0;
 }
-
 
 module_init(compal_init);
 module_exit(compal_cleanup);

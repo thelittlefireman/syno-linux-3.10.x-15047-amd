@@ -63,7 +63,6 @@ static void hp680bl_send_intensity(struct backlight_device *bd)
 	current_intensity = intensity;
 }
 
-
 #ifdef CONFIG_PM_SLEEP
 static int hp680bl_suspend(struct device *dev)
 {
@@ -110,8 +109,8 @@ static int hp680bl_probe(struct platform_device *pdev)
 	memset(&props, 0, sizeof(struct backlight_properties));
 	props.type = BACKLIGHT_RAW;
 	props.max_brightness = HP680_MAX_INTENSITY;
-	bd = devm_backlight_device_register(&pdev->dev, "hp680-bl", &pdev->dev,
-					NULL, &hp680bl_ops, &props);
+	bd = backlight_device_register("hp680-bl", &pdev->dev, NULL,
+				       &hp680bl_ops, &props);
 	if (IS_ERR(bd))
 		return PTR_ERR(bd);
 
@@ -130,6 +129,8 @@ static int hp680bl_remove(struct platform_device *pdev)
 	bd->props.brightness = 0;
 	bd->props.power = 0;
 	hp680bl_send_intensity(bd);
+
+	backlight_device_unregister(bd);
 
 	return 0;
 }

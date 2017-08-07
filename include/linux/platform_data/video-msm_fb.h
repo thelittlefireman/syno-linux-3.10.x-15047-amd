@@ -1,4 +1,5 @@
-/*
+/* arch/arm/mach-msm/include/mach/msm_fb.h
+ *
  * Internal shared definitions for various MSM framebuffer parts.
  *
  * Copyright (C) 2007 Google Incorporated
@@ -140,7 +141,5 @@ struct msm_mddi_bridge_platform_data {
 		       struct msm_mddi_client_data *);
 	struct msm_fb_data fb_data;
 };
-
-
 
 #endif

@@ -163,11 +163,11 @@ static int mcount_adjust = 0;
 
 static int MIPS_is_fake_mcount(Elf_Rel const *rp)
 {
-	static Elf_Addr old_r_offset;
+	static Elf_Addr old_r_offset = ~(Elf_Addr)0;
 	Elf_Addr current_r_offset = _w(rp->r_offset);
 	int is_fake;
 
-	is_fake = old_r_offset &&
+	is_fake = (old_r_offset != ~(Elf_Addr)0) &&
 		(current_r_offset - old_r_offset == MIPS_FAKEMCOUNT_OFFSET);
 	old_r_offset = current_r_offset;
 
@@ -377,7 +377,7 @@ static void nop_mcount(Elf_Shdr const *const relhdr,
 
 		if (mcountsym == Elf_r_sym(relp) && !is_fake_mcount(relp)) {
 			if (make_nop)
-				ret = make_nop((void *)ehdr, shdr->sh_offset + relp->r_offset);
+				ret = make_nop((void *)ehdr, _w(shdr->sh_offset) + _w(relp->r_offset));
 			if (warn_on_notrace_sect && !once) {
 				printf("Section %s has mcount callers being ignored\n",
 				       txtname);
@@ -402,7 +402,6 @@ static void nop_mcount(Elf_Shdr const *const relhdr,
 		relp = (Elf_Rel const *)(rel_entsize + (void *)relp);
 	}
 }
-
 
 /*
  * Find a symbol in the given section, to be used as the base for relocating
@@ -446,7 +445,6 @@ static unsigned find_secsym_ndx(unsigned const txtndx,
 	fail_file();
 }
 
-
 /* Evade ISO C restriction: no declaration after statement in has_rel_mcount. */
 static char const *
 __has_rel_mcount(Elf_Shdr const *const relhdr,  /* is SHT_REL or SHT_RELA */
@@ -479,7 +477,6 @@ static char const *has_rel_mcount(Elf_Shdr const *const relhdr,
 	return __has_rel_mcount(relhdr, shdr0, shstrtab, fname);
 }
 
-
 static unsigned tot_relsize(Elf_Shdr const *const shdr0,
 			    unsigned nhdr,
 			    const char *const shstrtab,
@@ -496,7 +493,6 @@ static unsigned tot_relsize(Elf_Shdr const *const shdr0,
 	}
 	return totrelsz;
 }
-
 
 /* Overall supervision for Elf32 ET_REL file. */
 static void

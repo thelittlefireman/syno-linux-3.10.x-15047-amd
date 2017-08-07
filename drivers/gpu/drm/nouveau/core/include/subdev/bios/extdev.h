@@ -26,5 +26,4 @@ int
 nvbios_extdev_find(struct nouveau_bios *, enum nvbios_extdev_type,
 		   struct nvbios_extdev_func *);
 
-
 #endif

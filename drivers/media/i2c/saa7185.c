@@ -32,6 +32,7 @@
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 
 MODULE_DESCRIPTION("Philips SAA7185 video encoder driver");
 MODULE_AUTHOR("Dave Perks");
@@ -40,7 +41,6 @@ MODULE_LICENSE("GPL");
 static int debug;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
-
 
 /* ----------------------------------------------------------------------- */
 
@@ -216,7 +216,6 @@ static const unsigned char init_ntsc[] = {
 	0x66, 0x21,		/* FSC3 */
 };
 
-
 static int saa7185_init(struct v4l2_subdev *sd, u32 val)
 {
 	struct saa7185 *encoder = to_saa7185(sd);
@@ -284,9 +283,17 @@ static int saa7185_s_routing(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int saa7185_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	return v4l2_chip_ident_i2c_client(client, chip, V4L2_IDENT_SAA7185, 0);
+}
+
 /* ----------------------------------------------------------------------- */
 
 static const struct v4l2_subdev_core_ops saa7185_core_ops = {
+	.g_chip_ident = saa7185_g_chip_ident,
 	.init = saa7185_init,
 };
 
@@ -299,7 +306,6 @@ static const struct v4l2_subdev_ops saa7185_ops = {
 	.core = &saa7185_core_ops,
 	.video = &saa7185_video_ops,
 };
-
 
 /* ----------------------------------------------------------------------- */
 
@@ -317,7 +323,7 @@ static int saa7185_probe(struct i2c_client *client,
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 
-	encoder = devm_kzalloc(&client->dev, sizeof(*encoder), GFP_KERNEL);
+	encoder = kzalloc(sizeof(struct saa7185), GFP_KERNEL);
 	if (encoder == NULL)
 		return -ENOMEM;
 	encoder->norm = V4L2_STD_NTSC;
@@ -343,6 +349,7 @@ static int saa7185_remove(struct i2c_client *client)
 	v4l2_device_unregister_subdev(sd);
 	/* SW: output off is active */
 	saa7185_write(sd, 0x61, (encoder->reg[0x61]) | 0x40);
+	kfree(encoder);
 	return 0;
 }
 

@@ -83,7 +83,6 @@ static void deinit_qib_mregion(struct qib_mregion *mr)
 		kfree(mr->map[--i]);
 }
 
-
 /**
  * qib_get_dma_mr - get a DMA memory region
  * @pd: protection domain for this memory region
@@ -115,7 +114,6 @@ struct ib_mr *qib_get_dma_mr(struct ib_pd *pd, int acc)
 		ret = ERR_PTR(rval);
 		goto bail;
 	}
-
 
 	rval = qib_alloc_lkey(&mr->mr, 1);
 	if (rval) {
@@ -232,8 +230,8 @@ struct ib_mr *qib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 {
 	struct qib_mr *mr;
 	struct ib_umem *umem;
-	struct scatterlist *sg;
-	int n, m, entry;
+	struct ib_umem_chunk *chunk;
+	int n, m, i;
 	struct ib_mr *ret;
 
 	if (length == 0) {
@@ -246,7 +244,9 @@ struct ib_mr *qib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 	if (IS_ERR(umem))
 		return (void *) umem;
 
-	n = umem->nmap;
+	n = 0;
+	list_for_each_entry(chunk, &umem->chunk_list, list)
+		n += chunk->nents;
 
 	mr = alloc_mr(n, pd);
 	if (IS_ERR(mr)) {
@@ -266,10 +266,11 @@ struct ib_mr *qib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 		mr->mr.page_shift = ilog2(umem->page_size);
 	m = 0;
 	n = 0;
-	for_each_sg(umem->sg_head.sgl, sg, umem->nmap, entry) {
+	list_for_each_entry(chunk, &umem->chunk_list, list) {
+		for (i = 0; i < chunk->nents; i++) {
 			void *vaddr;
 
-			vaddr = page_address(sg_page(sg));
+			vaddr = page_address(sg_page(&chunk->page_list[i]));
 			if (!vaddr) {
 				ret = ERR_PTR(-EINVAL);
 				goto bail;
@@ -281,6 +282,7 @@ struct ib_mr *qib_reg_user_mr(struct ib_pd *pd, u64 start, u64 length,
 				m++;
 				n = 0;
 			}
+		}
 	}
 	ret = &mr->ibmr;
 

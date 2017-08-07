@@ -128,7 +128,6 @@ out:
 }
 EXPORT_SYMBOL(max8925_set_bits);
 
-
 static const struct i2c_device_id max8925_id_table[] = {
 	{ "max8925", 0 },
 	{ },
@@ -151,7 +150,7 @@ static int max8925_dt_init(struct device_node *np, struct device *dev,
 static int max8925_probe(struct i2c_client *client,
 				   const struct i2c_device_id *id)
 {
-	struct max8925_platform_data *pdata = dev_get_platdata(&client->dev);
+	struct max8925_platform_data *pdata = client->dev.platform_data;
 	static struct max8925_chip *chip;
 	struct device_node *node = client->dev.of_node;
 
@@ -170,8 +169,7 @@ static int max8925_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	chip = devm_kzalloc(&client->dev,
-			    sizeof(struct max8925_chip), GFP_KERNEL);
+	chip = kzalloc(sizeof(struct max8925_chip), GFP_KERNEL);
 	if (chip == NULL)
 		return -ENOMEM;
 	chip->i2c = client;
@@ -209,6 +207,7 @@ static int max8925_remove(struct i2c_client *client)
 	max8925_device_exit(chip);
 	i2c_unregister_device(chip->adc);
 	i2c_unregister_device(chip->rtc);
+	kfree(chip);
 	return 0;
 }
 
@@ -247,7 +246,7 @@ static struct i2c_driver max8925_driver = {
 		.name	= "max8925",
 		.owner	= THIS_MODULE,
 		.pm     = &max8925_pm_ops,
-		.of_match_table = max8925_dt_ids,
+		.of_match_table = of_match_ptr(max8925_dt_ids),
 	},
 	.probe		= max8925_probe,
 	.remove		= max8925_remove,

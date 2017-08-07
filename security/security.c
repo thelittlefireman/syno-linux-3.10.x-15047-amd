@@ -1,18 +1,8 @@
-/*
- * Security plug functions
- *
- * Copyright (C) 2001 WireX Communications, Inc <chris@wirex.com>
- * Copyright (C) 2001-2002 Greg Kroah-Hartman <greg@kroah.com>
- * Copyright (C) 2001 Networks Associates Technology, Inc <ssmalley@nai.com>
- *
- *	This program is free software; you can redistribute it and/or modify
- *	it under the terms of the GNU General Public License as published by
- *	the Free Software Foundation; either version 2 of the License, or
- *	(at your option) any later version.
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/capability.h>
-#include <linux/dcache.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -29,7 +19,6 @@
 
 #define MAX_LSM_EVM_XATTR	2
 
-/* Boot-time LSM user choice */
 static __initdata char chosen_lsm[SECURITY_NAME_MAX + 1] =
 	CONFIG_DEFAULT_SECURITY;
 
@@ -40,7 +29,7 @@ static struct security_operations default_security_ops = {
 
 static inline int __init verify(struct security_operations *ops)
 {
-	/* verify the security_operations structure exists */
+	 
 	if (!ops)
 		return -EINVAL;
 	security_fixup_ops(ops);
@@ -57,11 +46,6 @@ static void __init do_security_initcalls(void)
 	}
 }
 
-/**
- * security_init - initializes the security framework
- *
- * This should be called early in the kernel initialization sequence.
- */
 int __init security_init(void)
 {
 	printk(KERN_INFO "Security Framework initialized\n");
@@ -78,7 +62,6 @@ void reset_security_ops(void)
 	security_ops = &default_security_ops;
 }
 
-/* Save user chosen LSM */
 static int __init choose_lsm(char *str)
 {
 	strncpy(chosen_lsm, str, SECURITY_NAME_MAX);
@@ -86,37 +69,11 @@ static int __init choose_lsm(char *str)
 }
 __setup("security=", choose_lsm);
 
-/**
- * security_module_enable - Load given security module on boot ?
- * @ops: a pointer to the struct security_operations that is to be checked.
- *
- * Each LSM must pass this method before registering its own operations
- * to avoid security registration races. This method may also be used
- * to check if your LSM is currently loaded during kernel initialization.
- *
- * Return true if:
- *	-The passed LSM is the one chosen by user at boot time,
- *	-or the passed LSM is configured as the default and the user did not
- *	 choose an alternate LSM at boot time.
- * Otherwise, return false.
- */
 int __init security_module_enable(struct security_operations *ops)
 {
 	return !strcmp(ops->name, chosen_lsm);
 }
 
-/**
- * register_security - registers a security framework with the kernel
- * @ops: a pointer to the struct security_options that is to be registered
- *
- * This function allows a security module to register itself with the
- * kernel security subsystem.  Some rudimentary checking is done on the @ops
- * value passed to this function. You'll need to check first if your LSM
- * is allowed to register its @ops by calling security_module_enable(@ops).
- *
- * If there is already a security module registered with the kernel,
- * an error will be returned.  Otherwise %0 is returned on success.
- */
 int __init register_security(struct security_operations *ops)
 {
 	if (verify(ops)) {
@@ -132,8 +89,6 @@ int __init register_security(struct security_operations *ops)
 
 	return 0;
 }
-
-/* Security operations */
 
 int security_ptrace_access_check(struct task_struct *child, unsigned int mode)
 {
@@ -294,12 +249,9 @@ int security_sb_pivotroot(struct path *old_path, struct path *new_path)
 }
 
 int security_sb_set_mnt_opts(struct super_block *sb,
-				struct security_mnt_opts *opts,
-				unsigned long kern_flags,
-				unsigned long *set_kern_flags)
+				struct security_mnt_opts *opts)
 {
-	return security_ops->sb_set_mnt_opts(sb, opts, kern_flags,
-						set_kern_flags);
+	return security_ops->sb_set_mnt_opts(sb, opts);
 }
 EXPORT_SYMBOL(security_sb_set_mnt_opts);
 
@@ -328,15 +280,6 @@ void security_inode_free(struct inode *inode)
 	security_ops->inode_free_security(inode);
 }
 
-int security_dentry_init_security(struct dentry *dentry, int mode,
-					struct qstr *name, void **ctx,
-					u32 *ctxlen)
-{
-	return security_ops->dentry_init_security(dentry, mode, name,
-							ctx, ctxlen);
-}
-EXPORT_SYMBOL(security_dentry_init_security);
-
 int security_inode_init_security(struct inode *inode, struct inode *dir,
 				 const struct qstr *qstr,
 				 const initxattrs initxattrs, void *fs_data)
@@ -348,10 +291,10 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
 	if (unlikely(IS_PRIVATE(inode)))
 		return 0;
 
+	memset(new_xattrs, 0, sizeof new_xattrs);
 	if (!initxattrs)
 		return security_ops->inode_init_security(inode, dir, qstr,
 							 NULL, NULL, NULL);
-	memset(new_xattrs, 0, sizeof(new_xattrs));
 	lsm_xattr = new_xattrs;
 	ret = security_ops->inode_init_security(inode, dir, qstr,
 						&lsm_xattr->name,
@@ -366,14 +309,16 @@ int security_inode_init_security(struct inode *inode, struct inode *dir,
 		goto out;
 	ret = initxattrs(inode, new_xattrs, fs_data);
 out:
-	for (xattr = new_xattrs; xattr->value != NULL; xattr++)
+	for (xattr = new_xattrs; xattr->name != NULL; xattr++) {
+		kfree(xattr->name);
 		kfree(xattr->value);
+	}
 	return (ret == -EOPNOTSUPP) ? 0 : ret;
 }
 EXPORT_SYMBOL(security_inode_init_security);
 
 int security_old_inode_init_security(struct inode *inode, struct inode *dir,
-				     const struct qstr *qstr, const char **name,
+				     const struct qstr *qstr, char **name,
 				     void **value, size_t *len)
 {
 	if (unlikely(IS_PRIVATE(inode)))
@@ -407,6 +352,9 @@ int security_path_rmdir(struct path *dir, struct dentry *dentry)
 		return 0;
 	return security_ops->path_rmdir(dir, dentry);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_rmdir);
+#endif  
 
 int security_path_unlink(struct path *dir, struct dentry *dentry)
 {
@@ -423,6 +371,9 @@ int security_path_symlink(struct path *dir, struct dentry *dentry,
 		return 0;
 	return security_ops->path_symlink(dir, dentry, old_name);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_symlink);
+#endif  
 
 int security_path_link(struct dentry *old_dentry, struct path *new_dir,
 		       struct dentry *new_dentry)
@@ -431,22 +382,15 @@ int security_path_link(struct dentry *old_dentry, struct path *new_dir,
 		return 0;
 	return security_ops->path_link(old_dentry, new_dir, new_dentry);
 }
-
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_link);
+#endif  
 int security_path_rename(struct path *old_dir, struct dentry *old_dentry,
-			 struct path *new_dir, struct dentry *new_dentry,
-			 unsigned int flags)
+			 struct path *new_dir, struct dentry *new_dentry)
 {
 	if (unlikely(IS_PRIVATE(old_dentry->d_inode) ||
 		     (new_dentry->d_inode && IS_PRIVATE(new_dentry->d_inode))))
 		return 0;
-
-	if (flags & RENAME_EXCHANGE) {
-		int err = security_ops->path_rename(new_dir, new_dentry,
-						    old_dir, old_dentry);
-		if (err)
-			return err;
-	}
-
 	return security_ops->path_rename(old_dir, old_dentry, new_dir,
 					 new_dentry);
 }
@@ -458,6 +402,9 @@ int security_path_truncate(struct path *path)
 		return 0;
 	return security_ops->path_truncate(path);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_truncate);
+#endif  
 
 int security_path_chmod(struct path *path, umode_t mode)
 {
@@ -465,6 +412,9 @@ int security_path_chmod(struct path *path, umode_t mode)
 		return 0;
 	return security_ops->path_chmod(path, mode);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_chmod);
+#endif  
 
 int security_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 {
@@ -472,6 +422,9 @@ int security_path_chown(struct path *path, kuid_t uid, kgid_t gid)
 		return 0;
 	return security_ops->path_chown(path, uid, gid);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_path_chown);
+#endif  
 
 int security_path_chroot(struct path *path)
 {
@@ -533,20 +486,11 @@ int security_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t mode,
 }
 
 int security_inode_rename(struct inode *old_dir, struct dentry *old_dentry,
-			   struct inode *new_dir, struct dentry *new_dentry,
-			   unsigned int flags)
+			   struct inode *new_dir, struct dentry *new_dentry)
 {
         if (unlikely(IS_PRIVATE(old_dentry->d_inode) ||
             (new_dentry->d_inode && IS_PRIVATE(new_dentry->d_inode))))
 		return 0;
-
-	if (flags & RENAME_EXCHANGE) {
-		int err = security_ops->inode_rename(new_dir, new_dentry,
-						     old_dir, old_dentry);
-		if (err)
-			return err;
-	}
-
 	return security_ops->inode_rename(old_dir, old_dentry,
 					   new_dir, new_dentry);
 }
@@ -557,6 +501,9 @@ int security_inode_readlink(struct dentry *dentry)
 		return 0;
 	return security_ops->inode_readlink(dentry);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_inode_readlink);
+#endif  
 
 int security_inode_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
@@ -571,6 +518,9 @@ int security_inode_permission(struct inode *inode, int mask)
 		return 0;
 	return security_ops->inode_permission(inode, mask);
 }
+#if defined(MY_ABC_HERE) || defined(CONFIG_AUFS_FHSM)
+EXPORT_SYMBOL(security_inode_permission);
+#endif  
 
 int security_inode_setattr(struct dentry *dentry, struct iattr *attr)
 {
@@ -676,7 +626,6 @@ int security_inode_listsecurity(struct inode *inode, char *buffer, size_t buffer
 		return 0;
 	return security_ops->inode_listsecurity(inode, buffer, buffer_size);
 }
-EXPORT_SYMBOL(security_inode_listsecurity);
 
 void security_inode_getsecid(const struct inode *inode, u32 *secid)
 {
@@ -693,6 +642,9 @@ int security_file_permission(struct file *file, int mask)
 
 	return fsnotify_perm(file, mask);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_file_permission);
+#endif  
 
 int security_file_alloc(struct file *file)
 {
@@ -711,23 +663,15 @@ int security_file_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 static inline unsigned long mmap_prot(struct file *file, unsigned long prot)
 {
-	/*
-	 * Does we have PROT_READ and does the application expect
-	 * it to imply PROT_EXEC?  If not, nothing to talk about...
-	 */
+	 
 	if ((prot & (PROT_READ | PROT_EXEC)) != PROT_READ)
 		return prot;
 	if (!(current->personality & READ_IMPLIES_EXEC))
 		return prot;
-	/*
-	 * if that's an anonymous mapping, let it.
-	 */
+	 
 	if (!file)
 		return prot | PROT_EXEC;
-	/*
-	 * ditto if it's not on noexec mount, except that on !MMU we need
-	 * BDI_CAP_EXEC_MMAP (== VM_MAYEXEC) in this case
-	 */
+	 
 	if (!(file->f_path.mnt->mnt_flags & MNT_NOEXEC)) {
 #ifndef CONFIG_MMU
 		unsigned long caps = 0;
@@ -739,7 +683,7 @@ static inline unsigned long mmap_prot(struct file *file, unsigned long prot)
 #endif
 		return prot | PROT_EXEC;
 	}
-	/* anything on noexec mount won't get PROT_EXEC */
+	 
 	return prot;
 }
 
@@ -753,6 +697,9 @@ int security_mmap_file(struct file *file, unsigned long prot,
 		return ret;
 	return ima_file_mmap(file, prot);
 }
+#ifdef CONFIG_AUFS_FHSM
+EXPORT_SYMBOL(security_mmap_file);
+#endif  
 
 int security_mmap_addr(unsigned long addr)
 {
@@ -1077,12 +1024,6 @@ int security_netlink_send(struct sock *sk, struct sk_buff *skb)
 	return security_ops->netlink_send(sk, skb);
 }
 
-int security_ismaclabel(const char *name)
-{
-	return security_ops->ismaclabel(name);
-}
-EXPORT_SYMBOL(security_ismaclabel);
-
 int security_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
 {
 	return security_ops->secid_to_secctx(secid, secdata, seclen);
@@ -1331,15 +1272,13 @@ void security_skb_owned_by(struct sk_buff *skb, struct sock *sk)
 	security_ops->skb_owned_by(skb, sk);
 }
 
-#endif	/* CONFIG_SECURITY_NETWORK */
+#endif	 
 
 #ifdef CONFIG_SECURITY_NETWORK_XFRM
 
-int security_xfrm_policy_alloc(struct xfrm_sec_ctx **ctxp,
-			       struct xfrm_user_sec_ctx *sec_ctx,
-			       gfp_t gfp)
+int security_xfrm_policy_alloc(struct xfrm_sec_ctx **ctxp, struct xfrm_user_sec_ctx *sec_ctx)
 {
-	return security_ops->xfrm_policy_alloc_security(ctxp, sec_ctx, gfp);
+	return security_ops->xfrm_policy_alloc_security(ctxp, sec_ctx);
 }
 EXPORT_SYMBOL(security_xfrm_policy_alloc);
 
@@ -1360,17 +1299,19 @@ int security_xfrm_policy_delete(struct xfrm_sec_ctx *ctx)
 	return security_ops->xfrm_policy_delete_security(ctx);
 }
 
-int security_xfrm_state_alloc(struct xfrm_state *x,
-			      struct xfrm_user_sec_ctx *sec_ctx)
+int security_xfrm_state_alloc(struct xfrm_state *x, struct xfrm_user_sec_ctx *sec_ctx)
 {
-	return security_ops->xfrm_state_alloc(x, sec_ctx);
+	return security_ops->xfrm_state_alloc_security(x, sec_ctx, 0);
 }
 EXPORT_SYMBOL(security_xfrm_state_alloc);
 
 int security_xfrm_state_alloc_acquire(struct xfrm_state *x,
 				      struct xfrm_sec_ctx *polsec, u32 secid)
 {
-	return security_ops->xfrm_state_alloc_acquire(x, polsec, secid);
+	if (!polsec)
+		return 0;
+	 
+	return security_ops->xfrm_state_alloc_security(x, NULL, secid);
 }
 
 int security_xfrm_state_delete(struct xfrm_state *x)
@@ -1409,7 +1350,7 @@ void security_skb_classify_flow(struct sk_buff *skb, struct flowi *fl)
 }
 EXPORT_SYMBOL(security_skb_classify_flow);
 
-#endif	/* CONFIG_SECURITY_NETWORK_XFRM */
+#endif	 
 
 #ifdef CONFIG_KEYS
 
@@ -1435,7 +1376,7 @@ int security_key_getsecurity(struct key *key, char **_buffer)
 	return security_ops->key_getsecurity(key, _buffer);
 }
 
-#endif	/* CONFIG_KEYS */
+#endif	 
 
 #ifdef CONFIG_AUDIT
 
@@ -1460,4 +1401,4 @@ int security_audit_rule_match(u32 secid, u32 field, u32 op, void *lsmrule,
 	return security_ops->audit_rule_match(secid, field, op, lsmrule, actx);
 }
 
-#endif /* CONFIG_AUDIT */
+#endif  

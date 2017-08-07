@@ -3,7 +3,6 @@
  * Licensed under the GPL-2 or later.
  */
 
-
 #ifndef _MACH_GPIO_H_
 #define _MACH_GPIO_H_
 
@@ -192,6 +191,14 @@ struct gpio_port_t {
 	unsigned short inen;
 	unsigned short dummy7;
 	unsigned int port_mux;
+};
+
+struct gpio_port_s {
+	unsigned short fer;
+	unsigned short data;
+	unsigned short dir;
+	unsigned short inen;
+	unsigned int mux;
 };
 
 #endif

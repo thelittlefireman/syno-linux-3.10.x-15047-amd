@@ -149,5 +149,4 @@
 #define CX86_ARR_BASE	0xc4
 #define CX86_RCR_BASE	0xdc
 
-
 #endif /* _UAPI_ASM_X86_PROCESSOR_FLAGS_H */

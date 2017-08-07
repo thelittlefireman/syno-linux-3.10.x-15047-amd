@@ -29,7 +29,6 @@
 
 static struct sock *dnrmg = NULL;
 
-
 static struct sk_buff *dnrmg_build_message(struct sk_buff *rt_skb, int *errp)
 {
 	struct sk_buff *skb = NULL;
@@ -86,8 +85,7 @@ static void dnrmg_send_peer(struct sk_buff *skb)
 	netlink_broadcast(dnrmg, skb2, 0, group, GFP_ATOMIC);
 }
 
-
-static unsigned int dnrmg_hook(const struct nf_hook_ops *ops,
+static unsigned int dnrmg_hook(unsigned int hook,
 			struct sk_buff *skb,
 			const struct net_device *in,
 			const struct net_device *out,
@@ -96,7 +94,6 @@ static unsigned int dnrmg_hook(const struct nf_hook_ops *ops,
 	dnrmg_send_peer(skb);
 	return NF_ACCEPT;
 }
-
 
 #define RCV_SKB_FAIL(err) do { netlink_ack(skb, nlh, (err)); return; } while (0)
 
@@ -107,7 +104,7 @@ static inline void dnrmg_receive_user_skb(struct sk_buff *skb)
 	if (nlh->nlmsg_len < sizeof(*nlh) || skb->len < nlh->nlmsg_len)
 		return;
 
-	if (!capable(CAP_NET_ADMIN))
+	if (!netlink_capable(skb, CAP_NET_ADMIN))
 		RCV_SKB_FAIL(-EPERM);
 
 	/* Eventually we might send routing messages too */
@@ -150,7 +147,6 @@ static void __exit dn_rtmsg_fini(void)
 	netlink_kernel_release(dnrmg);
 }
 
-
 MODULE_DESCRIPTION("DECnet Routing Message Grabulator");
 MODULE_AUTHOR("Steven Whitehouse <steve@chygwyn.com>");
 MODULE_LICENSE("GPL");
@@ -158,4 +154,3 @@ MODULE_ALIAS_NET_PF_PROTO(PF_NETLINK, NETLINK_DNRTMSG);
 
 module_init(dn_rtmsg_init);
 module_exit(dn_rtmsg_fini);
-

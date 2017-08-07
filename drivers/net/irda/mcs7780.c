@@ -48,6 +48,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/usb.h>
 #include <linux/device.h>
@@ -190,8 +191,8 @@ static inline int mcs_setup_transceiver_vishay(struct mcs_cb *mcs)
 		goto error;
 
 	ret = 0;
-error:
-	return ret;
+	error:
+		return ret;
 }
 
 /* Setup a communication between mcs7780 and agilent chip. */
@@ -486,7 +487,6 @@ static void mcs_unwrap_fir(struct mcs_cb *mcs, __u8 *buf, int len)
 	mcs->netdev->stats.rx_bytes += new_len;
 }
 
-
 /* Allocates urbs for both receive and transmit.
  * If alloc fails return error code 0 (fail) otherwise
  * return error code 1 (success).
@@ -500,11 +500,8 @@ static inline int mcs_setup_urbs(struct mcs_cb *mcs)
 		return 0;
 
 	mcs->rx_urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!mcs->rx_urb) {
-		usb_free_urb(mcs->tx_urb);
-		mcs->tx_urb = NULL;
+	if (!mcs->rx_urb)
 		return 0;
-	}
 
 	return 1;
 }
@@ -645,9 +642,9 @@ static int mcs_speed_change(struct mcs_cb *mcs)
 	ret = mcs_set_reg(mcs, MCS_MODE_REG, rval);
 
 	mcs->speed = mcs->new_speed;
-error:
-	mcs->new_speed = 0;
-	return ret;
+	error:
+		mcs->new_speed = 0;
+		return ret;
 }
 
 /* Ioctl calls not supported at this time.  Can be an area of future work. */
@@ -740,20 +737,17 @@ static int mcs_net_open(struct net_device *netdev)
 
 	ret = mcs_receive_start(mcs);
 	if (ret)
-		goto error4;
+		goto error3;
 
 	netif_start_queue(netdev);
 	return 0;
 
-error4:
-	usb_free_urb(mcs->rx_urb);
-	usb_free_urb(mcs->tx_urb);
-error3:
-	irlap_close(mcs->irlap);
-error2:
-	kfree_skb(mcs->rx_buff.skb);
-error1:
-	return ret;
+	error3:
+		irlap_close(mcs->irlap);
+	error2:
+		kfree_skb(mcs->rx_buff.skb);
+	error1:
+		return ret;
 }
 
 /* Receive callback function.  */
@@ -916,7 +910,6 @@ static int mcs_probe(struct usb_interface *intf,
 	    IR_2400 | IR_9600 | IR_19200 | IR_38400 | IR_57600 | IR_115200
 		| IR_576000 | IR_1152000 | (IR_4000000 << 8);
 
-
 	mcs->qos.min_turn_time.bits &= qos_mtt_bits;
 	irda_qos_bits_to_value(&mcs->qos);
 
@@ -951,11 +944,11 @@ static int mcs_probe(struct usb_interface *intf,
 	usb_set_intfdata(intf, mcs);
 	return 0;
 
-error2:
-	free_netdev(ndev);
+	error2:
+		free_netdev(ndev);
 
-error1:
-	return ret;
+	error1:
+		return ret;
 }
 
 /* The current device is removed, the USB layer tells us to shut down. */

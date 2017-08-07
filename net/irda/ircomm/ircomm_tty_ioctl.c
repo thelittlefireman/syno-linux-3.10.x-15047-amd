@@ -22,7 +22,9 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ *     MA 02111-1307 USA
  *
  ********************************************************************/
 
@@ -306,7 +308,6 @@ static int ircomm_tty_set_serial_info(struct ircomm_tty_cb *self,
 	if (copy_from_user(&new_serial,new_info,sizeof(new_serial)))
 		return -EFAULT;
 
-
 	state = self
 	old_state = *self;
 
@@ -421,6 +422,3 @@ int ircomm_tty_ioctl(struct tty_struct *tty,
 	}
 	return ret;
 }
-
-
-

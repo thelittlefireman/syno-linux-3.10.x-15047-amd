@@ -52,8 +52,10 @@ static int ndesc_get_tx_status(void *data, struct stmmac_extra_stats *x,
 		ret = -1;
 	}
 
-	if (p->des01.etx.vlan_frame)
+	if (p->des01.etx.vlan_frame) {
+		CHIP_DBG(KERN_INFO "GMAC TX status: VLAN frame\n");
 		x->tx_vlan++;
+	}
 
 	if (unlikely(p->des01.tx.deferred))
 		x->tx_deferred++;

@@ -1,7 +1,7 @@
 /*
  *
  *  Support for audio capture for tm5600/6000/6010
- *    (c) 2007-2008 Mauro Carvalho Chehab
+ *    (c) 2007-2008 Mauro Carvalho Chehab <mchehab@redhat.com>
  *
  *  Based on cx88-alsa.c
  *
@@ -24,7 +24,6 @@
 #include <sound/pcm_params.h>
 #include <sound/control.h>
 #include <sound/initval.h>
-
 
 #include "tm6000.h"
 #include "tm6000-regs.h"
@@ -50,13 +49,12 @@ MODULE_PARM_DESC(enable, "Enable tm6000x soundcard. default enabled.");
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for tm6000x capture interface(s).");
 
-
 /****************************************************************************
 				Module macros
  ****************************************************************************/
 
 MODULE_DESCRIPTION("ALSA driver module for tm5600/tm6000/tm6010 based TV cards");
-MODULE_AUTHOR("Mauro Carvalho Chehab");
+MODULE_AUTHOR("Mauro Carvalho Chehab <mchehab@redhat.com>");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("{{Trident,tm5600},"
 			"{{Trident,tm6000},"
@@ -134,7 +132,6 @@ static int dsp_buffer_alloc(struct snd_pcm_substream *substream, int size)
 
 	return 0;
 }
-
 
 /****************************************************************************
 				ALSA PCM Interface
@@ -323,7 +320,6 @@ static int snd_tm6000_prepare(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-
 /*
  * trigger callback
  */
@@ -431,8 +427,7 @@ static int tm6000_audio_init(struct tm6000_core *dev)
 	if (!enable[devnr])
 		return -ENOENT;
 
-	rc = snd_card_new(&dev->udev->dev, index[devnr], "tm6000",
-			  THIS_MODULE, 0, &card);
+	rc = snd_card_create(index[devnr], "tm6000", THIS_MODULE, 0, &card);
 	if (rc < 0) {
 		snd_printk(KERN_ERR "cannot create card instance %d\n", devnr);
 		return rc;
@@ -446,6 +441,7 @@ static int tm6000_audio_init(struct tm6000_core *dev)
 		le16_to_cpu(dev->udev->descriptor.idVendor),
 		le16_to_cpu(dev->udev->descriptor.idProduct));
 	snd_component_add(card, component);
+	snd_card_set_dev(card, &dev->udev->dev);
 
 	chip = kzalloc(sizeof(struct snd_tm6000_card), GFP_KERNEL);
 	if (!chip) {

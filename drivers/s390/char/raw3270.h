@@ -173,7 +173,6 @@ int raw3270_start_locked(struct raw3270_view *, struct raw3270_request *);
 int raw3270_start_irq(struct raw3270_view *, struct raw3270_request *);
 int raw3270_reset(struct raw3270_view *);
 struct raw3270_view *raw3270_view(struct raw3270_view *);
-int raw3270_view_active(struct raw3270_view *);
 
 /* Reference count inliner for view structures. */
 static inline void
@@ -285,4 +284,3 @@ add_string_memory(struct list_head *free_list, void *mem, unsigned long size)
 	cs->size = size - sizeof(struct string);
 	free_string(free_list, cs);
 }
-

@@ -10,7 +10,6 @@
 
 #include <uapi/linux/sunrpc/debug.h>
 
-
 /*
  * Enable RPC debugging/profiling.
  */

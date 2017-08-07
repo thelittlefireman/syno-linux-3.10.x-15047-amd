@@ -58,7 +58,6 @@ static int store_updates_sp(struct pt_regs *regs)
 	return 0;
 }
 
-
 /*
  * bad_page_fault is called when we have a bad access from the kernel.
  * It is called from do_page_fault above and from some of the procedures
@@ -224,6 +223,8 @@ good_area:
 	if (unlikely(fault & VM_FAULT_ERROR)) {
 		if (fault & VM_FAULT_OOM)
 			goto out_of_memory;
+		else if (fault & VM_FAULT_SIGSEGV)
+			goto bad_area;
 		else if (fault & VM_FAULT_SIGBUS)
 			goto do_sigbus;
 		BUG();

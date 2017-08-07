@@ -48,7 +48,6 @@ enum {
 
 #define DC_ENTRIES	8
 
-
 static int has_N44_O17_errata[NR_CPUS];
 static unsigned int stock_freq;
 static struct cpufreq_driver p4clockmod_driver;
@@ -90,35 +89,57 @@ static int cpufreq_p4_setdc(unsigned int cpu, unsigned int newstate)
 	return 0;
 }
 
-
 static struct cpufreq_frequency_table p4clockmod_table[] = {
-	{0, DC_RESV, CPUFREQ_ENTRY_INVALID},
-	{0, DC_DFLT, 0},
-	{0, DC_25PT, 0},
-	{0, DC_38PT, 0},
-	{0, DC_50PT, 0},
-	{0, DC_64PT, 0},
-	{0, DC_75PT, 0},
-	{0, DC_88PT, 0},
-	{0, DC_DISABLE, 0},
-	{0, DC_RESV, CPUFREQ_TABLE_END},
+	{DC_RESV, CPUFREQ_ENTRY_INVALID},
+	{DC_DFLT, 0},
+	{DC_25PT, 0},
+	{DC_38PT, 0},
+	{DC_50PT, 0},
+	{DC_64PT, 0},
+	{DC_75PT, 0},
+	{DC_88PT, 0},
+	{DC_DISABLE, 0},
+	{DC_RESV, CPUFREQ_TABLE_END},
 };
 
-
-static int cpufreq_p4_target(struct cpufreq_policy *policy, unsigned int index)
+static int cpufreq_p4_target(struct cpufreq_policy *policy,
+			     unsigned int target_freq,
+			     unsigned int relation)
 {
+	unsigned int    newstate = DC_RESV;
+	struct cpufreq_freqs freqs;
 	int i;
+
+	if (cpufreq_frequency_table_target(policy, &p4clockmod_table[0],
+				target_freq, relation, &newstate))
+		return -EINVAL;
+
+	freqs.old = cpufreq_p4_get(policy->cpu);
+	freqs.new = stock_freq * p4clockmod_table[newstate].index / 8;
+
+	if (freqs.new == freqs.old)
+		return 0;
+
+	/* notifiers */
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
 	/* run on each logical CPU,
 	 * see section 13.15.3 of IA32 Intel Architecture Software
 	 * Developer's Manual, Volume 3
 	 */
 	for_each_cpu(i, policy->cpus)
-		cpufreq_p4_setdc(i, p4clockmod_table[index].driver_data);
+		cpufreq_p4_setdc(i, p4clockmod_table[newstate].index);
+
+	/* notifiers */
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 
 	return 0;
 }
 
+static int cpufreq_p4_verify(struct cpufreq_policy *policy)
+{
+	return cpufreq_frequency_table_verify(policy, &p4clockmod_table[0]);
+}
 
 static unsigned int cpufreq_p4_get_frequency(struct cpuinfo_x86 *c)
 {
@@ -163,8 +184,6 @@ static unsigned int cpufreq_p4_get_frequency(struct cpuinfo_x86 *c)
 	return speedstep_get_frequency(SPEEDSTEP_CPU_P4D);
 }
 
-
-
 static int cpufreq_p4_cpu_init(struct cpufreq_policy *policy)
 {
 	struct cpuinfo_x86 *c = &cpu_data(policy->cpu);
@@ -204,16 +223,23 @@ static int cpufreq_p4_cpu_init(struct cpufreq_policy *policy)
 		else
 			p4clockmod_table[i].frequency = (stock_freq * i)/8;
 	}
+	cpufreq_frequency_table_get_attr(p4clockmod_table, policy->cpu);
 
 	/* cpuinfo and default policy values */
 
 	/* the transition latency is set to be 1 higher than the maximum
 	 * transition latency of the ondemand governor */
 	policy->cpuinfo.transition_latency = 10000001;
+	policy->cur = stock_freq;
 
-	return cpufreq_table_validate_and_show(policy, &p4clockmod_table[0]);
+	return cpufreq_frequency_table_cpuinfo(policy, &p4clockmod_table[0]);
 }
 
+static int cpufreq_p4_cpu_exit(struct cpufreq_policy *policy)
+{
+	cpufreq_frequency_table_put_attr(policy->cpu);
+	return 0;
+}
 
 static unsigned int cpufreq_p4_get(unsigned int cpu)
 {
@@ -233,13 +259,20 @@ static unsigned int cpufreq_p4_get(unsigned int cpu)
 	return stock_freq;
 }
 
+static struct freq_attr *p4clockmod_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver p4clockmod_driver = {
-	.verify		= cpufreq_generic_frequency_table_verify,
-	.target_index	= cpufreq_p4_target,
+	.verify		= cpufreq_p4_verify,
+	.target		= cpufreq_p4_target,
 	.init		= cpufreq_p4_cpu_init,
+	.exit		= cpufreq_p4_cpu_exit,
 	.get		= cpufreq_p4_get,
 	.name		= "p4-clockmod",
-	.attr		= cpufreq_generic_attr,
+	.owner		= THIS_MODULE,
+	.attr		= p4clockmod_attr,
 };
 
 static const struct x86_cpu_id cpufreq_p4_id[] = {
@@ -271,12 +304,10 @@ static int __init cpufreq_p4_init(void)
 	return ret;
 }
 
-
 static void __exit cpufreq_p4_exit(void)
 {
 	cpufreq_unregister_driver(&p4clockmod_driver);
 }
-
 
 MODULE_AUTHOR("Zwane Mwaikambo <zwane@commfireservices.com>");
 MODULE_DESCRIPTION("cpufreq driver for Pentium(TM) 4/Xeon(TM)");

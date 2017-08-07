@@ -21,19 +21,18 @@
 
 #include <stdint.h>
 #include "usbip_common.h"
-#include "list.h"
 
 struct usbip_host_driver {
 	int ndevs;
+	struct sysfs_driver *sysfs_driver;
 	/* list of exported device */
-	struct list_head edev_list;
+	struct dlist *edev_list;
 };
 
 struct usbip_exported_device {
-	struct udev_device *sudev;
+	struct sysfs_device *sudev;
 	int32_t status;
 	struct usbip_usb_device udev;
-	struct list_head node;
 	struct usbip_usb_interface uinf[];
 };
 

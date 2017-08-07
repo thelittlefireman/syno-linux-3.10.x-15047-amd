@@ -731,7 +731,7 @@ static int _osd_req_list_objects(struct osd_request *or,
 
 	bio->bi_rw &= ~REQ_WRITE;
 	or->in.bio = bio;
-	or->in.total_bytes = bio->bi_iter.bi_size;
+	or->in.total_bytes = bio->bi_size;
 	return 0;
 }
 
@@ -815,7 +815,6 @@ void osd_req_remove_object(struct osd_request *or, struct osd_obj_id *obj)
 	_osd_req_encode_common(or, OSD_ACT_REMOVE, obj, 0, 0);
 }
 EXPORT_SYMBOL(osd_req_remove_object);
-
 
 /*TODO: void osd_req_create_multi(struct osd_request *or,
 	struct osd_obj_id *first, struct osd_obj_id_list *list, unsigned nelem);
@@ -1100,8 +1099,6 @@ int osd_req_read_sg_kern(struct osd_request *or,
 	return 0;
 }
 EXPORT_SYMBOL(osd_req_read_sg_kern);
-
-
 
 void osd_req_get_attributes(struct osd_request *or,
 	const struct osd_obj_id *obj)

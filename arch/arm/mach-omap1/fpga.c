@@ -48,7 +48,6 @@ static void fpga_mask_irq(struct irq_data *d)
 			      & ~(1 << (irq - 16))), INNOVATOR_FPGA_IMR2);
 }
 
-
 static inline u32 get_fpga_unmasked_irqs(void)
 {
 	return
@@ -59,7 +58,6 @@ static inline u32 get_fpga_unmasked_irqs(void)
 		((__raw_readb(INNOVATOR_FPGA_ISR2) &
 		  __raw_readb(INNOVATOR_FPGA_IMR2)) << 16);
 }
-
 
 static void fpga_ack_irq(struct irq_data *d)
 {
@@ -113,7 +111,6 @@ static struct irq_chip omap_fpga_irq_ack = {
 	.irq_unmask	= fpga_unmask_irq,
 };
 
-
 static struct irq_chip omap_fpga_irq = {
 	.name		= "FPGA",
 	.irq_ack	= fpga_ack_irq,
@@ -135,7 +132,8 @@ static struct irq_chip omap_fpga_irq = {
  * mask_ack routine for all of the FPGA interrupts has been changed from
  * fpga_mask_ack_irq() to fpga_ack_irq() so that the specific FPGA interrupt
  * being serviced is left unmasked.  We can do this because the FPGA cascade
- * interrupt is run with all interrupts masked.
+ * interrupt is installed with the IRQF_DISABLED flag, which leaves all
+ * interrupts masked at the CPU while an FPGA interrupt handler executes.
  *
  * Limited testing indicates that this workaround appears to be effective
  * for the smc9194 Ethernet driver used on the Innovator.  It should work

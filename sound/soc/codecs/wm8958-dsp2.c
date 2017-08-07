@@ -348,7 +348,7 @@ static void wm8958_dsp_apply(struct snd_soc_codec *codec, int path, int start)
 		aif = 1;
 		break;
 	default:
-		WARN(1, "Invalid path %d\n", path);
+		BUG();
 		return;
 	}
 
@@ -459,7 +459,7 @@ static int wm8958_put_mbc_enum(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 	struct wm8994 *control = wm8994->wm8994;
-	int value = ucontrol->value.integer.value[0];
+	int value = ucontrol->value.enumerated.item[0];
 	int reg;
 
 	/* Don't allow on the fly reconfiguration */
@@ -549,7 +549,7 @@ static int wm8958_put_vss_enum(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 	struct wm8994 *control = wm8994->wm8994;
-	int value = ucontrol->value.integer.value[0];
+	int value = ucontrol->value.enumerated.item[0];
 	int reg;
 
 	/* Don't allow on the fly reconfiguration */
@@ -582,7 +582,7 @@ static int wm8958_put_vss_hpf_enum(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 	struct wm8994 *control = wm8994->wm8994;
-	int value = ucontrol->value.integer.value[0];
+	int value = ucontrol->value.enumerated.item[0];
 	int reg;
 
 	/* Don't allow on the fly reconfiguration */
@@ -661,7 +661,6 @@ static int wm8958_vss_put(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
-
 
 #define WM8958_VSS_SWITCH(xname, xval) {\
 	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = (xname), \
@@ -749,7 +748,7 @@ static int wm8958_put_enh_eq_enum(struct snd_kcontrol *kcontrol,
 	struct snd_soc_codec *codec = snd_kcontrol_chip(kcontrol);
 	struct wm8994_priv *wm8994 = snd_soc_codec_get_drvdata(codec);
 	struct wm8994 *control = wm8994->wm8994;
-	int value = ucontrol->value.integer.value[0];
+	int value = ucontrol->value.enumerated.item[0];
 	int reg;
 
 	/* Don't allow on the fly reconfiguration */
@@ -913,7 +912,6 @@ void wm8958_dsp2_init(struct snd_soc_codec *codec)
 	snd_soc_add_codec_controls(codec, wm8958_enh_eq_snd_controls,
 			     ARRAY_SIZE(wm8958_enh_eq_snd_controls));
 
-
 	/* We don't *require* firmware and don't want to delay boot */
 	request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
 				"wm8958_mbc.wfw", codec->dev, GFP_KERNEL,
@@ -944,7 +942,7 @@ void wm8958_dsp2_init(struct snd_soc_codec *codec)
 		for (i = 0; i < pdata->num_mbc_cfgs; i++)
 			wm8994->mbc_texts[i] = pdata->mbc_cfgs[i].name;
 
-		wm8994->mbc_enum.items = pdata->num_mbc_cfgs;
+		wm8994->mbc_enum.max = pdata->num_mbc_cfgs;
 		wm8994->mbc_enum.texts = wm8994->mbc_texts;
 
 		ret = snd_soc_add_codec_controls(wm8994->hubs.codec,
@@ -973,7 +971,7 @@ void wm8958_dsp2_init(struct snd_soc_codec *codec)
 		for (i = 0; i < pdata->num_vss_cfgs; i++)
 			wm8994->vss_texts[i] = pdata->vss_cfgs[i].name;
 
-		wm8994->vss_enum.items = pdata->num_vss_cfgs;
+		wm8994->vss_enum.max = pdata->num_vss_cfgs;
 		wm8994->vss_enum.texts = wm8994->vss_texts;
 
 		ret = snd_soc_add_codec_controls(wm8994->hubs.codec,
@@ -1003,7 +1001,7 @@ void wm8958_dsp2_init(struct snd_soc_codec *codec)
 		for (i = 0; i < pdata->num_vss_hpf_cfgs; i++)
 			wm8994->vss_hpf_texts[i] = pdata->vss_hpf_cfgs[i].name;
 
-		wm8994->vss_hpf_enum.items = pdata->num_vss_hpf_cfgs;
+		wm8994->vss_hpf_enum.max = pdata->num_vss_hpf_cfgs;
 		wm8994->vss_hpf_enum.texts = wm8994->vss_hpf_texts;
 
 		ret = snd_soc_add_codec_controls(wm8994->hubs.codec,
@@ -1034,7 +1032,7 @@ void wm8958_dsp2_init(struct snd_soc_codec *codec)
 		for (i = 0; i < pdata->num_enh_eq_cfgs; i++)
 			wm8994->enh_eq_texts[i] = pdata->enh_eq_cfgs[i].name;
 
-		wm8994->enh_eq_enum.items = pdata->num_enh_eq_cfgs;
+		wm8994->enh_eq_enum.max = pdata->num_enh_eq_cfgs;
 		wm8994->enh_eq_enum.texts = wm8994->enh_eq_texts;
 
 		ret = snd_soc_add_codec_controls(wm8994->hubs.codec,

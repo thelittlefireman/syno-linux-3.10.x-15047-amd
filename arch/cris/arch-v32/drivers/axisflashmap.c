@@ -24,6 +24,8 @@
 #include <linux/mtd/mtdram.h>
 #include <linux/mtd/partitions.h>
 
+#include <linux/cramfs_fs.h>
+
 #include <asm/axisflashmap.h>
 #include <asm/mmu.h>
 
@@ -169,7 +171,6 @@ static struct mtd_partition axis_partitions[MAX_PARTITIONS] = {
 		.offset = 0
 	},
 };
-
 
 /* If no partition-table was found, we use this default-set.
  * Default flash size is 8MB (NOR). CONFIG_ETRAX_PTABLE_SECTOR is most

@@ -46,7 +46,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 static struct platform_device *ibwdt_platform_device;
 static unsigned long ibwdt_is_open;
 static DEFINE_SPINLOCK(ibwdt_lock);
@@ -107,7 +106,6 @@ module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout,
 		"Watchdog cannot be stopped once started (default="
 				__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
-
 
 /*
  *	Watchdog Operations
@@ -277,7 +275,7 @@ static struct miscdevice ibwdt_miscdev = {
  *	Init & exit routines
  */
 
-static int __init ibwdt_probe(struct platform_device *dev)
+static int ibwdt_probe(struct platform_device *dev)
 {
 	int res;
 
@@ -336,6 +334,7 @@ static void ibwdt_shutdown(struct platform_device *dev)
 }
 
 static struct platform_driver ibwdt_driver = {
+	.probe		= ibwdt_probe,
 	.remove		= ibwdt_remove,
 	.shutdown	= ibwdt_shutdown,
 	.driver		= {
@@ -350,19 +349,21 @@ static int __init ibwdt_init(void)
 
 	pr_info("WDT driver for IB700 single board computer initialising\n");
 
+	err = platform_driver_register(&ibwdt_driver);
+	if (err)
+		return err;
+
 	ibwdt_platform_device = platform_device_register_simple(DRV_NAME,
 								-1, NULL, 0);
-	if (IS_ERR(ibwdt_platform_device))
-		return PTR_ERR(ibwdt_platform_device);
-
-	err = platform_driver_probe(&ibwdt_driver, ibwdt_probe);
-	if (err)
-		goto unreg_platform_device;
+	if (IS_ERR(ibwdt_platform_device)) {
+		err = PTR_ERR(ibwdt_platform_device);
+		goto unreg_platform_driver;
+	}
 
 	return 0;
 
-unreg_platform_device:
-	platform_device_unregister(ibwdt_platform_device);
+unreg_platform_driver:
+	platform_driver_unregister(&ibwdt_driver);
 	return err;
 }
 
@@ -379,5 +380,6 @@ module_exit(ibwdt_exit);
 MODULE_AUTHOR("Charles Howes <chowes@vsol.net>");
 MODULE_DESCRIPTION("IB700 SBC watchdog driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 
 /* end of ib700wdt.c */

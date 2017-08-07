@@ -9,14 +9,13 @@ struct scsi_device;
 struct request;
 struct request_queue;
 
-
 struct scsi_driver {
 	struct module		*owner;
 	struct device_driver	gendrv;
 
 	void (*rescan)(struct device *);
 	int (*done)(struct scsi_cmnd *);
-	int (*eh_action)(struct scsi_cmnd *, int);
+	int (*eh_action)(struct scsi_cmnd *, unsigned char *, int, int);
 };
 #define to_scsi_driver(drv) \
 	container_of((drv), struct scsi_driver, gendrv)

@@ -1344,7 +1344,6 @@ int txCommit(tid_t tid,		/* transaction identifier */
 	if ((tblk->flag & tblkGC_LAZY) == 0)
 		txUnlock(tblk);
 
-
 	/*
 	 *	reset in-memory object state
 	 */
@@ -2307,7 +2306,6 @@ static void txUpdateMap(struct tblock * tblk)
 
 	maptype = (tblk->xflag & COMMIT_PMAP) ? COMMIT_PMAP : COMMIT_PWMAP;
 
-
 	/*
 	 *	update block allocation map
 	 *
@@ -2684,7 +2682,7 @@ void txAbort(tid_t tid, int dirty)
 	 * mark filesystem dirty
 	 */
 	if (dirty)
-		jfs_error(tblk->sb, "\n");
+		jfs_error(tblk->sb, "txAbort");
 
 	return;
 }

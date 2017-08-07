@@ -148,7 +148,7 @@ static void __cleanup(struct ioat2_dma_chan *ioat, dma_addr_t phys_complete)
 		tx = &desc->txd;
 		dump_desc_dbg(ioat, desc);
 		if (tx->cookie) {
-			dma_descriptor_unmap(tx);
+			ioat_dma_unmap(chan, tx->flags, desc->len, desc->hw);
 			dma_cookie_complete(tx);
 			if (tx->callback) {
 				tx->callback(tx->callback_param);
@@ -339,7 +339,6 @@ void ioat2_timer_event(unsigned long data)
 		set_bit(IOAT_COMPLETION_ACK, &chan->state);
 		mod_timer(&chan->timer, jiffies + COMPLETION_TIMEOUT);
 	}
-
 
 	if (ioat2_ring_active(ioat))
 		mod_timer(&chan->timer, jiffies + COMPLETION_TIMEOUT);

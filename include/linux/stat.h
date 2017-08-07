@@ -1,6 +1,8 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 #ifndef _LINUX_STAT_H
 #define _LINUX_STAT_H
-
 
 #include <asm/stat.h>
 #include <uapi/linux/stat.h>
@@ -22,6 +24,12 @@ struct kstat {
 	u64		ino;
 	dev_t		dev;
 	umode_t		mode;
+#ifdef MY_ABC_HERE
+	__u32		syno_archive_bit;
+#endif
+#ifdef MY_ABC_HERE
+	__u32		syno_archive_version;
+#endif
 	unsigned int	nlink;
 	kuid_t		uid;
 	kgid_t		gid;
@@ -30,6 +38,9 @@ struct kstat {
 	struct timespec  atime;
 	struct timespec	mtime;
 	struct timespec	ctime;
+#ifdef MY_ABC_HERE
+	struct timespec syno_create_time;
+#endif
 	unsigned long	blksize;
 	unsigned long long	blocks;
 };

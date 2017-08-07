@@ -168,8 +168,10 @@ static int __xipram cfi_chip_setup(struct map_info *map,
 		return 0;
 
 	cfi->cfiq = kmalloc(sizeof(struct cfi_ident) + num_erase_regions * 4, GFP_KERNEL);
-	if (!cfi->cfiq)
+	if (!cfi->cfiq) {
+		printk(KERN_WARNING "%s: kmalloc failed for CFI ident structure\n", map->name);
 		return 0;
+	}
 
 	memset(cfi->cfiq,0,sizeof(struct cfi_ident));
 
@@ -293,7 +295,6 @@ static char *vendorname(__u16 vendor)
 	}
 }
 
-
 static void print_cfi_ident(struct cfi_ident *cfip)
 {
 #if 0
@@ -313,7 +314,6 @@ static void print_cfi_ident(struct cfi_ident *cfip)
 		printk("Alternate Algorithm Table at %4.4X\n", cfip->A_ADR);
 	else
 		printk("No Alternate Algorithm Table\n");
-
 
 	printk("Vcc Minimum: %2d.%d V\n", cfip->VccMin >> 4, cfip->VccMin & 0xf);
 	printk("Vcc Maximum: %2d.%d V\n", cfip->VccMax >> 4, cfip->VccMax & 0xf);

@@ -68,7 +68,6 @@
 #include "eata_generic.h"
 #include "eata_pio.h"
 
-
 static unsigned int ISAbases[MAXISA] =	{
 	 0x1F0, 0x170, 0x330, 0x230
 };
@@ -687,7 +686,7 @@ static int register_pio_HBA(long base, struct get_conf *gc, struct pci_dev *pdev
 		return 0;
 
 	if (!reg_IRQ[gc->IRQ]) {	/* Interrupt already registered ? */
-		if (!request_irq(gc->IRQ, do_eata_pio_int_handler, 0, "EATA-PIO", sh)) {
+		if (!request_irq(gc->IRQ, do_eata_pio_int_handler, IRQF_DISABLED, "EATA-PIO", sh)) {
 			reg_IRQ[gc->IRQ]++;
 			if (!gc->IRQ_TR)
 				reg_IRQL[gc->IRQ] = 1;	/* IRQ is edge triggered */
@@ -919,9 +918,9 @@ static int eata_pio_detect(struct scsi_host_template *tpnt)
 	find_pio_EISA(&gc);
 	find_pio_ISA(&gc);
 
-	for (i = 0; i < MAXIRQ; i++)
+	for (i = 0; i <= MAXIRQ; i++)
 		if (reg_IRQ[i])
-			request_irq(i, do_eata_pio_int_handler, 0, "EATA-PIO", NULL);
+			request_irq(i, do_eata_pio_int_handler, IRQF_DISABLED, "EATA-PIO", NULL);
 
 	HBA_ptr = first_HBA;
 

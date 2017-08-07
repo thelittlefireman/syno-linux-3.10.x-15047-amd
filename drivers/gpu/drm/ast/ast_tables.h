@@ -43,7 +43,6 @@
 #define VBorder                 0x00000010
 #define WideScreenMode		0x00000100
 
-
 /* DCLK Index */
 #define VCLK25_175     		0x00
 #define VCLK28_322     		0x01
@@ -192,7 +191,6 @@ static struct ast_vbios_enhtable res_800x600[] = {
 	{1048, 800, 32, 64, 631, 600, 1, 3, VCLK56_25,	/* end */
 	 (SyncPP | Charx8Dot), 0xFF, 5, 0x30 },
 };
-
 
 static struct ast_vbios_enhtable res_1024x768[] = {
 	{1344, 1024, 24, 136, 806, 768, 3, 6, VCLK65,	/* 60Hz */

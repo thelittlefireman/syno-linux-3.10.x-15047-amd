@@ -259,7 +259,7 @@ cuda_probe(void)
     } while (0)
 
 static int
-__init cuda_init_via(void)
+cuda_init_via(void)
 {
     out_8(&via[DIRB], (in_8(&via[DIRB]) | TACK | TIP) & ~TREQ);	/* TACK & TIP out */
     out_8(&via[B], in_8(&via[B]) | TACK | TIP);			/* negate them */
@@ -325,7 +325,6 @@ cuda_send_request(struct adb_request *req, int sync)
     }
     return 0;
 }
-
 
 /* Enable/disable autopolling */
 static int

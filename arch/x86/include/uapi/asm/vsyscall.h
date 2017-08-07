@@ -13,5 +13,4 @@ enum vsyscall_num {
 #define VSYSCALL_MAPPED_PAGES 1
 #define VSYSCALL_ADDR(vsyscall_nr) (VSYSCALL_START+VSYSCALL_SIZE*(vsyscall_nr))
 
-
 #endif /* _UAPI_ASM_X86_VSYSCALL_H */

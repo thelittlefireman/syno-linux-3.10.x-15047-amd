@@ -113,12 +113,11 @@ void flush_dcache_page(struct page *page)
 	/* There shouldn't be an entry in the cache for this page anymore. */
 }
 
-
 /*
  * For now, flush the whole cache. FIXME??
  */
 
-void local_flush_cache_range(struct vm_area_struct *vma,
+void flush_cache_range(struct vm_area_struct* vma,
 		       unsigned long start, unsigned long end)
 {
 	__flush_invalidate_dcache_all();
@@ -132,7 +131,7 @@ void local_flush_cache_range(struct vm_area_struct *vma,
  * alias versions of the cache flush functions.
  */
 
-void local_flush_cache_page(struct vm_area_struct *vma, unsigned long address,
+void flush_cache_page(struct vm_area_struct* vma, unsigned long address,
 		      unsigned long pfn)
 {
 	/* Note that we have to use the 'alias' address to avoid multi-hit */
@@ -159,7 +158,8 @@ update_mmu_cache(struct vm_area_struct * vma, unsigned long addr, pte_t *ptep)
 
 	/* Invalidate old entry in TLBs */
 
-	flush_tlb_page(vma, addr);
+	invalidate_itlb_mapping(addr);
+	invalidate_dtlb_mapping(addr);
 
 #if (DCACHE_WAY_SIZE > PAGE_SIZE) && XCHAL_DCACHE_IS_WRITEBACK
 

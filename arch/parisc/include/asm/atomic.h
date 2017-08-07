@@ -43,7 +43,6 @@ extern arch_spinlock_t __atomic_hash[ATOMIC_HASH_SIZE] __lock_aligned;
 	local_irq_restore(f);				\
 } while(0)
 
-
 #else
 #  define _atomic_spin_lock_irqsave(l,f) do { local_irq_save(f); } while (0)
 #  define _atomic_spin_unlock_irqrestore(l,f) do { local_irq_restore(f); } while (0)
@@ -113,7 +112,6 @@ static __inline__ int __atomic_add_unless(atomic_t *v, int a, int u)
 	}
 	return c;
 }
-
 
 #define atomic_add(i,v)	((void)(__atomic_add_return(        (i),(v))))
 #define atomic_sub(i,v)	((void)(__atomic_add_return(-((int) (i)),(v))))
@@ -253,6 +251,5 @@ static inline long atomic64_dec_if_positive(atomic64_t *v)
 }
 
 #endif /* !CONFIG_64BIT */
-
 
 #endif /* _ASM_PARISC_ATOMIC_H_ */

@@ -44,8 +44,6 @@
 #include <net/ip6_route.h>
 #include <net/addrconf.h>
 #include <net/xfrm.h>
-#include <net/inet_ecn.h>
-
 
 int ip6_rcv_finish(struct sk_buff *skb)
 {
@@ -109,10 +107,6 @@ int ipv6_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt
 	if (hdr->version != 6)
 		goto err;
 
-	IP6_ADD_STATS_BH(dev_net(dev), idev,
-			 IPSTATS_MIB_NOECTPKTS +
-				(ipv6_get_dsfield(hdr) & INET_ECN_MASK),
-			 max_t(unsigned short, 1, skb_shinfo(skb)->gso_segs));
 	/*
 	 * RFC4291 2.5.3
 	 * A packet received on an interface with a destination address
@@ -197,7 +191,6 @@ drop:
  *	Deliver the packet to the host
  */
 
-
 static int ip6_input_finish(struct sk_buff *skb)
 {
 	struct net *net = dev_net(skb_dst(skb)->dev);
@@ -273,7 +266,6 @@ discard:
 	return 0;
 }
 
-
 int ip6_input(struct sk_buff *skb)
 {
 	return NF_HOOK(NFPROTO_IPV6, NF_INET_LOCAL_IN, skb, skb->dev, NULL,
@@ -329,10 +321,10 @@ int ip6_mc_input(struct sk_buff *skb)
 				if (offset < 0)
 					goto out;
 
-				if (!ipv6_is_mld(skb, nexthdr, offset))
-					goto out;
+				if (ipv6_is_mld(skb, nexthdr, offset))
+					deliver = true;
 
-				deliver = true;
+				goto out;
 			}
 			/* unknown RA - process it normally */
 		}

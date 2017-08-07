@@ -123,14 +123,14 @@ static int irtty_change_speed(struct sir_dev *dev, unsigned speed)
 
 	tty = priv->tty;
 
-	down_write(&tty->termios_rwsem);
+	mutex_lock(&tty->termios_mutex);
 	old_termios = tty->termios;
 	cflag = tty->termios.c_cflag;
 	tty_encode_baud_rate(tty, speed, speed);
 	if (tty->ops->set_termios)
 		tty->ops->set_termios(tty, &old_termios);
 	priv->io.speed = speed;
-	up_write(&tty->termios_rwsem);
+	mutex_unlock(&tty->termios_mutex);
 
 	return 0;
 }
@@ -280,7 +280,7 @@ static inline void irtty_stop_receiver(struct tty_struct *tty, int stop)
 	struct ktermios old_termios;
 	int cflag;
 
-	down_write(&tty->termios_rwsem);
+	mutex_lock(&tty->termios_mutex);
 	old_termios = tty->termios;
 	cflag = tty->termios.c_cflag;
 	
@@ -292,7 +292,7 @@ static inline void irtty_stop_receiver(struct tty_struct *tty, int stop)
 	tty->termios.c_cflag = cflag;
 	if (tty->ops->set_termios)
 		tty->ops->set_termios(tty, &old_termios);
-	up_write(&tty->termios_rwsem);
+	mutex_unlock(&tty->termios_mutex);
 }
 
 /*****************************************************************/
@@ -414,7 +414,6 @@ static int irtty_ioctl(struct tty_struct *tty, struct file *file, unsigned int c
 	return err;
 }
 
-
 /* 
  *  Function irtty_open(tty)
  *
@@ -429,16 +428,6 @@ static int irtty_open(struct tty_struct *tty)
 	int ret = 0;
 
 	/* Module stuff handled via irda_ldisc.owner - Jean II */
-
-	/* First make sure we're not already connected. */
-	if (tty->disc_data != NULL) {
-		priv = tty->disc_data;
-		if (priv && priv->magic == IRTTY_MAGIC) {
-			ret = -EEXIST;
-			goto out;
-		}
-		tty->disc_data = NULL;		/* ### */
-	}
 
 	/* stop the underlying  driver */
 	irtty_stop_receiver(tty, TRUE);
@@ -522,6 +511,7 @@ static void irtty_close(struct tty_struct *tty)
 	sirdev_put_instance(priv->dev);
 
 	/* Stop tty */
+	irtty_stop_receiver(tty, TRUE);
 	clear_bit(TTY_DO_WRITE_WAKEUP, &tty->flags);
 	if (tty->ops->stop)
 		tty->ops->stop(tty);
@@ -577,4 +567,3 @@ MODULE_AUTHOR("Dag Brattli <dagb@cs.uit.no>");
 MODULE_DESCRIPTION("IrDA TTY device driver");
 MODULE_ALIAS_LDISC(N_IRDA);
 MODULE_LICENSE("GPL");
-

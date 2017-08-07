@@ -1,21 +1,7 @@
-/* -*- linux-c -*- ------------------------------------------------------- *
- *
- *   Copyright 2002 H. Peter Anvin - All Rights Reserved
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, Inc., 53 Temple Place Ste 330,
- *   Boston MA 02111-1307, USA; either version 2 of the License, or
- *   (at your option) any later version; incorporated herein by reference.
- *
- * ----------------------------------------------------------------------- */
-
-/*
- * raid6/algos.c
- *
- * Algorithm list and algorithm selection for RAID-6
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/raid/pq.h>
 #ifndef __KERNEL__
 #include <sys/mman.h>
@@ -24,7 +10,7 @@
 #include <linux/module.h>
 #include <linux/gfp.h>
 #if !RAID6_USE_EMPTY_ZERO_PAGE
-/* In .bss so it's zeroed */
+ 
 const char raid6_empty_zero_page[PAGE_SIZE] __attribute__((aligned(256)));
 EXPORT_SYMBOL(raid6_empty_zero_page);
 #endif
@@ -66,19 +52,10 @@ const struct raid6_calls * const raid6_algos[] = {
 	&raid6_altivec4,
 	&raid6_altivec8,
 #endif
-#if defined(CONFIG_TILEGX)
-	&raid6_tilegx8,
-#endif
 	&raid6_intx1,
 	&raid6_intx2,
 	&raid6_intx4,
 	&raid6_intx8,
-#ifdef CONFIG_KERNEL_MODE_NEON
-	&raid6_neonx1,
-	&raid6_neonx2,
-	&raid6_neonx4,
-	&raid6_neonx8,
-#endif
 	NULL
 };
 
@@ -102,7 +79,7 @@ const struct raid6_recov_calls *const raid6_recov_algos[] = {
 #ifdef __KERNEL__
 #define RAID6_TIME_JIFFIES_LG2	4
 #else
-/* Need more time to be stable in userspace */
+ 
 #define RAID6_TIME_JIFFIES_LG2	9
 #define time_before(x, y) ((x) < (y))
 #endif
@@ -131,11 +108,20 @@ static inline const struct raid6_recov_calls *raid6_choose_recov(void)
 static inline const struct raid6_calls *raid6_choose_gen(
 	void *(*const dptrs)[(65536/PAGE_SIZE)+2], const int disks)
 {
+#ifdef MY_ABC_HERE
+	unsigned long perf, bestgenperf, bestxorperf, j0, j1;
+	int start = (disks>>1)-1, stop = disks-3;	 
+#else  
 	unsigned long perf, bestperf, j0, j1;
+#endif  
 	const struct raid6_calls *const *algo;
 	const struct raid6_calls *best;
 
+#ifdef MY_ABC_HERE
+	for (bestgenperf = 0, bestxorperf = 0, best = NULL, algo = raid6_algos; *algo; algo++) {
+#else  
 	for (bestperf = 0, best = NULL, algo = raid6_algos; *algo; algo++) {
+#endif  
 		if (!best || (*algo)->prefer >= best->prefer) {
 			if ((*algo)->valid && !(*algo)->valid())
 				continue;
@@ -153,29 +139,72 @@ static inline const struct raid6_calls *raid6_choose_gen(
 			}
 			preempt_enable();
 
+#ifdef MY_ABC_HERE
+			if (perf > bestgenperf) {
+				bestgenperf = perf;
+#else  
 			if (perf > bestperf) {
 				bestperf = perf;
+#endif  
 				best = *algo;
 			}
+#ifdef MY_ABC_HERE
+			printk("raid6: %-8s gen() %5ld MB/s\n", (*algo)->name,
+#else  
 			printk("raid6: %-8s %5ld MB/s\n", (*algo)->name,
+#endif  
 			       (perf*HZ) >> (20-16+RAID6_TIME_JIFFIES_LG2));
+#ifdef MY_ABC_HERE
+
+			if (!(*algo)->xor_syndrome)
+				continue;
+
+			perf = 0;
+
+			preempt_disable();
+			j0 = jiffies;
+			while ((j1 = jiffies) == j0)
+				cpu_relax();
+			while (time_before(jiffies,
+					    j1 + (1<<RAID6_TIME_JIFFIES_LG2))) {
+				(*algo)->xor_syndrome(disks, start, stop,
+						      PAGE_SIZE, *dptrs);
+				perf++;
+			}
+			preempt_enable();
+
+			if (best == *algo)
+				bestxorperf = perf;
+
+			printk("raid6: %-8s xor() %5ld MB/s\n", (*algo)->name,
+				(perf*HZ) >> (20-16+RAID6_TIME_JIFFIES_LG2+1));
+#endif  
 		}
 	}
 
 	if (best) {
+#ifdef MY_ABC_HERE
+		printk("raid6: using algorithm %s gen() (%ld MB/s)\n",
+#else  
 		printk("raid6: using algorithm %s (%ld MB/s)\n",
+#endif  
 		       best->name,
+#ifdef MY_ABC_HERE
+		       (bestgenperf*HZ) >> (20-16+RAID6_TIME_JIFFIES_LG2));
+#else  
 		       (bestperf*HZ) >> (20-16+RAID6_TIME_JIFFIES_LG2));
+#endif  
+#ifdef MY_ABC_HERE
+		if (best->xor_syndrome)
+			printk("raid6: .... xor() %ld MB/s, rmw enabled\n",
+			       (bestxorperf*HZ) >> (20-16+RAID6_TIME_JIFFIES_LG2+1));
+#endif  
 		raid6_call = *best;
 	} else
 		printk("raid6: Yikes!  No algorithm found!\n");
 
 	return best;
 }
-
-
-/* Try to pick the best algorithm */
-/* This code uses the gfmul table as convenient data set to abuse */
 
 int __init raid6_select_algo(void)
 {
@@ -190,7 +219,6 @@ int __init raid6_select_algo(void)
 	for (i = 0; i < disks-2; i++)
 		dptrs[i] = ((char *)raid6_gfmul) + PAGE_SIZE*i;
 
-	/* Normal code - use a 2-page allocation to avoid D$ conflict */
 	syndromes = (void *) __get_free_pages(GFP_KERNEL, 1);
 
 	if (!syndromes) {
@@ -201,10 +229,8 @@ int __init raid6_select_algo(void)
 	dptrs[disks-2] = syndromes;
 	dptrs[disks-1] = syndromes + PAGE_SIZE;
 
-	/* select raid gen_syndrome function */
 	gen_best = raid6_choose_gen(&dptrs, disks);
 
-	/* select raid recover functions */
 	rec_best = raid6_choose_recov();
 
 	free_pages((unsigned long)syndromes, 1);

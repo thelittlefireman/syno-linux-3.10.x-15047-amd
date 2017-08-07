@@ -166,7 +166,6 @@ static inline void set_chnl_busy(struct shm *sm, u32 chnl)
 	sm->host_free_mask |= 1 << chnl;
 }
 
-
 /*
  *  ======== bridge_io_create ========
  *      Create an IO manager object.
@@ -790,7 +789,6 @@ void io_cancel_chnl(struct io_mgr *hio_mgr, u32 chnl)
 func_end:
 	return;
 }
-
 
 /*
  *  ======== io_dispatch_pm ========
@@ -1647,7 +1645,6 @@ int bridge_io_get_proc_load(struct io_mgr *hio_mgr,
 	return 0;
 }
 
-
 #if defined(CONFIG_TIDSPBRIDGE_BACKTRACE)
 void print_dsp_debug_trace(struct io_mgr *hio_mgr)
 {
@@ -1799,7 +1796,6 @@ int print_dsp_trace_buffer(struct bridge_dev_context *hbridge_context)
 		pr_info("DSP Trace Buffer Begin:\n"
 			"=======================\n%s\n",
 			psz_buf);
-
 
 		/* convert to offset */
 		trace_cur_pos = trace_cur_pos - ul_trace_begin;
@@ -2127,7 +2123,7 @@ void dump_dl_modules(struct bridge_dev_context *bridge_context)
 	u32 module_size;
 	u32 module_struct_size = 0;
 	u32 sect_ndx;
-	char *sect_str;
+	char *sect_str ;
 	int status = 0;
 
 	status = dev_get_intf_fxns(dev_object, &intf_fxns);

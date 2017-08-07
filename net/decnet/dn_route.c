@@ -100,7 +100,6 @@ struct dn_rt_hash_bucket
 
 extern struct neigh_table dn_neigh_table;
 
-
 static unsigned char dn_hiord_addr[6] = {0xAA,0x00,0x04,0x00,0x00,0x00};
 
 static const int dn_rt_min_delay = 2 * HZ;
@@ -563,7 +562,6 @@ static int dn_route_rx_long(struct sk_buff *skb)
 		goto drop_it;
 	ptr += 6;
 
-
 	/* Source info */
 	ptr += 2;
 	cb->src = dn_eth2dn(ptr);
@@ -581,8 +579,6 @@ drop_it:
 	kfree_skb(skb);
 	return NET_RX_DROP;
 }
-
-
 
 static int dn_route_rx_short(struct sk_buff *skb)
 {
@@ -752,7 +748,7 @@ static int dn_to_neigh_output(struct sk_buff *skb)
 	return n->output(n, skb);
 }
 
-static int dn_output(struct sock *sk, struct sk_buff *skb)
+static int dn_output(struct sk_buff *skb)
 {
 	struct dst_entry *dst = skb_dst(skb);
 	struct dn_route *rt = (struct dn_route *)dst;
@@ -838,18 +834,6 @@ drop:
  * Used to catch bugs. This should never normally get
  * called.
  */
-static int dn_rt_bug_sk(struct sock *sk, struct sk_buff *skb)
-{
-	struct dn_skb_cb *cb = DN_SKB_CB(skb);
-
-	net_dbg_ratelimited("dn_rt_bug: skb from:%04x to:%04x\n",
-			    le16_to_cpu(cb->src), le16_to_cpu(cb->dst));
-
-	kfree_skb(skb);
-
-	return NET_RX_DROP;
-}
-
 static int dn_rt_bug(struct sk_buff *skb)
 {
 	struct dn_skb_cb *cb = DN_SKB_CB(skb);
@@ -1042,10 +1026,13 @@ source_ok:
 	if (!fld.daddr) {
 		fld.daddr = fld.saddr;
 
-		err = -EADDRNOTAVAIL;
 		if (dev_out)
 			dev_put(dev_out);
+		err = -EINVAL;
 		dev_out = init_net.loopback_dev;
+		if (!dev_out->dn_ptr)
+			goto out;
+		err = -EADDRNOTAVAIL;
 		dev_hold(dev_out);
 		if (!fld.daddr) {
 			fld.daddr =
@@ -1118,6 +1105,8 @@ source_ok:
 		if (dev_out == NULL)
 			goto out;
 		dn_db = rcu_dereference_raw(dev_out->dn_ptr);
+		if (!dn_db)
+			goto e_inval;
 		/* Possible improvement - check all devices for local addr */
 		if (dn_dev_islocal(dev_out, fld.daddr)) {
 			dev_put(dev_out);
@@ -1159,6 +1148,8 @@ select_source:
 			dev_put(dev_out);
 		dev_out = init_net.loopback_dev;
 		dev_hold(dev_out);
+		if (!dev_out->dn_ptr)
+			goto e_inval;
 		fld.flowidn_oif = dev_out->ifindex;
 		if (res.fi)
 			dn_fib_info_put(res.fi);
@@ -1248,7 +1239,6 @@ e_neighbour:
 	goto e_nobufs;
 }
 
-
 /*
  * N.B. The flags may be moved into the flowi at some future stage.
  */
@@ -1300,6 +1290,8 @@ int dn_route_output_sock(struct dst_entry __rcu **pprt, struct flowidn *fl, stru
 
 	err = __dn_route_output_key(pprt, fl, flags & MSG_TRYHARD);
 	if (err == 0 && fl->flowidn_proto) {
+		if (!(flags & MSG_DONTWAIT))
+			fl->flowidn_flags |= FLOWI_FLAG_CAN_SLEEP;
 		*pprt = xfrm_lookup(&init_net, *pprt,
 				    flowidn_to_flowi(fl), sk, 0);
 		if (IS_ERR(*pprt)) {
@@ -1475,7 +1467,7 @@ make_route:
 
 	rt->n = neigh;
 	rt->dst.lastuse = jiffies;
-	rt->dst.output = dn_rt_bug_sk;
+	rt->dst.output = dn_rt_bug;
 	switch (res.type) {
 	case RTN_UNICAST:
 		rt->dst.input = dn_forward;
@@ -1678,8 +1670,12 @@ static int dn_cache_getroute(struct sk_buff *in_skb, struct nlmsghdr *nlh)
 
 	if (fld.flowidn_iif) {
 		struct net_device *dev;
-		dev = __dev_get_by_index(&init_net, fld.flowidn_iif);
-		if (!dev || !dev->dn_ptr) {
+		if ((dev = dev_get_by_index(&init_net, fld.flowidn_iif)) == NULL) {
+			kfree_skb(skb);
+			return -ENODEV;
+		}
+		if (!dev->dn_ptr) {
+			dev_put(dev);
 			kfree_skb(skb);
 			return -ENODEV;
 		}
@@ -1701,6 +1697,8 @@ static int dn_cache_getroute(struct sk_buff *in_skb, struct nlmsghdr *nlh)
 		err = dn_route_output_key((struct dst_entry **)&rt, &fld, 0);
 	}
 
+	if (skb->dev)
+		dev_put(skb->dev);
 	skb->dev = NULL;
 	if (err)
 		goto out_free;
@@ -1944,4 +1942,3 @@ void __exit dn_route_cleanup(void)
 	remove_proc_entry("decnet_cache", init_net.proc_net);
 	dst_entries_destroy(&dn_dst_ops);
 }
-

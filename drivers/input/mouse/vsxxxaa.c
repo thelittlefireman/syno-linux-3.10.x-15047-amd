@@ -82,6 +82,7 @@
 #include <linux/interrupt.h>
 #include <linux/input.h>
 #include <linux/serio.h>
+#include <linux/init.h>
 
 #define DRIVER_DESC "Driver for DEC VSXXX-AA and -GA mice and VSXXX-AB tablet"
 
@@ -107,8 +108,6 @@ MODULE_LICENSE("GPL");
 #define VSXXXAA_PACKET_POR	0xa0
 #define MATCH_PACKET_TYPE(data, type)	\
 	(((data) & VSXXXAA_PACKET_MASK) == (type))
-
-
 
 struct vsxxxaa {
 	struct input_dev *dev;

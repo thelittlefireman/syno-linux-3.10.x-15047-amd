@@ -13,6 +13,7 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
@@ -69,7 +70,6 @@ static struct usb_serial_driver zyxel_omninet_device = {
 static struct usb_serial_driver * const serial_drivers[] = {
 	&zyxel_omninet_device, NULL
 };
-
 
 /*
  * The protocol.
@@ -209,7 +209,6 @@ static int omninet_write(struct tty_struct *tty, struct usb_serial_port *port,
 	return result;
 }
 
-
 static int omninet_write_room(struct tty_struct *tty)
 {
 	struct usb_serial_port *port = tty->driver_data;
@@ -242,7 +241,6 @@ static void omninet_write_bulk_callback(struct urb *urb)
 
 	usb_serial_port_softint(port);
 }
-
 
 static void omninet_disconnect(struct usb_serial *serial)
 {

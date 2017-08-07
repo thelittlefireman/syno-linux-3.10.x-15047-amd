@@ -26,6 +26,7 @@
  *  675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/io.h>
 #include <linux/pci.h>
 #include <linux/types.h>
@@ -36,7 +37,6 @@
 
 #define PCI_ACCESS_READ	 0
 #define PCI_ACCESS_WRITE 1
-
 
 #define PCI_CFG_SET(bus, slot, func, off) \
 	(rc32434_pci->pcicfga = (0x80000000 | \
@@ -63,7 +63,6 @@ static inline int config_access(unsigned char access_type,
 
 	return 0;
 }
-
 
 /*
  * We can't address 8 and 16 bit words directly.  Instead we have to
@@ -143,7 +142,6 @@ write_config_byte(struct pci_bus *bus, unsigned int devfn, int where,
 	return PCIBIOS_SUCCESSFUL;
 }
 
-
 static int
 write_config_word(struct pci_bus *bus, unsigned int devfn, int where,
 		  u16 val)
@@ -159,10 +157,8 @@ write_config_word(struct pci_bus *bus, unsigned int devfn, int where,
 	if (config_access(PCI_ACCESS_WRITE, bus, devfn, where, &data))
 		return -1;
 
-
 	return PCIBIOS_SUCCESSFUL;
 }
-
 
 static int
 write_config_dword(struct pci_bus *bus, unsigned int devfn, int where,

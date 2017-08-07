@@ -1,6 +1,6 @@
 /*
  * lm92 - Hardware monitoring driver
- * Copyright (C) 2005-2008  Jean Delvare <jdelvare@suse.de>
+ * Copyright (C) 2005-2008  Jean Delvare <khali@linux-fr.org>
  *
  * Based on the lm90 driver, with some ideas taken from the lm_sensors
  * lm92 driver as well.
@@ -106,7 +106,6 @@ struct lm92_data {
 	/* registers values */
 	s16 temp1_input, temp1_crit, temp1_min, temp1_max, temp1_hyst;
 };
-
 
 /*
  * Sysfs attributes and callback functions
@@ -250,7 +249,6 @@ static SENSOR_DEVICE_ATTR(temp1_crit_alarm, S_IRUGO, show_alarm, NULL, 2);
 static SENSOR_DEVICE_ATTR(temp1_min_alarm, S_IRUGO, show_alarm, NULL, 0);
 static SENSOR_DEVICE_ATTR(temp1_max_alarm, S_IRUGO, show_alarm, NULL, 1);
 
-
 /*
  * Detection and registration
  */
@@ -380,6 +378,7 @@ static int lm92_probe(struct i2c_client *new_client,
 		return -ENOMEM;
 
 	i2c_set_clientdata(new_client, data);
+	data->valid = 0;
 	mutex_init(&data->update_lock);
 
 	/* Initialize the chipset */
@@ -413,7 +412,6 @@ static int lm92_remove(struct i2c_client *client)
 	return 0;
 }
 
-
 /*
  * Module and driver stuff
  */
@@ -439,6 +437,6 @@ static struct i2c_driver lm92_driver = {
 
 module_i2c_driver(lm92_driver);
 
-MODULE_AUTHOR("Jean Delvare <jdelvare@suse.de>");
+MODULE_AUTHOR("Jean Delvare <khali@linux-fr.org>");
 MODULE_DESCRIPTION("LM92/MAX6635 driver");
 MODULE_LICENSE("GPL");

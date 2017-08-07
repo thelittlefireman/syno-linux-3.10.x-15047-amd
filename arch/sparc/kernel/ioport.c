@@ -422,7 +422,6 @@ arch_initcall(sparc_register_ioport);
 
 #endif /* CONFIG_SBUS */
 
-
 /* Allocate and map kernel buffer using consistent mode DMA for a device.
  * hwdev should be valid struct pci_dev pointer for PCI devices.
  */
@@ -657,7 +656,6 @@ EXPORT_SYMBOL(leon_dma_ops);
 struct dma_map_ops *dma_ops = &sbus_dma_ops;
 EXPORT_SYMBOL(dma_ops);
 
-
 /*
  * Return whether the given PCI device DMA address mask can be
  * supported properly.  For example, if your device can only drive the
@@ -666,9 +664,10 @@ EXPORT_SYMBOL(dma_ops);
  */
 int dma_supported(struct device *dev, u64 mask)
 {
-	if (dev_is_pci(dev))
+#ifdef CONFIG_PCI
+	if (dev->bus == &pci_bus_type)
 		return 1;
-
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(dma_supported);

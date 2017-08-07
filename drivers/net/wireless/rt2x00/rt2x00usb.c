@@ -14,7 +14,9 @@
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, see <http://www.gnu.org/licenses/>.
+	along with this program; if not, write to the
+	Free Software Foundation, Inc.,
+	59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /*
@@ -162,7 +164,6 @@ int rt2x00usb_regbusy_read(struct rt2x00_dev *rt2x00dev,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(rt2x00usb_regbusy_read);
-
 
 struct rt2x00_async_read_data {
 	__le32 reg;
@@ -521,9 +522,7 @@ static void rt2x00usb_watchdog_tx_dma(struct data_queue *queue)
 	rt2x00_warn(queue->rt2x00dev, "TX queue %d DMA timed out, invoke forced forced reset\n",
 		    queue->qid);
 
-	rt2x00queue_stop_queue(queue);
 	rt2x00queue_flush_queue(queue, true);
-	rt2x00queue_start_queue(queue);
 }
 
 static int rt2x00usb_dma_timeout(struct data_queue *queue)

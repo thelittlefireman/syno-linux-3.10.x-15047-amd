@@ -25,8 +25,11 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/delay.h>
-#include <linux/acpi.h>
+
 #include <asm/io.h>
+
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 
 static int pm_tmr_ioport = 0;
 
@@ -103,7 +106,6 @@ static void __exit cpufreq_none(void)
 
 module_init(cpufreq_test_tsc)
 module_exit(cpufreq_none)
-
 
 MODULE_AUTHOR("Dominik Brodowski");
 MODULE_DESCRIPTION("Verify the TSC cpufreq notifier working correctly -- needs ACPI-enabled system");

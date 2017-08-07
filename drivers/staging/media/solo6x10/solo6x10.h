@@ -94,6 +94,7 @@
 #define SOLO_ENC_MODE_HD1		1
 #define SOLO_ENC_MODE_D1		9
 
+#define SOLO_DEFAULT_GOP		30
 #define SOLO_DEFAULT_QP			3
 
 #ifndef V4L2_BUF_FLAG_MOTION_ON
@@ -398,7 +399,7 @@ int solo_p2m_dma_desc(struct solo_dev *solo_dev,
 		      int desc_cnt);
 
 /* Global s_std ioctl */
-int solo_set_video_type(struct solo_dev *solo_dev, bool is_50hz);
+int solo_set_video_type(struct solo_dev *solo_dev, bool type);
 void solo_update_mode(struct solo_enc_dev *solo_enc);
 
 /* Set the threshold for motion detection */

@@ -15,7 +15,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *  Portions of this file are based on NDISwrapper project,
  *  Copyright (C) 2003-2005 Pontus Fuchs, Giridhar Pemmasani
@@ -26,6 +27,7 @@
 // #define	VERBOSE			// more; success messages
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -42,7 +44,6 @@
 #include <net/cfg80211.h>
 #include <linux/usb/usbnet.h>
 #include <linux/usb/rndis_host.h>
-
 
 /* NOTE: All these are settings for Broadcom chipset */
 static char modparam_country[4] = "EU";
@@ -90,7 +91,6 @@ MODULE_PARM_DESC(workaround_interval,
 #define	WL_NOISE	-96	/* typical noise level in dBm */
 #define	WL_SIGMAX	-32	/* typical maximum signal level in dBm */
 
-
 /* Assume that Broadcom 4320 (only chipset at time of writing known to be
  * based on wireless rndis) has default txpower of 13dBm.
  * This value is from Linksys WUSB54GSC User Guide, Appendix F: Specifications.
@@ -108,7 +108,6 @@ MODULE_PARM_DESC(workaround_interval,
 #define RNDIS_UNKNOWN	0
 #define RNDIS_BCM4320A	1
 #define RNDIS_BCM4320B	2
-
 
 /* NDIS data structures. Taken from wpa_supplicant driver_ndis.c
  * slightly modified for datatype endianess, etc
@@ -560,7 +559,6 @@ static const struct cfg80211_ops rndis_config_ops = {
 };
 
 static void *rndis_wiphy_privid = &rndis_wiphy_privid;
-
 
 static struct rndis_wlan_private *get_rndis_wlan_priv(struct usbnet *dev)
 {
@@ -1290,8 +1288,7 @@ static int set_channel(struct usbnet *usbdev, int channel)
 	if (is_associated(usbdev))
 		return 0;
 
-	dsconfig = 1000 *
-		ieee80211_channel_to_frequency(channel, IEEE80211_BAND_2GHZ);
+	dsconfig = ieee80211_dsss_chan_to_freq(channel) * 1000;
 
 	len = sizeof(config);
 	ret = rndis_query_oid(usbdev,
@@ -2836,9 +2833,7 @@ static void rndis_wlan_do_link_up_work(struct usbnet *usbdev)
 					bssid, req_ie, req_ie_len,
 					resp_ie, resp_ie_len, GFP_KERNEL);
 	} else if (priv->infra_mode == NDIS_80211_INFRA_ADHOC)
-		cfg80211_ibss_joined(usbdev->net, bssid,
-				     get_current_channel(usbdev, NULL),
-				     GFP_KERNEL);
+		cfg80211_ibss_joined(usbdev->net, bssid, GFP_KERNEL);
 
 	kfree(info);
 
@@ -3763,4 +3758,3 @@ MODULE_AUTHOR("Bjorge Dijkstra");
 MODULE_AUTHOR("Jussi Kivilinna");
 MODULE_DESCRIPTION("Driver for RNDIS based USB Wireless adapters");
 MODULE_LICENSE("GPL");
-

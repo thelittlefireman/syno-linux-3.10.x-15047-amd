@@ -855,6 +855,7 @@ struct qla_tgt_cmd {
 	uint16_t loop_id;	/* to save extra sess dereferences */
 	struct qla_tgt *tgt;	/* to save extra sess dereferences */
 	struct scsi_qla_host *vha;
+	struct list_head cmd_list;
 
 	struct atio_from_isp atio;
 };
@@ -919,7 +920,6 @@ struct qla_tgt_srr_ctio {
 #define QLA_TGT_XMIT_STATUS		2
 #define QLA_TGT_XMIT_ALL		(QLA_TGT_XMIT_STATUS|QLA_TGT_XMIT_DATA)
 
-
 extern struct qla_tgt_data qla_target;
 /*
  * Internal function prototypes
@@ -931,8 +931,8 @@ void qlt_disable_vha(struct scsi_qla_host *);
  */
 extern int qlt_add_target(struct qla_hw_data *, struct scsi_qla_host *);
 extern int qlt_remove_target(struct qla_hw_data *, struct scsi_qla_host *);
-extern int qlt_lport_register(void *, u64, u64, u64,
-			int (*callback)(struct scsi_qla_host *, void *, u64, u64));
+extern int qlt_lport_register(struct qla_tgt_func_tmpl *, u64,
+			int (*callback)(struct scsi_qla_host *), void *);
 extern void qlt_lport_deregister(struct scsi_qla_host *);
 extern void qlt_unreg_sess(struct qla_tgt_sess *);
 extern void qlt_fc_port_added(struct scsi_qla_host *, fc_port_t *);
@@ -1001,7 +1001,7 @@ extern void qlt_modify_vp_config(struct scsi_qla_host *,
 extern void qlt_probe_one_stage1(struct scsi_qla_host *, struct qla_hw_data *);
 extern int qlt_mem_alloc(struct qla_hw_data *);
 extern void qlt_mem_free(struct qla_hw_data *);
-extern int qlt_stop_phase1(struct qla_tgt *);
+extern void qlt_stop_phase1(struct qla_tgt *);
 extern void qlt_stop_phase2(struct qla_tgt *);
 extern irqreturn_t qla83xx_msix_atio_q(int, void *);
 extern void qlt_83xx_iospace_config(struct qla_hw_data *);

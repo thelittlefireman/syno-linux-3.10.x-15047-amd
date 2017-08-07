@@ -49,6 +49,7 @@
 #include <linux/pci.h>
 #include <linux/delay.h>
 #include <linux/hdlc.h>
+#include <linux/init.h>
 #include <linux/in.h>
 #include <linux/if_arp.h>
 #include <linux/netdevice.h>
@@ -86,7 +87,6 @@ static DEFINE_PCI_DEVICE_TABLE(lmc_pci_tbl) = {
 
 MODULE_DEVICE_TABLE(pci, lmc_pci_tbl);
 MODULE_LICENSE("GPL v2");
-
 
 static netdev_tx_t lmc_start_xmit(struct sk_buff *skb,
 					struct net_device *dev);
@@ -181,7 +181,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
 		break;
 	    }
 
-            
 	    if (new_type == old_type)
 	    {
 		ret = 0 ;
@@ -381,7 +380,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
                     sc->lmc_gpio &= ~LMC_GEP_RESET;
                     LMC_CSR_WRITE(sc, csr_gp, sc->lmc_gpio);
 
-
                     /*
                      * hold for more than 10 microseconds
                      */
@@ -389,7 +387,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
 
                     sc->lmc_gpio |= LMC_GEP_RESET;
                     LMC_CSR_WRITE(sc, csr_gp, sc->lmc_gpio);
-
 
                     /*
                      * stop driving Xilinx-related signals
@@ -420,8 +417,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
                     }
 		    spin_unlock_irqrestore(&sc->lmc_lock, flags);
                     
-                    
-
                     ret = 0x0;
 
                 }
@@ -453,7 +448,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
                     sc->lmc_gpio &= ~(LMC_GEP_RESET | LMC_GEP_DP);
                     LMC_CSR_WRITE(sc, csr_gp, sc->lmc_gpio);
 
-
                     /*
                      * hold for more than 10 microseconds
                      */
@@ -469,7 +463,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
                            (timeout-- > 0))
                         cpu_relax();
 
-
                     /*
                      * stop driving Xilinx-related signals
                      */
@@ -478,7 +471,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
 
                     ret = 0x0;
                     
-
                     break;
 
                 }
@@ -634,7 +626,6 @@ int lmc_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd) /*fold00*/
     return ret;
 }
 
-
 /* the watchdog process that cruises around */
 static void lmc_watchdog (unsigned long data) /*fold00*/
 {
@@ -653,7 +644,6 @@ static void lmc_watchdog (unsigned long data) /*fold00*/
 	spin_unlock_irqrestore(&sc->lmc_lock, flags);
         return;
     }
-
 
     /* Make sure the tx jabber and rx watchdog are off,
      * and the transmit and receive processes are running.
@@ -692,7 +682,6 @@ static void lmc_watchdog (unsigned long data) /*fold00*/
         /* DEC chip is stuck, hit it with a RESET!!!! */
         lmc_running_reset (dev);
 
-
         /* look at receive & transmit process state to make sure they are running */
         LMC_EVENT_LOG(LMC_EVENT_RESET1, LMC_CSR_READ (sc, csr_status), 0);
 
@@ -715,7 +704,6 @@ static void lmc_watchdog (unsigned long data) /*fold00*/
     }
 
     /* --- end time out check ----------------------------------- */
-
 
     link_status = sc->lmc_media->get_link_status (sc);
 
@@ -774,7 +762,6 @@ static void lmc_watchdog (unsigned long data) /*fold00*/
         sc->failed_recv_alloc = 0;
         lmc_softreset(sc);
     }
-
 
     /*
      * remember the timer value
@@ -852,7 +839,6 @@ static int lmc_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 		printk(KERN_ERR "lmc:alloc_netdev for device failed\n");
 		goto err_hdlcdev;
 	}
-
 
 	dev->type = ARPHRD_HDLC;
 	dev_to_hdlc(dev)->xmit = lmc_start_xmit;
@@ -972,6 +958,7 @@ static int lmc_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
     return 0;
 
 err_hdlcdev:
+	pci_set_drvdata(pdev, NULL);
 	kfree(sc);
 err_kzalloc:
 	pci_release_regions(pdev);
@@ -993,6 +980,7 @@ static void lmc_remove_one(struct pci_dev *pdev)
 		free_netdev(dev);
 		pci_release_regions(pdev);
 		pci_disable_device(pdev);
+		pci_set_drvdata(pdev, NULL);
 	}
 }
 
@@ -1142,7 +1130,6 @@ static void lmc_running_reset (struct net_device *dev) /*fold00*/
 
     lmc_trace(dev, "lmc_runnin_reset_out");
 }
-
 
 /* This is what is called when you ifconfig down a device.
  * This disables the timer for the watchdog and keepalives,
@@ -1360,7 +1347,6 @@ static irqreturn_t lmc_interrupt (int irq, void *dev_instance) /*fold00*/
             netif_wake_queue(dev);
 	    sc->extra_stats.tx_tbusy0++;
 
-
 #ifdef DEBUG
 	    sc->extra_stats.dirtyTx = badtx;
 	    sc->extra_stats.lmc_next_tx = sc->lmc_next_tx;
@@ -1399,7 +1385,6 @@ static irqreturn_t lmc_interrupt (int irq, void *dev_instance) /*fold00*/
 
         }
 
-        
         if(max_work-- <= 0)
             break;
         
@@ -1479,7 +1464,6 @@ static netdev_tx_t lmc_start_xmit(struct sk_buff *skb,
     }
 #endif
 
-
     if (entry == LMC_TXDESCS - 1)	/* last descriptor in ring */
 	flag |= LMC_TDES_END_OF_RING;	/* flag as such for Tulip */
 
@@ -1506,7 +1490,6 @@ static netdev_tx_t lmc_start_xmit(struct sk_buff *skb,
     lmc_trace(dev, "lmc_start_xmit_out");
     return NETDEV_TX_OK;
 }
-
 
 static int lmc_rx(struct net_device *dev)
 {
@@ -1546,7 +1529,6 @@ static int lmc_rx(struct net_device *dev)
 		sc->lmc_device->stats.rx_frame_errors++;
 		goto skip_packet;
 	}
-
 
 	if (stat & 0x00000004) { /* Catch a CRC error by the Xilinx */
 		sc->lmc_device->stats.rx_errors++;
@@ -1696,7 +1678,6 @@ static int lmc_rx(struct net_device *dev)
         LMC_EVENT_LOG(LMC_EVENT_RCVEND, rxIntLoopCnt, 0);
     }
 #endif
-
 
     lmc_led_off(sc, LMC_DS3_LED3);
 
@@ -2123,7 +2104,6 @@ bug_out:
 
     spin_unlock_irqrestore(&sc->lmc_lock, flags);
 
-    lmc_trace(dev, "lmc_driver_timeout out");
-
+    lmc_trace(dev, "lmc_driver_timout out");
 
 }

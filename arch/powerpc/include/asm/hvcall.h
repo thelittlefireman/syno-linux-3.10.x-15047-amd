@@ -99,7 +99,6 @@
 #define H_MULTI_THREADS_ACTIVE	-9005
 #define H_OUTSTANDING_COP_OPS	-9006
 
-
 /* Long Busy is a condition that can be returned by the firmware
  * when a call cannot be completed now, but the identical call
  * should be retried later.  This prevents calls blocking in the
@@ -274,11 +273,6 @@
 /* Platform specific hcalls, used by KVM */
 #define H_RTAS			0xf000
 
-/* "Platform specific hcalls", provided by PHYP */
-#define H_GET_24X7_CATALOG_PAGE	0xF078
-#define H_GET_24X7_DATA		0xF07C
-#define H_GET_PERF_COUNTER_INFO	0xF080
-
 #ifndef __ASSEMBLY__
 
 /**
@@ -407,8 +401,6 @@ static inline unsigned long cmo_get_page_size(void)
 
 extern long pSeries_enable_reloc_on_exc(void);
 extern long pSeries_disable_reloc_on_exc(void);
-
-extern long pseries_big_endian_exceptions(void);
 
 #else
 

@@ -43,7 +43,6 @@ void create_kmalloc_caches(unsigned long);
 struct kmem_cache *kmalloc_slab(size_t, gfp_t);
 #endif
 
-
 /* Functions provided by the slab allocators */
 extern int __kmem_cache_create(struct kmem_cache *, unsigned long flags);
 
@@ -55,15 +54,14 @@ extern void create_boot_cache(struct kmem_cache *, const char *name,
 struct mem_cgroup;
 #ifdef CONFIG_SLUB
 struct kmem_cache *
-__kmem_cache_alias(const char *name, size_t size, size_t align,
-		   unsigned long flags, void (*ctor)(void *));
+__kmem_cache_alias(struct mem_cgroup *memcg, const char *name, size_t size,
+		   size_t align, unsigned long flags, void (*ctor)(void *));
 #else
 static inline struct kmem_cache *
-__kmem_cache_alias(const char *name, size_t size, size_t align,
-		   unsigned long flags, void (*ctor)(void *))
+__kmem_cache_alias(struct mem_cgroup *memcg, const char *name, size_t size,
+		   size_t align, unsigned long flags, void (*ctor)(void *))
 { return NULL; }
 #endif
-
 
 /* Legal flag mask for kmem_cache_create(), for various configurations */
 #define SLAB_CORE_FLAGS (SLAB_HWCACHE_ALIGN | SLAB_CACHE_DMA | SLAB_PANIC | \
@@ -119,6 +117,13 @@ static inline bool is_root_cache(struct kmem_cache *s)
 	return !s->memcg_params || s->memcg_params->is_root_cache;
 }
 
+static inline bool cache_match_memcg(struct kmem_cache *cachep,
+				     struct mem_cgroup *memcg)
+{
+	return (is_root_cache(cachep) && !memcg) ||
+				(cachep->memcg_params->memcg == memcg);
+}
+
 static inline void memcg_bind_pages(struct kmem_cache *s, int order)
 {
 	if (!is_root_cache(s))
@@ -153,36 +158,11 @@ static inline const char *cache_name(struct kmem_cache *s)
 	return s->name;
 }
 
-/*
- * Note, we protect with RCU only the memcg_caches array, not per-memcg caches.
- * That said the caller must assure the memcg's cache won't go away. Since once
- * created a memcg's cache is destroyed only along with the root cache, it is
- * true if we are going to allocate from the cache or hold a reference to the
- * root cache by other means. Otherwise, we should hold either the slab_mutex
- * or the memcg's slab_caches_mutex while calling this function and accessing
- * the returned value.
- */
-static inline struct kmem_cache *
-cache_from_memcg_idx(struct kmem_cache *s, int idx)
+static inline struct kmem_cache *cache_from_memcg(struct kmem_cache *s, int idx)
 {
-	struct kmem_cache *cachep;
-	struct memcg_cache_params *params;
-
 	if (!s->memcg_params)
 		return NULL;
-
-	rcu_read_lock();
-	params = rcu_dereference(s->memcg_params);
-	cachep = params->memcg_caches[idx];
-	rcu_read_unlock();
-
-	/*
-	 * Make sure we will access the up-to-date value. The code updating
-	 * memcg_caches issues a write barrier to match this (see
-	 * memcg_register_cache()).
-	 */
-	smp_read_barrier_depends();
-	return cachep;
+	return s->memcg_params->memcg_caches[idx];
 }
 
 static inline struct kmem_cache *memcg_root_cache(struct kmem_cache *s)
@@ -193,6 +173,12 @@ static inline struct kmem_cache *memcg_root_cache(struct kmem_cache *s)
 }
 #else
 static inline bool is_root_cache(struct kmem_cache *s)
+{
+	return true;
+}
+
+static inline bool cache_match_memcg(struct kmem_cache *cachep,
+				     struct mem_cgroup *memcg)
 {
 	return true;
 }
@@ -216,8 +202,7 @@ static inline const char *cache_name(struct kmem_cache *s)
 	return s->name;
 }
 
-static inline struct kmem_cache *
-cache_from_memcg_idx(struct kmem_cache *s, int idx)
+static inline struct kmem_cache *cache_from_memcg(struct kmem_cache *s, int idx)
 {
 	return NULL;
 }
@@ -255,7 +240,6 @@ static inline struct kmem_cache *cache_from_obj(struct kmem_cache *s, void *x)
 }
 #endif
 
-
 /*
  * The slab lists for all objects.
  */
@@ -286,6 +270,3 @@ struct kmem_cache_node {
 #endif
 
 };
-
-void *slab_next(struct seq_file *m, void *p, loff_t *pos);
-void slab_stop(struct seq_file *m, void *p);

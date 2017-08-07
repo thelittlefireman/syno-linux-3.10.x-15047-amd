@@ -37,7 +37,6 @@
 static void calc_alsa_tempo(struct seq_oss_timer *timer);
 static int send_timer_event(struct seq_oss_devinfo *dp, int type, int value);
 
-
 /*
  * create and register a new timer.
  * if queue is not started yet, start it.
@@ -62,7 +61,6 @@ snd_seq_oss_timer_new(struct seq_oss_devinfo *dp)
 	return rec;
 }
 
-
 /*
  * delete timer.
  * if no more timer exists, stop the queue.
@@ -75,7 +73,6 @@ snd_seq_oss_timer_delete(struct seq_oss_timer *rec)
 		kfree(rec);
 	}
 }
-
 
 /*
  * process one timing event
@@ -121,7 +118,6 @@ snd_seq_oss_process_timer_event(struct seq_oss_timer *rec, union evrec *ev)
 	return 0;
 }
 
-
 /*
  * convert tempo units
  */
@@ -131,7 +127,6 @@ calc_alsa_tempo(struct seq_oss_timer *timer)
 	timer->tempo = (60 * 1000000) / timer->oss_tempo;
 	timer->ppq = timer->oss_timebase;
 }
-
 
 /*
  * dispatch a timer event
@@ -177,7 +172,6 @@ snd_seq_oss_timer_start(struct seq_oss_timer *timer)
 	return 0;
 }
 
-
 /*
  * stop queue
  */
@@ -191,7 +185,6 @@ snd_seq_oss_timer_stop(struct seq_oss_timer *timer)
 	return 0;
 }
 
-
 /*
  * continue queue
  */
@@ -204,7 +197,6 @@ snd_seq_oss_timer_continue(struct seq_oss_timer *timer)
 	timer->running = 1;
 	return 0;
 }
-
 
 /*
  * change queue tempo
@@ -223,7 +215,6 @@ snd_seq_oss_timer_tempo(struct seq_oss_timer *timer, int value)
 	return 0;
 }
 
-
 /*
  * ioctls
  */
@@ -233,6 +224,7 @@ snd_seq_oss_timer_ioctl(struct seq_oss_timer *timer, unsigned int cmd, int __use
 	int value;
 
 	if (cmd == SNDCTL_SEQ_CTRLRATE) {
+		debug_printk(("ctrl rate\n"));
 		/* if *arg == 0, just return the current rate */
 		if (get_user(value, arg))
 			return -EFAULT;
@@ -247,16 +239,21 @@ snd_seq_oss_timer_ioctl(struct seq_oss_timer *timer, unsigned int cmd, int __use
 
 	switch (cmd) {
 	case SNDCTL_TMR_START:
+		debug_printk(("timer start\n"));
 		return snd_seq_oss_timer_start(timer);
 	case SNDCTL_TMR_STOP:
+		debug_printk(("timer stop\n"));
 		return snd_seq_oss_timer_stop(timer);
 	case SNDCTL_TMR_CONTINUE:
+		debug_printk(("timer continue\n"));
 		return snd_seq_oss_timer_continue(timer);
 	case SNDCTL_TMR_TEMPO:
+		debug_printk(("timer tempo\n"));
 		if (get_user(value, arg))
 			return -EFAULT;
 		return snd_seq_oss_timer_tempo(timer, value);
 	case SNDCTL_TMR_TIMEBASE:
+		debug_printk(("timer timebase\n"));
 		if (get_user(value, arg))
 			return -EFAULT;
 		if (value < MIN_OSS_TIMEBASE)
@@ -270,6 +267,7 @@ snd_seq_oss_timer_ioctl(struct seq_oss_timer *timer, unsigned int cmd, int __use
 	case SNDCTL_TMR_METRONOME:
 	case SNDCTL_TMR_SELECT:
 	case SNDCTL_TMR_SOURCE:
+		debug_printk(("timer XXX\n"));
 		/* not supported */
 		return 0;
 	}

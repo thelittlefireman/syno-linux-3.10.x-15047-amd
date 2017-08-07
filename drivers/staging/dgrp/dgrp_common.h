@@ -90,7 +90,6 @@ extern void dgrp_register_proc(void);
 
 void dgrp_carrier(struct ch_struct *ch);
 
-
 /*
  *  ID manipulation macros (where c1 & c2 are characters, i is
  *  a long integer, and s is a character array of at least three members

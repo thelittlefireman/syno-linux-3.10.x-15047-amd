@@ -19,6 +19,7 @@
 #include <linux/delay.h>
 #include <linux/tty.h>
 #include <arch/svinto.h>
+#include <asm/io.h>             /* Get SIMCOUT. */
 
 extern void reset_watchdog(void);
 
@@ -317,6 +318,12 @@ console_write(struct console *co, const char *buf, unsigned int len)
 	if (!port)
 		return;
 
+#ifdef CONFIG_SVINTO_SIM
+	/* no use to simulate the serial debug output */
+	SIMCOUT(buf, len);
+	return;
+#endif
+
         console_write_direct(co, buf, len);
 }
 
@@ -396,7 +403,6 @@ console_setup(struct console *co, char *options)
 	}
 	return 0;
 }
-
 
 /* This is a dummy serial device that throws away anything written to it.
  * This is used when no debug output is wanted.

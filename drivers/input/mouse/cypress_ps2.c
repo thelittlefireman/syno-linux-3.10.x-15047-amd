@@ -15,6 +15,7 @@
  * the Free Software Foundation.
  */
 
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -444,7 +445,6 @@ static int cypress_get_finger_count(unsigned char header_byte)
 	return finger_count;
 }
 
-
 static int cypress_parse_packet(struct psmouse *psmouse,
 				struct cytp_data *cytp, struct cytp_report_data *report_data)
 {
@@ -664,14 +664,14 @@ int cypress_init(struct psmouse *psmouse)
 {
 	struct cytp_data *cytp;
 
-	cytp = kzalloc(sizeof(struct cytp_data), GFP_KERNEL);
-	if (!cytp)
+	cytp = (struct cytp_data *)kzalloc(sizeof(struct cytp_data), GFP_KERNEL);
+	psmouse->private = (void *)cytp;
+	if (cytp == NULL)
 		return -ENOMEM;
 
-	psmouse->private = cytp;
-	psmouse->pktsize = 8;
-
 	cypress_reset(psmouse);
+
+	psmouse->pktsize = 8;
 
 	if (cypress_query_hardware(psmouse)) {
 		psmouse_err(psmouse, "Unable to query Trackpad hardware.\n");

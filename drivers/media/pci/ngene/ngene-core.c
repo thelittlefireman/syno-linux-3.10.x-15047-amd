@@ -348,7 +348,6 @@ int ngene_command(struct ngene *dev, struct ngene_command *com)
 	return result;
 }
 
-
 static int ngene_command_load_firmware(struct ngene *dev,
 				       u8 *ngene_fw, u32 size)
 {
@@ -381,7 +380,6 @@ static int ngene_command_load_firmware(struct ngene *dev,
 
 	return ngene_command(dev, &com);
 }
-
 
 static int ngene_command_config_buf(struct ngene *dev, u8 config)
 {
@@ -426,7 +424,6 @@ int ngene_command_gpio_set(struct ngene *dev, u8 select, u8 level)
 
 	return ngene_command(dev, &com);
 }
-
 
 /*
  02000640 is sample on rising edge.
@@ -511,7 +508,6 @@ void FillTSBuffer(void *Buffer, int Length, u32 Flags)
 		Length -= 188;
 	}
 }
-
 
 static void flush_buffers(struct ngene_channel *chan)
 {
@@ -770,7 +766,6 @@ void set_transfer(struct ngene_channel *chan, int state)
 		spin_unlock_irq(&chan->state_lock);
 	}
 }
-
 
 /****************************************************************************/
 /* nGene hardware init and release functions ********************************/
@@ -1065,7 +1060,6 @@ static u32 Buffer2Sizes[MAX_STREAM] = {
 	0
 };
 
-
 static int AllocCommonBuffers(struct ngene *dev)
 {
 	int status = 0, i;
@@ -1337,7 +1331,6 @@ static int ngene_buffer_config(struct ngene *dev)
 	}
 	return stat;
 }
-
 
 static int ngene_start(struct ngene *dev)
 {
@@ -1622,7 +1615,7 @@ static void ngene_unlink(struct ngene *dev)
 
 void ngene_shutdown(struct pci_dev *pdev)
 {
-	struct ngene *dev = pci_get_drvdata(pdev);
+	struct ngene *dev = (struct ngene *)pci_get_drvdata(pdev);
 
 	if (!dev || !shutdown_workaround)
 		return;
@@ -1648,6 +1641,7 @@ void ngene_remove(struct pci_dev *pdev)
 		cxd_detach(dev);
 	ngene_stop(dev);
 	ngene_release_buffers(dev);
+	pci_set_drvdata(pdev, NULL);
 	pci_disable_device(pdev);
 }
 
@@ -1685,7 +1679,6 @@ int ngene_probe(struct pci_dev *pci_dev, const struct pci_device_id *id)
 	if (stat < 0)
 		goto fail1;
 
-
 	dev->i2c_current_bus = -1;
 
 	/* Register DVB adapters and devices for both channels */
@@ -1701,5 +1694,6 @@ fail1:
 	ngene_release_buffers(dev);
 fail0:
 	pci_disable_device(pci_dev);
+	pci_set_drvdata(pci_dev, NULL);
 	return stat;
 }

@@ -89,7 +89,6 @@ struct ntrig_data {
 	__u16 sensor_physical_height;
 };
 
-
 /*
  * This function converts the 4 byte raw firmware code into
  * a string containing 5 comma separated numbers.
@@ -238,7 +237,7 @@ static ssize_t set_min_width(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val > nd->sensor_physical_width)
@@ -273,7 +272,7 @@ static ssize_t set_min_height(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val > nd->sensor_physical_height)
@@ -307,7 +306,7 @@ static ssize_t set_activate_slack(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val > 0x7f)
@@ -342,7 +341,7 @@ static ssize_t set_activation_width(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val > nd->sensor_physical_width)
@@ -378,7 +377,7 @@ static ssize_t set_activation_height(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	if (val > nd->sensor_physical_height)
@@ -412,7 +411,7 @@ static ssize_t set_deactivate_slack(struct device *dev,
 
 	unsigned long val;
 
-	if (kstrtoul(buf, 0, &val))
+	if (strict_strtoul(buf, 0, &val))
 		return -EINVAL;
 
 	/*
@@ -759,7 +758,6 @@ static int ntrig_event (struct hid_device *hid, struct hid_field *field,
 			break;
 
 		nd->reading_mt = 0;
-
 
 		/*
 		 * Activation state machine logic:

@@ -88,7 +88,6 @@ struct ioc4_dma_regs {
 #define IOC4_PRD_BYTES		16
 #define IOC4_PRD_ENTRIES	(PAGE_SIZE / (4 * IOC4_PRD_BYTES))
 
-
 static void sgiioc4_init_hwif_ports(struct ide_hw *hw,
 				    unsigned long data_port,
 				    unsigned long ctrl_port,
@@ -600,7 +599,7 @@ out:
 	return ret;
 }
 
-static int ioc4_ide_attach_one(struct ioc4_driver_data *idd)
+int ioc4_ide_attach_one(struct ioc4_driver_data *idd)
 {
 	/*
 	 * PCI-RT does not bring out IDE connection.

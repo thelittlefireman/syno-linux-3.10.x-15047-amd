@@ -66,6 +66,7 @@ void ath9k_hw_init_btcoex_hw(struct ath_hw *ah, int qnum)
 		.bt_first_slot_time = 5,
 		.bt_hold_rx_clear = true,
 	};
+	u32 i, idx;
 	bool rxclear_polarity = ath_bt_config.bt_rxclear_polarity;
 
 	if (AR_SREV_9300_20_OR_LATER(ah))
@@ -87,6 +88,11 @@ void ath9k_hw_init_btcoex_hw(struct ath_hw *ah, int qnum)
 		SM(ath_bt_config.bt_hold_rx_clear, AR_BT_HOLD_RX_CLEAR) |
 		SM(ATH_BTCOEX_BMISS_THRESH, AR_BT_BCN_MISS_THRESH) |
 		AR_BT_DISABLE_BT_ANT;
+
+	for (i = 0; i < 32; i++) {
+		idx = (debruijn32 << i) >> 27;
+		ah->hw_gen_timers.gen_timer_index[idx] = i;
+	}
 }
 EXPORT_SYMBOL(ath9k_hw_init_btcoex_hw);
 
@@ -255,7 +261,6 @@ void ath9k_hw_btcoex_set_weight(struct ath_hw *ah,
 }
 EXPORT_SYMBOL(ath9k_hw_btcoex_set_weight);
 
-
 static void ath9k_hw_btcoex_enable_3wire(struct ath_hw *ah)
 {
 	struct ath_btcoex_hw *btcoex = &ah->btcoex_hw;
@@ -269,7 +274,6 @@ static void ath9k_hw_btcoex_enable_3wire(struct ath_hw *ah)
 	REG_WRITE(ah, AR_BT_COEX_MODE, btcoex->bt_coex_mode);
 	REG_WRITE(ah, AR_BT_COEX_MODE2, btcoex->bt_coex_mode2);
 
-
 	if (AR_SREV_9300_20_OR_LATER(ah)) {
 		REG_WRITE(ah, AR_BT_COEX_WL_WEIGHTS0, btcoex->wlan_weight[0]);
 		REG_WRITE(ah, AR_BT_COEX_WL_WEIGHTS1, btcoex->wlan_weight[1]);
@@ -278,8 +282,6 @@ static void ath9k_hw_btcoex_enable_3wire(struct ath_hw *ah)
 				  btcoex->bt_weight[i]);
 	} else
 		REG_WRITE(ah, AR_BT_COEX_WEIGHT, btcoex->bt_coex_weights);
-
-
 
 	if (AR_SREV_9271(ah)) {
 		val = REG_READ(ah, 0x50040);

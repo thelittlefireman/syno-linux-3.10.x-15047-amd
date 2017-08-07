@@ -145,7 +145,6 @@ nv40_graph_vs_count(struct nouveau_device *device)
 	}
 }
 
-
 enum cp_label {
 	cp_check_load = 1,
 	cp_setup_auto_load,

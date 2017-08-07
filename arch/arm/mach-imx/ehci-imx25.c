@@ -95,4 +95,3 @@ int mx25_initialize_usb_hw(int port, unsigned int flags)
 
 	return 0;
 }
-

@@ -95,7 +95,6 @@ readfifo(unsigned int ale, unsigned int adr, u_char off, u_char *data, int size)
 	insb(adr, data, size);
 }
 
-
 static inline void
 writereg(unsigned int ale, unsigned int adr, u_char off, u_char data)
 {
@@ -376,7 +375,6 @@ MemwaitforCEC(struct IsdnCardState *cs, int hscx)
 		printk(KERN_WARNING "HiSax: waitforCEC timeout\n");
 }
 
-
 static inline void
 MemwaitforXFW(struct IsdnCardState *cs, int hscx)
 {
@@ -427,7 +425,7 @@ Memhscx_empty_fifo(struct BCState *bcs, int count)
 		t += sprintf(t, "hscx_empty_fifo %c cnt %d",
 			     bcs->hw.hscx.hscx ? 'B' : 'A', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -469,7 +467,7 @@ Memhscx_fill_fifo(struct BCState *bcs)
 		t += sprintf(t, "hscx_fill_fifo %c cnt %d",
 			     bcs->hw.hscx.hscx ? 'B' : 'A', count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 

@@ -200,7 +200,6 @@ static int dgrp_config_proc_open(struct inode *inode, struct file *file)
 	return seq_open(file, &proc_config_ops);
 }
 
-
 /*
  *  When writing configuration information, each "record" (i.e. each
  *  write) is treated as an independent request.  See the "parse"
@@ -387,7 +386,6 @@ static int dgrp_info_proc_open(struct inode *inode, struct file *file)
 	return single_open(file, dgrp_info_proc_show, NULL);
 }
 
-
 static void *dgrp_nodeinfo_start(struct seq_file *m, loff_t *pos)
 {
 	return seq_list_start_head(&nd_struct_list, *pos);
@@ -441,7 +439,6 @@ static int dgrp_nodeinfo_show(struct seq_file *m, void *v)
 
 	return 0;
 }
-
 
 static const struct seq_operations nodeinfo_ops = {
 	.start = dgrp_nodeinfo_start,

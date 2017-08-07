@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/stddef.h>
+#include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/acpi.h>
 
@@ -74,7 +75,6 @@ MODULE_DEVICE_TABLE(acpi, acpi_smbus_cmi_ids);
 #define ACPI_SMBUS_PRTCL_BYTE_DATA		0x06
 #define ACPI_SMBUS_PRTCL_WORD_DATA		0x08
 #define ACPI_SMBUS_PRTCL_BLOCK_DATA		0x0a
-
 
 static int
 acpi_smbus_cmi_access(struct i2c_adapter *adap, u16 addr, unsigned short flags,
@@ -222,7 +222,7 @@ acpi_smbus_cmi_access(struct i2c_adapter *adap, u16 addr, unsigned short flags,
 		goto out;
 
 	obj = pkg->package.elements + 1;
-	if (obj->type != ACPI_TYPE_INTEGER) {
+	if (obj == NULL || obj->type != ACPI_TYPE_INTEGER) {
 		ACPI_ERROR((AE_INFO, "Invalid argument type"));
 		result = -EIO;
 		goto out;
@@ -234,7 +234,7 @@ acpi_smbus_cmi_access(struct i2c_adapter *adap, u16 addr, unsigned short flags,
 	case I2C_SMBUS_BYTE:
 	case I2C_SMBUS_BYTE_DATA:
 	case I2C_SMBUS_WORD_DATA:
-		if (obj->type != ACPI_TYPE_INTEGER) {
+		if (obj == NULL || obj->type != ACPI_TYPE_INTEGER) {
 			ACPI_ERROR((AE_INFO, "Invalid argument type"));
 			result = -EIO;
 			goto out;
@@ -245,7 +245,7 @@ acpi_smbus_cmi_access(struct i2c_adapter *adap, u16 addr, unsigned short flags,
 			data->byte = obj->integer.value;
 		break;
 	case I2C_SMBUS_BLOCK_DATA:
-		if (obj->type != ACPI_TYPE_BUFFER) {
+		if (obj == NULL || obj->type != ACPI_TYPE_BUFFER) {
 			ACPI_ERROR((AE_INFO, "Invalid argument type"));
 			result = -EIO;
 			goto out;
@@ -290,7 +290,6 @@ static const struct i2c_algorithm acpi_smbus_cmi_algorithm = {
 	.smbus_xfer = acpi_smbus_cmi_access,
 	.functionality = acpi_smbus_cmi_func,
 };
-
 
 static int acpi_smbus_cmi_add_cap(struct acpi_smbus_cmi *smbus_cmi,
 				  const char *name)

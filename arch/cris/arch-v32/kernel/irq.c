@@ -264,7 +264,6 @@ static int irq_cpu(int irq)
 		return smp_processor_id();
         }
 
-
 	/* Let the interrupt stay if possible */
 	if (cpumask_test_cpu(cpu, &irq_allocations[irq - FIRST_IRQ].mask))
 		goto out;
@@ -289,7 +288,6 @@ void crisv32_unmask_irq(int irq)
 {
 	unblock_irq(irq, irq_cpu(irq));
 }
-
 
 static void enable_crisv32_irq(struct irq_data *data)
 {
@@ -331,11 +329,11 @@ extern void do_IRQ(int irq, struct pt_regs * regs);
 void
 crisv32_do_IRQ(int irq, int block, struct pt_regs* regs)
 {
-	/* Interrupts that may not be moved to another CPU may
-	 * skip blocking. This is currently only valid for the
-	 * timer IRQ and the IPI and is used for the timer
-	 * interrupt to avoid watchdog starvation.
-	 */
+	/* Interrupts that may not be moved to another CPU and
+         * are IRQF_DISABLED may skip blocking. This is currently
+         * only valid for the timer IRQ and the IPI and is used
+         * for the timer interrupt to avoid watchdog starvation.
+         */
 	if (!block) {
 		do_IRQ(irq, regs);
 		return;
@@ -498,4 +496,3 @@ init_IRQ(void)
 	breakpoint();
 #endif
 }
-

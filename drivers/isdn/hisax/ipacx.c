@@ -23,7 +23,6 @@
 #define B_FIFO_SIZE       64
 #define D_FIFO_SIZE       32
 
-
 // ipacx interrupt mask values
 #define _MASK_IMASK     0x2E  // global mask
 #define _MASKB_IMASK    0x0B
@@ -260,7 +259,7 @@ dch_empty_fifo(struct IsdnCardState *cs, int count)
 
 		t += sprintf(t, "dch_empty_fifo() cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 
@@ -307,7 +306,7 @@ dch_fill_fifo(struct IsdnCardState *cs)
 
 		t += sprintf(t, "dch_fill_fifo() cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 
@@ -434,7 +433,6 @@ dch_init(struct IsdnCardState *cs)
 	cs->writeisac(cs, IPACX_MON_CR,   0x00);  // disable monitor channel
 }
 
-
 //==========================================================
 // B channel functions
 //==========================================================
@@ -539,7 +537,7 @@ bch_empty_fifo(struct BCState *bcs, int count)
 
 		t += sprintf(t, "bch_empty_fifo() B-%d cnt %d", hscx, count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -582,7 +580,7 @@ bch_fill_fifo(struct BCState *bcs)
 
 		t += sprintf(t, "chb_fill_fifo() B-%d cnt %d", hscx, count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", bcs->blog);
+		debugl1(cs, bcs->blog);
 	}
 }
 
@@ -833,7 +831,6 @@ bch_init(struct IsdnCardState *cs, int hscx)
 	cs->bcs[hscx].cs            = cs;
 	bch_mode(cs->bcs + hscx, 0, hscx);
 }
-
 
 //==========================================================
 // Shared functions

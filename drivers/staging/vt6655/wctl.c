@@ -75,8 +75,8 @@ bool WCTLbIsDuplicate(PSCache pCache, PS802_11Header pMACHeader)
 		for (ii = 0; ii < DUPLICATE_RX_CACHE_LENGTH; ii++) {
 			pCacheEntry = &(pCache->asCacheEntry[uIndex]);
 			if ((pCacheEntry->wFmSequence == pMACHeader->wSeqCtl) &&
-			    ether_addr_equal(pCacheEntry->abyAddr2,
-					     pMACHeader->abyAddr2)) {
+			    (!compare_ether_addr(&(pCacheEntry->abyAddr2[0]), &(pMACHeader->abyAddr2[0])))
+) {
 				/* Duplicate match */
 				return true;
 			}
@@ -110,9 +110,9 @@ unsigned int WCTLuSearchDFCB(PSDevice pDevice, PS802_11Header pMACHeader)
 	unsigned int ii;
 
 	for (ii = 0; ii < pDevice->cbDFCB; ii++) {
-		if (pDevice->sRxDFCB[ii].bInUse &&
-		    ether_addr_equal(pDevice->sRxDFCB[ii].abyAddr2,
-				     pMACHeader->abyAddr2)) {
+		if ((pDevice->sRxDFCB[ii].bInUse == true) &&
+		    (!compare_ether_addr(&(pDevice->sRxDFCB[ii].abyAddr2[0]), &(pMACHeader->abyAddr2[0])))
+) {
 			//
 			return ii;
 		}
@@ -141,7 +141,7 @@ unsigned int WCTLuInsertDFCB(PSDevice pDevice, PS802_11Header pMACHeader)
 	if (pDevice->cbFreeDFCB == 0)
 		return pDevice->cbDFCB;
 	for (ii = 0; ii < pDevice->cbDFCB; ii++) {
-		if (!pDevice->sRxDFCB[ii].bInUse) {
+		if (pDevice->sRxDFCB[ii].bInUse == false) {
 			pDevice->cbFreeDFCB--;
 			pDevice->sRxDFCB[ii].uLifetime = pDevice->dwMaxReceiveLifetime;
 			pDevice->sRxDFCB[ii].bInUse = true;
@@ -174,7 +174,7 @@ bool WCTLbHandleFragment(PSDevice pDevice, PS802_11Header pMACHeader, unsigned i
 {
 	unsigned int uHeaderSize;
 
-	if (bWEP) {
+	if (bWEP == true) {
 		uHeaderSize = 28;
 		if (bExtIV)
 			// ExtIV

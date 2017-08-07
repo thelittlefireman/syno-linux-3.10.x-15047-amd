@@ -149,7 +149,7 @@ static int ttl_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(dev, "no platform data\n");
 		ret = -ENXIO;

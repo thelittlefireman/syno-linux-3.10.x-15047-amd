@@ -18,13 +18,14 @@
  * driver
  *
  * TODO:
- * -- Add true modem control line query capability.  Currently we track the
+ * -- Add true modem contol line query capability.  Currently we track the
  *    states reported by the interrupt and the states we request.
  * -- Add support for flush commands
  */
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
@@ -53,7 +54,6 @@ static void belkin_sa_break_ctl(struct tty_struct *tty, int break_state);
 static int  belkin_sa_tiocmget(struct tty_struct *tty);
 static int  belkin_sa_tiocmset(struct tty_struct *tty,
 					unsigned int set, unsigned int clear);
-
 
 static const struct usb_device_id id_table[] = {
 	{ USB_DEVICE(BELKIN_SA_VID, BELKIN_SA_PID) },
@@ -98,7 +98,6 @@ struct belkin_sa_private {
 	unsigned char		last_msr;
 	int			bad_flow_control;
 };
-
 
 /*
  * ***************************************************************************

@@ -42,6 +42,8 @@
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
 
+#include "sys32.h"
+
 #undef DEBUG
 
 #ifdef DEBUG

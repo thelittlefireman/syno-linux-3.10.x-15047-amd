@@ -420,13 +420,7 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
 		"Advanced Simple",
 		"Core",
 		"Simple Scalable",
-		"Advanced Coding Efficiency",
-		NULL,
-	};
-
-	static const char * const vpx_golden_frame_sel[] = {
-		"Use Previous Frame",
-		"Use Previous Specific Frame",
+		"Advanced Coding Efficency",
 		NULL,
 	};
 
@@ -462,7 +456,6 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
 		"RGB full range (0-255)",
 		NULL,
 	};
-
 
 	switch (id) {
 	case V4L2_CID_MPEG_AUDIO_SAMPLING_FREQ:
@@ -544,8 +537,6 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
 		return mpeg_mpeg4_level;
 	case V4L2_CID_MPEG_VIDEO_MPEG4_PROFILE:
 		return mpeg4_profile;
-	case V4L2_CID_MPEG_VIDEO_VPX_GOLDEN_FRAME_SEL:
-		return vpx_golden_frame_sel;
 	case V4L2_CID_JPEG_CHROMA_SUBSAMPLING:
 		return jpeg_chroma_subsampling;
 	case V4L2_CID_DV_TX_MODE:
@@ -559,33 +550,6 @@ const char * const *v4l2_ctrl_get_menu(u32 id)
 	}
 }
 EXPORT_SYMBOL(v4l2_ctrl_get_menu);
-
-#define __v4l2_qmenu_int_len(arr, len) ({ *(len) = ARRAY_SIZE(arr); arr; })
-/*
- * Returns NULL or an s64 type array containing the menu for given
- * control ID. The total number of the menu items is returned in @len.
- */
-const s64 *v4l2_ctrl_get_int_menu(u32 id, u32 *len)
-{
-	static const s64 qmenu_int_vpx_num_partitions[] = {
-		1, 2, 4, 8,
-	};
-
-	static const s64 qmenu_int_vpx_num_ref_frames[] = {
-		1, 2, 3,
-	};
-
-	switch (id) {
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_PARTITIONS:
-		return __v4l2_qmenu_int_len(qmenu_int_vpx_num_partitions, len);
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_REF_FRAMES:
-		return __v4l2_qmenu_int_len(qmenu_int_vpx_num_ref_frames, len);
-	default:
-		*len = 0;
-		return NULL;
-	}
-}
-EXPORT_SYMBOL(v4l2_ctrl_get_int_menu);
 
 /* Return the control name. */
 const char *v4l2_ctrl_get_name(u32 id)
@@ -635,11 +599,9 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_ALPHA_COMPONENT:		return "Alpha Component";
 	case V4L2_CID_COLORFX_CBCR:		return "Color Effects, CbCr";
 
-	/* Codec controls */
-	/* The MPEG controls are applicable to all codec controls
-	 * and the 'MPEG' part of the define is historical */
+	/* MPEG controls */
 	/* Keep the order of the 'case's the same as in videodev2.h! */
-	case V4L2_CID_MPEG_CLASS:		return "Codec Controls";
+	case V4L2_CID_MPEG_CLASS:		return "MPEG Encoder Controls";
 	case V4L2_CID_MPEG_STREAM_TYPE:		return "Stream Type";
 	case V4L2_CID_MPEG_STREAM_PID_PMT:	return "Stream PMT Program ID";
 	case V4L2_CID_MPEG_STREAM_PID_AUDIO:	return "Stream Audio Program ID";
@@ -735,23 +697,7 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_MPEG_VIDEO_DEC_PTS:			return "Video Decoder PTS";
 	case V4L2_CID_MPEG_VIDEO_DEC_FRAME:			return "Video Decoder Frame Count";
 	case V4L2_CID_MPEG_VIDEO_VBV_DELAY:			return "Initial Delay for VBV Control";
-	case V4L2_CID_MPEG_VIDEO_MV_H_SEARCH_RANGE:		return "Horizontal MV Search Range";
-	case V4L2_CID_MPEG_VIDEO_MV_V_SEARCH_RANGE:		return "Vertical MV Search Range";
 	case V4L2_CID_MPEG_VIDEO_REPEAT_SEQ_HEADER:		return "Repeat Sequence Header";
-
-	/* VPX controls */
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_PARTITIONS:		return "VPX Number of Partitions";
-	case V4L2_CID_MPEG_VIDEO_VPX_IMD_DISABLE_4X4:		return "VPX Intra Mode Decision Disable";
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_REF_FRAMES:		return "VPX No. of Refs for P Frame";
-	case V4L2_CID_MPEG_VIDEO_VPX_FILTER_LEVEL:		return "VPX Loop Filter Level Range";
-	case V4L2_CID_MPEG_VIDEO_VPX_FILTER_SHARPNESS:		return "VPX Deblocking Effect Control";
-	case V4L2_CID_MPEG_VIDEO_VPX_GOLDEN_FRAME_REF_PERIOD:	return "VPX Golden Frame Refresh Period";
-	case V4L2_CID_MPEG_VIDEO_VPX_GOLDEN_FRAME_SEL:		return "VPX Golden Frame Indicator";
-	case V4L2_CID_MPEG_VIDEO_VPX_MIN_QP:			return "VPX Minimum QP Value";
-	case V4L2_CID_MPEG_VIDEO_VPX_MAX_QP:			return "VPX Maximum QP Value";
-	case V4L2_CID_MPEG_VIDEO_VPX_I_FRAME_QP:		return "VPX I-Frame QP Value";
-	case V4L2_CID_MPEG_VIDEO_VPX_P_FRAME_QP:		return "VPX P-Frame QP Value";
-	case V4L2_CID_MPEG_VIDEO_VPX_PROFILE:			return "VPX Profile";
 
 	/* CAMERA controls */
 	/* Keep the order of the 'case's the same as in videodev2.h! */
@@ -859,17 +805,6 @@ const char *v4l2_ctrl_get_name(u32 id)
 	case V4L2_CID_FM_RX_CLASS:		return "FM Radio Receiver Controls";
 	case V4L2_CID_TUNE_DEEMPHASIS:		return "De-Emphasis";
 	case V4L2_CID_RDS_RECEPTION:		return "RDS Reception";
-
-	case V4L2_CID_RF_TUNER_CLASS:		return "RF Tuner Controls";
-	case V4L2_CID_RF_TUNER_LNA_GAIN_AUTO:	return "LNA Gain, Auto";
-	case V4L2_CID_RF_TUNER_LNA_GAIN:	return "LNA Gain";
-	case V4L2_CID_RF_TUNER_MIXER_GAIN_AUTO:	return "Mixer Gain, Auto";
-	case V4L2_CID_RF_TUNER_MIXER_GAIN:	return "Mixer Gain";
-	case V4L2_CID_RF_TUNER_IF_GAIN_AUTO:	return "IF Gain, Auto";
-	case V4L2_CID_RF_TUNER_IF_GAIN:		return "IF Gain";
-	case V4L2_CID_RF_TUNER_BANDWIDTH_AUTO:	return "Bandwidth, Auto";
-	case V4L2_CID_RF_TUNER_BANDWIDTH:	return "Bandwidth";
-	case V4L2_CID_RF_TUNER_PLL_LOCK:	return "PLL Lock";
 	default:
 		return NULL;
 	}
@@ -919,18 +854,9 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_WIDE_DYNAMIC_RANGE:
 	case V4L2_CID_IMAGE_STABILIZATION:
 	case V4L2_CID_RDS_RECEPTION:
-	case V4L2_CID_RF_TUNER_LNA_GAIN_AUTO:
-	case V4L2_CID_RF_TUNER_MIXER_GAIN_AUTO:
-	case V4L2_CID_RF_TUNER_IF_GAIN_AUTO:
-	case V4L2_CID_RF_TUNER_BANDWIDTH_AUTO:
-	case V4L2_CID_RF_TUNER_PLL_LOCK:
 		*type = V4L2_CTRL_TYPE_BOOLEAN;
 		*min = 0;
 		*max = *step = 1;
-		break;
-	case V4L2_CID_MPEG_VIDEO_MV_H_SEARCH_RANGE:
-	case V4L2_CID_MPEG_VIDEO_MV_V_SEARCH_RANGE:
-		*type = V4L2_CTRL_TYPE_INTEGER;
 		break;
 	case V4L2_CID_PAN_RESET:
 	case V4L2_CID_TILT_RESET:
@@ -987,7 +913,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_DV_RX_RGB_RANGE:
 	case V4L2_CID_TEST_PATTERN:
 	case V4L2_CID_TUNE_DEEMPHASIS:
-	case V4L2_CID_MPEG_VIDEO_VPX_GOLDEN_FRAME_SEL:
 		*type = V4L2_CTRL_TYPE_MENU;
 		break;
 	case V4L2_CID_LINK_FREQ:
@@ -999,8 +924,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 		break;
 	case V4L2_CID_ISO_SENSITIVITY:
 	case V4L2_CID_AUTO_EXPOSURE_BIAS:
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_PARTITIONS:
-	case V4L2_CID_MPEG_VIDEO_VPX_NUM_REF_FRAMES:
 		*type = V4L2_CTRL_TYPE_INTEGER_MENU;
 		break;
 	case V4L2_CID_USER_CLASS:
@@ -1013,7 +936,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_IMAGE_PROC_CLASS:
 	case V4L2_CID_DV_CLASS:
 	case V4L2_CID_FM_RX_CLASS:
-	case V4L2_CID_RF_TUNER_CLASS:
 		*type = V4L2_CTRL_TYPE_CTRL_CLASS;
 		/* You can neither read not write these */
 		*flags |= V4L2_CTRL_FLAG_READ_ONLY | V4L2_CTRL_FLAG_WRITE_ONLY;
@@ -1086,10 +1008,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_PILOT_TONE_FREQUENCY:
 	case V4L2_CID_TUNE_POWER_LEVEL:
 	case V4L2_CID_TUNE_ANTENNA_CAPACITOR:
-	case V4L2_CID_RF_TUNER_LNA_GAIN:
-	case V4L2_CID_RF_TUNER_MIXER_GAIN:
-	case V4L2_CID_RF_TUNER_IF_GAIN:
-	case V4L2_CID_RF_TUNER_BANDWIDTH:
 		*flags |= V4L2_CTRL_FLAG_SLIDER;
 		break;
 	case V4L2_CID_PAN_RELATIVE:
@@ -1107,9 +1025,6 @@ void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 	case V4L2_CID_DV_TX_EDID_PRESENT:
 	case V4L2_CID_DV_RX_POWER_PRESENT:
 		*flags |= V4L2_CTRL_FLAG_READ_ONLY;
-		break;
-	case V4L2_CID_RF_TUNER_PLL_LOCK:
-		*flags |= V4L2_CTRL_FLAG_VOLATILE;
 		break;
 	}
 }
@@ -1796,9 +1711,7 @@ struct v4l2_ctrl *v4l2_ctrl_new_std_menu(struct v4l2_ctrl_handler *hdl,
 			const struct v4l2_ctrl_ops *ops,
 			u32 id, s32 max, s32 mask, s32 def)
 {
-	const char * const *qmenu = NULL;
-	const s64 *qmenu_int = NULL;
-	unsigned int qmenu_int_len = 0;
+	const char * const *qmenu = v4l2_ctrl_get_menu(id);
 	const char *name;
 	enum v4l2_ctrl_type type;
 	s32 min;
@@ -1806,18 +1719,12 @@ struct v4l2_ctrl *v4l2_ctrl_new_std_menu(struct v4l2_ctrl_handler *hdl,
 	u32 flags;
 
 	v4l2_ctrl_fill(id, &name, &type, &min, &max, &step, &def, &flags);
-
-	if (type == V4L2_CTRL_TYPE_MENU)
-		qmenu = v4l2_ctrl_get_menu(id);
-	else if (type == V4L2_CTRL_TYPE_INTEGER_MENU)
-		qmenu_int = v4l2_ctrl_get_int_menu(id, &qmenu_int_len);
-
-	if ((!qmenu && !qmenu_int) || (qmenu_int && max > qmenu_int_len)) {
+	if (type != V4L2_CTRL_TYPE_MENU) {
 		handler_set_err(hdl, -EINVAL);
 		return NULL;
 	}
 	return v4l2_ctrl_new(hdl, ops, id, name, type,
-			     0, max, mask, def, flags, qmenu, qmenu_int, NULL);
+			     0, max, mask, def, flags, qmenu, NULL, NULL);
 }
 EXPORT_SYMBOL(v4l2_ctrl_new_std_menu);
 
@@ -1951,8 +1858,7 @@ void v4l2_ctrl_cluster(unsigned ncontrols, struct v4l2_ctrl **controls)
 	int i;
 
 	/* The first control is the master control and it must not be NULL */
-	if (WARN_ON(ncontrols == 0 || controls[0] == NULL))
-		return;
+	BUG_ON(ncontrols == 0 || controls[0] == NULL);
 
 	for (i = 0; i < ncontrols; i++) {
 		if (controls[i]) {
@@ -2274,8 +2180,6 @@ int v4l2_subdev_querymenu(struct v4l2_subdev *sd, struct v4l2_querymenu *qm)
 }
 EXPORT_SYMBOL(v4l2_subdev_querymenu);
 
-
-
 /* Some general notes on the atomic requirements of VIDIOC_G/TRY/S_EXT_CTRLS:
 
    It is not a fully atomic operation, just best-effort only. After all, if
@@ -2404,8 +2308,6 @@ static int class_check(struct v4l2_ctrl_handler *hdl, u32 ctrl_class)
 		return list_empty(&hdl->ctrl_refs) ? -EINVAL : 0;
 	return find_ref_lock(hdl, ctrl_class | 1) ? 0 : -EINVAL;
 }
-
-
 
 /* Get extended controls. Allocates the helpers array if needed. */
 int v4l2_g_ext_ctrls(struct v4l2_ctrl_handler *hdl, struct v4l2_ext_controls *cs)
@@ -2560,7 +2462,6 @@ s64 v4l2_ctrl_g_ctrl_int64(struct v4l2_ctrl *ctrl)
 	return c.value;
 }
 EXPORT_SYMBOL(v4l2_ctrl_g_ctrl_int64);
-
 
 /* Core function that calls try/s_ctrl and ensures that the new value is
    copied to the current value on a set.

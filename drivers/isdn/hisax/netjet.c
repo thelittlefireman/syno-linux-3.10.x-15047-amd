@@ -176,7 +176,7 @@ static void printframe(struct IsdnCardState *cs, u_char *buf, int count, char *s
 		else
 			j = i;
 		QuickHex(t, p, j);
-		debugl1(cs, "%s", tmp);
+		debugl1(cs, tmp);
 		p += j;
 		i -= j;
 		t = tmp;
@@ -392,8 +392,6 @@ static void got_frame(struct BCState *bcs, int count) {
 	if (bcs->cs->debug & L1_DEB_RECEIVE_FRAME)
 		printframe(bcs->cs, bcs->hw.tiger.rcvbuf, count, "rec");
 }
-
-
 
 static void read_raw(struct BCState *bcs, u_int *buf, int cnt) {
 	int i;
@@ -849,7 +847,6 @@ tiger_l2l1(struct PStack *st, int pr, void *arg)
 	}
 }
 
-
 static void
 close_tigerstate(struct BCState *bcs)
 {
@@ -907,7 +904,6 @@ setstack_tiger(struct PStack *st, struct BCState *bcs)
 	setstack_l1_B(st);
 	return (0);
 }
-
 
 void
 inittiger(struct IsdnCardState *cs)

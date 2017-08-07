@@ -39,6 +39,7 @@
 /* #define DEBUG */
 /* #define SEP_PERF_DEBUG */
 
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
@@ -492,7 +493,8 @@ int sep_free_dma_table_data_handler(struct sep_device *sep,
 		 * then we skip this step altogether as restricted
 		 * memory is not available to the o/s at all.
 		 */
-		if (!(*dma_ctx)->secure_dma && dma->out_map_array) {
+		if (((*dma_ctx)->secure_dma == false) &&
+			(dma->out_map_array)) {
 
 			for (count = 0; count < dma->out_num_pages; count++) {
 				dma_unmap_page(&sep->pdev->dev,
@@ -513,7 +515,8 @@ int sep_free_dma_table_data_handler(struct sep_device *sep,
 		}
 
 		/* Again, we do this only for non secure dma */
-		if (!(*dma_ctx)->secure_dma && dma->out_page_array) {
+		if (((*dma_ctx)->secure_dma == false) &&
+			(dma->out_page_array)) {
 
 			for (count = 0; count < dma->out_num_pages; count++) {
 				if (!PageReserved(dma->out_page_array[count]))
@@ -633,7 +636,6 @@ static int sep_end_transaction_handler(struct sep_device *sep,
 
 	return 0;
 }
-
 
 /**
  * sep_release - close a SEP device
@@ -767,7 +769,6 @@ static unsigned int sep_poll(struct file *filp, poll_table *wait)
 		goto end_function;
 	}
 
-
 	/* Add the event to the polling wait table */
 	dev_dbg(&sep->pdev->dev, "[PID%d] poll: calling wait sep_event\n",
 					current->pid);
@@ -856,7 +857,6 @@ static unsigned long sep_set_time(struct sep_device *sep)
 {
 	struct timeval time;
 	u32 *time_addr;	/* Address of time as seen by the kernel */
-
 
 	do_gettimeofday(&time);
 
@@ -1260,14 +1260,20 @@ static int sep_lock_user_pages(struct sep_device *sep,
 	}
 
 	/* Convert the application virtual address into a set of physical */
-	result = get_user_pages_fast(app_virt_addr, num_pages,
-		((in_out_flag == SEP_DRIVER_IN_FLAG) ? 0 : 1), page_array);
+	down_read(&current->mm->mmap_sem);
+	result = get_user_pages(current, current->mm, app_virt_addr,
+		num_pages,
+		((in_out_flag == SEP_DRIVER_IN_FLAG) ? 0 : 1),
+		0, page_array, NULL);
+
+	up_read(&current->mm->mmap_sem);
 
 	/* Check the number of pages locked - if not all then exit with error */
 	if (result != num_pages) {
 		dev_warn(&sep->pdev->dev,
-			"[PID%d] not all pages locked by get_user_pages, result 0x%X, num_pages 0x%X\n",
-			current->pid, result, num_pages);
+			"[PID%d] not all pages locked by get_user_pages, "
+			"result 0x%X, num_pages 0x%X\n",
+				current->pid, result, num_pages);
 		error = -ENOMEM;
 		goto end_function_with_error3;
 	}
@@ -1292,9 +1298,9 @@ static int sep_lock_user_pages(struct sep_device *sep,
 		lli_array[count].block_size = PAGE_SIZE;
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] lli_array[%x].bus_address is %08lx, lli_array[%x].block_size is (hex) %x\n",
-			current->pid, count,
-			(unsigned long)lli_array[count].bus_address,
+			"[PID%d] lli_array[%x].bus_address is %08lx, "
+			"lli_array[%x].block_size is (hex) %x\n", current->pid,
+			count, (unsigned long)lli_array[count].bus_address,
 			count, lli_array[count].block_size);
 	}
 
@@ -1313,11 +1319,11 @@ static int sep_lock_user_pages(struct sep_device *sep,
 			"[PID%d] After check if page 0 has all data\n",
 			current->pid);
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] lli_array[0].bus_address is (hex) %08lx, lli_array[0].block_size is (hex) %x\n",
+			"[PID%d] lli_array[0].bus_address is (hex) %08lx, "
+			"lli_array[0].block_size is (hex) %x\n",
 			current->pid,
 			(unsigned long)lli_array[0].bus_address,
 			lli_array[0].block_size);
-
 
 	/* Check the size of the last page */
 	if (num_pages > 1) {
@@ -1330,7 +1336,8 @@ static int sep_lock_user_pages(struct sep_device *sep,
 			"[PID%d] After last page size adjustment\n",
 			current->pid);
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] lli_array[%x].bus_address is (hex) %08lx, lli_array[%x].block_size is (hex) %x\n",
+			"[PID%d] lli_array[%x].bus_address is (hex) %08lx, "
+			"lli_array[%x].block_size is (hex) %x\n",
 			current->pid,
 			num_pages - 1,
 			(unsigned long)lli_array[num_pages - 1].bus_address,
@@ -1446,7 +1453,8 @@ static int sep_lli_table_secure_dma(struct sep_device *sep,
 		start_page += PAGE_SIZE;
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] lli_array[%x].bus_address is %08lx, lli_array[%x].block_size is (hex) %x\n",
+			"[PID%d] lli_array[%x].bus_address is %08lx, "
+			"lli_array[%x].block_size is (hex) %x\n",
 			current->pid,
 			count, (unsigned long)lli_array[count].bus_address,
 			count, lli_array[count].block_size);
@@ -1465,7 +1473,8 @@ static int sep_lli_table_secure_dma(struct sep_device *sep,
 
 	dev_dbg(&sep->pdev->dev,
 		"[PID%d] After check if page 0 has all data\n"
-		"lli_array[0].bus_address is (hex) %08lx, lli_array[0].block_size is (hex) %x\n",
+		"lli_array[0].bus_address is (hex) %08lx, "
+		"lli_array[0].block_size is (hex) %x\n",
 		current->pid,
 		(unsigned long)lli_array[0].bus_address,
 		lli_array[0].block_size);
@@ -1479,7 +1488,8 @@ static int sep_lli_table_secure_dma(struct sep_device *sep,
 
 		dev_dbg(&sep->pdev->dev,
 			"[PID%d] After last page size adjustment\n"
-			"lli_array[%x].bus_address is (hex) %08lx, lli_array[%x].block_size is (hex) %x\n",
+			"lli_array[%x].bus_address is (hex) %08lx, "
+			"lli_array[%x].block_size is (hex) %x\n",
 			current->pid, num_pages - 1,
 			(unsigned long)lli_array[num_pages - 1].bus_address,
 			num_pages - 1,
@@ -1739,8 +1749,9 @@ static void sep_debug_print_lli_tables(struct sep_device *sep,
 
 	while ((unsigned long) lli_table_ptr->bus_address != 0xffffffff) {
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] lli table %08lx, table_data_size is (hex) %lx\n",
-			current->pid, table_count, table_data_size);
+			"[PID%d] lli table %08lx, "
+			"table_data_size is (hex) %lx\n",
+				current->pid, table_count, table_data_size);
 		dev_dbg(&sep->pdev->dev,
 			"[PID%d] num_table_entries is (hex) %lx\n",
 				current->pid, num_table_entries);
@@ -1755,8 +1766,8 @@ static void sep_debug_print_lli_tables(struct sep_device *sep,
 				(unsigned long) lli_table_ptr);
 
 			dev_dbg(&sep->pdev->dev,
-				"[PID%d] phys address is %08lx block size is (hex) %x\n",
-				current->pid,
+				"[PID%d] phys address is %08lx "
+				"block size is (hex) %x\n", current->pid,
 				(unsigned long)lli_table_ptr->bus_address,
 				lli_table_ptr->block_size);
 		}
@@ -1765,25 +1776,28 @@ static void sep_debug_print_lli_tables(struct sep_device *sep,
 		lli_table_ptr--;
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] phys lli_table_ptr->block_size is (hex) %x\n",
+			"[PID%d] phys lli_table_ptr->block_size "
+			"is (hex) %x\n",
 			current->pid,
 			lli_table_ptr->block_size);
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] phys lli_table_ptr->physical_address is %08lx\n",
+			"[PID%d] phys lli_table_ptr->physical_address "
+			"is %08lx\n",
 			current->pid,
 			(unsigned long)lli_table_ptr->bus_address);
-
 
 		table_data_size = lli_table_ptr->block_size & 0xffffff;
 		num_table_entries = (lli_table_ptr->block_size >> 24) & 0xff;
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] phys table_data_size is (hex) %lx num_table_entries is %lx bus_address is%lx\n",
-			current->pid,
-			table_data_size,
-			num_table_entries,
-			(unsigned long)lli_table_ptr->bus_address);
+			"[PID%d] phys table_data_size is "
+			"(hex) %lx num_table_entries is"
+			" %lx bus_address is%lx\n",
+				current->pid,
+				table_data_size,
+				num_table_entries,
+				(unsigned long)lli_table_ptr->bus_address);
 
 		if ((unsigned long)lli_table_ptr->bus_address != 0xffffffff)
 			lli_table_ptr = (struct sep_lli_entry *)
@@ -1796,7 +1810,6 @@ static void sep_debug_print_lli_tables(struct sep_device *sep,
 					current->pid);
 #endif
 }
-
 
 /**
  * sep_prepare_empty_lli_table - create a blank LLI table
@@ -1933,7 +1946,7 @@ static int sep_prepare_input_dma_table(struct sep_device *sep,
 	}
 
 	/* Check if the pages are in Kernel Virtual Address layout */
-	if (is_kva)
+	if (is_kva == true)
 		error = sep_lock_kernel_pages(sep, app_virt_addr,
 			data_size, &lli_array_ptr, SEP_DRIVER_IN_FLAG,
 			dma_ctx);
@@ -2233,12 +2246,14 @@ static int sep_construct_dma_tables_from_lli(
 			table_data_size = out_table_data_size;
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] construct tables from lli in_table_data_size is (hex) %x\n",
-			current->pid, in_table_data_size);
+			"[PID%d] construct tables from lli"
+			" in_table_data_size is (hex) %x\n", current->pid,
+			in_table_data_size);
 
 		dev_dbg(&sep->pdev->dev,
-			"[PID%d] construct tables from lli out_table_data_size is (hex) %x\n",
-			current->pid, out_table_data_size);
+			"[PID%d] construct tables from lli"
+			"out_table_data_size is (hex) %x\n", current->pid,
+			out_table_data_size);
 
 		/* Construct input lli table */
 		sep_build_lli_table(sep, &lli_in_array[current_in_entry],
@@ -2303,7 +2318,8 @@ static int sep_construct_dma_tables_from_lli(
 				info_in_entry_ptr->block_size);
 
 			dev_dbg(&sep->pdev->dev,
-				"[PID%d] output lli_table_out_ptr: %08lx  %08x\n",
+				"[PID%d] output lli_table_out_ptr:"
+				"%08lx  %08x\n",
 				current->pid,
 				(unsigned long)info_out_entry_ptr->bus_address,
 				info_out_entry_ptr->block_size);
@@ -2424,7 +2440,7 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 	dma_ctx->dma_res_arr[dma_ctx->nr_dcb_creat].out_page_array = NULL;
 
 	/* Lock the pages of the buffer and translate them to pages */
-	if (is_kva) {
+	if (is_kva == true) {
 		dev_dbg(&sep->pdev->dev, "[PID%d] Locking kernel input pages\n",
 						current->pid);
 		error = sep_lock_kernel_pages(sep, app_virt_in_addr,
@@ -2432,8 +2448,8 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 				dma_ctx);
 		if (error) {
 			dev_warn(&sep->pdev->dev,
-				"[PID%d] sep_lock_kernel_pages for input virtual buffer failed\n",
-				current->pid);
+				"[PID%d] sep_lock_kernel_pages for input "
+				"virtual buffer failed\n", current->pid);
 
 			goto end_function;
 		}
@@ -2446,8 +2462,8 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 
 		if (error) {
 			dev_warn(&sep->pdev->dev,
-				"[PID%d] sep_lock_kernel_pages for output virtual buffer failed\n",
-				current->pid);
+				"[PID%d] sep_lock_kernel_pages for output "
+				"virtual buffer failed\n", current->pid);
 
 			goto end_function_free_lli_in;
 		}
@@ -2462,13 +2478,13 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 				dma_ctx);
 		if (error) {
 			dev_warn(&sep->pdev->dev,
-				"[PID%d] sep_lock_user_pages for input virtual buffer failed\n",
-				current->pid);
+				"[PID%d] sep_lock_user_pages for input "
+				"virtual buffer failed\n", current->pid);
 
 			goto end_function;
 		}
 
-		if (dma_ctx->secure_dma) {
+		if (dma_ctx->secure_dma == true) {
 			/* secure_dma requires use of non accessible memory */
 			dev_dbg(&sep->pdev->dev, "[PID%d] in secure_dma\n",
 				current->pid);
@@ -2477,7 +2493,8 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 				SEP_DRIVER_OUT_FLAG, dma_ctx);
 			if (error) {
 				dev_warn(&sep->pdev->dev,
-					"[PID%d] secure dma table setup for output virtual buffer failed\n",
+					"[PID%d] secure dma table setup "
+					" for output virtual buffer failed\n",
 					current->pid);
 
 				goto end_function_free_lli_in;
@@ -2497,7 +2514,8 @@ static int sep_prepare_input_output_dma_table(struct sep_device *sep,
 
 			if (error) {
 				dev_warn(&sep->pdev->dev,
-					"[PID%d] sep_lock_user_pages for output virtual buffer failed\n",
+					"[PID%d] sep_lock_user_pages"
+					" for output virtual buffer failed\n",
 					current->pid);
 
 				goto end_function_free_lli_in;
@@ -2554,7 +2572,6 @@ end_function_with_error:
 	kfree(dma_ctx->dma_res_arr[dma_ctx->nr_dcb_creat].out_page_array);
 	dma_ctx->dma_res_arr[dma_ctx->nr_dcb_creat].out_page_array = NULL;
 	kfree(lli_out_array);
-
 
 end_function_free_lli_in:
 	kfree(dma_ctx->dma_res_arr[dma_ctx->nr_dcb_creat].in_map_array);
@@ -2703,11 +2720,11 @@ int sep_prepare_input_output_dma_table_in_dcb(struct sep_device *sep,
 	dcb_table_ptr->tail_data_size = 0;
 	dcb_table_ptr->out_vr_tail_pt = 0;
 
-	if (isapplet) {
+	if (isapplet == true) {
 
 		/* Check if there is enough data for DMA operation */
 		if (data_in_size < SEP_DRIVER_MIN_DATA_SIZE_PER_TABLE) {
-			if (is_kva) {
+			if (is_kva == true) {
 				error = -ENODEV;
 				goto end_function_error;
 			} else {
@@ -2748,7 +2765,7 @@ int sep_prepare_input_output_dma_table_in_dcb(struct sep_device *sep,
 		if (tail_size) {
 			if (tail_size > sizeof(dcb_table_ptr->tail_data))
 				return -EINVAL;
-			if (is_kva) {
+			if (is_kva == true) {
 				error = -ENODEV;
 				goto end_function_error;
 			} else {
@@ -2810,7 +2827,8 @@ int sep_prepare_input_output_dma_table_in_dcb(struct sep_device *sep,
 
 	if (error) {
 		dev_warn(&sep->pdev->dev,
-			"prepare DMA table call failed from prepare DCB call\n");
+			"prepare DMA table call failed "
+			"from prepare DCB call\n");
 		goto end_function_error;
 	}
 
@@ -2832,7 +2850,6 @@ end_function:
 	return error;
 
 }
-
 
 /**
  * sep_free_dma_tables_and_dcb - free DMA tables and DCBs
@@ -2858,7 +2875,7 @@ static int sep_free_dma_tables_and_dcb(struct sep_device *sep, bool isapplet,
 	if (!dma_ctx || !*dma_ctx) /* nothing to be done here*/
 		return 0;
 
-	if (!(*dma_ctx)->secure_dma && isapplet) {
+	if (((*dma_ctx)->secure_dma == false) && (isapplet == true)) {
 		dev_dbg(&sep->pdev->dev, "[PID%d] handling applet\n",
 			current->pid);
 
@@ -2872,13 +2889,12 @@ static int sep_free_dma_tables_and_dcb(struct sep_device *sep, bool isapplet,
 		 * Go over each DCB and see if
 		 * tail pointer must be updated
 		 */
-		for (i = 0; i < (*dma_ctx)->nr_dcb_creat;
-		     i++, dcb_table_ptr++) {
+		for (i = 0; i < (*dma_ctx)->nr_dcb_creat; i++, dcb_table_ptr++) {
 			if (dcb_table_ptr->out_vr_tail_pt) {
 				pt_hold = (unsigned long)dcb_table_ptr->
 					out_vr_tail_pt;
 				tail_pt = (void *)pt_hold;
-				if (is_kva) {
+				if (is_kva == true) {
 					error = -ENODEV;
 					break;
 				} else {
@@ -3073,7 +3089,6 @@ static long sep_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		dev_dbg(&sep->pdev->dev,
 			"[PID%d] SEP_IOCPREPAREDCB start\n",
 			current->pid);
-		/* fall-through */
 	case SEP_IOCPREPAREDCB_SECURE_DMA:
 		dev_dbg(&sep->pdev->dev,
 			"[PID%d] SEP_IOCPREPAREDCB_SECURE_DMA start\n",
@@ -3592,7 +3607,6 @@ end_function:
 	return error;
 }
 
-
 /**
  *	sep_read - Returns results of an operation for fastcall interface
  *	@filp: File pointer
@@ -3639,7 +3653,6 @@ static ssize_t sep_read(struct file *filp,
 		error = -EINVAL;
 		goto end_function_error;
 	}
-
 
 	/* Wait for SEP to finish */
 	wait_event(sep->event_interrupt,
@@ -3713,7 +3726,6 @@ static inline ssize_t sep_fastcall_args_get(struct sep_device *sep,
 		goto end_function;
 	}
 
-
 	if (copy_from_user(args, buf_user, sizeof(struct sep_fastcall_hdr))) {
 		error = -EFAULT;
 		goto end_function;
@@ -3747,7 +3759,8 @@ static inline ssize_t sep_fastcall_args_get(struct sep_device *sep,
 
 	if (actual_count != count_user) {
 		dev_warn(&sep->pdev->dev,
-			 "[PID%d] inconsistent message sizes 0x%08zX vs 0x%08zX\n",
+			 "[PID%d] inconsistent message "
+			 "sizes 0x%08zX vs 0x%08zX\n",
 			 current->pid, actual_count, count_user);
 		error = -EMSGSIZE;
 		goto end_function;
@@ -3814,7 +3827,6 @@ static ssize_t sep_write(struct file *filp,
 		/* Signal received */
 		goto end_function_error;
 	}
-
 
 	/*
 	 * Prepare contents of the shared area regions for
@@ -3939,8 +3951,6 @@ static loff_t sep_seek(struct file *filp, loff_t offset, int origin)
 	return -ENOSYS;
 }
 
-
-
 /**
  * sep_file_operations - file operation on sep device
  * @sep_ioctl:	ioctl handler from user space call
@@ -3992,7 +4002,6 @@ sep_sysfs_read(struct file *filp, struct kobject *kobj,
 	queue_num = sep->sep_queue_num;
 	if (queue_num > SEP_DOUBLEBUF_USERS_LIMIT)
 		queue_num = SEP_DOUBLEBUF_USERS_LIMIT;
-
 
 	if (count < sizeof(queue_num)
 			+ (queue_num * sizeof(struct sep_queue_data))) {
@@ -4056,13 +4065,11 @@ static int sep_register_driver_with_fs(struct sep_device *sep)
 	if (ret_val) {
 		dev_warn(&sep->pdev->dev, "sysfs attribute1 fails for SEP %x\n",
 			ret_val);
-		misc_deregister(&sep->miscdev_sep);
 		return ret_val;
 	}
 
 	return ret_val;
 }
-
 
 /**
  *sep_probe - probe a matching PCI device
@@ -4275,7 +4282,7 @@ static void sep_remove(struct pci_dev *pdev)
 }
 
 /* Initialize struct pci_device_id for our driver */
-static const struct pci_device_id sep_pci_id_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(sep_pci_id_tbl) = {
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x0826)},
 	{PCI_DEVICE(PCI_VENDOR_ID_INTEL, 0x08e9)},
 	{0}

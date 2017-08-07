@@ -21,7 +21,6 @@
 #include <hv/drv_pcie_rc_intf.h>
 #include <arch/spr_def.h>
 #include <asm/traps.h>
-#include <linux/perf_event.h>
 
 /* Bit-flag stored in irq_desc->chip_data to indicate HW-cleared irqs. */
 #define IS_HW_CLEARED 1
@@ -56,8 +55,7 @@ static DEFINE_PER_CPU(int, irq_depth);
 
 /* State for allocating IRQs on Gx. */
 #if CHIP_HAS_IPI()
-static unsigned long available_irqs = ((1UL << NR_IRQS) - 1) &
-				      (~(1UL << IRQ_RESCHEDULE));
+static unsigned long available_irqs = ~(1UL << IRQ_RESCHEDULE);
 static DEFINE_SPINLOCK(available_irqs_lock);
 #endif
 
@@ -75,8 +73,7 @@ static DEFINE_SPINLOCK(available_irqs_lock);
 
 /*
  * The interrupt handling path, implemented in terms of HV interrupt
- * emulation on TILEPro, and IPI hardware on TILE-Gx.
- * Entered with interrupts disabled.
+ * emulation on TILE64 and TILEPro, and IPI hardware on TILE-Gx.
  */
 void tile_dev_intr(struct pt_regs *regs, int intnum)
 {
@@ -150,7 +147,6 @@ void tile_dev_intr(struct pt_regs *regs, int intnum)
 	set_irq_regs(old_regs);
 }
 
-
 /*
  * Remove an irq from the disabled mask.  If we're in an interrupt
  * context, defer enabling the HW interrupt until we leave.
@@ -223,7 +219,7 @@ void __init init_IRQ(void)
 	ipi_init();
 }
 
-void setup_irq_regs(void)
+void __cpuinit setup_irq_regs(void)
 {
 	/* Enable interrupt delivery. */
 	unmask_irqs(~0UL);
@@ -236,7 +232,7 @@ void tile_irq_activate(unsigned int irq, int tile_irq_type)
 {
 	/*
 	 * We use handle_level_irq() by default because the pending
-	 * interrupt vector (whether modeled by the HV on
+	 * interrupt vector (whether modeled by the HV on TILE64 and
 	 * TILEPro or implemented in hardware on TILE-Gx) has
 	 * level-style semantics for each bit.  An interrupt fires
 	 * whenever a bit is high, not just at edges.
@@ -255,27 +251,9 @@ void tile_irq_activate(unsigned int irq, int tile_irq_type)
 }
 EXPORT_SYMBOL(tile_irq_activate);
 
-
 void ack_bad_irq(unsigned int irq)
 {
 	pr_err("unexpected IRQ trap at vector %02x\n", irq);
-}
-
-/*
- * /proc/interrupts printing:
- */
-int arch_show_interrupts(struct seq_file *p, int prec)
-{
-#ifdef CONFIG_PERF_EVENTS
-	int i;
-
-	seq_printf(p, "%*s: ", prec, "PMI");
-
-	for_each_online_cpu(i)
-		seq_printf(p, "%10llu ", per_cpu(perf_irqs, i));
-	seq_puts(p, "  perf_events\n");
-#endif
-	return 0;
 }
 
 /*

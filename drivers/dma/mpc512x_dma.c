@@ -39,9 +39,7 @@
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/slab.h>
-#include <linux/of_address.h>
 #include <linux/of_device.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 
 #include <linux/random.h>
@@ -558,7 +556,15 @@ static enum dma_status
 mpc_dma_tx_status(struct dma_chan *chan, dma_cookie_t cookie,
 	       struct dma_tx_state *txstate)
 {
-	return dma_cookie_status(chan, cookie, txstate);
+	struct mpc_dma_chan *mchan = dma_chan_to_mpc_dma_chan(chan);
+	enum dma_status ret;
+	unsigned long flags;
+
+	spin_lock_irqsave(&mchan->lock, flags);
+	ret = dma_cookie_status(chan, cookie, txstate);
+	spin_unlock_irqrestore(&mchan->lock, flags);
+
+	return ret;
 }
 
 /* Prepare descriptor for memory to memory copy */

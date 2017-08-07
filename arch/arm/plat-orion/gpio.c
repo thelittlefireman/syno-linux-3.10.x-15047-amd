@@ -88,7 +88,6 @@ static void __iomem *GPIO_LEVEL_MASK(struct orion_gpio_chip *ochip)
 	return ochip->base + ochip->mask_offset + GPIO_LEVEL_MASK_OFF;
 }
 
-
 static struct orion_gpio_chip orion_gpio_chips[2];
 static int orion_gpio_chip_count;
 
@@ -326,7 +325,6 @@ int orion_gpio_led_blink_set(unsigned gpio, int state,
 }
 EXPORT_SYMBOL_GPL(orion_gpio_led_blink_set);
 
-
 /*****************************************************************************
  * Orion GPIO IRQ
  *
@@ -426,7 +424,7 @@ static void gpio_irq_handler(unsigned irq, struct irq_desc *desc)
 		if (!(cause & (1 << i)))
 			continue;
 
-		type = irq_get_trigger_type(irq);
+		type = irqd_get_trigger_type(irq_get_irq_data(irq));
 		if ((type & IRQ_TYPE_SENSE_MASK) == IRQ_TYPE_EDGE_BOTH) {
 			/* Swap polarity (race with GPIO line) */
 			u32 polarity;

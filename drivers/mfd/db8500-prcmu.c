@@ -25,7 +25,6 @@
 #include <linux/bitops.h>
 #include <linux/fs.h>
 #include <linux/of.h>
-#include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/uaccess.h>
 #include <linux/mfd/core.h>
@@ -466,7 +465,7 @@ static DEFINE_SPINLOCK(clk_mgt_lock);
 
 #define CLK_MGT_ENTRY(_name, _branch, _clk38div)[PRCMU_##_name] = \
 	{ (PRCM_##_name##_MGT), 0 , _branch, _clk38div}
-static struct clk_mgt clk_mgt[PRCMU_NUM_REG_CLOCKS] = {
+struct clk_mgt clk_mgt[PRCMU_NUM_REG_CLOCKS] = {
 	CLK_MGT_ENTRY(SGACLK, PLL_DIV, false),
 	CLK_MGT_ENTRY(UARTCLK, PLL_FIX, true),
 	CLK_MGT_ENTRY(MSP02CLK, PLL_FIX, true),
@@ -540,7 +539,6 @@ static struct dsiescclk dsiescclk[3] = {
 		.div_shift = PRCM_DSITVCLK_DIV_DSI2_ESC_CLK_DIV_SHIFT,
 	}
 };
-
 
 /*
 * Used by MCDE to setup all necessary PRCMU registers
@@ -1725,9 +1723,9 @@ static long round_clock_rate(u8 clock, unsigned long rate)
 
 /* CPU FREQ table, may be changed due to if MAX_OPP is supported. */
 static struct cpufreq_frequency_table db8500_cpufreq_table[] = {
-	{ .frequency = 200000, .driver_data = ARM_EXTCLK,},
-	{ .frequency = 400000, .driver_data = ARM_50_OPP,},
-	{ .frequency = 800000, .driver_data = ARM_100_OPP,},
+	{ .frequency = 200000, .index = ARM_EXTCLK,},
+	{ .frequency = 400000, .index = ARM_50_OPP,},
+	{ .frequency = 800000, .index = ARM_100_OPP,},
 	{ .frequency = CPUFREQ_TABLE_END,}, /* To be used for MAX_OPP. */
 	{ .frequency = CPUFREQ_TABLE_END,},
 };
@@ -1902,7 +1900,7 @@ static int set_armss_rate(unsigned long rate)
 		return -EINVAL;
 
 	/* Set the new arm opp. */
-	return db8500_prcmu_set_arm_opp(db8500_cpufreq_table[i].driver_data);
+	return db8500_prcmu_set_arm_opp(db8500_cpufreq_table[i].index);
 }
 
 static int set_plldsi_rate(unsigned long rate)
@@ -2319,7 +2317,7 @@ unlock_and_return:
 /**
  * prcmu_ac_sleep_req - called when ARM no longer needs to talk to modem
  */
-void prcmu_ac_sleep_req(void)
+void prcmu_ac_sleep_req()
 {
 	u32 val;
 
@@ -2679,12 +2677,16 @@ static struct irq_domain_ops db8500_irq_ops = {
 	.xlate  = irq_domain_xlate_twocell,
 };
 
-static int db8500_irq_init(struct device_node *np)
+static int db8500_irq_init(struct device_node *np, int irq_base)
 {
 	int i;
 
+	/* In the device tree case, just take some IRQs */
+	if (np)
+		irq_base = 0;
+
 	db8500_irq_domain = irq_domain_add_simple(
-		np, NUM_PRCMU_WAKEUPS, 0,
+		np, NUM_PRCMU_WAKEUPS, irq_base,
 		&db8500_irq_ops, NULL);
 
 	if (!db8500_irq_domain) {
@@ -3067,7 +3069,7 @@ static struct db8500_thsens_platform_data db8500_thsens_data = {
 	.num_trips = 4,
 };
 
-static const struct mfd_cell common_prcmu_devs[] = {
+static struct mfd_cell common_prcmu_devs[] = {
 	{
 		.name = "ux500_wdt",
 		.platform_data = &db8500_wdt_pdata,
@@ -3076,7 +3078,7 @@ static const struct mfd_cell common_prcmu_devs[] = {
 	},
 };
 
-static const struct mfd_cell db8500_prcmu_devs[] = {
+static struct mfd_cell db8500_prcmu_devs[] = {
 	{
 		.name = "db8500-prcmu-regulators",
 		.of_compatible = "stericsson,db8500-prcmu-regulator",
@@ -3088,10 +3090,6 @@ static const struct mfd_cell db8500_prcmu_devs[] = {
 		.of_compatible = "stericsson,cpufreq-ux500",
 		.platform_data = &db8500_cpufreq_table,
 		.pdata_size = sizeof(db8500_cpufreq_table),
-	},
-	{
-		.name = "cpuidle-dbx500",
-		.of_compatible = "stericsson,cpuidle-dbx500",
 	},
 	{
 		.name = "db8500-thermal",
@@ -3106,15 +3104,15 @@ static void db8500_prcmu_update_cpufreq(void)
 {
 	if (prcmu_has_arm_maxopp()) {
 		db8500_cpufreq_table[3].frequency = 1000000;
-		db8500_cpufreq_table[3].driver_data = ARM_MAX_OPP;
+		db8500_cpufreq_table[3].index = ARM_MAX_OPP;
 	}
 }
 
 static int db8500_prcmu_register_ab8500(struct device *parent,
-					struct ab8500_platform_data *pdata)
+					struct ab8500_platform_data *pdata,
+					int irq)
 {
-	struct device_node *np;
-	struct resource ab8500_resource;
+	struct resource ab8500_resource = DEFINE_RES_IRQ(irq);
 	struct mfd_cell ab8500_cell = {
 		.name = "ab8500-core",
 		.of_compatible = "stericsson,ab8500",
@@ -3124,20 +3122,6 @@ static int db8500_prcmu_register_ab8500(struct device *parent,
 		.resources = &ab8500_resource,
 		.num_resources = 1,
 	};
-
-	if (!parent->of_node)
-		return -ENODEV;
-
-	/* Look up the device node, sneak the IRQ out of it */
-	for_each_child_of_node(parent->of_node, np) {
-		if (of_device_is_compatible(np, ab8500_cell.of_compatible))
-			break;
-	}
-	if (!np) {
-		dev_info(parent, "could not find AB8500 node in the device tree\n");
-		return -ENODEV;
-	}
-	of_irq_to_resource_table(np, &ab8500_resource, 1);
 
 	return mfd_add_devices(parent, 0, &ab8500_cell, 1, NULL, 0, NULL);
 }
@@ -3191,7 +3175,7 @@ static int db8500_prcmu_probe(struct platform_device *pdev)
 		goto no_irq_return;
 	}
 
-	db8500_irq_init(np);
+	db8500_irq_init(np, pdata->irq_base);
 
 	prcmu_config_esram0_deep_sleep(ESRAM0_DEEP_SLEEP_STATE_RET);
 
@@ -3216,7 +3200,8 @@ static int db8500_prcmu_probe(struct platform_device *pdev)
 		}
 	}
 
-	err = db8500_prcmu_register_ab8500(&pdev->dev, pdata->ab_platdata);
+	err = db8500_prcmu_register_ab8500(&pdev->dev, pdata->ab_platdata,
+					   pdata->ab_irq);
 	if (err) {
 		mfd_remove_devices(&pdev->dev);
 		pr_err("prcmu: Failed to add ab8500 subdevice\n");

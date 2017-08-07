@@ -90,8 +90,6 @@
 #include <asm/sibyte/sb1250_mac.h>
 #include <asm/sibyte/sb1250.h>
 
-#include "sleep.h"
-
 struct cs4297a_state;
 
 static DEFINE_MUTEX(swarm_cs4297a_mutex);
@@ -336,7 +334,6 @@ static int prog_dmabuf_adc(struct cs4297a_state *s)
 	return 0;
 }
 
-
 static int prog_dmabuf_dac(struct cs4297a_state *s)
 {
 	s->dma_dac.ready = 1;
@@ -571,7 +568,6 @@ static void cs_printioctl(unsigned int x)
 }
 #endif
 
-
 static int ser_init(struct cs4297a_state *s)
 {
         int i;
@@ -750,7 +746,7 @@ static int serdma_reg_access(struct cs4297a_state *s, u64 data)
                 /* Since a writer has the DSP open, we have to mux the
                    request in */
                 s->reg_request = data;
-		oss_broken_sleep_on(&s->dma_dac.reg_wait, MAX_SCHEDULE_TIMEOUT);
+                interruptible_sleep_on(&s->dma_dac.reg_wait);
                 /* XXXKW how can I deal with the starvation case where
                    the opener isn't writing? */
         } else {
@@ -792,14 +788,13 @@ static int cs4297a_read_ac97(struct cs4297a_state *s, u32 offset,
         if (serdma_reg_access(s, (0xCLL << 60) | (1LL << 47) | ((u64)(offset & 0x7F) << 40)))
                 return -1;
 
-	oss_broken_sleep_on(&s->dma_adc.reg_wait, MAX_SCHEDULE_TIMEOUT);
+        interruptible_sleep_on(&s->dma_adc.reg_wait);
         *value = s->read_value;
         CS_DBGOUT(CS_AC97, 2,
                   printk(KERN_INFO "cs4297a: rdr reg %x -> %x\n", s->read_reg, s->read_value));
 
         return 0;
 }
-
 
 //****************************************************************************
 // "cs4297a_write_ac97()"-- writes an AC97 register
@@ -830,7 +825,6 @@ static void stop_dac(struct cs4297a_state *s)
 	spin_unlock_irqrestore(&s->lock, flags);
 }
 
-
 static void start_dac(struct cs4297a_state *s)
 {
 	unsigned long flags;
@@ -855,7 +849,6 @@ static void start_dac(struct cs4297a_state *s)
 		  printk(KERN_INFO "cs4297a: start_dac()-\n"));
 }
 
-
 static void stop_adc(struct cs4297a_state *s)
 {
 	unsigned long flags;
@@ -876,7 +869,6 @@ static void stop_adc(struct cs4297a_state *s)
 	CS_DBGOUT(CS_FUNCTION, 3,
 		  printk(KERN_INFO "cs4297a: stop_adc()-\n"));
 }
-
 
 static void start_adc(struct cs4297a_state *s)
 {
@@ -928,7 +920,6 @@ static void start_adc(struct cs4297a_state *s)
 		  printk(KERN_INFO "cs4297a: start_adc()-\n"));
 
 }
-
 
 // call with spinlock held! 
 static void cs4297a_update_ptr(struct cs4297a_state *s, int intflag)
@@ -1462,7 +1453,6 @@ static int mixer_ioctl(struct cs4297a_state *s, unsigned int cmd,
 #endif
 		return put_user(s->mix.vol[5], (int *) arg);
 
-
 	case SOUND_MIXER_SYNTH:
 		if (get_user(val, (int *) arg))
 			return -EFAULT;
@@ -1496,7 +1486,6 @@ static int mixer_ioctl(struct cs4297a_state *s, unsigned int cmd,
 		s->mix.vol[4] = val;
 #endif
 		return put_user(s->mix.vol[4], (int *) arg);
-
 
 	default:
 		CS_DBGOUT(CS_IOCTL, 4, printk(KERN_INFO
@@ -1540,7 +1529,6 @@ static int mixer_ioctl(struct cs4297a_state *s, unsigned int cmd,
 	}
 }
 
-
 // --------------------------------------------------------------------- 
 
 static int cs4297a_open_mixdev(struct inode *inode, struct file *file)
@@ -1577,7 +1565,6 @@ static int cs4297a_open_mixdev(struct inode *inode, struct file *file)
 	return nonseekable_open(inode, file);
 }
 
-
 static int cs4297a_release_mixdev(struct inode *inode, struct file *file)
 {
 	struct cs4297a_state *s =
@@ -1586,7 +1573,6 @@ static int cs4297a_release_mixdev(struct inode *inode, struct file *file)
 	VALIDATE_STATE(s);
 	return 0;
 }
-
 
 static int cs4297a_ioctl_mixdev(struct file *file,
 			       unsigned int cmd, unsigned long arg)
@@ -1598,7 +1584,6 @@ static int cs4297a_ioctl_mixdev(struct file *file,
 	mutex_unlock(&swarm_cs4297a_mutex);
 	return ret;
 }
-
 
 // ******************************************************************************************
 //   Mixer file operations struct.
@@ -1612,7 +1597,6 @@ static const struct file_operations cs4297a_mixer_fops = {
 };
 
 // --------------------------------------------------------------------- 
-
 
 static int drain_adc(struct cs4297a_state *s, int nonblock)
 {
@@ -1657,7 +1641,6 @@ static int drain_dac(struct cs4297a_state *s, int nonblock)
 	current->state = TASK_RUNNING;
 	return 0;
 }
-
 
 // --------------------------------------------------------------------- 
 
@@ -1742,7 +1725,7 @@ static ssize_t cs4297a_read(struct file *file, char *buffer, size_t count,
 			start_adc(s);
 			if (file->f_flags & O_NONBLOCK)
 				return ret ? ret : -EAGAIN;
-			oss_broken_sleep_on(&s->dma_adc.wait, MAX_SCHEDULE_TIMEOUT);
+			interruptible_sleep_on(&s->dma_adc.wait);
 			if (signal_pending(current))
 				return ret ? ret : -ERESTARTSYS;
 			continue;
@@ -1782,7 +1765,6 @@ static ssize_t cs4297a_read(struct file *file, char *buffer, size_t count,
 		  printk(KERN_INFO "cs4297a: cs4297a_read()- %d\n", ret));
 	return ret;
 }
-
 
 static ssize_t cs4297a_write(struct file *file, const char *buffer,
 			    size_t count, loff_t * ppos)
@@ -1838,7 +1820,7 @@ static ssize_t cs4297a_write(struct file *file, const char *buffer,
 			start_dac(s);
 			if (file->f_flags & O_NONBLOCK)
 				return ret ? ret : -EAGAIN;
-			oss_broken_sleep_on(&d->wait, MAX_SCHEDULE_TIMEOUT);
+			interruptible_sleep_on(&d->wait);
 			if (signal_pending(current))
 				return ret ? ret : -ERESTARTSYS;
 			continue;
@@ -1901,7 +1883,6 @@ static ssize_t cs4297a_write(struct file *file, const char *buffer,
 	return ret;
 }
 
-
 static unsigned int cs4297a_poll(struct file *file,
 				struct poll_table_struct *wait)
 {
@@ -1961,14 +1942,12 @@ static unsigned int cs4297a_poll(struct file *file,
 	return mask;
 }
 
-
 static int cs4297a_mmap(struct file *file, struct vm_area_struct *vma)
 {
         /* XXXKW currently no mmap support */
         return -EINVAL;
 	return 0;
 }
-
 
 static int cs4297a_ioctl(struct file *file,
 			unsigned int cmd, unsigned long arg)
@@ -2454,7 +2433,7 @@ static int cs4297a_locked_open(struct inode *inode, struct file *file)
 				return -EBUSY;
 			}
 			mutex_unlock(&s->open_sem_dac);
-			oss_broken_sleep_on(&s->open_wait_dac, MAX_SCHEDULE_TIMEOUT);
+			interruptible_sleep_on(&s->open_wait_dac);
 
 			if (signal_pending(current)) {
                                 printk("open - sig pending\n");
@@ -2471,7 +2450,7 @@ static int cs4297a_locked_open(struct inode *inode, struct file *file)
 				return -EBUSY;
 			}
 			mutex_unlock(&s->open_sem_adc);
-			oss_broken_sleep_on(&s->open_wait_adc, MAX_SCHEDULE_TIMEOUT);
+			interruptible_sleep_on(&s->open_wait_adc);
 
 			if (signal_pending(current)) {
                                 printk("open - sig pending\n");

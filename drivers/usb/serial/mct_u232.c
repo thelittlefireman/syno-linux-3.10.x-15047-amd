@@ -23,6 +23,7 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/tty.h>
 #include <linux/tty_driver.h>
@@ -56,7 +57,6 @@ static int  mct_u232_tiocmset(struct tty_struct *tty,
 			unsigned int set, unsigned int clear);
 static void mct_u232_throttle(struct tty_struct *tty);
 static void mct_u232_unthrottle(struct tty_struct *tty);
-
 
 /*
  * All of the device info needed for the MCT USB-RS232 converter.
@@ -376,14 +376,21 @@ static void mct_u232_msr_to_state(struct usb_serial_port *port,
 
 static int mct_u232_port_probe(struct usb_serial_port *port)
 {
+	struct usb_serial *serial = port->serial;
 	struct mct_u232_private *priv;
+
+	/* check first to simplify error handling */
+	if (!serial->port[1] || !serial->port[1]->interrupt_in_urb) {
+		dev_err(&port->dev, "expected endpoint missing\n");
+		return -ENODEV;
+	}
 
 	priv = kzalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
 
 	/* Use second interrupt-in endpoint for reading. */
-	priv->read_urb = port->serial->port[1]->interrupt_in_urb;
+	priv->read_urb = serial->port[1]->interrupt_in_urb;
 	priv->read_urb->context = port;
 
 	spin_lock_init(&priv->lock);
@@ -496,7 +503,6 @@ static void mct_u232_close(struct usb_serial_port *port)
 
 	usb_serial_generic_close(port);
 } /* mct_u232_close */
-
 
 static void mct_u232_read_int_callback(struct urb *urb)
 {
@@ -687,7 +693,6 @@ static void mct_u232_break_ctl(struct tty_struct *tty, int break_state)
 
 	mct_u232_set_line_ctrl(port, lcr);
 } /* mct_u232_break_ctl */
-
 
 static int mct_u232_tiocmget(struct tty_struct *tty)
 {

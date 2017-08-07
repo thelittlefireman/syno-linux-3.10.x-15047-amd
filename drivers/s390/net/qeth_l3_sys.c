@@ -208,7 +208,7 @@ static ssize_t qeth_l3_dev_sniffer_store(struct device *dev,
 		goto out;
 	}
 
-	rc = kstrtoul(buf, 16, &i);
+	rc = strict_strtoul(buf, 16, &i);
 	if (rc) {
 		rc = -EINVAL;
 		goto out;
@@ -238,7 +238,6 @@ out:
 
 static DEVICE_ATTR(sniffer, 0644, qeth_l3_dev_sniffer_show,
 		qeth_l3_dev_sniffer_store);
-
 
 static ssize_t qeth_l3_dev_hsuid_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -315,8 +314,10 @@ static ssize_t qeth_l3_dev_hsuid_store(struct device *dev,
 	if (qeth_configure_cq(card, QETH_CQ_ENABLED))
 		return -EPERM;
 
-	snprintf(card->options.hsuid, sizeof(card->options.hsuid),
-		 "%-8s", tmp);
+	for (i = 0; i < 8; i++)
+		card->options.hsuid[i] = ' ';
+	card->options.hsuid[8] = '\0';
+	strncpy(card->options.hsuid, tmp, strlen(tmp));
 	ASCEBC(card->options.hsuid, 8);
 	if (card->dev)
 		memcpy(card->dev->perm_addr, card->options.hsuid, 9);
@@ -340,7 +341,6 @@ static ssize_t qeth_l3_dev_hsuid_store(struct device *dev,
 
 static DEVICE_ATTR(hsuid, 0644, qeth_l3_dev_hsuid_show,
 		   qeth_l3_dev_hsuid_store);
-
 
 static struct attribute *qeth_l3_device_attrs[] = {
 	&dev_attr_route4.attr,
@@ -636,7 +636,6 @@ static ssize_t qeth_l3_dev_ipato_invert6_store(struct device *dev,
 static QETH_DEVICE_ATTR(ipato_invert6, invert6, 0644,
 			qeth_l3_dev_ipato_invert6_show,
 			qeth_l3_dev_ipato_invert6_store);
-
 
 static ssize_t qeth_l3_dev_ipato_add6_show(struct device *dev,
 				struct device_attribute *attr, char *buf)

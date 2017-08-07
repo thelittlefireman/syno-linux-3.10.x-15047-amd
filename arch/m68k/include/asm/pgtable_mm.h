@@ -27,7 +27,6 @@
 	} while(0)
 #define set_pte_at(mm,addr,ptep,pteval) set_pte(ptep,pteval)
 
-
 /* PMD_SHIFT determines the size of the area a second-level page table can map */
 #ifdef CONFIG_SUN3
 #define PMD_SHIFT       17
@@ -134,6 +133,9 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
 #endif /* !__ASSEMBLY__ */
 
 #define kern_addr_valid(addr)	(1)
+
+#define io_remap_pfn_range(vma, vaddr, pfn, size, prot)		\
+		remap_pfn_range(vma, vaddr, pfn, size, prot)
 
 /* MMU-specific headers */
 

@@ -125,9 +125,7 @@ struct ccsr_ssi {
 #define CCSR_SSI_SRCR_REFS		0x00000001
 
 /* STCCR and SRCCR */
-#define CCSR_SSI_SxCCR_DIV2_SHIFT	18
 #define CCSR_SSI_SxCCR_DIV2		0x00040000
-#define CCSR_SSI_SxCCR_PSR_SHIFT	17
 #define CCSR_SSI_SxCCR_PSR		0x00020000
 #define CCSR_SSI_SxCCR_WL_SHIFT		13
 #define CCSR_SSI_SxCCR_WL_MASK		0x0001E000
@@ -207,4 +205,3 @@ struct ccsr_ssi {
 #define CCSR_SSI_SACNT_AC97EN		0x00000001
 
 #endif
-

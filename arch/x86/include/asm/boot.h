@@ -1,7 +1,6 @@
 #ifndef _ASM_X86_BOOT_H
 #define _ASM_X86_BOOT_H
 
-
 #include <asm/pgtable_types.h>
 #include <uapi/asm/boot.h>
 
@@ -27,7 +26,7 @@
 #define BOOT_HEAP_SIZE             0x400000
 #else /* !CONFIG_KERNEL_BZIP2 */
 
-#define BOOT_HEAP_SIZE	0x8000
+#define BOOT_HEAP_SIZE	0x10000
 
 #endif /* !CONFIG_KERNEL_BZIP2 */
 

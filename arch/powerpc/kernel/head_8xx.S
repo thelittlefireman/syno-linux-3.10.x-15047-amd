@@ -121,7 +121,6 @@ turn_on_mmu:
 	tophys(r11,r11);	\
 1:	subi	r11,r11,INT_FRAME_SIZE	/* alloc exc. frame */
 
-
 #define EXCEPTION_PROLOG_2	\
 	CLR_TOP32(r11);		\
 	stw	r10,_CCR(r11);		/* save registers */ \
@@ -691,6 +690,10 @@ modified_instr:
 	b	151b
 #endif
 
+	.globl	giveup_fpu
+giveup_fpu:
+	blr
+
 /*
  * This is where the main kernel code starts.
  */
@@ -858,9 +861,6 @@ initial_mmu:
 	addis	r11, r11, 0x0080	/* Add 8M */
 	mtspr	SPRN_MD_RPN, r11
 
-	addi	r10, r10, 0x0100
-	mtspr	SPRN_MD_CTR, r10
-
 	addis	r8, r8, 0x0080		/* Add 8M */
 	mtspr	SPRN_MD_EPN, r8
 	mtspr	SPRN_MD_TWC, r9
@@ -889,7 +889,6 @@ initial_mmu:
 	mtspr	SPRN_DC_CST, r8
 #endif
 	blr
-
 
 /*
  * Set up to use a given MMU context.
@@ -975,4 +974,3 @@ abatron_pteptrs:
 cpu6_errata_word:
 	.space	16
 #endif
-

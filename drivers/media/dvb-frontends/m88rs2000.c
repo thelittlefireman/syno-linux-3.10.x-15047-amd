@@ -30,7 +30,6 @@
 #include <linux/slab.h>
 #include <linux/types.h>
 
-
 #include "dvb_frontend.h"
 #include "m88rs2000.h"
 
@@ -242,7 +241,6 @@ static int m88rs2000_send_diseqc_msg(struct dvb_frontend *fe,
 	m88rs2000_writereg(state, 0xb2, reg);
 	m88rs2000_writereg(state, 0x9a, 0xb0);
 
-
 	return 0;
 }
 
@@ -297,7 +295,7 @@ struct inittab {
 	u8 val;
 };
 
-static struct inittab m88rs2000_setup[] = {
+struct inittab m88rs2000_setup[] = {
 	{DEMOD_WRITE, 0x9a, 0x30},
 	{DEMOD_WRITE, 0x00, 0x01},
 	{WRITE_DELAY, 0x19, 0x00},
@@ -315,7 +313,7 @@ static struct inittab m88rs2000_setup[] = {
 	{0xff, 0xaa, 0xff}
 };
 
-static struct inittab m88rs2000_shutdown[] = {
+struct inittab m88rs2000_shutdown[] = {
 	{DEMOD_WRITE, 0x9a, 0x30},
 	{DEMOD_WRITE, 0xb0, 0x00},
 	{DEMOD_WRITE, 0xf1, 0x89},
@@ -325,7 +323,7 @@ static struct inittab m88rs2000_shutdown[] = {
 	{0xff, 0xaa, 0xff}
 };
 
-static struct inittab fe_reset[] = {
+struct inittab fe_reset[] = {
 	{DEMOD_WRITE, 0x00, 0x01},
 	{DEMOD_WRITE, 0x20, 0x81},
 	{DEMOD_WRITE, 0x21, 0x80},
@@ -363,7 +361,7 @@ static struct inittab fe_reset[] = {
 	{0xff, 0xaa, 0xff}
 };
 
-static struct inittab fe_trigger[] = {
+struct inittab fe_trigger[] = {
 	{DEMOD_WRITE, 0x97, 0x04},
 	{DEMOD_WRITE, 0x99, 0x77},
 	{DEMOD_WRITE, 0x9b, 0x64},
@@ -469,7 +467,7 @@ static int m88rs2000_read_status(struct dvb_frontend *fe, fe_status_t *status)
 
 	*status = 0;
 
-	if ((reg & 0xee) == 0xee) {
+	if ((reg & 0x7) == 0x7) {
 		*status = FE_HAS_CARRIER | FE_HAS_SIGNAL | FE_HAS_VITERBI
 			| FE_HAS_SYNC | FE_HAS_LOCK;
 		if (state->config->set_ts_params)
@@ -541,37 +539,31 @@ static int m88rs2000_read_ucblocks(struct dvb_frontend *fe, u32 *ucblocks)
 static int m88rs2000_set_fec(struct m88rs2000_state *state,
 		fe_code_rate_t fec)
 {
-	u8 fec_set, reg;
-	int ret;
-
+	u16 fec_set;
 	switch (fec) {
-	case FEC_1_2:
-		fec_set = 0x8;
+	/* This is not confirmed kept for reference */
+/*	case FEC_1_2:
+		fec_set = 0x88;
 		break;
 	case FEC_2_3:
-		fec_set = 0x10;
+		fec_set = 0x68;
 		break;
 	case FEC_3_4:
-		fec_set = 0x20;
+		fec_set = 0x48;
 		break;
 	case FEC_5_6:
-		fec_set = 0x40;
+		fec_set = 0x28;
 		break;
 	case FEC_7_8:
-		fec_set = 0x80;
-		break;
+		fec_set = 0x18;
+		break; */
 	case FEC_AUTO:
 	default:
-		fec_set = 0x0;
+		fec_set = 0x08;
 	}
+	m88rs2000_writereg(state, 0x76, fec_set);
 
-	reg = m88rs2000_readreg(state, 0x70);
-	reg &= 0x7;
-	ret = m88rs2000_writereg(state, 0x70, reg | fec_set);
-
-	ret |= m88rs2000_writereg(state, 0x76, 0x8);
-
-	return ret;
+	return 0;
 }
 
 static fe_code_rate_t m88rs2000_get_fec(struct m88rs2000_state *state)
@@ -581,20 +573,18 @@ static fe_code_rate_t m88rs2000_get_fec(struct m88rs2000_state *state)
 	reg = m88rs2000_readreg(state, 0x76);
 	m88rs2000_writereg(state, 0x9a, 0xb0);
 
-	reg &= 0xf0;
-	reg >>= 5;
-
 	switch (reg) {
-	case 0x4:
+	case 0x88:
 		return FEC_1_2;
-	case 0x3:
+	case 0x68:
 		return FEC_2_3;
-	case 0x2:
+	case 0x48:
 		return FEC_3_4;
-	case 0x1:
+	case 0x28:
 		return FEC_5_6;
-	case 0x0:
+	case 0x18:
 		return FEC_7_8;
+	case 0x08:
 	default:
 		break;
 	}
@@ -657,8 +647,12 @@ static int m88rs2000_set_frontend(struct dvb_frontend *fe)
 	if (ret < 0)
 		return -ENODEV;
 
+	/* Unknown */
+	reg = m88rs2000_readreg(state, 0x70);
+	ret = m88rs2000_writereg(state, 0x70, reg);
+
 	/* Set FEC */
-	ret = m88rs2000_set_fec(state, c->fec_inner);
+	ret |= m88rs2000_set_fec(state, c->fec_inner);
 	ret |= m88rs2000_writereg(state, 0x85, 0x1);
 	ret |= m88rs2000_writereg(state, 0x8a, 0xbf);
 	ret |= m88rs2000_writereg(state, 0x8d, 0x1e);
@@ -680,7 +674,7 @@ static int m88rs2000_set_frontend(struct dvb_frontend *fe)
 
 	for (i = 0; i < 25; i++) {
 		reg = m88rs2000_readreg(state, 0x8c);
-		if ((reg & 0xee) == 0xee) {
+		if ((reg & 0x7) == 0x7) {
 			status = FE_HAS_LOCK;
 			break;
 		}
@@ -819,4 +813,3 @@ MODULE_DESCRIPTION("M88RS2000 DVB-S Demodulator driver");
 MODULE_AUTHOR("Malcolm Priestley tvboxspy@gmail.com");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("1.13");
-

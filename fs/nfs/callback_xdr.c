@@ -45,7 +45,6 @@ typedef __be32 (*callback_process_op_t)(void *, void *,
 typedef __be32 (*callback_decode_arg_t)(struct svc_rqst *, struct xdr_stream *, void *);
 typedef __be32 (*callback_encode_res_t)(struct svc_rqst *, struct xdr_stream *, void *);
 
-
 struct callback_op {
 	callback_process_op_t process_op;
 	callback_decode_arg_t decode_args;
@@ -166,9 +165,9 @@ static __be32 decode_compound_hdr_arg(struct xdr_stream *xdr, struct cb_compound
 	if (unlikely(p == NULL))
 		return htonl(NFS4ERR_RESOURCE);
 	hdr->minorversion = ntohl(*p++);
-	/* Check for minor version support */
-	if (hdr->minorversion <= NFS4_MAX_MINOR_VERSION) {
-		hdr->cb_ident = ntohl(*p++); /* ignored by v4.1 and v4.2 */
+	/* Check minor version is zero or one. */
+	if (hdr->minorversion <= 1) {
+		hdr->cb_ident = ntohl(*p++); /* ignored by v4.1 */
 	} else {
 		pr_warn_ratelimited("NFS: %s: NFSv4 server callback with "
 			"illegal minor version %u!\n",
@@ -464,8 +463,10 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
 
 		for (i = 0; i < args->csa_nrclists; i++) {
 			status = decode_rc_list(xdr, &args->csa_rclists[i]);
-			if (status)
+			if (status) {
+				args->csa_nrclists = i;
 				goto out_free;
+			}
 		}
 	}
 	status = 0;
@@ -786,26 +787,6 @@ static void nfs4_cb_free_slot(struct cb_process_state *cps)
 }
 #endif /* CONFIG_NFS_V4_1 */
 
-#ifdef CONFIG_NFS_V4_2
-static __be32
-preprocess_nfs42_op(int nop, unsigned int op_nr, struct callback_op **op)
-{
-	__be32 status = preprocess_nfs41_op(nop, op_nr, op);
-	if (status != htonl(NFS4ERR_OP_ILLEGAL))
-		return status;
-
-	if (op_nr == OP_CB_OFFLOAD)
-		return htonl(NFS4ERR_NOTSUPP);
-	return htonl(NFS4ERR_OP_ILLEGAL);
-}
-#else /* CONFIG_NFS_V4_2 */
-static __be32
-preprocess_nfs42_op(int nop, unsigned int op_nr, struct callback_op **op)
-{
-	return htonl(NFS4ERR_MINOR_VERS_MISMATCH);
-}
-#endif /* CONFIG_NFS_V4_2 */
-
 static __be32
 preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
 {
@@ -821,7 +802,8 @@ preprocess_nfs4_op(unsigned int op_nr, struct callback_op **op)
 	return htonl(NFS_OK);
 }
 
-static __be32 process_op(int nop, struct svc_rqst *rqstp,
+static __be32 process_op(uint32_t minorversion, int nop,
+		struct svc_rqst *rqstp,
 		struct xdr_stream *xdr_in, void *argp,
 		struct xdr_stream *xdr_out, void *resp,
 		struct cb_process_state *cps)
@@ -838,22 +820,10 @@ static __be32 process_op(int nop, struct svc_rqst *rqstp,
 		return status;
 
 	dprintk("%s: minorversion=%d nop=%d op_nr=%u\n",
-		__func__, cps->minorversion, nop, op_nr);
+		__func__, minorversion, nop, op_nr);
 
-	switch (cps->minorversion) {
-	case 0:
-		status = preprocess_nfs4_op(op_nr, &op);
-		break;
-	case 1:
-		status = preprocess_nfs41_op(nop, op_nr, &op);
-		break;
-	case 2:
-		status = preprocess_nfs42_op(nop, op_nr, &op);
-		break;
-	default:
-		status = htonl(NFS4ERR_MINOR_VERS_MISMATCH);
-	}
-
+	status = minorversion ? preprocess_nfs41_op(nop, op_nr, &op) :
+				preprocess_nfs4_op(op_nr, &op);
 	if (status == htonl(NFS4ERR_OP_ILLEGAL))
 		op_nr = OP_CB_ILLEGAL;
 	if (status)
@@ -916,15 +886,14 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp, void *argp, void *r
 			return rpc_drop_reply;
 	}
 
-	cps.minorversion = hdr_arg.minorversion;
 	hdr_res.taglen = hdr_arg.taglen;
 	hdr_res.tag = hdr_arg.tag;
 	if (encode_compound_hdr_res(&xdr_out, &hdr_res) != 0)
 		return rpc_system_err;
 
 	while (status == 0 && nops != hdr_arg.nops) {
-		status = process_op(nops, rqstp, &xdr_in,
-				    argp, &xdr_out, resp, &cps);
+		status = process_op(hdr_arg.minorversion, nops, rqstp,
+				    &xdr_in, argp, &xdr_out, resp, &cps);
 		nops++;
 	}
 

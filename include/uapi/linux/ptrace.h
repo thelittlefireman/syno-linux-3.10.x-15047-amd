@@ -61,9 +61,6 @@ struct ptrace_peeksiginfo_args {
 	__s32 nr;	/* how may siginfos to take */
 };
 
-#define PTRACE_GETSIGMASK	0x420a
-#define PTRACE_SETSIGMASK	0x420b
-
 /* Read signals from a shared (process wide) queue */
 #define PTRACE_PEEKSIGINFO_SHARED	(1 << 0)
 
@@ -94,6 +91,5 @@ struct ptrace_peeksiginfo_args {
 #define PTRACE_O_MASK		(0x000000ff | PTRACE_O_EXITKILL)
 
 #include <asm/ptrace.h>
-
 
 #endif /* _UAPI_LINUX_PTRACE_H */

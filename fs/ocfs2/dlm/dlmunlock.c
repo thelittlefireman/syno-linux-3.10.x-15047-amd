@@ -24,7 +24,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/types.h>
@@ -54,7 +53,6 @@
 #define DLM_UNLOCK_REGRANT_LOCK        0x00000008
 #define DLM_UNLOCK_CLEAR_CONVERT_TYPE  0x00000010
 
-
 static enum dlm_status dlm_get_cancel_actions(struct dlm_ctxt *dlm,
 					      struct dlm_lock_resource *res,
 					      struct dlm_lock *lock,
@@ -73,7 +71,6 @@ static enum dlm_status dlm_send_remote_unlock_request(struct dlm_ctxt *dlm,
 						 int flags,
 						 u8 owner);
 
-
 /*
  * according to the spec:
  * http://opendlm.sourceforge.net/cvsmirror/opendlm/docs/dlmbook_final.pdf
@@ -85,7 +82,6 @@ static enum dlm_status dlm_send_remote_unlock_request(struct dlm_ctxt *dlm,
  * convert (passing LKM_CANCEL in flags), then call the unlock
  * again (with no LKM_CANCEL in flags).
  */
-
 
 /*
  * locking:
@@ -276,7 +272,6 @@ void dlm_commit_pending_cancel(struct dlm_lock_resource *res,
 	lock->ml.convert_type = LKM_IVMODE;
 }
 
-
 static inline enum dlm_status dlmunlock_master(struct dlm_ctxt *dlm,
 					  struct dlm_lock_resource *res,
 					  struct dlm_lock *lock,
@@ -388,6 +383,7 @@ int dlm_unlock_lock_handler(struct o2net_msg *msg, u32 len, void *data,
 	struct dlm_ctxt *dlm = data;
 	struct dlm_unlock_lock *unlock = (struct dlm_unlock_lock *)msg->buf;
 	struct dlm_lock_resource *res = NULL;
+	struct list_head *iter;
 	struct dlm_lock *lock = NULL;
 	enum dlm_status status = DLM_NORMAL;
 	int found = 0, i;
@@ -457,7 +453,8 @@ int dlm_unlock_lock_handler(struct o2net_msg *msg, u32 len, void *data,
 	}
 
 	for (i=0; i<3; i++) {
-		list_for_each_entry(lock, queue, list) {
+		list_for_each(iter, queue) {
+			lock = list_entry(iter, struct dlm_lock, list);
 			if (lock->ml.cookie == unlock->cookie &&
 		    	    lock->ml.node == unlock->node_idx) {
 				dlm_lock_get(lock);
@@ -517,7 +514,6 @@ leave:
 
 	return status;
 }
-
 
 static enum dlm_status dlm_get_cancel_actions(struct dlm_ctxt *dlm,
 					      struct dlm_lock_resource *res,
@@ -687,4 +683,3 @@ retry:
 	return status;
 }
 EXPORT_SYMBOL_GPL(dlmunlock);
-

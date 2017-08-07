@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2003 - 2013 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -218,7 +218,6 @@ enum {
 #define IWL_SISO_SWITCH_GI              5
 #define IWL_SISO_SWITCH_MIMO3_ABC       6
 
-
 /* possible actions when in mimo mode */
 #define IWL_MIMO2_SWITCH_ANTENNA1       0
 #define IWL_MIMO2_SWITCH_ANTENNA2       1
@@ -227,7 +226,6 @@ enum {
 #define IWL_MIMO2_SWITCH_SISO_C         4
 #define IWL_MIMO2_SWITCH_GI             5
 #define IWL_MIMO2_SWITCH_MIMO3_ABC      6
-
 
 /* possible actions when in mimo3 mode */
 #define IWL_MIMO3_SWITCH_ANTENNA1       0
@@ -239,7 +237,6 @@ enum {
 #define IWL_MIMO3_SWITCH_MIMO2_AC       6
 #define IWL_MIMO3_SWITCH_MIMO2_BC       7
 #define IWL_MIMO3_SWITCH_GI             8
-
 
 #define IWL_MAX_11N_MIMO3_SEARCH IWL_MIMO3_SWITCH_GI
 #define IWL_MAX_SEARCH IWL_MIMO2_SWITCH_MIMO3_ABC
@@ -315,7 +312,7 @@ struct iwl_scale_tbl_info {
 	u8 is_dup;	/* 1 = duplicated data streams */
 	u8 action;	/* change modulation; IWL_[LEGACY/SISO/MIMO]_SWITCH_* */
 	u8 max_search;	/* maximun number of tables we can search */
-	const u16 *expected_tpt;	/* throughput metrics; expected_tpt_G, etc. */
+	s32 *expected_tpt;	/* throughput metrics; expected_tpt_G, etc. */
 	u32 current_rate;  /* rate_n_flags, uCode API format */
 	struct iwl_rate_scale_data win[IWL_RATE_COUNT]; /* rate histories */
 };
@@ -389,6 +386,13 @@ struct iwl_lq_sta {
 	u8 last_bt_traffic;
 };
 
+static inline u8 num_of_ant(u8 mask)
+{
+	return  !!((mask) & ANT_A) +
+		!!((mask) & ANT_B) +
+		!!((mask) & ANT_C);
+}
+
 static inline u8 first_antenna(u8 mask)
 {
 	if (mask & ANT_A)
@@ -398,10 +402,9 @@ static inline u8 first_antenna(u8 mask)
 	return ANT_C;
 }
 
-
 /* Initialize station's rate scaling information after adding station */
-void iwl_rs_rate_init(struct iwl_priv *priv, struct ieee80211_sta *sta,
-		      u8 sta_id);
+extern void iwl_rs_rate_init(struct iwl_priv *priv,
+			     struct ieee80211_sta *sta, u8 sta_id);
 
 /**
  * iwl_rate_control_register - Register the rate control algorithm callbacks
@@ -413,7 +416,7 @@ void iwl_rs_rate_init(struct iwl_priv *priv, struct ieee80211_sta *sta,
  * ieee80211_register_hw
  *
  */
-int iwlagn_rate_control_register(void);
+extern int iwlagn_rate_control_register(void);
 
 /**
  * iwl_rate_control_unregister - Unregister the rate control callbacks
@@ -421,6 +424,6 @@ int iwlagn_rate_control_register(void);
  * This should be called after calling ieee80211_unregister_hw, but before
  * the driver is unloaded.
  */
-void iwlagn_rate_control_unregister(void);
+extern void iwlagn_rate_control_unregister(void);
 
 #endif /* __iwl_agn__rs__ */

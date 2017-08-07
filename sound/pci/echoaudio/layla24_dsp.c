@@ -27,14 +27,12 @@
 
 ****************************************************************************/
 
-
 static int write_control_reg(struct echoaudio *chip, u32 value, char force);
 static int set_input_clock(struct echoaudio *chip, u16 clock);
 static int set_professional_spdif(struct echoaudio *chip, char prof);
 static int set_digital_mode(struct echoaudio *chip, u8 mode);
 static int load_asic_generic(struct echoaudio *chip, u32 cmd, short asic);
 static int check_asic_status(struct echoaudio *chip);
-
 
 static int init_hw(struct echoaudio *chip, u16 device_id, u16 subdevice_id)
 {
@@ -73,8 +71,6 @@ static int init_hw(struct echoaudio *chip, u16 device_id, u16 subdevice_id)
 	return err;
 }
 
-
-
 static int set_mixer_defaults(struct echoaudio *chip)
 {
 	chip->digital_mode = DIGITAL_MODE_SPDIF_RCA;
@@ -82,8 +78,6 @@ static int set_mixer_defaults(struct echoaudio *chip)
 	chip->digital_in_automute = TRUE;
 	return init_line_levels(chip);
 }
-
-
 
 static u32 detect_input_clocks(const struct echoaudio *chip)
 {
@@ -105,8 +99,6 @@ static u32 detect_input_clocks(const struct echoaudio *chip)
 
 	return clock_bits;
 }
-
-
 
 /* Layla24 has an ASIC on the PCI card and another ASIC in the external box;
 both need to be loaded. */
@@ -154,8 +146,6 @@ static int load_asic(struct echoaudio *chip)
 	DE_INIT(("load_asic() done\n"));
 	return err;
 }
-
-
 
 static int set_sample_rate(struct echoaudio *chip, u32 rate)
 {
@@ -246,8 +236,6 @@ static int set_sample_rate(struct echoaudio *chip, u32 rate)
 	return write_control_reg(chip, control_reg, FALSE);
 }
 
-
-
 static int set_input_clock(struct echoaudio *chip, u16 clock)
 {
 	u32 control_reg, clocks_from_dsp;
@@ -295,8 +283,6 @@ static int set_input_clock(struct echoaudio *chip, u16 clock)
 	return write_control_reg(chip, control_reg, TRUE);
 }
 
-
-
 /* Depending on what digital mode you want, Layla24 needs different ASICs
 loaded.  This function checks the ASIC needed for the new mode and sees
 if it matches the one already loaded. */
@@ -329,8 +315,6 @@ static int switch_asic(struct echoaudio *chip, short asic)
 
 	return 0;
 }
-
-
 
 static int dsp_set_digital_mode(struct echoaudio *chip, u8 mode)
 {

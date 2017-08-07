@@ -91,7 +91,6 @@ struct sal_to_os_boot *sal_state_for_booting_cpu = &sal_boot_rendez_state[0];
 #define set_brendez_area(x)
 #endif
 
-
 /*
  * ITC synchronization related stuff:
  */
@@ -351,7 +350,7 @@ static inline void smp_setup_percpu_timer(void)
 {
 }
 
-static void
+static void __cpuinit
 smp_callin (void)
 {
 	int cpuid, phys_id, itc_master;
@@ -438,11 +437,10 @@ smp_callin (void)
 	Dprintk("Stack on CPU %d at about %p\n",cpuid, &cpuid);
 }
 
-
 /*
  * Activate a secondary processor.  head.S calls this.
  */
-int
+int __cpuinit
 start_secondary (void *unused)
 {
 	/* Early console may use I/O ports */
@@ -459,7 +457,7 @@ start_secondary (void *unused)
 	return 0;
 }
 
-static int
+static int __cpuinit
 do_boot_cpu (int sapicid, int cpu, struct task_struct *idle)
 {
 	int timeout;
@@ -728,7 +726,7 @@ static inline void set_cpu_sibling_map(int cpu)
 	}
 }
 
-int
+int __cpuinit
 __cpu_up(unsigned int cpu, struct task_struct *tidle)
 {
 	int ret;

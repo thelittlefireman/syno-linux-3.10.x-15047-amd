@@ -47,7 +47,6 @@ static inline unsigned int hugepd_shift(hugepd_t hpd)
 
 #endif /* CONFIG_PPC_BOOK3S_64 */
 
-
 static inline pte_t *hugepte_offset(hugepd_t *hpdp, unsigned long addr,
 				    unsigned pdshift)
 {
@@ -116,7 +115,6 @@ static inline void hugetlb_prefault_arch_hook(struct mm_struct *mm)
 {
 }
 
-
 static inline void set_huge_pte_at(struct mm_struct *mm, unsigned long addr,
 				   pte_t *ptep, pte_t pte)
 {
@@ -127,7 +125,7 @@ static inline pte_t huge_ptep_get_and_clear(struct mm_struct *mm,
 					    unsigned long addr, pte_t *ptep)
 {
 #ifdef CONFIG_PPC64
-	return __pte(pte_update(mm, addr, ptep, ~0UL, 0, 1));
+	return __pte(pte_update(mm, addr, ptep, ~0UL, 1));
 #else
 	return __pte(pte_update(ptep, ~0UL, 0));
 #endif
@@ -190,13 +188,6 @@ static inline void arch_clear_hugepage_flags(struct page *page)
 static inline void flush_hugetlb_page(struct vm_area_struct *vma,
 				      unsigned long vmaddr)
 {
-}
-
-#define hugepd_shift(x) 0
-static inline pte_t *hugepte_offset(hugepd_t *hpdp, unsigned long addr,
-				    unsigned pdshift)
-{
-	return 0;
 }
 #endif /* CONFIG_HUGETLB_PAGE */
 

@@ -236,7 +236,6 @@ struct openpic {
 	uint32_t irq_msi;
 };
 
-
 static void mpic_irq_raise(struct openpic *opp, struct irq_dest *dst,
 			   int output)
 {
@@ -1635,7 +1634,6 @@ static void mpic_destroy(struct kvm_device *dev)
 
 	dev->kvm->arch.mpic = NULL;
 	kfree(opp);
-	kfree(dev);
 }
 
 static int mpic_set_default_irq_routing(struct openpic *opp)

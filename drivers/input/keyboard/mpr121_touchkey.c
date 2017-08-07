@@ -13,6 +13,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/input.h>
 #include <linux/i2c.h>
 #include <linux/slab.h>
@@ -150,7 +151,6 @@ static int mpr121_phys_init(const struct mpr121_platform_data *pdata,
 			goto err_i2c_write;
 	}
 
-
 	/*
 	 * Capacitance on sensing input varies and needs to be compensated.
 	 * The internal MPR121-auto-configuration can do this if it's
@@ -187,8 +187,7 @@ err_i2c_write:
 static int mpr_touchkey_probe(struct i2c_client *client,
 			      const struct i2c_device_id *id)
 {
-	const struct mpr121_platform_data *pdata =
-			dev_get_platdata(&client->dev);
+	const struct mpr121_platform_data *pdata = client->dev.platform_data;
 	struct mpr121_touchkey *mpr121;
 	struct input_dev *input_dev;
 	int error;

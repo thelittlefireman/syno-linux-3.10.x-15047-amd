@@ -21,7 +21,6 @@
 #include <linux/hiddev.h>
 #include <linux/hyperv.h>
 
-
 struct hv_input_dev_info {
 	unsigned int size;
 	unsigned short vendor;
@@ -44,7 +43,6 @@ struct hv_input_dev_info {
 #define SYNTHHID_INPUT_VERSION_MINOR	0
 #define SYNTHHID_INPUT_VERSION		(SYNTHHID_INPUT_VERSION_MINOR | \
 					 (SYNTHHID_INPUT_VERSION_MAJOR << 16))
-
 
 #pragma pack(push, 1)
 /*
@@ -115,13 +113,11 @@ struct synthhid_input_report {
 #define INPUTVSC_SEND_RING_BUFFER_SIZE		(10*PAGE_SIZE)
 #define INPUTVSC_RECV_RING_BUFFER_SIZE		(10*PAGE_SIZE)
 
-
 enum pipe_prot_msg_type {
 	PIPE_MESSAGE_INVALID,
 	PIPE_MESSAGE_DATA,
 	PIPE_MESSAGE_MAXIMUM
 };
-
 
 struct pipe_prt_msg {
 	enum pipe_prot_msg_type type;
@@ -157,9 +153,7 @@ struct mousevsc_dev {
 	u32			report_desc_size;
 	struct hv_input_dev_info hid_dev_info;
 	struct hid_device       *hid_device;
-	u8			input_buf[HID_MAX_BUFFER_SIZE];
 };
-
 
 static struct mousevsc_dev *mousevsc_alloc_device(struct hv_device *device)
 {
@@ -200,10 +194,12 @@ static void mousevsc_on_receive_device_info(struct mousevsc_dev *input_device,
 	if (desc->bLength == 0)
 		goto cleanup;
 
-	input_device->hid_desc = kmemdup(desc, desc->bLength, GFP_ATOMIC);
+	input_device->hid_desc = kzalloc(desc->bLength, GFP_ATOMIC);
 
 	if (!input_device->hid_desc)
 		goto cleanup;
+
+	memcpy(input_device->hid_desc, desc, desc->bLength);
 
 	input_device->report_desc_size = desc->desc[0].wDescriptorLength;
 	if (input_device->report_desc_size == 0) {
@@ -257,7 +253,6 @@ static void mousevsc_on_receive(struct hv_device *device,
 	struct synthhid_msg *hid_msg;
 	struct mousevsc_dev *input_dev = hv_get_drvdata(device);
 	struct synthhid_input_report *input_report;
-	size_t len;
 
 	pipe_msg = (struct pipe_prt_msg *)((unsigned long)packet +
 						(packet->offset8 << 3));
@@ -302,12 +297,9 @@ static void mousevsc_on_receive(struct hv_device *device,
 			(struct synthhid_input_report *)pipe_msg->data;
 		if (!input_dev->init_complete)
 			break;
-
-		len = min(input_report->header.size,
-			  (u32)sizeof(input_dev->input_buf));
-		memcpy(input_dev->input_buf, input_report->buffer, len);
-		hid_input_report(input_dev->hid_device, HID_INPUT_REPORT,
-				 input_dev->input_buf, len, 1);
+		hid_input_report(input_dev->hid_device,
+				HID_INPUT_REPORT, input_report->buffer,
+				input_report->header.size, 1);
 		break;
 	default:
 		pr_err("unsupported hid msg type - type %d len %d",
@@ -460,22 +452,12 @@ static void mousevsc_hid_stop(struct hid_device *hid)
 {
 }
 
-static int mousevsc_hid_raw_request(struct hid_device *hid,
-				    unsigned char report_num,
-				    __u8 *buf, size_t len,
-				    unsigned char rtype,
-				    int reqtype)
-{
-	return 0;
-}
-
 static struct hid_ll_driver mousevsc_ll_driver = {
 	.parse = mousevsc_hid_parse,
 	.open = mousevsc_hid_open,
 	.close = mousevsc_hid_close,
 	.start = mousevsc_hid_start,
 	.stop = mousevsc_hid_stop,
-	.raw_request = mousevsc_hid_raw_request,
 };
 
 static struct hid_driver mousevsc_hid_driver;
@@ -535,7 +517,6 @@ static int mousevsc_probe(struct hv_device *device,
 	if (ret)
 		goto probe_err1;
 
-
 	ret = hid_parse(hid_dev);
 	if (ret) {
 		hid_err(hid_dev, "parse failed\n");
@@ -565,7 +546,6 @@ probe_err0:
 
 	return ret;
 }
-
 
 static int mousevsc_remove(struct hv_device *dev)
 {
@@ -605,5 +585,6 @@ static void __exit mousevsc_exit(void)
 }
 
 MODULE_LICENSE("GPL");
+MODULE_VERSION(HV_DRV_VERSION);
 module_init(mousevsc_init);
 module_exit(mousevsc_exit);

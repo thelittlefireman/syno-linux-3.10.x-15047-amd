@@ -23,8 +23,6 @@
  *						restriction on response.
  */
 
-#define pr_fmt(fmt) "X25: " fmt
-
 #include <linux/slab.h>
 #include <linux/kernel.h>
 #include <linux/string.h>
@@ -46,7 +44,6 @@ void x25_clear_queues(struct sock *sk)
 	skb_queue_purge(&x25->interrupt_out_queue);
 	skb_queue_purge(&x25->fragment_queue);
 }
-
 
 /*
  * This routine purges the input queue of those frames that have been
@@ -150,7 +147,7 @@ void x25_write_internal(struct sock *sk, int frametype)
 	case X25_RESET_CONFIRMATION:
 		break;
 	default:
-		pr_err("invalid frame type %02X\n", frametype);
+		printk(KERN_ERR "X.25: invalid frame type %02X\n", frametype);
 		return;
 	}
 
@@ -340,7 +337,7 @@ int x25_decode(struct sock *sk, struct sk_buff *skb, int *ns, int *nr, int *q,
 		}
 	}
 
-	pr_debug("invalid PLP frame %02X %02X %02X\n",
+	printk(KERN_DEBUG "X.25: invalid PLP frame %02X %02X %02X\n",
 	       frame[0], frame[1], frame[2]);
 
 	return X25_ILLEGAL;
@@ -387,4 +384,3 @@ void x25_check_rbuf(struct sock *sk)
 		x25_stop_timer(sk);
 	}
 }
-

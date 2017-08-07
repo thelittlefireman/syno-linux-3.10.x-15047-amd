@@ -2,7 +2,7 @@
  *
  * keymap imported from ir-keymaps.c
  *
- * Copyright (c) 2010 by Mauro Carvalho Chehab
+ * Copyright (c) 2010 by Mauro Carvalho Chehab <mchehab@redhat.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ static struct rc_map_table apac_viewcomp[] = {
 	{ 0x00, KEY_0 },
 	{ 0x17, KEY_LAST },		/* +100 */
 	{ 0x0a, KEY_LIST },		/* recall */
-
 
 	{ 0x1c, KEY_TUNER },		/* TV/FM */
 	{ 0x15, KEY_SEARCH },		/* scan */
@@ -78,4 +77,4 @@ module_init(init_rc_map_apac_viewcomp)
 module_exit(exit_rc_map_apac_viewcomp)
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Mauro Carvalho Chehab");
+MODULE_AUTHOR("Mauro Carvalho Chehab <mchehab@redhat.com>");

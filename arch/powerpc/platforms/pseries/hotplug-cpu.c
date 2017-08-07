@@ -30,8 +30,7 @@
 #include <asm/machdep.h>
 #include <asm/vdso_datapage.h>
 #include <asm/xics.h>
-#include <asm/plpar_wrappers.h>
-
+#include "plpar_wrappers.h"
 #include "offline_states.h"
 
 /* This version can't take the spinlock, because it never returns */
@@ -124,7 +123,7 @@ static void pseries_mach_cpu_die(void)
 		cede_latency_hint = 2;
 
 		get_lppaca()->idle = 1;
-		if (!lppaca_shared_proc(get_lppaca()))
+		if (!get_lppaca()->shared_proc)
 			get_lppaca()->donate_dedicated_cpu = 1;
 
 		while (get_preferred_offline_state(cpu) == CPU_STATE_INACTIVE) {
@@ -138,7 +137,7 @@ static void pseries_mach_cpu_die(void)
 
 		local_irq_disable();
 
-		if (!lppaca_shared_proc(get_lppaca()))
+		if (!get_lppaca()->shared_proc)
 			get_lppaca()->donate_dedicated_cpu = 0;
 		get_lppaca()->idle = 0;
 
@@ -420,4 +419,4 @@ static int __init pseries_cpu_hotplug_init(void)
 
 	return 0;
 }
-machine_arch_initcall(pseries, pseries_cpu_hotplug_init);
+arch_initcall(pseries_cpu_hotplug_init);

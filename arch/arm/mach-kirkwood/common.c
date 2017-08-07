@@ -20,15 +20,14 @@
 #include <linux/mv643xx_i2c.h>
 #include <linux/timex.h>
 #include <linux/kexec.h>
-#include <linux/reboot.h>
 #include <net/dsa.h>
 #include <asm/page.h>
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
-#include <asm/hardware/cache-feroceon-l2.h>
 #include <mach/kirkwood.h>
 #include <mach/bridge-regs.h>
 #include <linux/platform_data/asoc-kirkwood.h>
+#include <plat/cache-feroceon-l2.h>
 #include <linux/platform_data/mmc-mvsdio.h>
 #include <linux/platform_data/mtd-orion_nand.h>
 #include <linux/platform_data/usb-ehci-orion.h>
@@ -36,13 +35,6 @@
 #include <plat/time.h>
 #include <linux/platform_data/dma-mv_xor.h>
 #include "common.h"
-#include "pm.h"
-
-/* These can go away once Kirkwood uses the mvebu-mbus DT binding */
-#define KIRKWOOD_MBUS_NAND_TARGET 0x01
-#define KIRKWOOD_MBUS_NAND_ATTR   0x2f
-#define KIRKWOOD_MBUS_SRAM_TARGET 0x03
-#define KIRKWOOD_MBUS_SRAM_ATTR   0x01
 
 /*****************************************************************************
  * I/O Address Mapping
@@ -271,7 +263,7 @@ void __init kirkwood_clk_init(void)
 	orion_clkdev_add(NULL, MV_XOR_NAME ".1", xor1);
 	orion_clkdev_add("0", "pcie", pex0);
 	orion_clkdev_add("1", "pcie", pex1);
-	orion_clkdev_add(NULL, "mvebu-audio", audio);
+	orion_clkdev_add(NULL, "kirkwood-i2s", audio);
 	orion_clkdev_add(NULL, MV64XXX_I2C_CTLR_NAME ".0", runit);
 	orion_clkdev_add(NULL, MV64XXX_I2C_CTLR_NAME ".1", runit);
 
@@ -289,7 +281,6 @@ void __init kirkwood_ehci_init(void)
 	orion_ehci_init(USB_PHYS_BASE, IRQ_KIRKWOOD_USB, EHCI_PHY_NA);
 }
 
-
 /*****************************************************************************
  * GE00
  ****************************************************************************/
@@ -303,7 +294,6 @@ void __init kirkwood_ge00_init(struct mv643xx_eth_platform_data *eth_data)
 	clk_prepare_enable(ge0);
 }
 
-
 /*****************************************************************************
  * GE01
  ****************************************************************************/
@@ -315,7 +305,6 @@ void __init kirkwood_ge01_init(struct mv643xx_eth_platform_data *eth_data)
 	clk_prepare_enable(ge1);
 }
 
-
 /*****************************************************************************
  * Ethernet switch
  ****************************************************************************/
@@ -323,7 +312,6 @@ void __init kirkwood_ge00_switch_init(struct dsa_platform_data *d, int irq)
 {
 	orion_ge00_switch_init(d, irq);
 }
-
 
 /*****************************************************************************
  * NAND flash
@@ -377,7 +365,6 @@ static void __init kirkwood_rtc_init(void)
 	orion_rtc_init(RTC_PHYS_BASE, IRQ_KIRKWOOD_RTC);
 }
 
-
 /*****************************************************************************
  * SATA
  ****************************************************************************/
@@ -385,7 +372,6 @@ void __init kirkwood_sata_init(struct mv_sata_platform_data *sata_data)
 {
 	orion_sata_init(sata_data, SATA_PHYS_BASE, IRQ_KIRKWOOD_SATA);
 }
-
 
 /*****************************************************************************
  * SD/SDIO/MMC
@@ -429,7 +415,6 @@ void __init kirkwood_sdio_init(struct mvsdio_platform_data *mvsdio_data)
 	platform_device_register(&kirkwood_sdio);
 }
 
-
 /*****************************************************************************
  * SPI
  ****************************************************************************/
@@ -438,7 +423,6 @@ void __init kirkwood_spi_init(void)
 	orion_spi_init(SPI_PHYS_BASE);
 }
 
-
 /*****************************************************************************
  * I2C
  ****************************************************************************/
@@ -446,7 +430,6 @@ void __init kirkwood_i2c_init(void)
 {
 	orion_i2c_init(I2C_PHYS_BASE, IRQ_KIRKWOOD_TWSI, 8);
 }
-
 
 /*****************************************************************************
  * UART0
@@ -457,7 +440,6 @@ void __init kirkwood_uart0_init(void)
 	orion_uart0_init(UART0_VIRT_BASE, UART0_PHYS_BASE,
 			 IRQ_KIRKWOOD_UART_0, tclk);
 }
-
 
 /*****************************************************************************
  * UART1
@@ -477,7 +459,6 @@ void __init kirkwood_crypto_init(void)
 			  KIRKWOOD_SRAM_SIZE, IRQ_KIRKWOOD_CRYPTO);
 }
 
-
 /*****************************************************************************
  * XOR0
  ****************************************************************************/
@@ -487,7 +468,6 @@ void __init kirkwood_xor0_init(void)
 			IRQ_KIRKWOOD_XOR_00, IRQ_KIRKWOOD_XOR_01);
 }
 
-
 /*****************************************************************************
  * XOR1
  ****************************************************************************/
@@ -496,7 +476,6 @@ void __init kirkwood_xor1_init(void)
 	orion_xor1_init(XOR1_PHYS_BASE, XOR1_HIGH_PHYS_BASE,
 			IRQ_KIRKWOOD_XOR_10, IRQ_KIRKWOOD_XOR_11);
 }
-
 
 /*****************************************************************************
  * Watchdog
@@ -535,6 +514,10 @@ void __init kirkwood_cpuidle_init(void)
 void __init kirkwood_init_early(void)
 {
 	orion_time_set_base(TIMER_VIRT_BASE);
+
+	mvebu_mbus_init("marvell,kirkwood-mbus",
+			BRIDGE_WINS_BASE, BRIDGE_WINS_SZ,
+			DDR_WINDOW_CPU_BASE, DDR_WINDOW_CPU_SZ, 0);
 }
 
 int kirkwood_tclk;
@@ -563,7 +546,7 @@ void __init kirkwood_timer_init(void)
 /*****************************************************************************
  * Audio
  ****************************************************************************/
-static struct resource kirkwood_audio_resources[] = {
+static struct resource kirkwood_i2s_resources[] = {
 	[0] = {
 		.start  = AUDIO_PHYS_BASE,
 		.end    = AUDIO_PHYS_BASE + SZ_16K - 1,
@@ -576,46 +559,29 @@ static struct resource kirkwood_audio_resources[] = {
 	},
 };
 
-static struct kirkwood_asoc_platform_data kirkwood_audio_data = {
+static struct kirkwood_asoc_platform_data kirkwood_i2s_data = {
 	.burst       = 128,
 };
 
-static struct platform_device kirkwood_audio_device = {
-	.name		= "mvebu-audio",
+static struct platform_device kirkwood_i2s_device = {
+	.name		= "kirkwood-i2s",
 	.id		= -1,
-	.num_resources	= ARRAY_SIZE(kirkwood_audio_resources),
-	.resource	= kirkwood_audio_resources,
+	.num_resources	= ARRAY_SIZE(kirkwood_i2s_resources),
+	.resource	= kirkwood_i2s_resources,
 	.dev		= {
-		.platform_data	= &kirkwood_audio_data,
+		.platform_data	= &kirkwood_i2s_data,
 	},
+};
+
+static struct platform_device kirkwood_pcm_device = {
+	.name		= "kirkwood-pcm-audio",
+	.id		= -1,
 };
 
 void __init kirkwood_audio_init(void)
 {
-	platform_device_register(&kirkwood_audio_device);
-}
-
-/*****************************************************************************
- * CPU Frequency
- ****************************************************************************/
-static struct resource kirkwood_cpufreq_resources[] = {
-	[0] = {
-		.start  = CPU_CONTROL_PHYS,
-		.end    = CPU_CONTROL_PHYS + 3,
-		.flags  = IORESOURCE_MEM,
-	},
-};
-
-static struct platform_device kirkwood_cpufreq_device = {
-	.name		= "kirkwood-cpufreq",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(kirkwood_cpufreq_resources),
-	.resource	= kirkwood_cpufreq_resources,
-};
-
-void __init kirkwood_cpufreq_init(void)
-{
-	platform_device_register(&kirkwood_cpufreq_device);
+	platform_device_register(&kirkwood_i2s_device);
+	platform_device_register(&kirkwood_pcm_device);
 }
 
 /*****************************************************************************
@@ -669,14 +635,34 @@ char * __init kirkwood_id(void)
 
 void __init kirkwood_setup_wins(void)
 {
-	mvebu_mbus_add_window_by_id(KIRKWOOD_MBUS_NAND_TARGET,
-				    KIRKWOOD_MBUS_NAND_ATTR,
-				    KIRKWOOD_NAND_MEM_PHYS_BASE,
-				    KIRKWOOD_NAND_MEM_SIZE);
-	mvebu_mbus_add_window_by_id(KIRKWOOD_MBUS_SRAM_TARGET,
-				    KIRKWOOD_MBUS_SRAM_ATTR,
-				    KIRKWOOD_SRAM_PHYS_BASE,
-				    KIRKWOOD_SRAM_SIZE);
+	/*
+	 * The PCIe windows will no longer be statically allocated
+	 * here once Kirkwood is migrated to the pci-mvebu driver.
+	 */
+	mvebu_mbus_add_window_remap_flags("pcie0.0",
+					  KIRKWOOD_PCIE_IO_PHYS_BASE,
+					  KIRKWOOD_PCIE_IO_SIZE,
+					  KIRKWOOD_PCIE_IO_BUS_BASE,
+					  MVEBU_MBUS_PCI_IO);
+	mvebu_mbus_add_window_remap_flags("pcie0.0",
+					  KIRKWOOD_PCIE_MEM_PHYS_BASE,
+					  KIRKWOOD_PCIE_MEM_SIZE,
+					  MVEBU_MBUS_NO_REMAP,
+					  MVEBU_MBUS_PCI_MEM);
+	mvebu_mbus_add_window_remap_flags("pcie1.0",
+					  KIRKWOOD_PCIE1_IO_PHYS_BASE,
+					  KIRKWOOD_PCIE1_IO_SIZE,
+					  KIRKWOOD_PCIE1_IO_BUS_BASE,
+					  MVEBU_MBUS_PCI_IO);
+	mvebu_mbus_add_window_remap_flags("pcie1.0",
+					  KIRKWOOD_PCIE1_MEM_PHYS_BASE,
+					  KIRKWOOD_PCIE1_MEM_SIZE,
+					  MVEBU_MBUS_NO_REMAP,
+					  MVEBU_MBUS_PCI_MEM);
+	mvebu_mbus_add_window("nand", KIRKWOOD_NAND_MEM_PHYS_BASE,
+			      KIRKWOOD_NAND_MEM_SIZE);
+	mvebu_mbus_add_window("sram", KIRKWOOD_SRAM_PHYS_BASE,
+			      KIRKWOOD_SRAM_SIZE);
 }
 
 void __init kirkwood_l2_init(void)
@@ -704,10 +690,6 @@ void __init kirkwood_init(void)
 	 */
 	writel(readl(CPU_CONFIG) & ~CPU_CONFIG_ERROR_PROP, CPU_CONFIG);
 
-	BUG_ON(mvebu_mbus_init("marvell,kirkwood-mbus",
-			BRIDGE_WINS_BASE, BRIDGE_WINS_SZ,
-			DDR_WINDOW_CPU_BASE, DDR_WINDOW_CPU_SZ));
-
 	kirkwood_setup_wins();
 
 	kirkwood_l2_init();
@@ -722,14 +704,13 @@ void __init kirkwood_init(void)
 	kirkwood_xor1_init();
 	kirkwood_crypto_init();
 
-	kirkwood_pm_init();
 	kirkwood_cpuidle_init();
 #ifdef CONFIG_KEXEC
 	kexec_reinit = kirkwood_enable_pcie;
 #endif
 }
 
-void kirkwood_restart(enum reboot_mode mode, const char *cmd)
+void kirkwood_restart(char mode, const char *cmd)
 {
 	/*
 	 * Enable soft reset to assert RSTOUTn.

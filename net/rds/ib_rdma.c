@@ -129,7 +129,6 @@ static void rds_ib_remove_ipaddr(struct rds_ib_device *rds_ibdev, __be32 ipaddr)
 	struct rds_ib_ipaddr *i_ipaddr;
 	struct rds_ib_ipaddr *to_free = NULL;
 
-
 	spin_lock_irq(&rds_ibdev->spinlock);
 	list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
 		if (i_ipaddr->ipaddr == ipaddr) {
@@ -759,8 +758,10 @@ void *rds_ib_get_mr(struct scatterlist *sg, unsigned long nents,
 	}
 
 	ibmr = rds_ib_alloc_fmr(rds_ibdev);
-	if (IS_ERR(ibmr))
+	if (IS_ERR(ibmr)) {
+		rds_ib_dev_put(rds_ibdev);
 		return ibmr;
+	}
 
 	ret = rds_ib_map_fmr(rds_ibdev, ibmr, sg, nents);
 	if (ret == 0)
@@ -781,4 +782,3 @@ void *rds_ib_get_mr(struct scatterlist *sg, unsigned long nents,
 		rds_ib_dev_put(rds_ibdev);
 	return ibmr;
 }
-

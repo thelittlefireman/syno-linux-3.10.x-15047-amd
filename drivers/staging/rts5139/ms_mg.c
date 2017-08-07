@@ -35,7 +35,6 @@
 #include "rts51x_scsi.h"
 #include "rts51x_card.h"
 #include "ms.h"
-#include "ms_mg.h"
 
 #ifdef SUPPORT_MAGIC_GATE
 

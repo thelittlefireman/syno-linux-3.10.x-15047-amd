@@ -15,10 +15,6 @@ Optional properties:
 - clock-latency: Specify the possible maximum transition latency for clock,
   in unit of nanoseconds.
 - voltage-tolerance: Specify the CPU voltage tolerance in percentage.
-- #cooling-cells:
-- cooling-min-level:
-- cooling-max-level:
-     Please refer to Documentation/devicetree/bindings/thermal/thermal.txt.
 
 Examples:
 
@@ -37,9 +33,6 @@ cpus {
 			198000  850000
 		>;
 		clock-latency = <61036>; /* two CLK32 periods */
-		#cooling-cells = <2>;
-		cooling-min-level = <0>;
-		cooling-max-level = <2>;
 	};
 
 	cpu@1 {

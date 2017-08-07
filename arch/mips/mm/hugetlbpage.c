@@ -11,6 +11,7 @@
  * Copyright (C) 2008, 2009 Cavium Networks, Inc.
  */
 
+#include <linux/init.h>
 #include <linux/fs.h>
 #include <linux/mm.h>
 #include <linux/hugetlb.h>
@@ -82,11 +83,6 @@ int pmd_huge(pmd_t pmd)
 int pud_huge(pud_t pud)
 {
 	return (pud_val(pud) & _PAGE_HUGE) != 0;
-}
-
-int pmd_huge_support(void)
-{
-	return 1;
 }
 
 struct page *

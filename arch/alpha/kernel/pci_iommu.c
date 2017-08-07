@@ -19,7 +19,6 @@
 #include "proto.h"
 #include "pci_impl.h"
 
-
 #define DEBUG_ALLOC 0
 #if DEBUG_ALLOC > 0
 # define DBGA(args...)		printk(KERN_DEBUG args)
@@ -69,7 +68,6 @@ iommu_arena_new_node(int nid, struct pci_controller *hose, dma_addr_t base,
 	   particular systems can over-align the arena.  */
 	if (align < mem_size)
 		align = mem_size;
-
 
 #ifdef CONFIG_DISCONTIGMEM
 
@@ -325,7 +323,7 @@ pci_map_single_1(struct pci_dev *pdev, void *cpu_addr, size_t size,
 /* Helper for generic DMA-mapping functions. */
 static struct pci_dev *alpha_gendev_to_pci(struct device *dev)
 {
-	if (dev && dev_is_pci(dev))
+	if (dev && dev->bus == &pci_bus_type)
 		return to_pci_dev(dev);
 
 	/* Assume that non-PCI devices asking for DMA are either ISA or EISA,
@@ -836,7 +834,6 @@ static int alpha_pci_supported(struct device *dev, u64 mask)
 	return 0;
 }
 
-
 /*
  * AGP GART extensions to the IOMMU
  */

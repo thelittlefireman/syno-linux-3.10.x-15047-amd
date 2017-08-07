@@ -53,7 +53,8 @@
 #include <linux/rfkill.h>
 #include <linux/slab.h>
 #include <linux/dmi.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_drivers.h>
+#include <acpi/acpi_bus.h>
 
 #define ASUS_LAPTOP_VERSION	"0.42"
 
@@ -363,7 +364,6 @@ static const struct key_entry asus_keymap[] = {
 	{KE_KEY, 0xC5, { KEY_KBDILLUMDOWN } },
 	{KE_END, 0},
 };
-
 
 /*
  * This function evaluates an ACPI method, given an int as parameter, the
@@ -1391,7 +1391,6 @@ static int asus_rfkill_init(struct asus_laptop *asus)
 	if (result)
 		goto exit;
 
-
 	if (!acpi_check_handle(asus->handle, METHOD_WLAN, NULL) &&
 	    asus->wled_type == TYPE_RFKILL)
 		result = asus_rfkill_setup(asus, &asus->wlan, "asus-wlan",
@@ -1493,9 +1492,10 @@ static int asus_input_init(struct asus_laptop *asus)
 	int error;
 
 	input = input_allocate_device();
-	if (!input)
+	if (!input) {
+		pr_warn("Unable to allocate input device\n");
 		return -ENOMEM;
-
+	}
 	input->name = "Asus Laptop extra buttons";
 	input->phys = ASUS_LAPTOP_FILE "/input0";
 	input->id.bustype = BUS_HOST;
@@ -1541,6 +1541,7 @@ static void asus_acpi_notify(struct acpi_device *device, u32 event)
 
 	/* TODO Find a better way to handle events count. */
 	count = asus->event_count[event % 128]++;
+	acpi_bus_generate_proc_event(asus->device, event, count);
 	acpi_bus_generate_netlink_event(asus->device->pnp.device_class,
 					dev_name(&asus->device->dev), event,
 					count);
@@ -1656,7 +1657,6 @@ normal:
 
 	return supported ? attr->mode : 0;
 }
-
 
 static const struct attribute_group asus_attr_group = {
 	.is_visible	= asus_sysfs_is_visible,
@@ -1932,6 +1932,7 @@ fail_input:
 fail_backlight:
 	asus_platform_exit(asus);
 fail_platform:
+	kfree(asus->name);
 	kfree(asus);
 
 	return result;

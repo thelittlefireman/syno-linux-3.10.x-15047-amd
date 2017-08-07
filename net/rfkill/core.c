@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the
+ * Free Software Foundation, Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #include <linux/kernel.h>
@@ -49,7 +51,6 @@
 struct rfkill {
 	spinlock_t		lock;
 
-	const char		*name;
 	enum rfkill_type	type;
 
 	unsigned long		state;
@@ -73,6 +74,7 @@ struct rfkill {
 	struct delayed_work	poll_work;
 	struct work_struct	uevent_work;
 	struct work_struct	sync_work;
+	char			name[];
 };
 #define to_rfkill(d)	container_of(d, struct rfkill, dev)
 
@@ -89,12 +91,10 @@ struct rfkill_data {
 	bool			input_handler;
 };
 
-
 MODULE_AUTHOR("Ivo van Doorn <IvDoorn@gmail.com>");
 MODULE_AUTHOR("Johannes Berg <johannes@sipsolutions.net>");
 MODULE_DESCRIPTION("RF switch support");
 MODULE_LICENSE("GPL");
-
 
 /*
  * The locking here should be made much smarter, we currently have
@@ -121,7 +121,6 @@ static struct {
 } rfkill_global_states[NUM_RFKILL_TYPES];
 
 static bool rfkill_epo_lock_active;
-
 
 #ifdef CONFIG_RFKILL_LEDS
 static void rfkill_led_trigger_event(struct rfkill *rfkill)
@@ -469,7 +468,6 @@ bool rfkill_get_global_sw_state(const enum rfkill_type type)
 }
 #endif
 
-
 bool rfkill_set_hw_state(struct rfkill *rfkill, bool blocked)
 {
 	bool ret, change;
@@ -574,14 +572,14 @@ void rfkill_set_states(struct rfkill *rfkill, bool sw, bool hw)
 }
 EXPORT_SYMBOL(rfkill_set_states);
 
-static ssize_t name_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t rfkill_name_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%s\n", rfkill->name);
 }
-static DEVICE_ATTR_RO(name);
 
 static const char *rfkill_get_type_str(enum rfkill_type type)
 {
@@ -609,52 +607,54 @@ static const char *rfkill_get_type_str(enum rfkill_type type)
 	}
 }
 
-static ssize_t type_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t rfkill_type_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%s\n", rfkill_get_type_str(rfkill->type));
 }
-static DEVICE_ATTR_RO(type);
 
-static ssize_t index_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static ssize_t rfkill_idx_show(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%d\n", rfkill->idx);
 }
-static DEVICE_ATTR_RO(index);
 
-static ssize_t persistent_show(struct device *dev,
-			       struct device_attribute *attr, char *buf)
+static ssize_t rfkill_persistent_show(struct device *dev,
+			       struct device_attribute *attr,
+			       char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%d\n", rfkill->persistent);
 }
-static DEVICE_ATTR_RO(persistent);
 
-static ssize_t hard_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t rfkill_hard_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%d\n", (rfkill->state & RFKILL_BLOCK_HW) ? 1 : 0 );
 }
-static DEVICE_ATTR_RO(hard);
 
-static ssize_t soft_show(struct device *dev, struct device_attribute *attr,
-			 char *buf)
+static ssize_t rfkill_soft_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%d\n", (rfkill->state & RFKILL_BLOCK_SW) ? 1 : 0 );
 }
 
-static ssize_t soft_store(struct device *dev, struct device_attribute *attr,
-			  const char *buf, size_t count)
+static ssize_t rfkill_soft_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 	unsigned long state;
@@ -676,7 +676,6 @@ static ssize_t soft_store(struct device *dev, struct device_attribute *attr,
 
 	return count;
 }
-static DEVICE_ATTR_RW(soft);
 
 static u8 user_state_from_blocked(unsigned long state)
 {
@@ -688,16 +687,18 @@ static u8 user_state_from_blocked(unsigned long state)
 	return RFKILL_USER_STATE_UNBLOCKED;
 }
 
-static ssize_t state_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static ssize_t rfkill_state_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
 	return sprintf(buf, "%d\n", user_state_from_blocked(rfkill->state));
 }
 
-static ssize_t state_store(struct device *dev, struct device_attribute *attr,
-			   const char *buf, size_t count)
+static ssize_t rfkill_state_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 	unsigned long state;
@@ -720,27 +721,32 @@ static ssize_t state_store(struct device *dev, struct device_attribute *attr,
 
 	return count;
 }
-static DEVICE_ATTR_RW(state);
 
-static ssize_t claim_show(struct device *dev, struct device_attribute *attr,
-			  char *buf)
+static ssize_t rfkill_claim_show(struct device *dev,
+				 struct device_attribute *attr,
+				 char *buf)
 {
 	return sprintf(buf, "%d\n", 0);
 }
-static DEVICE_ATTR_RO(claim);
 
-static struct attribute *rfkill_dev_attrs[] = {
-	&dev_attr_name.attr,
-	&dev_attr_type.attr,
-	&dev_attr_index.attr,
-	&dev_attr_persistent.attr,
-	&dev_attr_state.attr,
-	&dev_attr_claim.attr,
-	&dev_attr_soft.attr,
-	&dev_attr_hard.attr,
-	NULL,
+static ssize_t rfkill_claim_store(struct device *dev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
+{
+	return -EOPNOTSUPP;
+}
+
+static struct device_attribute rfkill_dev_attrs[] = {
+	__ATTR(name, S_IRUGO, rfkill_name_show, NULL),
+	__ATTR(type, S_IRUGO, rfkill_type_show, NULL),
+	__ATTR(index, S_IRUGO, rfkill_idx_show, NULL),
+	__ATTR(persistent, S_IRUGO, rfkill_persistent_show, NULL),
+	__ATTR(state, S_IRUGO|S_IWUSR, rfkill_state_show, rfkill_state_store),
+	__ATTR(claim, S_IRUGO|S_IWUSR, rfkill_claim_show, rfkill_claim_store),
+	__ATTR(soft, S_IRUGO|S_IWUSR, rfkill_soft_show, rfkill_soft_store),
+	__ATTR(hard, S_IRUGO, rfkill_hard_show, NULL),
+	__ATTR_NULL
 };
-ATTRIBUTE_GROUPS(rfkill_dev);
 
 static void rfkill_release(struct device *dev)
 {
@@ -789,8 +795,7 @@ void rfkill_resume_polling(struct rfkill *rfkill)
 	if (!rfkill->ops->poll)
 		return;
 
-	queue_delayed_work(system_power_efficient_wq,
-			   &rfkill->poll_work, 0);
+	schedule_work(&rfkill->poll_work.work);
 }
 EXPORT_SYMBOL(rfkill_resume_polling);
 
@@ -821,7 +826,7 @@ static int rfkill_resume(struct device *dev)
 static struct class rfkill_class = {
 	.name		= "rfkill",
 	.dev_release	= rfkill_release,
-	.dev_groups	= rfkill_dev_groups,
+	.dev_attrs	= rfkill_dev_attrs,
 	.dev_uevent	= rfkill_dev_uevent,
 	.suspend	= rfkill_suspend,
 	.resume		= rfkill_resume,
@@ -839,7 +844,6 @@ bool rfkill_blocked(struct rfkill *rfkill)
 	return !!(state & RFKILL_BLOCK_ANY);
 }
 EXPORT_SYMBOL(rfkill_blocked);
-
 
 struct rfkill * __must_check rfkill_alloc(const char *name,
 					  struct device *parent,
@@ -862,14 +866,14 @@ struct rfkill * __must_check rfkill_alloc(const char *name,
 	if (WARN_ON(type == RFKILL_TYPE_ALL || type >= NUM_RFKILL_TYPES))
 		return NULL;
 
-	rfkill = kzalloc(sizeof(*rfkill), GFP_KERNEL);
+	rfkill = kzalloc(sizeof(*rfkill) + strlen(name) + 1, GFP_KERNEL);
 	if (!rfkill)
 		return NULL;
 
 	spin_lock_init(&rfkill->lock);
 	INIT_LIST_HEAD(&rfkill->node);
 	rfkill->type = type;
-	rfkill->name = name;
+	strcpy(rfkill->name, name);
 	rfkill->ops = ops;
 	rfkill->data = ops_data;
 
@@ -895,8 +899,7 @@ static void rfkill_poll(struct work_struct *work)
 	 */
 	rfkill->ops->poll(rfkill, rfkill->data);
 
-	queue_delayed_work(system_power_efficient_wq,
-		&rfkill->poll_work,
+	schedule_delayed_work(&rfkill->poll_work,
 		round_jiffies_relative(POLL_INTERVAL));
 }
 
@@ -960,8 +963,7 @@ int __must_check rfkill_register(struct rfkill *rfkill)
 	INIT_WORK(&rfkill->sync_work, rfkill_sync_work);
 
 	if (rfkill->ops->poll)
-		queue_delayed_work(system_power_efficient_wq,
-			&rfkill->poll_work,
+		schedule_delayed_work(&rfkill->poll_work,
 			round_jiffies_relative(POLL_INTERVAL));
 
 	if (!rfkill->persistent || rfkill_epo_lock_active) {
@@ -1081,17 +1083,6 @@ static unsigned int rfkill_fop_poll(struct file *file, poll_table *wait)
 	return res;
 }
 
-static bool rfkill_readable(struct rfkill_data *data)
-{
-	bool r;
-
-	mutex_lock(&data->mtx);
-	r = !list_empty(&data->events);
-	mutex_unlock(&data->mtx);
-
-	return r;
-}
-
 static ssize_t rfkill_fop_read(struct file *file, char __user *buf,
 			       size_t count, loff_t *pos)
 {
@@ -1108,8 +1099,11 @@ static ssize_t rfkill_fop_read(struct file *file, char __user *buf,
 			goto out;
 		}
 		mutex_unlock(&data->mtx);
+		/* since we re-check and it just compares pointers,
+		 * using !list_empty() without locking isn't a problem
+		 */
 		ret = wait_event_interruptible(data->read_wait,
-					       rfkill_readable(data));
+					       !list_empty(&data->events));
 		mutex_lock(&data->mtx);
 
 		if (ret)

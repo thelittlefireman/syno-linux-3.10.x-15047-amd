@@ -114,13 +114,11 @@ struct thread_struct {
 	int align[0] __attribute__ ((aligned(16)));
 };
 
-
 /*
  * Default implementation of macro that returns current
  * instruction pointer ("program counter").
  */
 #define current_text_addr()  ({ __label__ _l; _l: &&_l;})
-
 
 /* This decides where the kernel will search for a free chunk of vm
  * space during mmap's.
@@ -137,7 +135,6 @@ struct thread_struct {
 	bad_uaddr:	0,						\
 	error_code:	0,						\
 }
-
 
 /*
  * Do necessary setup to start up a newly executed thread.
@@ -190,26 +187,6 @@ extern unsigned long get_wchan(struct task_struct *p);
 
 #define set_sr(x,sr) ({unsigned int v=(unsigned int)x; WSR(v,sr);})
 #define get_sr(sr) ({unsigned int v; RSR(v,sr); v; })
-
-#ifndef XCHAL_HAVE_EXTERN_REGS
-#define XCHAL_HAVE_EXTERN_REGS 0
-#endif
-
-#if XCHAL_HAVE_EXTERN_REGS
-
-static inline void set_er(unsigned long value, unsigned long addr)
-{
-	asm volatile ("wer %0, %1" : : "a" (value), "a" (addr) : "memory");
-}
-
-static inline unsigned long get_er(unsigned long addr)
-{
-	register unsigned long value;
-	asm volatile ("rer %0, %1" : "=a" (value) : "a" (addr) : "memory");
-	return value;
-}
-
-#endif /* XCHAL_HAVE_EXTERN_REGS */
 
 #endif	/* __ASSEMBLY__ */
 #endif	/* _XTENSA_PROCESSOR_H */

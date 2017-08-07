@@ -41,7 +41,6 @@ MODULE_AUTHOR("Gerd Knorr <kraxel@bytesex.org> [SuSE Labs]");
 MODULE_LICENSE("GPL");
 MODULE_VERSION(SAA7134_VERSION);
 
-
 /* ------------------------------------------------------------------ */
 
 static unsigned int irq_debug;
@@ -74,7 +73,6 @@ static unsigned int vbi_nr[]   = {[0 ... (SAA7134_MAXBOARDS - 1)] = UNSET };
 static unsigned int radio_nr[] = {[0 ... (SAA7134_MAXBOARDS - 1)] = UNSET };
 static unsigned int tuner[]    = {[0 ... (SAA7134_MAXBOARDS - 1)] = UNSET };
 static unsigned int card[]     = {[0 ... (SAA7134_MAXBOARDS - 1)] = UNSET };
-
 
 module_param_array(video_nr, int, NULL, 0444);
 module_param_array(vbi_nr,   int, NULL, 0444);
@@ -143,7 +141,6 @@ void saa7134_set_gpio(struct saa7134_dev *dev, int bit_no, int value)
 }
 
 /* ------------------------------------------------------------------ */
-
 
 /* ----------------------------------------------------------- */
 /* delayed request_module                                      */
@@ -542,11 +539,9 @@ static irqreturn_t saa7134_irq(int irq, void *dev_id)
 		if (irq_debug)
 			print_irqstatus(dev,loop,report,status);
 
-
 		if ((report & SAA7134_IRQ_REPORT_RDCAP) ||
 			(report & SAA7134_IRQ_REPORT_INTL))
 				saa7134_irq_video_signalchange(dev);
-
 
 		if ((report & SAA7134_IRQ_REPORT_DONE_RA0) &&
 		    (status & 0x60) == 0)
@@ -740,7 +735,6 @@ static int saa7134_hwinit2(struct saa7134_dev *dev)
 	return 0;
 }
 
-
 /* shutdown */
 static int saa7134_hwfini(struct saa7134_dev *dev)
 {
@@ -751,7 +745,6 @@ static int saa7134_hwfini(struct saa7134_dev *dev)
 	saa7134_input_fini(dev);
 	saa7134_vbi_fini(dev);
 	saa7134_tvaudio_fini(dev);
-	saa7134_video_fini(dev);
 	return 0;
 }
 
@@ -803,6 +796,7 @@ static struct video_device *vdev_init(struct saa7134_dev *dev,
 	*vfd = *template;
 	vfd->v4l2_dev  = &dev->v4l2_dev;
 	vfd->release = video_device_release;
+	vfd->debug   = video_debug;
 	snprintf(vfd->name, sizeof(vfd->name), "%s %s (%s)",
 		 dev->name, type, saa7134_boards[dev->board].name);
 	set_bit(V4L2_FL_USE_FH_PRIO, &vfd->flags);
@@ -992,7 +986,7 @@ static int saa7134_initdev(struct pci_dev *pci_dev,
 
 	/* get irq */
 	err = request_irq(pci_dev->irq, saa7134_irq,
-			  IRQF_SHARED, dev->name, dev);
+			  IRQF_SHARED | IRQF_DISABLED, dev->name, dev);
 	if (err < 0) {
 		printk(KERN_ERR "%s: can't get IRQ %d\n",
 		       dev->name,pci_dev->irq);
@@ -1008,13 +1002,13 @@ static int saa7134_initdev(struct pci_dev *pci_dev,
 
 	/* load i2c helpers */
 	if (card_is_empress(dev)) {
-		dev->empress_sd =
+		struct v4l2_subdev *sd =
 			v4l2_i2c_new_subdev(&dev->v4l2_dev, &dev->i2c_adap,
 				"saa6752hs",
 				saa7134_boards[dev->board].empress_addr, NULL);
 
-		if (dev->empress_sd)
-			dev->empress_sd->grp_id = GRP_EMPRESS;
+		if (sd)
+			sd->grp_id = GRP_EMPRESS;
 	}
 
 	if (saa7134_boards[dev->board].rds_addr) {
@@ -1046,7 +1040,6 @@ static int saa7134_initdev(struct pci_dev *pci_dev,
 		printk(KERN_INFO "%s: Overlay support disabled.\n", dev->name);
 
 	dev->video_dev = vdev_init(dev,&saa7134_video_template,"video");
-	dev->video_dev->ctrl_handler = &dev->ctrl_handler;
 	err = video_register_device(dev->video_dev,VFL_TYPE_GRABBER,
 				    video_nr[dev->nr]);
 	if (err < 0) {
@@ -1058,7 +1051,6 @@ static int saa7134_initdev(struct pci_dev *pci_dev,
 	       dev->name, video_device_node_name(dev->video_dev));
 
 	dev->vbi_dev = vdev_init(dev, &saa7134_video_template, "vbi");
-	dev->vbi_dev->ctrl_handler = &dev->ctrl_handler;
 
 	err = video_register_device(dev->vbi_dev,VFL_TYPE_VBI,
 				    vbi_nr[dev->nr]);
@@ -1069,7 +1061,6 @@ static int saa7134_initdev(struct pci_dev *pci_dev,
 
 	if (card_has_radio(dev)) {
 		dev->radio_dev = vdev_init(dev,&saa7134_radio_template,"radio");
-		dev->radio_dev->ctrl_handler = &dev->radio_ctrl_handler;
 		err = video_register_device(dev->radio_dev,VFL_TYPE_RADIO,
 					    radio_nr[dev->nr]);
 		if (err < 0)
@@ -1146,7 +1137,6 @@ static void saa7134_finidev(struct pci_dev *pci_dev)
 	saa7134_i2c_unregister(dev);
 	saa7134_unregister_video(dev);
 
-
 	/* the DMA sound modules should be unloaded before reaching
 	   this, but just in case they are still present... */
 	if (dev->dmasound.priv_data != NULL) {
@@ -1154,13 +1144,11 @@ static void saa7134_finidev(struct pci_dev *pci_dev)
 		dev->dmasound.priv_data = NULL;
 	}
 
-
 	/* release resources */
 	free_irq(pci_dev->irq, dev);
 	iounmap(dev->lmmio);
 	release_mem_region(pci_resource_start(pci_dev,0),
 			   pci_resource_len(pci_dev,0));
-
 
 	v4l2_device_unregister(&dev->v4l2_dev);
 

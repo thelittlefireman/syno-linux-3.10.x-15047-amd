@@ -60,7 +60,6 @@
                         choose the slave, -1 (the default) to choose the
                         first drive found.
 			
-
             major       You may use this parameter to overide the
                         default major number (45) that this driver
                         will use.  Be sure to change the device
@@ -126,7 +125,7 @@
 */
 #include <linux/types.h>
 
-static bool verbose = 0;
+static int verbose = 0;
 static int major = PD_MAJOR;
 static char *name = PD_NAME;
 static int cluster = 64;
@@ -161,7 +160,7 @@ enum {D_PRT, D_PRO, D_UNI, D_MOD, D_GEO, D_SBY, D_DLY, D_SLV};
 static DEFINE_MUTEX(pd_mutex);
 static DEFINE_SPINLOCK(pd_lock);
 
-module_param(verbose, bool, 0);
+module_param(verbose, int, 0);
 module_param(major, int, 0);
 module_param(name, charp, 0);
 module_param(cluster, int, 0);

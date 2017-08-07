@@ -22,7 +22,6 @@
 #include <plat/devs.h>
 #include <linux/platform_data/asoc-s3c.h>
 #include <plat/gpio-cfg.h>
-#include <mach/gpio-samsung.h>
 
 static int s3c64xx_i2s_cfg_gpio(struct platform_device *pdev)
 {
@@ -115,7 +114,6 @@ struct platform_device s3c64xx_device_iisv4 = {
 	},
 };
 EXPORT_SYMBOL(s3c64xx_device_iisv4);
-
 
 /* PCM Controller platform_devices */
 

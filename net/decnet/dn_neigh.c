@@ -55,7 +55,6 @@ static int dn_long_output(struct neighbour *, struct sk_buff *);
 static int dn_short_output(struct neighbour *, struct sk_buff *);
 static int dn_phase3_output(struct neighbour *, struct sk_buff *);
 
-
 /*
  * For talking to broadcast devices: Ethernet & PPP
  */
@@ -102,21 +101,19 @@ struct neigh_table dn_neigh_table = {
 	.id =				"dn_neigh_cache",
 	.parms ={
 		.tbl =			&dn_neigh_table,
-		.reachable_time =	30 * HZ,
-		.data = {
-			[NEIGH_VAR_MCAST_PROBES] = 0,
-			[NEIGH_VAR_UCAST_PROBES] = 0,
-			[NEIGH_VAR_APP_PROBES] = 0,
-			[NEIGH_VAR_RETRANS_TIME] = 1 * HZ,
-			[NEIGH_VAR_BASE_REACHABLE_TIME] = 30 * HZ,
-			[NEIGH_VAR_DELAY_PROBE_TIME] = 5 * HZ,
-			[NEIGH_VAR_GC_STALETIME] = 60 * HZ,
-			[NEIGH_VAR_QUEUE_LEN_BYTES] = 64*1024,
-			[NEIGH_VAR_PROXY_QLEN] = 0,
-			[NEIGH_VAR_ANYCAST_DELAY] = 0,
-			[NEIGH_VAR_PROXY_DELAY] = 0,
-			[NEIGH_VAR_LOCKTIME] = 1 * HZ,
-		},
+		.base_reachable_time =	30 * HZ,
+		.retrans_time =	1 * HZ,
+		.gc_staletime =	60 * HZ,
+		.reachable_time =		30 * HZ,
+		.delay_probe_time =	5 * HZ,
+		.queue_len_bytes =	64*1024,
+		.ucast_probes =	0,
+		.app_probes =		0,
+		.mcast_probes =	0,
+		.anycast_delay =	0,
+		.proxy_delay =		0,
+		.proxy_qlen =		0,
+		.locktime =		1 * HZ,
 	},
 	.gc_interval =			30 * HZ,
 	.gc_thresh1 =			128,
@@ -193,7 +190,6 @@ static void dn_long_error_report(struct neighbour *neigh, struct sk_buff *skb)
 	kfree_skb(skb);
 }
 
-
 static void dn_short_error_report(struct neighbour *neigh, struct sk_buff *skb)
 {
 	printk(KERN_DEBUG "dn_short_error_report: called\n");
@@ -233,7 +229,6 @@ static int dn_long_output(struct neighbour *neigh, struct sk_buff *skb)
 	unsigned char *data;
 	struct dn_long_packet *lp;
 	struct dn_skb_cb *cb = DN_SKB_CB(skb);
-
 
 	if (skb_headroom(skb) < headroom) {
 		struct sk_buff *skb2 = skb_realloc_headroom(skb, headroom);
@@ -276,7 +271,6 @@ static int dn_short_output(struct neighbour *neigh, struct sk_buff *skb)
 	struct dn_short_packet *sp;
 	unsigned char *data;
 	struct dn_skb_cb *cb = DN_SKB_CB(skb);
-
 
 	if (skb_headroom(skb) < headroom) {
 		struct sk_buff *skb2 = skb_realloc_headroom(skb, headroom);
@@ -526,7 +520,6 @@ int dn_neigh_elist(struct net_device *dev, unsigned char *ptr, int n)
 
 	return state.t;
 }
-
 
 #ifdef CONFIG_PROC_FS
 

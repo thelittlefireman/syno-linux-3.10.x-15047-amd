@@ -12,7 +12,6 @@
 #define CODE_LENGTH 784
 #define TIMEOUT_VALUE 1000
 
-
 #ifdef CONFIG_ETRAX_RESCUE_SER0
 #define SERXOFF R_SERIAL0_XOFF
 #define SERBAUD R_SERIAL0_BAUD
@@ -50,6 +49,7 @@
 
 	nop
 	di
+#ifndef CONFIG_SVINTO_SIM
 	;; setup port PA and PB default initial directions and data
 	;; (so we can flash LEDs, and so that DTR and others are set)
 
@@ -66,6 +66,7 @@
 	;; We need to setup the bus registers before we start using the DRAM
 #include "../../lib/dram_init.S"
 
+#endif
 	;; Setup the stack to a suitably high address.
 	;; We assume 8 MB is the minimum DRAM in an eLinux
 	;; product and put the sp at the top for now.
@@ -83,7 +84,6 @@
 
 	move.b	0x40, $r0		; rec enable
 	move.b	$r0, [SERRECC]
-
 
 	moveq	0, $r1			; "timer" to clock out a LED red flash
 	move.d	CODE_START, $r3		; destination counter

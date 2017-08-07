@@ -20,12 +20,10 @@
 
 static void __init imx31_dt_init(void)
 {
-	mxc_arch_reset_init_dt();
-
 	of_platform_populate(NULL, of_default_bus_match_table, NULL, NULL);
 }
 
-static const char *imx31_dt_board_compat[] __initconst = {
+static const char *imx31_dt_board_compat[] __initdata = {
 	"fsl,imx31",
 	NULL
 };

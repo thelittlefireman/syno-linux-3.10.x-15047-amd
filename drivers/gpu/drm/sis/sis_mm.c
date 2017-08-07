@@ -40,7 +40,6 @@
 #define VIDEO_TYPE 0
 #define AGP_TYPE 1
 
-
 struct sis_memblock {
 	struct drm_mm_node mm_node;
 	struct sis_memreq req;
@@ -109,8 +108,7 @@ static int sis_drm_alloc(struct drm_device *dev, struct drm_file *file,
 	if (pool == AGP_TYPE) {
 		retval = drm_mm_insert_node(&dev_priv->agp_mm,
 					    &item->mm_node,
-					    mem->size, 0,
-					    DRM_MM_SEARCH_DEFAULT);
+					    mem->size, 0);
 		offset = item->mm_node.start;
 	} else {
 #if defined(CONFIG_FB_SIS) || defined(CONFIG_FB_SIS_MODULE)
@@ -122,8 +120,7 @@ static int sis_drm_alloc(struct drm_device *dev, struct drm_file *file,
 #else
 		retval = drm_mm_insert_node(&dev_priv->vram_mm,
 					    &item->mm_node,
-					    mem->size, 0,
-					    DRM_MM_SEARCH_DEFAULT);
+					    mem->size, 0);
 		offset = item->mm_node.start;
 #endif
 	}
@@ -266,7 +263,7 @@ int sis_idle(struct drm_device *dev)
 	 * because its polling frequency is too low.
 	 */
 
-	end = jiffies + (HZ * 3);
+	end = jiffies + (DRM_HZ * 3);
 
 	for (i = 0; i < 4; ++i) {
 		do {
@@ -288,7 +285,6 @@ int sis_idle(struct drm_device *dev)
 
 	return 0;
 }
-
 
 void sis_lastclose(struct drm_device *dev)
 {
@@ -331,7 +327,6 @@ void sis_reclaim_buffers_locked(struct drm_device *dev,
 
 	sis_idle(dev);
 
-
 	list_for_each_entry_safe(entry, next, &file_priv->obj_list,
 				 owner_list) {
 		list_del(&entry->owner_list);
@@ -350,7 +345,7 @@ void sis_reclaim_buffers_locked(struct drm_device *dev,
 	return;
 }
 
-const struct drm_ioctl_desc sis_ioctls[] = {
+struct drm_ioctl_desc sis_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(SIS_FB_ALLOC, sis_fb_alloc, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(SIS_FB_FREE, sis_drm_free, DRM_AUTH),
 	DRM_IOCTL_DEF_DRV(SIS_AGP_INIT, sis_ioctl_agp_init, DRM_AUTH | DRM_MASTER | DRM_ROOT_ONLY),

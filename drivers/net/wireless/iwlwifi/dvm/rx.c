@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2003 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2003 - 2013 Intel Corporation. All rights reserved.
  *
  * Portions of this file are derived from the ipw3945 project, as well
  * as portionhelp of the ieee80211 subsystem header files.
@@ -39,7 +39,7 @@
 
 #define IWL_CMD_ENTRY(x) [x] = #x
 
-const char *const iwl_dvm_cmd_strings[REPLY_MAX] = {
+const char *iwl_dvm_cmd_strings[REPLY_MAX] = {
 	IWL_CMD_ENTRY(REPLY_ALIVE),
 	IWL_CMD_ENTRY(REPLY_ERROR),
 	IWL_CMD_ENTRY(REPLY_ECHO),
@@ -168,7 +168,6 @@ static int iwlagn_rx_csa(struct iwl_priv *priv, struct iwl_rx_cmd_buffer *rxb,
 	return 0;
 }
 
-
 static int iwlagn_rx_spectrum_measure_notif(struct iwl_priv *priv,
 					  struct iwl_rx_cmd_buffer *rxb,
 					  struct iwl_device_cmd *cmd)
@@ -205,7 +204,8 @@ static int iwlagn_rx_pm_debug_statistics_notif(struct iwl_priv *priv,
 					     struct iwl_device_cmd *cmd)
 {
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	u32 __maybe_unused len = iwl_rx_packet_len(pkt);
+	u32 __maybe_unused len =
+		le32_to_cpu(pkt->len_n_flags) & FH_RSCSR_FRAME_SIZE_MSK;
 	IWL_DEBUG_RADIO(priv, "Dumping %d bytes of unhandled "
 			"notification for PM_DEBUG_STATISTIC_NOTIFIC:\n", len);
 	iwl_print_hex_dump(priv, IWL_DL_RADIO, pkt->data, len);
@@ -312,7 +312,6 @@ int iwl_force_rf_reset(struct iwl_priv *priv, bool external)
 	return 0;
 }
 
-
 static void iwlagn_recover_from_statistics(struct iwl_priv *priv,
 				struct statistics_rx_phy *cur_ofdm,
 				struct statistics_rx_ht_phy *cur_ofdm_ht,
@@ -334,7 +333,8 @@ static void iwlagn_recover_from_statistics(struct iwl_priv *priv,
 	if (msecs < 99)
 		return;
 
-	if (!iwlagn_good_plcp_health(priv, cur_ofdm, cur_ofdm_ht, msecs))
+	if (iwlwifi_mod_params.plcp_check &&
+	    !iwlagn_good_plcp_health(priv, cur_ofdm, cur_ofdm_ht, msecs))
 		iwl_force_rf_reset(priv, false);
 }
 
@@ -456,7 +456,7 @@ static int iwlagn_rx_statistics(struct iwl_priv *priv,
 	const int reg_recalib_period = 60;
 	int change;
 	struct iwl_rx_packet *pkt = rxb_addr(rxb);
-	u32 len = iwl_rx_packet_payload_len(pkt);
+	u32 len = le32_to_cpu(pkt->len_n_flags) & FH_RSCSR_FRAME_SIZE_MSK;
 	__le32 *flag;
 	struct statistics_general_common *common;
 	struct statistics_rx_non_phy *rx_non_phy;
@@ -465,6 +465,8 @@ static int iwlagn_rx_statistics(struct iwl_priv *priv,
 	struct statistics_rx_phy *rx_cck;
 	struct statistics_tx *tx;
 	struct statistics_bt_activity *bt_activity;
+
+	len -= sizeof(struct iwl_cmd_header); /* skip header */
 
 	IWL_DEBUG_RX(priv, "Statistics notification received (%d bytes).\n",
 		     len);
@@ -618,7 +620,6 @@ static int iwlagn_rx_card_state_notif(struct iwl_priv *priv,
 		set_bit(STATUS_RF_KILL_HW, &priv->status);
 	else
 		clear_bit(STATUS_RF_KILL_HW, &priv->status);
-
 
 	if (!(flags & RXON_CARD_DISABLED))
 		iwl_scan_cancel(priv);
@@ -1098,7 +1099,7 @@ void iwl_setup_rx_handlers(struct iwl_priv *priv)
 	iwl_notification_wait_init(&priv->notif_wait);
 
 	/* Set up BT Rx handlers */
-	if (priv->lib->bt_params)
+	if (priv->cfg->bt_params)
 		iwlagn_bt_rx_handler_setup(priv);
 }
 
@@ -1116,17 +1117,32 @@ int iwl_rx_dispatch(struct iwl_op_mode *op_mode, struct iwl_rx_cmd_buffer *rxb,
 	 */
 	iwl_notification_wait_notify(&priv->notif_wait, pkt);
 
-	/* Based on type of command response or notification,
-	 *   handle those that need handling via function in
-	 *   rx_handlers table.  See iwl_setup_rx_handlers() */
-	if (priv->rx_handlers[pkt->hdr.cmd]) {
-		priv->rx_handlers_stats[pkt->hdr.cmd]++;
-		err = priv->rx_handlers[pkt->hdr.cmd] (priv, rxb, cmd);
-	} else {
-		/* No handling needed */
-		IWL_DEBUG_RX(priv, "No handler needed for %s, 0x%02x\n",
-			     iwl_dvm_get_cmd_string(pkt->hdr.cmd),
-			     pkt->hdr.cmd);
+#ifdef CONFIG_IWLWIFI_DEVICE_TESTMODE
+	/*
+	 * RX data may be forwarded to userspace in one
+	 * of two cases: the user owns the fw through testmode or when
+	 * the user requested to monitor the rx w/o affecting the regular flow.
+	 * In these cases the iwl_test object will handle forwarding the rx
+	 * data to user space.
+	 * Note that if the ownership flag != IWL_OWNERSHIP_TM the flow
+	 * continues.
+	 */
+	iwl_test_rx(&priv->tst, rxb);
+#endif
+
+	if (priv->ucode_owner != IWL_OWNERSHIP_TM) {
+		/* Based on type of command response or notification,
+		 *   handle those that need handling via function in
+		 *   rx_handlers table.  See iwl_setup_rx_handlers() */
+		if (priv->rx_handlers[pkt->hdr.cmd]) {
+			priv->rx_handlers_stats[pkt->hdr.cmd]++;
+			err = priv->rx_handlers[pkt->hdr.cmd] (priv, rxb, cmd);
+		} else {
+			/* No handling needed */
+			IWL_DEBUG_RX(priv, "No handler needed for %s, 0x%02x\n",
+				     iwl_dvm_get_cmd_string(pkt->hdr.cmd),
+				     pkt->hdr.cmd);
+		}
 	}
 	return err;
 }

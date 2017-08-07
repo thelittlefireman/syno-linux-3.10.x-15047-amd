@@ -24,14 +24,11 @@
 #include <linux/dvb/frontend.h>
 #include "dvb_frontend.h"
 
-
 struct mb86a16_config {
 	u8 demod_address;
 
 	int (*set_voltage)(struct dvb_frontend *fe, fe_sec_voltage_t voltage);
 };
-
-
 
 #if IS_ENABLED(CONFIG_DVB_MB86A16)
 

@@ -66,7 +66,6 @@ int drm_buffer_alloc(struct drm_buffer **buf, int size)
 			kmalloc(min(PAGE_SIZE, size - idx * PAGE_SIZE),
 				GFP_KERNEL);
 
-
 		if ((*buf)->data[idx] == NULL) {
 			DRM_ERROR("Failed to allocate %dth page for drm"
 					" buffer with %d bytes and %d pages.\n",
@@ -114,7 +113,7 @@ int drm_buffer_copy_from_user(struct drm_buffer *buf,
 
 	for (idx = 0; idx < nr_pages; ++idx) {
 
-		if (copy_from_user(buf->data[idx],
+		if (DRM_COPY_FROM_USER(buf->data[idx],
 			user_data + idx * PAGE_SIZE,
 			min(PAGE_SIZE, size - idx * PAGE_SIZE))) {
 			DRM_ERROR("Failed to copy user data (%p) to drm buffer"

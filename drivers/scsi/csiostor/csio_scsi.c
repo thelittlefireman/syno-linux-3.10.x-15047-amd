@@ -887,7 +887,6 @@ csio_scsis_tm_active(struct csio_ioreq *req, enum csio_scsi_ev evt)
 		}
 		break;
 
-
 	case CSIO_SCSIE_CLOSE:
 		csio_scsi_abrt_cls(req, SCSI_CLOSE);
 		if (req->drv_status == 0) {
@@ -1479,8 +1478,8 @@ csio_store_dbg_level(struct device *dev,
 }
 
 static DEVICE_ATTR(hw_state, S_IRUGO, csio_show_hw_state, NULL);
-static DEVICE_ATTR(device_reset, S_IWUSR, NULL, csio_device_reset);
-static DEVICE_ATTR(disable_port, S_IWUSR, NULL, csio_disable_port);
+static DEVICE_ATTR(device_reset, S_IRUGO | S_IWUSR, NULL, csio_device_reset);
+static DEVICE_ATTR(disable_port, S_IRUGO | S_IWUSR, NULL, csio_disable_port);
 static DEVICE_ATTR(dbg_level, S_IRUGO | S_IWUSR, csio_show_dbg_level,
 		  csio_store_dbg_level);
 
@@ -1590,7 +1589,6 @@ csio_scsi_err_handler(struct csio_hw *hw, struct csio_ioreq *req)
 	uint32_t host_status = DID_OK;
 	uint32_t rsp_len = 0, sns_len = 0;
 	struct csio_rnode *rn = (struct csio_rnode *)(cmnd->device->hostdata);
-
 
 	switch (req->wr_status) {
 	case FW_HOSTERROR:

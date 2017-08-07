@@ -33,5 +33,4 @@ typedef struct {
 	unsigned int edi __attribute__ ((packed));
 } SMMRegisters;
 
-
 #endif /* _UAPI_LINUX_TOSHIBA_H */

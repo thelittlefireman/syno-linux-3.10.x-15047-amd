@@ -8,7 +8,6 @@
     All the other people listed below are not related to this driver. Their names
     are only here, because this driver is derived from the bt848 driver.
 
-
     Derived from the bt848 driver:
 
     Copyright (C) 1996,97,98 Ralph  Metzler
@@ -52,9 +51,7 @@
 /* Steal the hardware definitions from the bttv driver. */
 #include "../media/pci/bt8xx/bt848.h"
 
-
 #define BT8XXGPIO_NR_GPIOS		24 /* We have 24 GPIO pins */
-
 
 struct bt8xxgpio {
 	spinlock_t lock;
@@ -72,11 +69,9 @@ struct bt8xxgpio {
 #define bgwrite(dat, adr)	writel((dat), bg->mmio+(adr))
 #define bgread(adr)		readl(bg->mmio+(adr))
 
-
 static int modparam_gpiobase = -1/* dynamic */;
 module_param_named(gpiobase, modparam_gpiobase, int, 0444);
 MODULE_PARM_DESC(gpiobase, "The GPIO number base. -1 means dynamic, which is the default.");
-
 
 static int bt8xxgpio_gpio_direction_input(struct gpio_chip *gpio, unsigned nr)
 {
@@ -169,7 +164,7 @@ static void bt8xxgpio_gpio_setup(struct bt8xxgpio *bg)
 	c->dbg_show = NULL;
 	c->base = modparam_gpiobase;
 	c->ngpio = BT8XXGPIO_NR_GPIOS;
-	c->can_sleep = false;
+	c->can_sleep = 0;
 }
 
 static int bt8xxgpio_probe(struct pci_dev *dev,
@@ -228,6 +223,7 @@ static int bt8xxgpio_probe(struct pci_dev *dev,
 err_release_mem:
 	release_mem_region(pci_resource_start(dev, 0),
 			   pci_resource_len(dev, 0));
+	pci_set_drvdata(dev, NULL);
 err_disable:
 	pci_disable_device(dev);
 err_freebg:
@@ -251,6 +247,7 @@ static void bt8xxgpio_remove(struct pci_dev *pdev)
 			   pci_resource_len(pdev, 0));
 	pci_disable_device(pdev);
 
+	pci_set_drvdata(pdev, NULL);
 	kfree(bg);
 }
 
@@ -284,7 +281,7 @@ static int bt8xxgpio_resume(struct pci_dev *pdev)
 	unsigned long flags;
 	int err;
 
-	pci_set_power_state(pdev, PCI_D0);
+	pci_set_power_state(pdev, 0);
 	err = pci_enable_device(pdev);
 	if (err)
 		return err;
@@ -308,7 +305,7 @@ static int bt8xxgpio_resume(struct pci_dev *pdev)
 #define bt8xxgpio_resume NULL
 #endif /* CONFIG_PM */
 
-static const struct pci_device_id bt8xxgpio_pci_tbl[] = {
+static DEFINE_PCI_DEVICE_TABLE(bt8xxgpio_pci_tbl) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_BROOKTREE, PCI_DEVICE_ID_BT848) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_BROOKTREE, PCI_DEVICE_ID_BT849) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_BROOKTREE, PCI_DEVICE_ID_BT878) },

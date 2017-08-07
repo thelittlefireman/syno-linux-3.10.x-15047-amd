@@ -146,7 +146,6 @@ struct ocfs2_extent_tree_operations {
 				    struct ocfs2_extent_rec *insert_rec);
 };
 
-
 /*
  * Pre-declare ocfs2_dinode_et_ops so we can use it as a sanity check
  * in the methods.
@@ -254,7 +253,6 @@ static void ocfs2_dinode_fill_root_el(struct ocfs2_extent_tree *et)
 
 	et->et_root_el = &di->id2.i_list;
 }
-
 
 static void ocfs2_xattr_value_fill_root_el(struct ocfs2_extent_tree *et)
 {
@@ -952,7 +950,6 @@ int ocfs2_read_extent_block(struct ocfs2_caching_info *ci, u64 eb_blkno,
 	return rc;
 }
 
-
 /*
  * How many free extents have we got before we need more meta data?
  */
@@ -1025,7 +1022,7 @@ static int ocfs2_create_new_meta_bhs(handle_t *handle,
 		for(i = count;  i < (num_got + count); i++) {
 			bhs[i] = sb_getblk(osb->sb, first_blkno);
 			if (bhs[i] == NULL) {
-				status = -ENOMEM;
+				status = -EIO;
 				mlog_errno(status);
 				goto bail;
 			}
@@ -3039,7 +3036,6 @@ static int ocfs2_remove_rightmost_path(handle_t *handle,
 	struct ocfs2_extent_block *eb;
 	struct ocfs2_extent_list *el;
 
-
 	ret = ocfs2_et_sanity_check(et);
 	if (ret)
 		goto out;
@@ -4742,7 +4738,6 @@ int ocfs2_add_clusters_in_btree(handle_t *handle,
 				enum ocfs2_alloc_restarted *reason_ret)
 {
 	int status = 0, err = 0;
-	int need_free = 0;
 	int free_extents;
 	enum ocfs2_alloc_restarted reason = RESTART_NONE;
 	u32 bit_off, num_bits;
@@ -4797,8 +4792,7 @@ int ocfs2_add_clusters_in_btree(handle_t *handle,
 					      OCFS2_JOURNAL_ACCESS_WRITE);
 	if (status < 0) {
 		mlog_errno(status);
-		need_free = 1;
-		goto bail;
+		goto leave;
 	}
 
 	block = ocfs2_clusters_to_blocks(osb->sb, bit_off);
@@ -4809,8 +4803,7 @@ int ocfs2_add_clusters_in_btree(handle_t *handle,
 				     num_bits, flags, meta_ac);
 	if (status < 0) {
 		mlog_errno(status);
-		need_free = 1;
-		goto bail;
+		goto leave;
 	}
 
 	ocfs2_journal_dirty(handle, et->et_root_bh);
@@ -4822,19 +4815,6 @@ int ocfs2_add_clusters_in_btree(handle_t *handle,
 		err = clusters_to_add;
 		status = -EAGAIN;
 		reason = RESTART_TRANS;
-	}
-
-bail:
-	if (need_free) {
-		if (data_ac->ac_which == OCFS2_AC_USE_LOCAL)
-			ocfs2_free_local_alloc_bits(osb, handle, data_ac,
-					bit_off, num_bits);
-		else
-			ocfs2_free_clusters(handle,
-					data_ac->ac_inode,
-					data_ac->ac_bh,
-					ocfs2_clusters_to_blocks(osb->sb, bit_off),
-					num_bits);
 	}
 
 leave:
@@ -5671,7 +5651,7 @@ int ocfs2_remove_btree_range(struct inode *inode,
 					       &ref_tree, NULL);
 		if (ret) {
 			mlog_errno(ret);
-			goto bail;
+			goto out;
 		}
 
 		ret = ocfs2_prepare_refcount_change_for_del(inode,
@@ -5682,7 +5662,7 @@ int ocfs2_remove_btree_range(struct inode *inode,
 							    &extra_blocks);
 		if (ret < 0) {
 			mlog_errno(ret);
-			goto bail;
+			goto out;
 		}
 	}
 
@@ -5690,7 +5670,7 @@ int ocfs2_remove_btree_range(struct inode *inode,
 						 extra_blocks);
 	if (ret) {
 		mlog_errno(ret);
-		goto bail;
+		return ret;
 	}
 
 	mutex_lock(&tl_inode->i_mutex);
@@ -5728,7 +5708,6 @@ int ocfs2_remove_btree_range(struct inode *inode,
 	}
 
 	ocfs2_et_update_clusters(et, -len);
-	ocfs2_update_inode_fsync_trans(handle, inode, 1);
 
 	ocfs2_journal_dirty(handle, et->et_root_bh);
 
@@ -5751,7 +5730,7 @@ out_commit:
 	ocfs2_commit_trans(osb, handle);
 out:
 	mutex_unlock(&tl_inode->i_mutex);
-bail:
+
 	if (meta_ac)
 		ocfs2_free_alloc_context(meta_ac);
 
@@ -6822,8 +6801,6 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 					 struct buffer_head *di_bh)
 {
 	int ret, i, has_data, num_pages = 0;
-	int need_free = 0;
-	u32 bit_off, num;
 	handle_t *handle;
 	u64 uninitialized_var(block);
 	struct ocfs2_inode_info *oi = OCFS2_I(inode);
@@ -6869,6 +6846,7 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 	}
 
 	if (has_data) {
+		u32 bit_off, num;
 		unsigned int page_end;
 		u64 phys;
 
@@ -6904,7 +6882,6 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 		ret = ocfs2_grab_eof_pages(inode, 0, end, pages, &num_pages);
 		if (ret) {
 			mlog_errno(ret);
-			need_free = 1;
 			goto out_commit;
 		}
 
@@ -6915,7 +6892,6 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 		ret = ocfs2_read_inline_data(inode, pages[0], di_bh);
 		if (ret) {
 			mlog_errno(ret);
-			need_free = 1;
 			goto out_commit;
 		}
 
@@ -6933,7 +6909,6 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 	di->i_dyn_features = cpu_to_le16(oi->ip_dyn_features);
 	spin_unlock(&oi->ip_lock);
 
-	ocfs2_update_inode_fsync_trans(handle, inode, 1);
 	ocfs2_dinode_new_extent_list(inode, di);
 
 	ocfs2_journal_dirty(handle, di_bh);
@@ -6948,7 +6923,6 @@ int ocfs2_convert_inline_data_to_extents(struct inode *inode,
 		ret = ocfs2_insert_extent(handle, &et, 0, block, 1, 0, NULL);
 		if (ret) {
 			mlog_errno(ret);
-			need_free = 1;
 			goto out_commit;
 		}
 
@@ -6959,18 +6933,6 @@ out_commit:
 	if (ret < 0 && did_quota)
 		dquot_free_space_nodirty(inode,
 					  ocfs2_clusters_to_bytes(osb->sb, 1));
-
-	if (need_free) {
-		if (data_ac->ac_which == OCFS2_AC_USE_LOCAL)
-			ocfs2_free_local_alloc_bits(osb, handle, data_ac,
-					bit_off, num);
-		else
-			ocfs2_free_clusters(handle,
-					data_ac->ac_inode,
-					data_ac->ac_bh,
-					ocfs2_clusters_to_blocks(osb->sb, bit_off),
-					num);
-	}
 
 	ocfs2_commit_trans(osb, handle);
 
@@ -7160,7 +7122,7 @@ int ocfs2_truncate_inline(struct inode *inode, struct buffer_head *di_bh,
 	if (end > i_size_read(inode))
 		end = i_size_read(inode);
 
-	BUG_ON(start > end);
+	BUG_ON(start >= end);
 
 	if (!(OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) ||
 	    !(le16_to_cpu(di->i_dyn_features) & OCFS2_INLINE_DATA_FL) ||
@@ -7210,7 +7172,6 @@ int ocfs2_truncate_inline(struct inode *inode, struct buffer_head *di_bh,
 	di->i_ctime = di->i_mtime = cpu_to_le64(inode->i_ctime.tv_sec);
 	di->i_ctime_nsec = di->i_mtime_nsec = cpu_to_le32(inode->i_ctime.tv_nsec);
 
-	ocfs2_update_inode_fsync_trans(handle, inode, 1);
 	ocfs2_journal_dirty(handle, di_bh);
 
 out_commit:
@@ -7295,8 +7256,14 @@ int ocfs2_trim_fs(struct super_block *sb, struct fstrim_range *range)
 	start = range->start >> osb->s_clustersize_bits;
 	len = range->len >> osb->s_clustersize_bits;
 	minlen = range->minlen >> osb->s_clustersize_bits;
+	trimmed = 0;
 
-	if (minlen >= osb->bitmap_cpg || range->len < sb->s_blocksize)
+	if (!len) {
+		range->len = 0;
+		return 0;
+	}
+
+	if (minlen >= osb->bitmap_cpg)
 		return -EINVAL;
 
 	main_bm_inode = ocfs2_get_system_file_inode(osb,
@@ -7322,7 +7289,6 @@ int ocfs2_trim_fs(struct super_block *sb, struct fstrim_range *range)
 		goto out_unlock;
 	}
 
-	len = range->len >> osb->s_clustersize_bits;
 	if (start + len > le32_to_cpu(main_bm->i_clusters))
 		len = le32_to_cpu(main_bm->i_clusters) - start;
 
@@ -7337,7 +7303,6 @@ int ocfs2_trim_fs(struct super_block *sb, struct fstrim_range *range)
 	last_group = ocfs2_which_cluster_group(main_bm_inode, start + len - 1);
 	last_bit = osb->bitmap_cpg;
 
-	trimmed = 0;
 	for (group = first_group; group <= last_group;) {
 		if (first_bit + len >= osb->bitmap_cpg)
 			last_bit = osb->bitmap_cpg;

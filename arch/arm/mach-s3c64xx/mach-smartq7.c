@@ -23,7 +23,6 @@
 #include <video/samsung_fimd.h>
 #include <mach/map.h>
 #include <mach/regs-gpio.h>
-#include <mach/gpio-samsung.h>
 
 #include <plat/cpu.h>
 #include <plat/devs.h>

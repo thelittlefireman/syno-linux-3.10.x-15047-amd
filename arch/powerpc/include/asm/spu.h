@@ -235,7 +235,6 @@ extern long spu_sys_callback(struct spu_syscall_block *s);
 
 /* syscalls implemented in spufs */
 struct file;
-struct coredump_params;
 struct spufs_calls {
 	long (*create_thread)(const char __user *name,
 					unsigned int flags, umode_t mode,
@@ -243,7 +242,7 @@ struct spufs_calls {
 	long (*spu_run)(struct file *filp, __u32 __user *unpc,
 						__u32 __user *ustatus);
 	int (*coredump_extra_notes_size)(void);
-	int (*coredump_extra_notes_write)(struct coredump_params *cprm);
+	int (*coredump_extra_notes_write)(struct file *file, loff_t *foffset);
 	void (*notify_spus_active)(void);
 	struct module *owner;
 };
@@ -266,7 +265,6 @@ struct spufs_calls {
 #define SPU_CREATE_AFFINITY_MEM		0x0020
 
 #define SPU_CREATE_FLAG_ALL		0x003f /* mask of all valid flags */
-
 
 int register_spu_syscalls(struct spufs_calls *calls);
 void unregister_spu_syscalls(struct spufs_calls *calls);

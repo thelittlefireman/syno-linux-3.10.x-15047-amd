@@ -90,7 +90,6 @@ struct irqaction c0_compare_irqaction = {
 	.name = "timer",
 };
 
-
 void mips_event_handler(struct clock_event_device *dev)
 {
 }
@@ -171,7 +170,7 @@ int c0_compare_int_usable(void)
 }
 
 #ifndef CONFIG_MIPS_MT_SMTC
-int r4k_clockevent_init(void)
+int __cpuinit r4k_clockevent_init(void)
 {
 	unsigned int cpu = smp_processor_id();
 	struct clock_event_device *cd;

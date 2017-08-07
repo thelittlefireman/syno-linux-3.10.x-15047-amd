@@ -170,7 +170,6 @@ static int mixcomwd_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
 static ssize_t mixcomwd_write(struct file *file, const char __user *data,
 						size_t len, loff_t *ppos)
 {
@@ -315,3 +314,4 @@ MODULE_AUTHOR("Gergely Madarasz <gorgo@itc.hu>");
 MODULE_DESCRIPTION("MixCom Watchdog driver");
 MODULE_VERSION(VERSION);
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

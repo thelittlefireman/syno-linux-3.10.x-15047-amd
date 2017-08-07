@@ -692,7 +692,7 @@ ahc_find_pci_device(ahc_dev_softc_t pci)
 	 * ID as valid.
 	 */
 	if (ahc_get_pci_function(pci) > 0
-	 && ahc_9005_subdevinfo_valid(device, vendor, subdevice, subvendor)
+	 && ahc_9005_subdevinfo_valid(vendor, device, subvendor, subdevice)
 	 && SUBID_9005_MFUNCENB(subdevice) == 0)
 		return (NULL);
 
@@ -2202,7 +2202,6 @@ ahc_aic7880h_setup(struct ahc_softc *ahc)
 
 	return error;
 }
-
 
 static int
 ahc_aha2940Pro_setup(struct ahc_softc *ahc)

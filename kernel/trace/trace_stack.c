@@ -13,7 +13,6 @@
 #include <linux/sysctl.h>
 #include <linux/init.h>
 #include <linux/fs.h>
-#include <linux/magic.h>
 
 #include <asm/setup.h>
 
@@ -145,8 +144,6 @@ check_stack(unsigned long ip, unsigned long *stack)
 			i++;
 	}
 
-	BUG_ON(current != &init_task &&
-		*(end_of_stack(current)) != STACK_END_MAGIC);
  out:
 	arch_spin_unlock(&max_stack_lock);
 	local_irq_restore(flags);
@@ -385,7 +382,7 @@ static const struct file_operations stack_trace_filter_fops = {
 	.open = stack_trace_filter_open,
 	.read = seq_read,
 	.write = ftrace_filter_write,
-	.llseek = tracing_lseek,
+	.llseek = ftrace_filter_lseek,
 	.release = ftrace_regex_release,
 };
 

@@ -38,7 +38,6 @@
 /*                        */
 /*---------------------- -*/
 
-
 /* cf registers */
 #define		HW_HOST_IRR_REG_ADDR			0x0A00UL
 #define		HW_HOST_IMR_REG_ADDR			0x0A04UL

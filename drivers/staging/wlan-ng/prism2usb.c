@@ -140,9 +140,11 @@ static int prism2sta_probe_usb(struct usb_interface *interface,
 					   prism2_reset_holdtime,
 					   prism2_reset_settletime, 0);
 		if (result != 0) {
+			unregister_wlandev(wlandev);
+			hfa384x_destroy(hw);
 			result = -EIO;
 			dev_err(&interface->dev, "hfa384x_corereset() failed.\n");
-			goto failed_reset;
+			goto failed;
 		}
 	}
 
@@ -157,15 +159,11 @@ static int prism2sta_probe_usb(struct usb_interface *interface,
 	if (register_wlandev(wlandev) != 0) {
 		dev_err(&interface->dev, "register_wlandev() failed.\n");
 		result = -EIO;
-		goto failed_register;
+		goto failed;
 	}
 
 	goto done;
 
-failed_register:
-	usb_put_dev(dev);
-failed_reset:
-	wlan_unsetup(wlandev);
 failed:
 	kfree(wlandev);
 	kfree(hw);

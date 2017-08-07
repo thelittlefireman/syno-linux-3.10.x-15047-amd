@@ -62,7 +62,6 @@ static unsigned int msmsdcc_sdioirq;
 #define PIO_SPINMAX 30
 #define CMD_SPINMAX 20
 
-
 static inline void
 msmsdcc_disable_clocks(struct msmsdcc_host *host, int deferr)
 {
@@ -593,7 +592,6 @@ msmsdcc_data_err(struct msmsdcc_host *host, struct mmc_data *data,
 		data->error = -EIO;
 	}
 }
-
 
 static int
 msmsdcc_pio_read(struct msmsdcc_host *host, char *buffer, unsigned int remain)
@@ -1221,7 +1219,6 @@ msmsdcc_probe(struct platform_device *pdev)
 	host->busclk_timer.data = (unsigned long) host;
 	host->busclk_timer.function = msmsdcc_busclk_expired;
 
-
 	host->cmdpoll = 1;
 
 	host->base = ioremap(memres->start, PAGE_SIZE);
@@ -1268,18 +1265,10 @@ msmsdcc_probe(struct platform_device *pdev)
 		goto clk_put;
 	}
 
-	ret = clk_prepare(host->pclk);
-	if (ret)
-		goto clk_put;
-
-	ret = clk_prepare(host->clk);
-	if (ret)
-		goto clk_unprepare_p;
-
 	/* Enable clocks */
 	ret = msmsdcc_enable_clocks(host);
 	if (ret)
-		goto clk_unprepare;
+		goto clk_put;
 
 	host->pclk_rate = clk_get_rate(host->pclk);
 	host->clk_rate = clk_get_rate(host->clk);
@@ -1394,10 +1383,6 @@ msmsdcc_probe(struct platform_device *pdev)
 		free_irq(host->stat_irq, host);
  clk_disable:
 	msmsdcc_disable_clocks(host, 0);
- clk_unprepare:
-	clk_unprepare(host->clk);
- clk_unprepare_p:
-	clk_unprepare(host->pclk);
  clk_put:
 	clk_put(host->clk);
  pclk_put:
@@ -1416,10 +1401,27 @@ ioremap_free:
 }
 
 #ifdef CONFIG_PM
+#ifdef CONFIG_MMC_MSM7X00A_RESUME_IN_WQ
+static void
+do_resume_work(struct work_struct *work)
+{
+	struct msmsdcc_host *host =
+		container_of(work, struct msmsdcc_host, resume_task);
+	struct mmc_host	*mmc = host->mmc;
+
+	if (mmc) {
+		mmc_resume_host(mmc);
+		if (host->stat_irq)
+			enable_irq(host->stat_irq);
+	}
+}
+#endif
+
 static int
 msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct mmc_host *mmc = mmc_get_drvdata(dev);
+	int rc = 0;
 
 	if (mmc) {
 		struct msmsdcc_host *host = mmc_priv(mmc);
@@ -1427,11 +1429,14 @@ msmsdcc_suspend(struct platform_device *dev, pm_message_t state)
 		if (host->stat_irq)
 			disable_irq(host->stat_irq);
 
-		msmsdcc_writel(host, 0, MMCIMASK0);
+		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
+			rc = mmc_suspend_host(mmc);
+		if (!rc)
+			msmsdcc_writel(host, 0, MMCIMASK0);
 		if (host->clks_on)
 			msmsdcc_disable_clocks(host, 0);
 	}
-	return 0;
+	return rc;
 }
 
 static int
@@ -1446,6 +1451,8 @@ msmsdcc_resume(struct platform_device *dev)
 
 		msmsdcc_writel(host, host->saved_irq0mask, MMCIMASK0);
 
+		if (mmc->card && mmc->card->type != MMC_TYPE_SDIO)
+			mmc_resume_host(mmc);
 		if (host->stat_irq)
 			enable_irq(host->stat_irq);
 #if BUSCLK_PWRSAVE

@@ -1,26 +1,34 @@
-/*
- * linux/fs/hfsplus/xattr.c
- *
- * Vyacheslav Dubeyko <slava@dubeyko.com>
- *
- * Logic of processing extended attributes
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include "hfsplus_fs.h"
-#include <linux/posix_acl_xattr.h>
 #include "xattr.h"
-#include "acl.h"
 
-static int hfsplus_removexattr(struct inode *inode, const char *name);
+#ifdef MY_ABC_HERE
+ 
+static void hfsplus_zero_dateadded(u16 entry_type, u8 *finderinfo) {
+
+    finderinfo = finderinfo + 16;
+
+	if (entry_type == HFSPLUS_FOLDER) {
+		struct DXInfo *fldinfo = (struct DXInfo *)finderinfo;
+		fldinfo->date_added = 0;
+	} else if (entry_type == HFSPLUS_FILE) {
+		struct FXInfo *fileinfo = (struct FXInfo *)finderinfo;
+		fileinfo->date_added = 0;
+    }
+}
+#endif
+
+#ifdef MY_ABC_HERE
+extern struct mutex syno_hfsplus_global_mutex;
+#endif
 
 const struct xattr_handler *hfsplus_xattr_handlers[] = {
 	&hfsplus_xattr_osx_handler,
 	&hfsplus_xattr_user_handler,
 	&hfsplus_xattr_trusted_handler,
-#ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
-	&posix_acl_access_xattr_handler,
-	&posix_acl_default_xattr_handler,
-#endif
 	&hfsplus_xattr_security_handler,
 	NULL
 };
@@ -54,209 +62,26 @@ static inline int is_known_namespace(const char *name)
 	return true;
 }
 
-static void hfsplus_init_header_node(struct inode *attr_file,
-					u32 clump_size,
-					char *buf, u16 node_size)
+static int can_set_xattr(struct inode *inode, const char *name,
+				const void *value, size_t value_len)
 {
-	struct hfs_bnode_desc *desc;
-	struct hfs_btree_header_rec *head;
-	u16 offset;
-	__be16 *rec_offsets;
-	u32 hdr_node_map_rec_bits;
-	char *bmp;
-	u32 used_nodes;
-	u32 used_bmp_bytes;
-	loff_t tmp;
+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
+		return -EOPNOTSUPP;  
 
-	hfs_dbg(ATTR_MOD, "init_hdr_attr_file: clump %u, node_size %u\n",
-				clump_size, node_size);
+	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
+		 
+		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
+			return -EOPNOTSUPP;
 
-	/* The end of the node contains list of record offsets */
-	rec_offsets = (__be16 *)(buf + node_size);
-
-	desc = (struct hfs_bnode_desc *)buf;
-	desc->type = HFS_NODE_HEADER;
-	desc->num_recs = cpu_to_be16(HFSPLUS_BTREE_HDR_NODE_RECS_COUNT);
-	offset = sizeof(struct hfs_bnode_desc);
-	*--rec_offsets = cpu_to_be16(offset);
-
-	head = (struct hfs_btree_header_rec *)(buf + offset);
-	head->node_size = cpu_to_be16(node_size);
-	tmp = i_size_read(attr_file);
-	do_div(tmp, node_size);
-	head->node_count = cpu_to_be32(tmp);
-	head->free_nodes = cpu_to_be32(be32_to_cpu(head->node_count) - 1);
-	head->clump_size = cpu_to_be32(clump_size);
-	head->attributes |= cpu_to_be32(HFS_TREE_BIGKEYS | HFS_TREE_VARIDXKEYS);
-	head->max_key_len = cpu_to_be16(HFSPLUS_ATTR_KEYLEN - sizeof(u16));
-	offset += sizeof(struct hfs_btree_header_rec);
-	*--rec_offsets = cpu_to_be16(offset);
-	offset += HFSPLUS_BTREE_HDR_USER_BYTES;
-	*--rec_offsets = cpu_to_be16(offset);
-
-	hdr_node_map_rec_bits = 8 * (node_size - offset - (4 * sizeof(u16)));
-	if (be32_to_cpu(head->node_count) > hdr_node_map_rec_bits) {
-		u32 map_node_bits;
-		u32 map_nodes;
-
-		desc->next = cpu_to_be32(be32_to_cpu(head->leaf_tail) + 1);
-		map_node_bits = 8 * (node_size - sizeof(struct hfs_bnode_desc) -
-					(2 * sizeof(u16)) - 2);
-		map_nodes = (be32_to_cpu(head->node_count) -
-				hdr_node_map_rec_bits +
-				(map_node_bits - 1)) / map_node_bits;
-		be32_add_cpu(&head->free_nodes, 0 - map_nodes);
-	}
-
-	bmp = buf + offset;
-	used_nodes =
-		be32_to_cpu(head->node_count) - be32_to_cpu(head->free_nodes);
-	used_bmp_bytes = used_nodes / 8;
-	if (used_bmp_bytes) {
-		memset(bmp, 0xFF, used_bmp_bytes);
-		bmp += used_bmp_bytes;
-		used_nodes %= 8;
-	}
-	*bmp = ~(0xFF >> used_nodes);
-	offset += hdr_node_map_rec_bits / 8;
-	*--rec_offsets = cpu_to_be16(offset);
-}
-
-static int hfsplus_create_attributes_file(struct super_block *sb)
-{
-	int err = 0;
-	struct hfsplus_sb_info *sbi = HFSPLUS_SB(sb);
-	struct inode *attr_file;
-	struct hfsplus_inode_info *hip;
-	u32 clump_size;
-	u16 node_size = HFSPLUS_ATTR_TREE_NODE_SIZE;
-	char *buf;
-	int index, written;
-	struct address_space *mapping;
-	struct page *page;
-	int old_state = HFSPLUS_EMPTY_ATTR_TREE;
-
-	hfs_dbg(ATTR_MOD, "create_attr_file: ino %d\n", HFSPLUS_ATTR_CNID);
-
-check_attr_tree_state_again:
-	switch (atomic_read(&sbi->attr_tree_state)) {
-	case HFSPLUS_EMPTY_ATTR_TREE:
-		if (old_state != atomic_cmpxchg(&sbi->attr_tree_state,
-						old_state,
-						HFSPLUS_CREATING_ATTR_TREE))
-			goto check_attr_tree_state_again;
-		break;
-	case HFSPLUS_CREATING_ATTR_TREE:
-		/*
-		 * This state means that another thread is in process
-		 * of AttributesFile creation. Theoretically, it is
-		 * possible to be here. But really __setxattr() method
-		 * first of all calls hfs_find_init() for lookup in
-		 * B-tree of CatalogFile. This method locks mutex of
-		 * CatalogFile's B-tree. As a result, if some thread
-		 * is inside AttributedFile creation operation then
-		 * another threads will be waiting unlocking of
-		 * CatalogFile's B-tree's mutex. However, if code will
-		 * change then we will return error code (-EAGAIN) from
-		 * here. Really, it means that first try to set of xattr
-		 * fails with error but second attempt will have success.
-		 */
-		return -EAGAIN;
-	case HFSPLUS_VALID_ATTR_TREE:
 		return 0;
-	case HFSPLUS_FAILED_ATTR_TREE:
+	}
+
+	if (strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) &&
+	    strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN) &&
+	    strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN))
 		return -EOPNOTSUPP;
-	default:
-		BUG();
-	}
 
-	attr_file = hfsplus_iget(sb, HFSPLUS_ATTR_CNID);
-	if (IS_ERR(attr_file)) {
-		pr_err("failed to load attributes file\n");
-		return PTR_ERR(attr_file);
-	}
-
-	BUG_ON(i_size_read(attr_file) != 0);
-
-	hip = HFSPLUS_I(attr_file);
-
-	clump_size = hfsplus_calc_btree_clump_size(sb->s_blocksize,
-						    node_size,
-						    sbi->sect_count,
-						    HFSPLUS_ATTR_CNID);
-
-	mutex_lock(&hip->extents_lock);
-	hip->clump_blocks = clump_size >> sbi->alloc_blksz_shift;
-	mutex_unlock(&hip->extents_lock);
-
-	if (sbi->free_blocks <= (hip->clump_blocks << 1)) {
-		err = -ENOSPC;
-		goto end_attr_file_creation;
-	}
-
-	while (hip->alloc_blocks < hip->clump_blocks) {
-		err = hfsplus_file_extend(attr_file);
-		if (unlikely(err)) {
-			pr_err("failed to extend attributes file\n");
-			goto end_attr_file_creation;
-		}
-		hip->phys_size = attr_file->i_size =
-			(loff_t)hip->alloc_blocks << sbi->alloc_blksz_shift;
-		hip->fs_blocks = hip->alloc_blocks << sbi->fs_shift;
-		inode_set_bytes(attr_file, attr_file->i_size);
-	}
-
-	buf = kzalloc(node_size, GFP_NOFS);
-	if (!buf) {
-		pr_err("failed to allocate memory for header node\n");
-		err = -ENOMEM;
-		goto end_attr_file_creation;
-	}
-
-	hfsplus_init_header_node(attr_file, clump_size, buf, node_size);
-
-	mapping = attr_file->i_mapping;
-
-	index = 0;
-	written = 0;
-	for (; written < node_size; index++, written += PAGE_CACHE_SIZE) {
-		void *kaddr;
-
-		page = read_mapping_page(mapping, index, NULL);
-		if (IS_ERR(page)) {
-			err = PTR_ERR(page);
-			goto failed_header_node_init;
-		}
-
-		kaddr = kmap_atomic(page);
-		memcpy(kaddr, buf + written,
-			min_t(size_t, PAGE_CACHE_SIZE, node_size - written));
-		kunmap_atomic(kaddr);
-
-		set_page_dirty(page);
-		page_cache_release(page);
-	}
-
-	hfsplus_mark_inode_dirty(attr_file, HFSPLUS_I_ATTR_DIRTY);
-
-	sbi->attr_tree = hfs_btree_open(sb, HFSPLUS_ATTR_CNID);
-	if (!sbi->attr_tree)
-		pr_err("failed to load attributes file\n");
-
-failed_header_node_init:
-	kfree(buf);
-
-end_attr_file_creation:
-	iput(attr_file);
-
-	if (!err)
-		atomic_set(&sbi->attr_tree_state, HFSPLUS_VALID_ATTR_TREE);
-	else if (err == -ENOSPC)
-		atomic_set(&sbi->attr_tree_state, HFSPLUS_EMPTY_ATTR_TREE);
-	else
-		atomic_set(&sbi->attr_tree_state, HFSPLUS_FAILED_ATTR_TREE);
-
-	return err;
+	return 0;
 }
 
 int __hfsplus_setxattr(struct inode *inode, const char *name,
@@ -276,8 +101,18 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
 				HFSPLUS_IS_RSRC(inode))
 		return -EOPNOTSUPP;
 
-	if (value == NULL)
-		return hfsplus_removexattr(inode, name);
+	err = can_set_xattr(inode, name, value, size);
+	if (err)
+		return err;
+
+	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
+				XATTR_MAC_OSX_PREFIX_LEN) == 0)
+		name += XATTR_MAC_OSX_PREFIX_LEN;
+
+	if (value == NULL) {
+		value = "";
+		size = 0;
+	}
 
 	err = hfs_find_init(HFSPLUS_SB(inode->i_sb)->cat_tree, &cat_fd);
 	if (err) {
@@ -297,8 +132,17 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
 			err = -EOPNOTSUPP;
 			goto end_setxattr;
 		}
+#ifdef MY_ABC_HERE  
+		cat_entry_type = hfs_bnode_read_u16(cat_fd.bnode, cat_fd.entryoffset);
+		if (cat_entry_type == HFSPLUS_FOLDER) {
+			hfs_bnode_read(cat_fd.bnode, &entry, cat_fd.entryoffset, sizeof(struct hfsplus_cat_folder));
+		} else if (cat_entry_type == HFSPLUS_FILE) {
+			hfs_bnode_read(cat_fd.bnode, &entry, cat_fd.entryoffset, sizeof(struct hfsplus_cat_file));
+		}
+#else
 		hfs_bnode_read(cat_fd.bnode, &entry, cat_fd.entryoffset,
 					sizeof(hfsplus_cat_entry));
+#endif
 		if (be16_to_cpu(entry.type) == HFSPLUS_FOLDER) {
 			if (size == folder_finderinfo_len) {
 				memcpy(&entry.folder.user_info, value,
@@ -333,9 +177,8 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
 	}
 
 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree) {
-		err = hfsplus_create_attributes_file(inode->i_sb);
-		if (unlikely(err))
-			goto end_setxattr;
+		err = -EOPNOTSUPP;
+		goto end_setxattr;
 	}
 
 	if (hfsplus_attr_exists(inode, name)) {
@@ -395,11 +238,16 @@ end_setxattr:
 	return err;
 }
 
+static inline int is_osx_xattr(const char *xattr_name)
+{
+	return !is_known_namespace(xattr_name);
+}
+
 static int name_len(const char *xattr_name, int xattr_name_len)
 {
 	int len = xattr_name_len + 1;
 
-	if (!is_known_namespace(xattr_name))
+	if (is_osx_xattr(xattr_name))
 		len += XATTR_MAC_OSX_PREFIX_LEN;
 
 	return len;
@@ -410,7 +258,7 @@ static int copy_name(char *buffer, const char *xattr_name, int name_len)
 	int len = name_len;
 	int offset = 0;
 
-	if (!is_known_namespace(xattr_name)) {
+	if (is_osx_xattr(xattr_name)) {
 		strncpy(buffer, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN);
 		offset += XATTR_MAC_OSX_PREFIX_LEN;
 		len += XATTR_MAC_OSX_PREFIX_LEN;
@@ -423,10 +271,11 @@ static int copy_name(char *buffer, const char *xattr_name, int name_len)
 	return len;
 }
 
-static ssize_t hfsplus_getxattr_finder_info(struct inode *inode,
+static ssize_t hfsplus_getxattr_finder_info(struct dentry *dentry,
 						void *value, size_t size)
 {
 	ssize_t res = 0;
+	struct inode *inode = dentry->d_inode;
 	struct hfs_find_data fd;
 	u16 entry_type;
 	u16 folder_rec_len = sizeof(struct DInfo) + sizeof(struct DXInfo);
@@ -451,6 +300,7 @@ static ssize_t hfsplus_getxattr_finder_info(struct inode *inode,
 				fd.entryoffset +
 				offsetof(struct hfsplus_cat_folder, user_info),
 				folder_rec_len);
+			hfsplus_zero_dateadded(entry_type, folder_finder_info);
 			memcpy(value, folder_finder_info, folder_rec_len);
 			res = folder_rec_len;
 		} else if (entry_type == HFSPLUS_FILE) {
@@ -458,6 +308,7 @@ static ssize_t hfsplus_getxattr_finder_info(struct inode *inode,
 				fd.entryoffset +
 				offsetof(struct hfsplus_cat_file, user_info),
 				file_rec_len);
+			hfsplus_zero_dateadded(entry_type, file_finder_info);
 			memcpy(value, file_finder_info, file_rec_len);
 			res = file_rec_len;
 		} else {
@@ -473,14 +324,19 @@ end_getxattr_finder_info:
 	return res;
 }
 
-ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
+ssize_t hfsplus_getxattr(struct dentry *dentry, const char *name,
 			 void *value, size_t size)
 {
+	struct inode *inode = dentry->d_inode;
 	struct hfs_find_data fd;
 	hfsplus_attr_entry *entry;
 	__be32 xattr_record_type;
 	u32 record_type;
+#ifdef MY_ABC_HERE
+	u32 record_length = 0;
+#else
 	u16 record_length = 0;
+#endif
 	ssize_t res = 0;
 
 	if ((!S_ISREG(inode->i_mode) &&
@@ -488,8 +344,17 @@ ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
 				HFSPLUS_IS_RSRC(inode))
 		return -EOPNOTSUPP;
 
+	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
+				XATTR_MAC_OSX_PREFIX_LEN) == 0) {
+		 
+		name += XATTR_MAC_OSX_PREFIX_LEN;
+		 
+		if (is_known_namespace(name))
+			return -EOPNOTSUPP;
+	}
+
 	if (!strcmp_xattr_finder_info(name))
-		return hfsplus_getxattr_finder_info(inode, value, size);
+		return hfsplus_getxattr_finder_info(dentry, value, size);
 
 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
 		return -EOPNOTSUPP;
@@ -519,6 +384,18 @@ ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
 			fd.entryoffset, sizeof(xattr_record_type));
 	record_type = be32_to_cpu(xattr_record_type);
 	if (record_type == HFSPLUS_ATTR_INLINE_DATA) {
+#ifdef MY_ABC_HERE
+		record_length = hfs_bnode_read_u32(fd.bnode,
+				fd.entryoffset +
+				offsetof(struct hfsplus_attr_inline_data,
+				length));
+		if ((offsetof(struct hfsplus_attr_inline_data,
+					raw_bytes) + record_length) > hfsplus_get_attr_tree_cache_size()) {
+			pr_err("invalid xattr record size\n");
+			res = -EIO;
+			goto out;
+		}
+#else
 		record_length = hfs_bnode_read_u16(fd.bnode,
 				fd.entryoffset +
 				offsetof(struct hfsplus_attr_inline_data,
@@ -528,6 +405,7 @@ ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
 			res = -EIO;
 			goto out;
 		}
+#endif
 	} else if (record_type == HFSPLUS_ATTR_FORK_DATA ||
 			record_type == HFSPLUS_ATTR_EXTENTS) {
 		pr_err("only inline data xattr are supported\n");
@@ -569,6 +447,58 @@ static inline int can_list(const char *xattr_name)
 				capable(CAP_SYS_ADMIN);
 }
 
+#ifdef MY_ABC_HERE
+static ssize_t hfsplus_listxattr_rfork(struct dentry *dentry,
+						char *buffer, size_t size)
+{
+	ssize_t res = 0;
+	struct inode *inode = dentry->d_inode;
+	struct hfs_find_data fd;
+	u16 entry_type;
+	int xattr_name_len, symbols_count;
+	struct hfsplus_fork_raw rsrc_fork = {0};
+
+	res = hfs_find_init(HFSPLUS_SB(inode->i_sb)->cat_tree, &fd);
+	if (res) {
+		pr_err("can't init xattr find struct\n");
+		return res;
+	}
+
+	res = hfsplus_find_cat(inode->i_sb, inode->i_ino, &fd);
+	if (res)
+		goto end_listxattr_rfork;
+
+	entry_type = hfs_bnode_read_u16(fd.bnode, fd.entryoffset);
+	if (entry_type == HFSPLUS_FILE) {
+		hfs_bnode_read(fd.bnode, &rsrc_fork,
+				fd.entryoffset +
+				offsetof(struct hfsplus_cat_file, rsrc_fork),
+				sizeof(struct hfsplus_fork_raw));
+	}
+	if (be64_to_cpu(rsrc_fork.total_size) > 0) {
+		symbols_count = sizeof(HFSPLUS_XATTR_RESOURCE_FORK_NAME) - 1;
+		xattr_name_len =
+			name_len(HFSPLUS_XATTR_RESOURCE_FORK_NAME, symbols_count);
+		if (!buffer || !size) {
+			if (can_list(HFSPLUS_XATTR_RESOURCE_FORK_NAME))
+				res = xattr_name_len;
+		} else if (can_list(HFSPLUS_XATTR_RESOURCE_FORK_NAME)) {
+			if (size < xattr_name_len)
+				res = -ERANGE;
+			else {
+				res = copy_name(buffer,
+						HFSPLUS_XATTR_RESOURCE_FORK_NAME,
+						symbols_count);
+			}
+		}
+	}
+
+end_listxattr_rfork:
+	hfs_find_exit(&fd);
+
+	return res;
+}
+#endif
 static ssize_t hfsplus_listxattr_finder_info(struct dentry *dentry,
 						char *buffer, size_t size)
 {
@@ -598,6 +528,9 @@ static ssize_t hfsplus_listxattr_finder_info(struct dentry *dentry,
 				fd.entryoffset +
 				offsetof(struct hfsplus_cat_folder, user_info),
 				len);
+#ifdef MY_ABC_HERE
+		hfsplus_zero_dateadded(entry_type, folder_finder_info);
+#endif
 		found_bit = find_first_bit((void *)folder_finder_info, len*8);
 	} else if (entry_type == HFSPLUS_FILE) {
 		len = sizeof(struct FInfo) + sizeof(struct FXInfo);
@@ -605,6 +538,9 @@ static ssize_t hfsplus_listxattr_finder_info(struct dentry *dentry,
 				fd.entryoffset +
 				offsetof(struct hfsplus_cat_file, user_info),
 				len);
+#ifdef MY_ABC_HERE
+		hfsplus_zero_dateadded(entry_type, file_finder_info);
+#endif
 		found_bit = find_first_bit((void *)file_finder_info, len*8);
 	} else {
 		res = -EOPNOTSUPP;
@@ -637,6 +573,28 @@ end_listxattr_finder_info:
 	return res;
 }
 
+#ifdef MY_ABC_HERE
+int
+hfsplus_syno_setxattr(struct dentry *dentry, const char *name, const void *value, size_t size, int flags)
+{
+	int ret = 0;
+	mutex_lock(&syno_hfsplus_global_mutex);
+	ret = generic_setxattr(dentry, name, value, size, flags);
+	mutex_unlock(&syno_hfsplus_global_mutex);
+	return ret;
+}
+
+ssize_t
+hfsplus_syno_getxattr(struct dentry *dentry, const char *name, void *buffer, size_t size)
+{
+	ssize_t ret = 0;
+	mutex_lock(&syno_hfsplus_global_mutex);
+	ret = generic_getxattr(dentry, name, buffer, size);
+	mutex_unlock(&syno_hfsplus_global_mutex);
+	return ret;
+}
+#endif
+
 ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
 {
 	ssize_t err;
@@ -654,15 +612,44 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
 				HFSPLUS_IS_RSRC(inode))
 		return -EOPNOTSUPP;
 
+#ifdef MY_ABC_HERE
+	mutex_lock(&syno_hfsplus_global_mutex);
+#endif
 	res = hfsplus_listxattr_finder_info(dentry, buffer, size);
 	if (res < 0)
+#ifdef MY_ABC_HERE
+	{
+		mutex_unlock(&syno_hfsplus_global_mutex);
 		return res;
+	}
+#else
+		return res;
+#endif
+#ifdef MY_ABC_HERE
+	res += hfsplus_listxattr_rfork(dentry, buffer + res, size);
+	if (res < 0) {
+#ifdef MY_DEF_HERE
+		mutex_unlock(&syno_hfsplus_global_mutex);
+#endif
+		return res;
+	}
+#endif
 	else if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
+#ifdef MY_ABC_HERE
+	{
+		mutex_unlock(&syno_hfsplus_global_mutex);
 		return (res == 0) ? -EOPNOTSUPP : res;
+	}
+#else
+		return (res == 0) ? -EOPNOTSUPP : res;
+#endif
 
 	err = hfs_find_init(HFSPLUS_SB(inode->i_sb)->attr_tree, &fd);
 	if (err) {
 		pr_err("can't init xattr find struct\n");
+#ifdef MY_ABC_HERE
+		mutex_unlock(&syno_hfsplus_global_mutex);
+#endif
 		return err;
 	}
 
@@ -693,6 +680,15 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
 			goto end_listxattr;
 
 		xattr_name_len = HFSPLUS_ATTR_MAX_STRLEN;
+#ifdef MY_ABC_HERE
+		if (hfsplus_attr_uni2asc(inode->i_sb,
+			(const struct hfsplus_unistr *)&fd.key->attr.key_name,
+					strbuf, &xattr_name_len)) {
+			pr_err("unicode conversion failed\n");
+			res = -EIO;
+			goto end_listxattr;
+		}
+#else
 		if (hfsplus_uni2asc(inode->i_sb,
 			(const struct hfsplus_unistr *)&fd.key->attr.key_name,
 					strbuf, &xattr_name_len)) {
@@ -700,6 +696,7 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
 			res = -EIO;
 			goto end_listxattr;
 		}
+#endif
 
 		if (!buffer || !size) {
 			if (can_list(strbuf))
@@ -718,28 +715,65 @@ ssize_t hfsplus_listxattr(struct dentry *dentry, char *buffer, size_t size)
 	}
 
 end_listxattr:
+#ifdef MY_ABC_HERE
+	mutex_unlock(&syno_hfsplus_global_mutex);
+#endif
 	hfs_find_exit(&fd);
 	return res;
 }
 
-static int hfsplus_removexattr(struct inode *inode, const char *name)
+int hfsplus_removexattr(struct dentry *dentry, const char *name)
 {
 	int err = 0;
+	struct inode *inode = dentry->d_inode;
 	struct hfs_find_data cat_fd;
 	u16 flags;
 	u16 cat_entry_type;
 	int is_xattr_acl_deleted = 0;
 	int is_all_xattrs_deleted = 0;
 
-	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
+	if ((!S_ISREG(inode->i_mode) &&
+			!S_ISDIR(inode->i_mode)) ||
+				HFSPLUS_IS_RSRC(inode))
 		return -EOPNOTSUPP;
 
-	if (!strcmp_xattr_finder_info(name))
+	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
 		return -EOPNOTSUPP;
+#ifdef MY_ABC_HERE
+	mutex_lock(&syno_hfsplus_global_mutex);
+#endif
+
+	err = can_set_xattr(inode, name, NULL, 0);
+	if (err)
+#ifdef MY_ABC_HERE
+	{
+		mutex_unlock(&syno_hfsplus_global_mutex);
+		return err;
+	}
+#else
+		return err;
+#endif
+
+	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
+				XATTR_MAC_OSX_PREFIX_LEN) == 0)
+		name += XATTR_MAC_OSX_PREFIX_LEN;
+
+	if (!strcmp_xattr_finder_info(name))
+#ifdef MY_ABC_HERE
+	{
+		mutex_unlock(&syno_hfsplus_global_mutex);
+		return -EOPNOTSUPP;
+	}
+#else
+		return -EOPNOTSUPP;
+#endif
 
 	err = hfs_find_init(HFSPLUS_SB(inode->i_sb)->cat_tree, &cat_fd);
 	if (err) {
 		pr_err("can't init xattr find struct\n");
+#ifdef MY_ABC_HERE
+		mutex_unlock(&syno_hfsplus_global_mutex);
+#endif
 		return err;
 	}
 
@@ -791,6 +825,9 @@ static int hfsplus_removexattr(struct inode *inode, const char *name)
 
 end_removexattr:
 	hfs_find_exit(&cat_fd);
+#ifdef MY_ABC_HERE
+	mutex_unlock(&syno_hfsplus_global_mutex);
+#endif
 	return err;
 }
 
@@ -807,12 +844,8 @@ static int hfsplus_osx_getxattr(struct dentry *dentry, const char *name,
 	if (len > HFSPLUS_ATTR_MAX_STRLEN)
 		return -EOPNOTSUPP;
 
-	/*
-	 * Don't allow retrieving properly prefixed attributes
-	 * by prepending them with "osx."
-	 */
-	if (is_known_namespace(name))
-		return -EOPNOTSUPP;
+	strcpy(xattr_name, XATTR_MAC_OSX_PREFIX);
+	strcpy(xattr_name + XATTR_MAC_OSX_PREFIX_LEN, name);
 
 	return hfsplus_getxattr(dentry, xattr_name, buffer, size);
 }
@@ -830,12 +863,8 @@ static int hfsplus_osx_setxattr(struct dentry *dentry, const char *name,
 	if (len > HFSPLUS_ATTR_MAX_STRLEN)
 		return -EOPNOTSUPP;
 
-	/*
-	 * Don't allow setting properly prefixed attributes
-	 * by prepending them with "osx."
-	 */
-	if (is_known_namespace(name))
-		return -EOPNOTSUPP;
+	strcpy(xattr_name, XATTR_MAC_OSX_PREFIX);
+	strcpy(xattr_name + XATTR_MAC_OSX_PREFIX_LEN, name);
 
 	return hfsplus_setxattr(dentry, xattr_name, buffer, size, flags);
 }
@@ -843,10 +872,7 @@ static int hfsplus_osx_setxattr(struct dentry *dentry, const char *name,
 static size_t hfsplus_osx_listxattr(struct dentry *dentry, char *list,
 		size_t list_size, const char *name, size_t name_len, int type)
 {
-	/*
-	 * This method is not used.
-	 * It is used hfsplus_listxattr() instead of generic_listxattr().
-	 */
+	 
 	return -EOPNOTSUPP;
 }
 

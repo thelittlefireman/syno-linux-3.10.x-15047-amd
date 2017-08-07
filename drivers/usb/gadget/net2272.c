@@ -266,7 +266,7 @@ static void net2272_ep_reset(struct net2272_ep *ep)
 	ep->desc = NULL;
 	INIT_LIST_HEAD(&ep->queue);
 
-	usb_ep_set_maxpacket_limit(&ep->ep, ~0);
+	ep->ep.maxpacket = ~0;
 	ep->ep.ops = &net2272_ep_ops;
 
 	/* disable irqs, endpoint */
@@ -768,7 +768,6 @@ net2272_kick_dma(struct net2272_ep *ep, struct net2272_request *req)
 		else
 			ep->not_empty = 0;
 
-
 		/* allow the endpoint's buffer to fill */
 		net2272_ep_write(ep, EP_RSPCLR, 1 << ALT_NAK_OUT_PACKETS);
 
@@ -1184,7 +1183,7 @@ static const struct usb_gadget_ops net2272_ops = {
 /*---------------------------------------------------------------------------*/
 
 static ssize_t
-registers_show(struct device *_dev, struct device_attribute *attr, char *buf)
+net2272_show_registers(struct device *_dev, struct device_attribute *attr, char *buf)
 {
 	struct net2272 *dev;
 	char *next;
@@ -1308,7 +1307,7 @@ registers_show(struct device *_dev, struct device_attribute *attr, char *buf)
 
 	return PAGE_SIZE - size;
 }
-static DEVICE_ATTR_RO(registers);
+static DEVICE_ATTR(registers, S_IRUGO, net2272_show_registers, NULL);
 
 /*---------------------------------------------------------------------------*/
 
@@ -1409,7 +1408,7 @@ net2272_usb_reinit(struct net2272 *dev)
 			ep->fifo_size = 64;
 		net2272_ep_reset(ep);
 	}
-	usb_ep_set_maxpacket_limit(&dev->ep[0].ep, 64);
+	dev->ep[0].ep.maxpacket = 64;
 
 	dev->gadget.ep0 = &dev->ep[0].ep;
 	dev->ep[0].stopped = 0;

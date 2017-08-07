@@ -27,13 +27,11 @@
 
 #include <net/ip_vs.h>
 
-
 static int ip_vs_rr_init_svc(struct ip_vs_service *svc)
 {
 	svc->sched_data = &svc->destinations;
 	return 0;
 }
-
 
 static int ip_vs_rr_del_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest)
 {
@@ -50,13 +48,11 @@ static int ip_vs_rr_del_dest(struct ip_vs_service *svc, struct ip_vs_dest *dest)
 	return 0;
 }
 
-
 /*
  * Round-Robin Scheduling
  */
 static struct ip_vs_dest *
-ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-		  struct ip_vs_iphdr *iph)
+ip_vs_rr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
 {
 	struct list_head *p;
 	struct ip_vs_dest *dest, *last;
@@ -101,7 +97,6 @@ stop:
 
 	return dest;
 }
-
 
 static struct ip_vs_scheduler ip_vs_rr_scheduler = {
 	.name =			"rr",			/* name */

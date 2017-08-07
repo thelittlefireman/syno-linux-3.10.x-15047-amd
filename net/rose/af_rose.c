@@ -202,10 +202,10 @@ static void rose_kill_by_device(struct net_device *dev)
 /*
  *	Handle device status changes.
  */
-static int rose_device_event(struct notifier_block *this,
-			     unsigned long event, void *ptr)
+static int rose_device_event(struct notifier_block *this, unsigned long event,
+	void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = (struct net_device *)ptr;
 
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
@@ -1012,7 +1012,7 @@ int rose_rx_call_request(struct sk_buff *skb, struct net_device *dev, struct ros
 	make_rose->source_call   = facilities.source_call;
 	make_rose->source_ndigis = facilities.source_ndigis;
 	for (n = 0 ; n < facilities.source_ndigis ; n++)
-		make_rose->source_digis[n] = facilities.source_digis[n];
+		make_rose->source_digis[n]= facilities.source_digis[n];
 	make_rose->neighbour     = neigh;
 	make_rose->device        = dev;
 	make_rose->facilities    = facilities;
@@ -1051,7 +1051,7 @@ static int rose_sendmsg(struct kiocb *iocb, struct socket *sock,
 {
 	struct sock *sk = sock->sk;
 	struct rose_sock *rose = rose_sk(sk);
-	DECLARE_SOCKADDR(struct sockaddr_rose *, usrose, msg->msg_name);
+	struct sockaddr_rose *usrose = (struct sockaddr_rose *)msg->msg_name;
 	int err;
 	struct full_sockaddr_rose srose;
 	struct sk_buff *skb;
@@ -1210,7 +1210,6 @@ static int rose_sendmsg(struct kiocb *iocb, struct socket *sock,
 	return len;
 }
 
-
 static int rose_recvmsg(struct kiocb *iocb, struct socket *sock,
 			struct msghdr *msg, size_t size, int flags)
 {
@@ -1253,8 +1252,7 @@ static int rose_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	if (msg->msg_name) {
 		struct sockaddr_rose *srose;
-		DECLARE_SOCKADDR(struct full_sockaddr_rose *, full_srose,
-				 msg->msg_name);
+		struct full_sockaddr_rose *full_srose = msg->msg_name;
 
 		memset(msg->msg_name, 0, sizeof(struct full_sockaddr_rose));
 		srose = msg->msg_name;
@@ -1271,7 +1269,6 @@ static int rose_recvmsg(struct kiocb *iocb, struct socket *sock,
 
 	return copied;
 }
-
 
 static int rose_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 {

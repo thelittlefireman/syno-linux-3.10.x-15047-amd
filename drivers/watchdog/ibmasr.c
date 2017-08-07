@@ -23,7 +23,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 enum {
 	ASMTYPE_UNKNOWN,
 	ASMTYPE_TOPAZ,
@@ -58,7 +57,6 @@ enum {
 #define SPRUCE_BASE_ADDRESS	0x118e	/* Base address of Spruce ASR */
 #define SPRUCE_ASR_DISABLE_MASK	0x01	/* bit 1: disable = 1 enable = 0 */
 #define SPRUCE_ASR_TOGGLE_MASK	0x02	/* bit 0: 0, then 1, then 0 */
-
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
 
@@ -243,7 +241,6 @@ static int __init asr_get_base_address(void)
 	return 0;
 }
 
-
 static ssize_t asr_write(struct file *file, const char __user *buf,
 			 size_t count, loff_t *ppos)
 {
@@ -354,13 +351,12 @@ static struct miscdevice asr_miscdev = {
 	.fops =		&asr_fops,
 };
 
-
 struct ibmasr_id {
 	const char *desc;
 	int type;
 };
 
-static struct ibmasr_id ibmasr_id_table[] __initdata = {
+static struct ibmasr_id __initdata ibmasr_id_table[] = {
 	{ "IBM Automatic Server Restart - eserver xSeries 220", ASMTYPE_TOPAZ },
 	{ "IBM Automatic Server Restart - Machine Type 8673", ASMTYPE_PEARL },
 	{ "IBM Automatic Server Restart - Machine Type 8480", ASMTYPE_JASPER },
@@ -419,3 +415,4 @@ MODULE_PARM_DESC(nowayout,
 MODULE_DESCRIPTION("IBM Automatic Server Restart driver");
 MODULE_AUTHOR("Andrey Panin");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

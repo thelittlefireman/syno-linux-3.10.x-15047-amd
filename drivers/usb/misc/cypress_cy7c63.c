@@ -29,6 +29,7 @@
 *	published by the Free Software Foundation, version 2.
 */
 
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -53,7 +54,6 @@
 #define CYPRESS_WRITE_PORT_ID1	1
 
 #define CYPRESS_MAX_REQSIZE	8
-
 
 /* table of devices that work with this driver */
 static const struct usb_device_id cypress_table[] = {
@@ -198,7 +198,6 @@ static ssize_t get_port1_handler(struct device *dev,
 static DEVICE_ATTR(port0, S_IRUGO | S_IWUSR, get_port0_handler, set_port0_handler);
 
 static DEVICE_ATTR(port1, S_IRUGO | S_IWUSR, get_port1_handler, set_port1_handler);
-
 
 static int cypress_probe(struct usb_interface *interface,
 			 const struct usb_device_id *id)

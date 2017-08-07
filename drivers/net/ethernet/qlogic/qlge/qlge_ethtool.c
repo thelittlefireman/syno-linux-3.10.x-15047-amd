@@ -1,4 +1,5 @@
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/types.h>
 #include <linux/module.h>
 #include <linux/list.h>
@@ -30,7 +31,6 @@
 #include <linux/delay.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
-
 
 #include "qlge.h"
 
@@ -180,7 +180,6 @@ static const char ql_gstrings_test[][ETH_GSTRING_LEN] = {
 };
 #define QLGE_TEST_LEN (sizeof(ql_gstrings_test) / ETH_GSTRING_LEN)
 #define QLGE_STATS_LEN ARRAY_SIZE(ql_gstrings_stats)
-#define QLGE_RCV_MAC_ERR_STATS	7
 
 static int ql_update_ring_coalescing(struct ql_adapter *qdev)
 {
@@ -279,9 +278,6 @@ static void ql_update_stats(struct ql_adapter *qdev)
 			*iter = data;
 		iter++;
 	}
-
-	/* Update receive mac error statistics */
-	iter += QLGE_RCV_MAC_ERR_STATS;
 
 	/*
 	 * Get Per-priority TX pause frame counter statistics.
@@ -732,4 +728,3 @@ const struct ethtool_ops qlge_ethtool_ops = {
 	.get_strings = ql_get_strings,
 	.get_ethtool_stats = ql_get_ethtool_stats,
 };
-

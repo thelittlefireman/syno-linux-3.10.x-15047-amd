@@ -92,6 +92,7 @@ il4965_check_abort_status(struct il_priv *il, u8 frame_count, u32 status)
  * EEPROM
  */
 struct il_mod_params il4965_mod_params = {
+	.amsdu_size_8K = 1,
 	.restart_fw = 1,
 	/* the rest are 0 by default */
 };
@@ -589,11 +590,6 @@ il4965_pass_packet_to_mac80211(struct il_priv *il, struct ieee80211_hdr *hdr,
 		return;
 	}
 
-	if (unlikely(test_bit(IL_STOP_REASON_PASSIVE, &il->stop_reason))) {
-		il_wake_queues_by_reason(il, IL_STOP_REASON_PASSIVE);
-		D_INFO("Woke queues - frame received on passive channel\n");
-	}
-
 	/* In case of HW accelerated crypto and bad decryption, drop */
 	if (!il->cfg->mod_params->sw_crypto &&
 	    il_set_decrypted_flag(il, hdr, ampdu_status, stats))
@@ -804,7 +800,7 @@ il4965_get_channels_for_scan(struct il_priv *il, struct ieee80211_vif *vif,
 		}
 
 		if (!is_active || il_is_channel_passive(ch_info) ||
-		    (chan->flags & IEEE80211_CHAN_NO_IR))
+		    (chan->flags & IEEE80211_CHAN_PASSIVE_SCAN))
 			scan_ch->type = SCAN_CHANNEL_TYPE_PASSIVE;
 		else
 			scan_ch->type = SCAN_CHANNEL_TYPE_ACTIVE;
@@ -1426,7 +1422,6 @@ il4965_hdl_c_stats(struct il_priv *il, struct il_rx_buf *rxb)
 	}
 	il4965_hdl_stats(il, rxb);
 }
-
 
 /*
  * mac80211 queues, ACs, hardware queues, FIFOs.
@@ -2814,19 +2809,6 @@ il4965_hdl_tx(struct il_priv *il, struct il_rx_buf *rxb)
 	if (txq->sched_retry && unlikely(sta_id == IL_INVALID_STATION)) {
 		IL_ERR("Station not known\n");
 		return;
-	}
-
-	/*
-	 * Firmware will not transmit frame on passive channel, if it not yet
-	 * received some valid frame on that channel. When this error happen
-	 * we have to wait until firmware will unblock itself i.e. when we
-	 * note received beacon or other frame. We unblock queues in
-	 * il4965_pass_packet_to_mac80211 or in il_mac_bss_info_changed.
-	 */
-	if (unlikely((status & TX_STATUS_MSK) == TX_STATUS_FAIL_PASSIVE_NO_RX) &&
-	    il->iw_mode == NL80211_IFTYPE_STATION) {
-		il_stop_queues_by_reason(il, IL_STOP_REASON_PASSIVE);
-		D_INFO("Stopped queues - RX waiting on passive channel\n");
 	}
 
 	spin_lock_irqsave(&il->sta_lock, flags);
@@ -4273,7 +4255,17 @@ il4965_rx_handle(struct il_priv *il)
 		len = le32_to_cpu(pkt->len_n_flags) & IL_RX_FRAME_SIZE_MSK;
 		len += sizeof(u32);	/* account for status word */
 
-		reclaim = il_need_reclaim(il, pkt);
+		/* Reclaim a command buffer only if this packet is a response
+		 *   to a (driver-originated) command.
+		 * If the packet (e.g. Rx frame) originated from uCode,
+		 *   there is no command buffer to reclaim.
+		 * Ucode should set SEQ_RX_FRAME bit if ucode-originated,
+		 *   but apparently a few don't get set; catch them here. */
+		reclaim = !(pkt->hdr.sequence & SEQ_RX_FRAME) &&
+		    (pkt->hdr.cmd != N_RX_PHY) && (pkt->hdr.cmd != N_RX) &&
+		    (pkt->hdr.cmd != N_RX_MPDU) &&
+		    (pkt->hdr.cmd != N_COMPRESSED_BA) &&
+		    (pkt->hdr.cmd != N_STATS) && (pkt->hdr.cmd != C_TX);
 
 		/* Based on type of command response or notification,
 		 *   handle those that need handling via function in
@@ -4580,7 +4572,7 @@ il4965_store_debug_level(struct device *d, struct device_attribute *attr,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 0, &val);
+	ret = strict_strtoul(buf, 0, &val);
 	if (ret)
 		IL_ERR("%s is not in hex or decimal form.\n", buf);
 	else
@@ -4627,7 +4619,7 @@ il4965_store_tx_power(struct device *d, struct device_attribute *attr,
 	unsigned long val;
 	int ret;
 
-	ret = kstrtoul(buf, 10, &val);
+	ret = strict_strtoul(buf, 10, &val);
 	if (ret)
 		IL_INFO("%s is not in decimal form.\n", buf);
 	else {
@@ -5483,7 +5475,6 @@ il4965_down(struct il_priv *il)
 	il4965_cancel_deferred_work(il);
 }
 
-
 static void
 il4965_set_hw_ready(struct il_priv *il)
 {
@@ -5754,8 +5745,7 @@ il4965_mac_setup_register(struct il_priv *il, u32 max_probe_length)
 	hw->flags =
 	    IEEE80211_HW_SIGNAL_DBM | IEEE80211_HW_AMPDU_AGGREGATION |
 	    IEEE80211_HW_NEED_DTIM_BEFORE_ASSOC | IEEE80211_HW_SPECTRUM_MGMT |
-	    IEEE80211_HW_REPORTS_TX_ACK_STATUS | IEEE80211_HW_SUPPORTS_PS |
-	    IEEE80211_HW_SUPPORTS_DYNAMIC_PS;
+	    IEEE80211_HW_SUPPORTS_PS | IEEE80211_HW_SUPPORTS_DYNAMIC_PS;
 	if (il->cfg->sku & IL_SKU_N)
 		hw->flags |=
 		    IEEE80211_HW_SUPPORTS_DYNAMIC_SMPS |
@@ -5767,9 +5757,9 @@ il4965_mac_setup_register(struct il_priv *il, u32 max_probe_length)
 	hw->wiphy->interface_modes =
 	    BIT(NL80211_IFTYPE_STATION) | BIT(NL80211_IFTYPE_ADHOC);
 
-	hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
-	hw->wiphy->regulatory_flags |= REGULATORY_CUSTOM_REG |
-				       REGULATORY_DISABLE_BEACON_HINTS;
+	hw->wiphy->flags |=
+	    WIPHY_FLAG_CUSTOM_REGULATORY | WIPHY_FLAG_DISABLE_BEACON_HINTS |
+	    WIPHY_FLAG_IBSS_RSN;
 
 	/*
 	 * For now, disable PS by default because it affects
@@ -6695,6 +6685,7 @@ out_free_eeprom:
 out_iounmap:
 	iounmap(il->hw_base);
 out_pci_release_regions:
+	pci_set_drvdata(pdev, NULL);
 	pci_release_regions(pdev);
 out_pci_disable_device:
 	pci_disable_device(pdev);
@@ -6775,6 +6766,7 @@ il4965_pci_remove(struct pci_dev *pdev)
 	iounmap(il->hw_base);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 
 	il4965_uninit_drv(il);
 
@@ -6865,6 +6857,6 @@ module_param_named(11n_disable, il4965_mod_params.disable_11n, int, S_IRUGO);
 MODULE_PARM_DESC(11n_disable, "disable 11n functionality");
 module_param_named(amsdu_size_8K, il4965_mod_params.amsdu_size_8K, int,
 		   S_IRUGO);
-MODULE_PARM_DESC(amsdu_size_8K, "enable 8K amsdu size (default 0 [disabled])");
+MODULE_PARM_DESC(amsdu_size_8K, "enable 8K amsdu size");
 module_param_named(fw_restart, il4965_mod_params.restart_fw, int, S_IRUGO);
 MODULE_PARM_DESC(fw_restart, "restart firmware in case of error");

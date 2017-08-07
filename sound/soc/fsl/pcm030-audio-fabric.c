@@ -69,6 +69,7 @@ static int pcm030_fabric_probe(struct platform_device *op)
 		return -ENOMEM;
 
 	card->dev = &op->dev;
+	platform_set_drvdata(op, pdata);
 
 	pdata->card = card;
 
@@ -96,8 +97,6 @@ static int pcm030_fabric_probe(struct platform_device *op)
 	ret = snd_soc_register_card(card);
 	if (ret)
 		dev_err(&op->dev, "snd_soc_register_card() failed: %d\n", ret);
-
-	platform_set_drvdata(op, pdata);
 
 	return ret;
 }
@@ -131,8 +130,6 @@ static struct platform_driver pcm030_fabric_driver = {
 
 module_platform_driver(pcm030_fabric_driver);
 
-
 MODULE_AUTHOR("Jon Smirl <jonsmirl@gmail.com>");
 MODULE_DESCRIPTION(DRV_NAME ": mpc5200 pcm030 fabric driver");
 MODULE_LICENSE("GPL");
-

@@ -18,7 +18,6 @@
 #include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
 #include <asm/io.h>
 
 #include "flipper-pic.h"
@@ -40,7 +39,6 @@
 #define FLIPPER_IMR		0x04
 
 #define FLIPPER_RESET		0x24
-
 
 /*
  * IRQ chip hooks.
@@ -83,7 +81,6 @@ static void flipper_pic_unmask(struct irq_data *d)
 	setbits32(io_base + FLIPPER_IMR, 1 << irq);
 }
 
-
 static struct irq_chip flipper_pic = {
 	.name		= "flipper-pic",
 	.irq_ack	= flipper_pic_ack,
@@ -112,7 +109,6 @@ static int flipper_pic_match(struct irq_domain *h, struct device_node *np)
 {
 	return 1;
 }
-
 
 static const struct irq_domain_ops flipper_irq_domain_ops = {
 	.map = flipper_pic_map,
@@ -252,4 +248,3 @@ int flipper_is_reset_button_pressed(void)
 	}
 	return 0;
 }
-

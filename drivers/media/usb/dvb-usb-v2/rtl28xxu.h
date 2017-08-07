@@ -49,15 +49,12 @@
 #define CMD_I2C_DA_RD    0x0600
 #define CMD_I2C_DA_WR    0x0610
 
-
 struct rtl28xxu_priv {
 	u8 chip_id;
 	u8 tuner;
 	char *tuner_name;
 	u8 page; /* integrated demod active register page */
-	struct i2c_adapter *demod_i2c_adapter;
 	bool rc_active;
-	struct i2c_client *client;
 };
 
 enum rtl28xxu_chip_id {
@@ -85,7 +82,6 @@ enum rtl28xxu_tuner {
 	TUNER_RTL2832_TDA18272,
 	TUNER_RTL2832_FC0013,
 	TUNER_RTL2832_R820T,
-	TUNER_RTL2832_R828D,
 };
 
 struct rtl28xxu_req {
@@ -98,12 +94,6 @@ struct rtl28xxu_req {
 struct rtl28xxu_reg_val {
 	u16 reg;
 	u8 val;
-};
-
-struct rtl28xxu_reg_val_mask {
-	u16 reg;
-	u8 val;
-	u8 mask;
 };
 
 /*

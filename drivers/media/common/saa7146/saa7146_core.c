@@ -271,7 +271,6 @@ int saa7146_pgtable_build_single(struct pci_dev *pci, struct saa7146_pgtable *pt
 		}
 	}
 
-
 	/* safety; fill the page table up with the last valid page */
 	fill = *(ptr-1);
 	for(i=nr_pages;i<1024;i++) {
@@ -411,7 +410,7 @@ static int saa7146_init_one(struct pci_dev *pci, const struct pci_device_id *ent
 	saa7146_write(dev, MC2, 0xf8000000);
 
 	/* request an interrupt for the saa7146 */
-	err = request_irq(pci->irq, interrupt_hw, IRQF_SHARED,
+	err = request_irq(pci->irq, interrupt_hw, IRQF_SHARED | IRQF_DISABLED,
 			  dev->name, dev);
 	if (err < 0) {
 		ERR("request_irq() failed\n");
@@ -524,6 +523,8 @@ static void saa7146_remove_one(struct pci_dev *pdev)
 	DEB_EE("dev:%p\n", dev);
 
 	dev->ext->detach(dev);
+	/* Zero the PCI drvdata after use. */
+	pci_set_drvdata(pdev, NULL);
 
 	/* shut down all video dma transfers */
 	saa7146_write(dev, MC1, 0x00ff0000);

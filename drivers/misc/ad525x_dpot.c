@@ -72,6 +72,7 @@
 #include <linux/module.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 
@@ -215,7 +216,7 @@ static s32 dpot_read_i2c(struct dpot_data *dpot, u8 reg)
 			 */
 			value = swab16(value);
 
-			if (dpot->uid == DPOT_UID(AD5271_ID))
+			if (dpot->uid == DPOT_UID(AD5274_ID))
 				value = value >> 2;
 		return value;
 	default:
@@ -427,7 +428,6 @@ static ssize_t sysfs_show_reg(struct device *dev,
 			test_bit(DPOT_RDAC_MASK & reg, data->otp_en_mask) ?
 			"enabled" : "disabled");
 
-
 	mutex_lock(&data->update_lock);
 	value = dpot_read(data, reg);
 	mutex_unlock(&data->update_lock);
@@ -469,7 +469,7 @@ static ssize_t sysfs_set_reg(struct device *dev,
 		!test_bit(DPOT_RDAC_MASK & reg, data->otp_en_mask))
 		return -EPERM;
 
-	err = kstrtoul(buf, 10, &value);
+	err = strict_strtoul(buf, 10, &value);
 	if (err)
 		return err;
 
@@ -640,7 +640,7 @@ static const struct attribute_group ad525x_group_commands = {
 	.attrs = ad525x_attributes_commands,
 };
 
-static int ad_dpot_add_files(struct device *dev,
+int ad_dpot_add_files(struct device *dev,
 		unsigned features, unsigned rdac)
 {
 	int err = sysfs_create_file(&dev->kobj,
@@ -665,7 +665,7 @@ static int ad_dpot_add_files(struct device *dev,
 	return err;
 }
 
-static inline void ad_dpot_remove_files(struct device *dev,
+inline void ad_dpot_remove_files(struct device *dev,
 		unsigned features, unsigned rdac)
 {
 	sysfs_remove_file(&dev->kobj,
@@ -762,7 +762,6 @@ int ad_dpot_remove(struct device *dev)
 	return 0;
 }
 EXPORT_SYMBOL(ad_dpot_remove);
-
 
 MODULE_AUTHOR("Chris Verges <chrisv@cyberswitching.com>, "
 	      "Michael Hennerich <hennerich@blackfin.uclinux.org>");

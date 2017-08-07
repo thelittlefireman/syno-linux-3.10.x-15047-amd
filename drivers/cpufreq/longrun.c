@@ -25,7 +25,6 @@ static struct cpufreq_driver	longrun_driver;
  */
 static unsigned int longrun_low_freq, longrun_high_freq;
 
-
 /**
  * longrun_get_policy - get the current LongRun policy
  * @policy: struct cpufreq_policy where current policy is written into
@@ -33,7 +32,7 @@ static unsigned int longrun_low_freq, longrun_high_freq;
  * Reads the current LongRun policy by access to MSR_TMTA_LONGRUN_FLAGS
  * and MSR_TMTA_LONGRUN_CTRL
  */
-static void longrun_get_policy(struct cpufreq_policy *policy)
+static void __cpuinit longrun_get_policy(struct cpufreq_policy *policy)
 {
 	u32 msr_lo, msr_hi;
 
@@ -60,7 +59,6 @@ static void longrun_get_policy(struct cpufreq_policy *policy)
 	}
 	policy->cpu = 0;
 }
-
 
 /**
  * longrun_set_policy - sets a new CPUFreq policy
@@ -115,7 +113,6 @@ static int longrun_set_policy(struct cpufreq_policy *policy)
 	return 0;
 }
 
-
 /**
  * longrun_verify_poliy - verifies a new CPUFreq policy
  * @policy: the policy to verify
@@ -129,7 +126,9 @@ static int longrun_verify_policy(struct cpufreq_policy *policy)
 		return -EINVAL;
 
 	policy->cpu = 0;
-	cpufreq_verify_within_cpu_limits(policy);
+	cpufreq_verify_within_limits(policy,
+		policy->cpuinfo.min_freq,
+		policy->cpuinfo.max_freq);
 
 	if ((policy->policy != CPUFREQ_POLICY_POWERSAVE) &&
 	    (policy->policy != CPUFREQ_POLICY_PERFORMANCE))
@@ -161,7 +160,7 @@ static unsigned int longrun_get(unsigned int cpu)
  * TMTA rules:
  * performance_pctg = (target_freq - low_freq)/(high_freq - low_freq)
  */
-static int longrun_determine_freqs(unsigned int *low_freq,
+static int __cpuinit longrun_determine_freqs(unsigned int *low_freq,
 						      unsigned int *high_freq)
 {
 	u32 msr_lo, msr_hi;
@@ -253,8 +252,7 @@ static int longrun_determine_freqs(unsigned int *low_freq,
 	return 0;
 }
 
-
-static int longrun_cpu_init(struct cpufreq_policy *policy)
+static int __cpuinit longrun_cpu_init(struct cpufreq_policy *policy)
 {
 	int result = 0;
 
@@ -276,7 +274,6 @@ static int longrun_cpu_init(struct cpufreq_policy *policy)
 	return 0;
 }
 
-
 static struct cpufreq_driver longrun_driver = {
 	.flags		= CPUFREQ_CONST_LOOPS,
 	.verify		= longrun_verify_policy,
@@ -284,6 +281,7 @@ static struct cpufreq_driver longrun_driver = {
 	.get		= longrun_get,
 	.init		= longrun_cpu_init,
 	.name		= "longrun",
+	.owner		= THIS_MODULE,
 };
 
 static const struct x86_cpu_id longrun_ids[] = {
@@ -305,7 +303,6 @@ static int __init longrun_init(void)
 	return cpufreq_register_driver(&longrun_driver);
 }
 
-
 /**
  * longrun_exit - unregisters LongRun support
  */
@@ -313,7 +310,6 @@ static void __exit longrun_exit(void)
 {
 	cpufreq_unregister_driver(&longrun_driver);
 }
-
 
 MODULE_AUTHOR("Dominik Brodowski <linux@brodo.de>");
 MODULE_DESCRIPTION("LongRun driver for Transmeta Crusoe and "

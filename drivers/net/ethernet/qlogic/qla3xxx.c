@@ -8,6 +8,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/types.h>
 #include <linux/module.h>
 #include <linux/list.h>
@@ -96,7 +97,6 @@ static const struct PHY_DEVICE_INFO PHY_DEVICES[] = {
 	{PHY_VITESSE_VSC8211, 0x0003f1, 0xb, "PHY_VITESSE_VSC8211"},
 	{PHY_AGERE_ET1011C,   0x00a0bc, 0x1, "PHY_AGERE_ET1011C"},
 };
-
 
 /*
  * Caller must take hw_lock.
@@ -1818,7 +1818,6 @@ static int ql_populate_free_queue(struct ql3_adapter *qdev)
 					break;
 				}
 
-
 				lrg_buf_cb->buf_phy_addr_low =
 					cpu_to_le32(LS_64BITS(map));
 				lrg_buf_cb->buf_phy_addr_high =
@@ -3252,7 +3251,6 @@ static int ql_adapter_initialize(struct ql3_adapter *qdev)
 				   ((value << 16) | value));
 	}
 
-
 out:
 	return status;
 }
@@ -3915,6 +3913,7 @@ err_out_free_regions:
 	pci_release_regions(pdev);
 err_out_disable_pdev:
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 err_out:
 	return err;
 }
@@ -3937,6 +3936,7 @@ static void ql3xxx_remove(struct pci_dev *pdev)
 
 	iounmap(qdev->mem_map_registers);
 	pci_release_regions(pdev);
+	pci_set_drvdata(pdev, NULL);
 	free_netdev(ndev);
 }
 

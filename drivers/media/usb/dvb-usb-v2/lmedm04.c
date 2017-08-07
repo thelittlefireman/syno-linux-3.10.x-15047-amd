@@ -83,7 +83,6 @@
 #include "m88rs2000.h"
 #include "ts2020.h"
 
-
 #define LME2510_C_S7395	"dvb-usb-lme2510c-s7395.fw";
 #define LME2510_C_LG	"dvb-usb-lme2510c-lg.fw";
 #define LME2510_C_S0194	"dvb-usb-lme2510c-s0194.fw";
@@ -114,7 +113,6 @@ MODULE_PARM_DESC(firmware, "set default firmware 0=Sharp7395 1=LG");
 static int pid_filter;
 module_param_named(pid, pid_filter, int, 0644);
 MODULE_PARM_DESC(pid, "set default 0=default 1=off 2=on");
-
 
 DVB_DEFINE_MOD_OPT_ADAPTER_NR(adapter_nr);
 
@@ -350,6 +348,7 @@ static int lme2510_int_read(struct dvb_usb_adapter *adap)
 {
 	struct dvb_usb_device *d = adap_to_d(adap);
 	struct lme2510_state *lme_int = adap_to_priv(adap);
+	struct usb_host_endpoint *ep;
 
 	lme_int->lme_urb = usb_alloc_urb(0, GFP_ATOMIC);
 
@@ -370,6 +369,12 @@ static int lme2510_int_read(struct dvb_usb_adapter *adap)
 				lme2510_int_response,
 				adap,
 				8);
+
+	/* Quirk of pipe reporting PIPE_BULK but behaves as interrupt */
+	ep = usb_pipe_endpoint(d->udev, lme_int->lme_urb->pipe);
+
+	if (usb_endpoint_type(&ep->desc) == USB_ENDPOINT_XFER_BULK)
+		lme_int->lme_urb->pipe = usb_rcvbulkpipe(d->udev, 0xa),
 
 	lme_int->lme_urb->transfer_flags |= URB_NO_TRANSFER_DMA_MAP;
 
@@ -420,10 +425,8 @@ static int lme2510_pid_filter(struct dvb_usb_adapter *adap, int index, u16 pid,
 		mutex_unlock(&d->i2c_mutex);
 	}
 
-
 	return ret;
 }
-
 
 static int lme2510_return_status(struct dvb_usb_device *d)
 {
@@ -609,7 +612,6 @@ static int lme2510_msg(struct dvb_usb_device *d,
 
 	return ret;
 }
-
 
 static int lme2510_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msg[],
 				 int num)
@@ -986,7 +988,6 @@ static int dm04_lme2510_set_voltage(struct dvb_frontend *fe,
 		if (st->fe_set_voltage)
 			st->fe_set_voltage(fe, voltage);
 
-
 	return (ret < 0) ? -ENODEV : 0;
 }
 
@@ -1225,7 +1226,7 @@ static int lme2510_identify_state(struct dvb_usb_device *d, const char **name)
 	usb_reset_configuration(d->udev);
 
 	usb_set_interface(d->udev,
-		d->props->bInterfaceNumber, 1);
+		d->intf->cur_altsetting->desc.bInterfaceNumber, 1);
 
 	st->dvb_usb_lme2510_firmware = dvb_usb_lme2510_firmware;
 
@@ -1376,4 +1377,3 @@ MODULE_FIRMWARE(LME2510_C_S0194);
 MODULE_FIRMWARE(LME2510_C_RS2000);
 MODULE_FIRMWARE(LME2510_LG);
 MODULE_FIRMWARE(LME2510_S0194);
-

@@ -77,7 +77,7 @@ scsi_nl_rcv_msg(struct sk_buff *skb)
 			goto next_msg;
 		}
 
-		if (!capable(CAP_SYS_ADMIN)) {
+		if (!netlink_capable(skb, CAP_SYS_ADMIN)) {
 			err = -EPERM;
 			goto next_msg;
 		}
@@ -141,7 +141,6 @@ scsi_netlink_init(void)
 	return;
 }
 
-
 /**
  * scsi_netlink_exit - Called by SCSI subsystem to disable the SCSI transport netlink interface
  *
@@ -155,4 +154,3 @@ scsi_netlink_exit(void)
 
 	return;
 }
-

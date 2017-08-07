@@ -177,7 +177,6 @@ static int m54xx_wdt_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-
 static const struct file_operations m54xx_wdt_fops = {
 	.owner		= THIS_MODULE,
 	.llseek		= no_llseek,
@@ -223,3 +222,4 @@ module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started");
 
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

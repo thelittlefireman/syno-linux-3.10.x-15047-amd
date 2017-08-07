@@ -48,7 +48,7 @@ extern ushort ext4_mballoc_debug;
 		}							\
 	} while (0)
 #else
-#define mb_debug(n, fmt, a...)		no_printk(fmt, ## a)
+#define mb_debug(n, fmt, a...)
 #endif
 
 #define EXT4_MB_HISTORY_ALLOC		1	/* allocation */
@@ -88,7 +88,6 @@ extern ushort ext4_mballoc_debug;
  * default group prealloc size 512 blocks
  */
 #define MB_DEFAULT_GROUP_PREALLOC	512
-
 
 struct ext4_free_data {
 	/* MUST be the first member */
@@ -175,6 +174,8 @@ struct ext4_allocation_context {
 	/* copy of the best found extent taken before preallocation efforts */
 	struct ext4_free_extent ac_f_ex;
 
+	/* number of iterations done. we have to track to limit searching */
+	unsigned long ac_ex_scanned;
 	__u16 ac_groups_scanned;
 	__u16 ac_found;
 	__u16 ac_tail;

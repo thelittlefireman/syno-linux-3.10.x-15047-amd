@@ -30,6 +30,7 @@
 #ifndef __RTL8723E_PWRSEQ_H__
 #define __RTL8723E_PWRSEQ_H__
 
+#include "pwrseqcmd.h"
 /*
 	Check document WM-20110607-Paul-RTL8723A_Power_Architecture-R02.vsd
 	There are 6 HW Power States:
@@ -61,7 +62,6 @@
 #define	RTL8723A_TRANS_ACT_TO_LPS_STPS		15
 #define	RTL8723A_TRANS_LPS_TO_ACT_STPS		15
 #define	RTL8723A_TRANS_END_STPS			1
-
 
 #define RTL8723A_TRANS_CARDEMU_TO_ACT					\
 	/* format */							\

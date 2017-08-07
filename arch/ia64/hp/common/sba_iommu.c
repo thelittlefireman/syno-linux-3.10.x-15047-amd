@@ -128,7 +128,6 @@ extern int swiotlb_late_init_with_default_size (size_t size);
 #define DBG_RUN_SG(x...)
 #endif
 
-
 #ifdef DEBUG_SBA_RESOURCE
 #define DBG_RES(x...)	printk(x)
 #else
@@ -180,7 +179,6 @@ extern int swiotlb_late_init_with_default_size (size_t size);
 
 #define IOC_ROPE0_CFG	0x500
 #define   IOC_ROPE_AO	  0x10	/* Allow "Relaxed Ordering" */
-
 
 /* AGP GART driver looks for this */
 #define ZX1_SBA_IOMMU_COOKIE	0x0000badbadc0ffeeUL
@@ -255,7 +253,7 @@ static u64 prefetch_spill_page;
 #endif
 
 #ifdef CONFIG_PCI
-# define GET_IOC(dev)	((dev_is_pci(dev))						\
+# define GET_IOC(dev)	(((dev)->bus == &pci_bus_type)						\
 			 ? ((struct ioc *) PCI_CONTROLLER(to_pci_dev(dev))->iommu) : NULL)
 #else
 # define GET_IOC(dev)	NULL
@@ -302,7 +300,6 @@ sba_dump_tlb(char *hpa)
 }
 #endif
 
-
 #ifdef ASSERT_PDIR_SANITY
 
 /**
@@ -335,7 +332,6 @@ sba_dump_pdir_entry(struct ioc *ioc, char *msg, uint pide)
 	}
 	printk(KERN_DEBUG "%s", msg);
 }
-
 
 /**
  * sba_check_pdir - debugging only - consistency checker
@@ -382,7 +378,6 @@ sba_check_pdir(struct ioc *ioc, char *msg)
 	return 0;
 }
 
-
 /**
  * sba_dump_sg - debugging only - print Scatter-Gather list
  * @ioc: IO MMU structure which owns the pdir we are interested in.
@@ -417,9 +412,6 @@ sba_check_sg( struct ioc *ioc, struct scatterlist *startsg, int nents)
 
 #endif /* ASSERT_PDIR_SANITY */
 
-
-
-
 /**************************************************************
 *
 *   I/O Pdir Resource Management
@@ -441,7 +433,6 @@ sba_check_sg( struct ioc *ioc, struct scatterlist *startsg, int nents)
 
 #define RESMAP_MASK(n)    ~(~0UL << (n))
 #define RESMAP_IDX_MASK   (sizeof(unsigned long) - 1)
-
 
 /**
  * For most cases the normal get_order is sufficient, however it limits us
@@ -618,7 +609,6 @@ found_it:
 	return (pide);
 }
 
-
 /**
  * sba_alloc_range - find free bits and mark them in IO PDIR resource bitmap
  * @ioc: IO MMU structure which owns the pdir we are interested in.
@@ -716,7 +706,6 @@ sba_alloc_range(struct ioc *ioc, struct device *dev, size_t size)
 	return (pide);
 }
 
-
 /**
  * sba_free_range - unmark bits in IO PDIR resource bitmap
  * @ioc: IO MMU structure which owns the pdir we are interested in.
@@ -762,7 +751,6 @@ sba_free_range(struct ioc *ioc, dma_addr_t iova, size_t size)
 		}
 	}
 }
-
 
 /**************************************************************
 *
@@ -1140,13 +1128,11 @@ sba_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
 
 #ifdef CONFIG_NUMA
 	{
-		int node = ioc->node;
 		struct page *page;
+		page = alloc_pages_exact_node(ioc->node == MAX_NUMNODES ?
+		                        numa_node_id() : ioc->node, flags,
+		                        get_order(size));
 
-		if (node == NUMA_NO_NODE)
-			node = numa_node_id();
-
-		page = alloc_pages_exact_node(node, flags, get_order(size));
 		if (unlikely(!page))
 			return NULL;
 
@@ -1184,7 +1170,6 @@ sba_alloc_coherent(struct device *dev, size_t size, dma_addr_t *dma_handle,
 	return addr;
 }
 
-
 /**
  * sba_free_coherent - free/unmap shared mem for DMA
  * @dev: instance of PCI owned by the driver that's asking.
@@ -1201,7 +1186,6 @@ static void sba_free_coherent(struct device *dev, size_t size, void *vaddr,
 	free_pages((unsigned long) vaddr, get_order(size));
 }
 
-
 /*
 ** Since 0 is a valid pdir_base index value, can't use that
 ** to determine if a value is valid or not. Use a flag to indicate
@@ -1212,7 +1196,6 @@ static void sba_free_coherent(struct device *dev, size_t size, void *vaddr,
 #ifdef DEBUG_LARGE_SG_ENTRIES
 int dump_run_sg = 0;
 #endif
-
 
 /**
  * sba_fill_pdir - write allocated SG entries into IO PDIR
@@ -1295,7 +1278,6 @@ sba_fill_pdir(
 	return(n_mappings);
 }
 
-
 /*
 ** Two address ranges are DMA contiguous *iff* "end of prev" and
 ** "start of next" are both on an IOV page boundary.
@@ -1304,7 +1286,6 @@ sba_fill_pdir(
 */
 #define DMA_CONTIG(__X, __Y) \
 	(((((unsigned long) __X) | ((unsigned long) __Y)) << (BITS_PER_LONG - iovp_shift)) == 0UL)
-
 
 /**
  * sba_coalesce_chunks - preprocess the SG list
@@ -1598,7 +1579,7 @@ static void sba_unmap_sg_attrs(struct device *dev, struct scatterlist *sglist,
 *
 ***************************************************************/
 
-static void
+static void __init
 ioc_iova_init(struct ioc *ioc)
 {
 	int tcnfg;
@@ -1809,7 +1790,7 @@ static struct ioc_iommu ioc_iommu_info[] __initdata = {
 	{ SX2000_IOC_ID, "sx2000", NULL },
 };
 
-static struct ioc *
+static struct ioc * __init
 ioc_init(unsigned long hpa, void *handle)
 {
 	struct ioc *ioc;
@@ -1867,8 +1848,6 @@ ioc_init(unsigned long hpa, void *handle)
 	return ioc;
 }
 
-
-
 /**************************************************************************
 **
 **   SBA initialization code (HW and SW)
@@ -1916,7 +1895,7 @@ ioc_show(struct seq_file *s, void *v)
 	seq_printf(s, "Hewlett Packard %s IOC rev %d.%d\n",
 		ioc->name, ((ioc->rev >> 4) & 0xF), (ioc->rev & 0xF));
 #ifdef CONFIG_NUMA
-	if (ioc->node != NUMA_NO_NODE)
+	if (ioc->node != MAX_NUMNODES)
 		seq_printf(s, "NUMA node       : %d\n", ioc->node);
 #endif
 	seq_printf(s, "IOVA size       : %ld MB\n", ((ioc->pdir_size >> 3) * iovp_size)/(1024*1024));
@@ -1994,7 +1973,7 @@ sba_connect_bus(struct pci_bus *bus)
 	if (PCI_CONTROLLER(bus)->iommu)
 		return;
 
-	handle = acpi_device_handle(PCI_CONTROLLER(bus)->companion);
+	handle = PCI_CONTROLLER(bus)->acpi_handle;
 	if (!handle)
 		return;
 
@@ -2017,23 +1996,34 @@ sba_connect_bus(struct pci_bus *bus)
 	printk(KERN_WARNING "No IOC for PCI Bus %04x:%02x in ACPI\n", pci_domain_nr(bus), bus->number);
 }
 
+#ifdef CONFIG_NUMA
 static void __init
 sba_map_ioc_to_node(struct ioc *ioc, acpi_handle handle)
 {
-#ifdef CONFIG_NUMA
 	unsigned int node;
+	int pxm;
 
-	node = acpi_get_node(handle);
-	if (node != NUMA_NO_NODE && !node_online(node))
-		node = NUMA_NO_NODE;
+	ioc->node = MAX_NUMNODES;
+
+	pxm = acpi_get_pxm(handle);
+
+	if (pxm < 0)
+		return;
+
+	node = pxm_to_node(pxm);
+
+	if (node >= MAX_NUMNODES || !node_online(node))
+		return;
 
 	ioc->node = node;
-#endif
+	return;
 }
+#else
+#define sba_map_ioc_to_node(ioc, handle)
+#endif
 
-static int
-acpi_sba_ioc_add(struct acpi_device *device,
-		 const struct acpi_device_id *not_used)
+static int __init
+acpi_sba_ioc_add(struct acpi_device *device)
 {
 	struct ioc *ioc;
 	acpi_status status;
@@ -2081,17 +2071,13 @@ static const struct acpi_device_id hp_ioc_iommu_device_ids[] = {
 	{"HWP0004", 0},
 	{"", 0},
 };
-static struct acpi_scan_handler acpi_sba_ioc_handler = {
-	.ids	= hp_ioc_iommu_device_ids,
-	.attach	= acpi_sba_ioc_add,
+static struct acpi_driver acpi_sba_ioc_driver = {
+	.name		= "IOC IOMMU Driver",
+	.ids		= hp_ioc_iommu_device_ids,
+	.ops		= {
+		.add	= acpi_sba_ioc_add,
+	},
 };
-
-static int __init acpi_sba_ioc_init_acpi(void)
-{
-	return acpi_scan_add_handler(&acpi_sba_ioc_handler);
-}
-/* This has to run before acpi_scan_init(). */
-arch_initcall(acpi_sba_ioc_init_acpi);
 
 extern struct dma_map_ops swiotlb_dma_ops;
 
@@ -2117,10 +2103,7 @@ sba_init(void)
 	}
 #endif
 
-	/*
-	 * ioc_list should be populated by the acpi_sba_ioc_handler's .attach()
-	 * routine, but that only happens if acpi_scan_init() has already run.
-	 */
+	acpi_bus_register_driver(&acpi_sba_ioc_driver);
 	if (!ioc_list) {
 #ifdef CONFIG_IA64_GENERIC
 		/*

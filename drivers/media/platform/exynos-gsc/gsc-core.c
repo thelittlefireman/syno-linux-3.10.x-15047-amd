@@ -448,7 +448,6 @@ int gsc_try_fmt_mplane(struct gsc_ctx *ctx, struct v4l2_format *f)
 	else /* SD */
 		pix_mp->colorspace = V4L2_COLORSPACE_SMPTE170M;
 
-
 	for (i = 0; i < pix_mp->num_planes; ++i) {
 		int bpl = (pix_mp->width * fmt->depth[i]) >> 3;
 		pix_mp->plane_fmt[i].bytesperline = bpl;
@@ -583,7 +582,6 @@ int gsc_try_crop(struct gsc_ctx *ctx, struct v4l2_crop *cr)
 	else
 		gsc_check_crop_change(tmp_w, tmp_h,
 					&cr->c.width, &cr->c.height);
-
 
 	/* adjust left/top if cropping rectangle is out of bounds */
 	/* Need to add code to algin left value with 2's multiple */
@@ -988,7 +986,7 @@ static void *gsc_get_drv_data(struct platform_device *pdev)
 
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
-		match = of_match_node(exynos_gsc_match,
+		match = of_match_node(of_match_ptr(exynos_gsc_match),
 					pdev->dev.of_node);
 		if (match)
 			driver_data = (struct gsc_driverdata *)match->data;
@@ -1217,12 +1215,12 @@ static int gsc_resume(struct device *dev)
 		spin_unlock_irqrestore(&gsc->slock, flags);
 		return 0;
 	}
+	gsc_hw_set_sw_reset(gsc);
+	gsc_wait_reset(gsc);
+
 	spin_unlock_irqrestore(&gsc->slock, flags);
 
-	if (!pm_runtime_suspended(dev))
-		return gsc_runtime_resume(dev);
-
-	return 0;
+	return gsc_m2m_resume(gsc);
 }
 
 static int gsc_suspend(struct device *dev)
@@ -1234,10 +1232,7 @@ static int gsc_suspend(struct device *dev)
 	if (test_and_set_bit(ST_SUSPEND, &gsc->state))
 		return 0;
 
-	if (!pm_runtime_suspended(dev))
-		return gsc_runtime_suspend(dev);
-
-	return 0;
+	return gsc_m2m_suspend(gsc);
 }
 
 static const struct dev_pm_ops gsc_pm_ops = {

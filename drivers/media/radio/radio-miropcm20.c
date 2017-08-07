@@ -131,7 +131,6 @@ static int vidioc_g_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-
 static int vidioc_s_frequency(struct file *file, void *priv,
 				const struct v4l2_frequency *f)
 {

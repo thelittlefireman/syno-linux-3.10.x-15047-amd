@@ -87,5 +87,4 @@ struct kvm_vcpu_arch_shared {
 /* MASn, ESR, PIR, and high SPRGs */
 #define KVM_MAGIC_FEAT_MAS0_TO_SPRG7	(1 << 1)
 
-
 #endif /* _UAPI__POWERPC_KVM_PARA_H__ */

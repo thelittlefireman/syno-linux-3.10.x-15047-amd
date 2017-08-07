@@ -3,7 +3,6 @@
 
 #include <uapi/linux/personality.h>
 
-
 /*
  * Handling of different ABIs (personalities).
  */
@@ -14,7 +13,6 @@ struct pt_regs;
 extern int		register_exec_domain(struct exec_domain *);
 extern int		unregister_exec_domain(struct exec_domain *);
 extern int		__set_personality(unsigned int);
-
 
 /*
  * Description of an execution domain.
@@ -43,7 +41,6 @@ struct exec_domain {
  * Return the base personality without flags.
  */
 #define personality(pers)	(pers & PER_MASK)
-
 
 /*
  * Change personality of the currently running process.

@@ -12,7 +12,6 @@
 #include <asm/fixmap.h>
 #include <asm/mpspec.h>
 #include <asm/msr.h>
-#include <asm/idle.h>
 
 #define ARCH_APICTIMER_STOPS_ON_C3	1
 
@@ -33,7 +32,6 @@
 		if ((v) <= apic_verbosity) \
 			printk(s, ##a);    \
 	} while (0)
-
 
 #if defined(CONFIG_X86_LOCAL_APIC) && defined(CONFIG_X86_32)
 extern void generic_apic_probe(void);
@@ -93,6 +91,9 @@ static inline int is_vsmp_box(void)
 	return 0;
 }
 #endif
+extern void xapic_wait_icr_idle(void);
+extern u32 safe_xapic_wait_icr_idle(void);
+extern void xapic_icr_write(u32, u32);
 extern int setup_profiling_timer(unsigned int);
 
 static inline void native_apic_mem_write(u32 reg, u32 v)
@@ -181,6 +182,7 @@ extern int x2apic_phys;
 extern int x2apic_preenabled;
 extern void check_x2apic(void);
 extern void enable_x2apic(void);
+extern void x2apic_icr_write(u32 low, u32 id);
 static inline int x2apic_enabled(void)
 {
 	u64 msr;
@@ -217,6 +219,7 @@ static inline void x2apic_force_phys(void)
 {
 }
 
+#define	nox2apic	0
 #define	x2apic_preenabled 0
 #define	x2apic_supported()	0
 #endif
@@ -346,7 +349,7 @@ struct apic {
 	int trampoline_phys_low;
 	int trampoline_phys_high;
 
-	bool wait_for_init_deassert;
+	void (*wait_for_init_deassert)(atomic_t *deassert);
 	void (*smp_callin_clear_local_apic)(void);
 	void (*inquire_remote_apic)(int apicid);
 
@@ -512,8 +515,14 @@ extern int default_cpu_present_to_apicid(int mps_cpu);
 extern int default_check_phys_apicid_present(int phys_apicid);
 #endif
 
-extern void generic_bigsmp_probe(void);
+static inline void default_wait_for_init_deassert(atomic_t *deassert)
+{
+	while (!atomic_read(deassert))
+		cpu_relax();
+	return;
+}
 
+extern void generic_bigsmp_probe(void);
 
 #ifdef CONFIG_X86_LOCAL_APIC
 
@@ -536,7 +545,6 @@ static inline const struct cpumask *online_target_cpus(void)
 }
 
 DECLARE_EARLY_PER_CPU_READ_MOSTLY(u16, x86_bios_cpu_apicid);
-
 
 static inline unsigned int read_apic_id(void)
 {
@@ -676,33 +684,5 @@ extern int default_check_phys_apicid_present(int phys_apicid);
 #endif
 
 #endif /* CONFIG_X86_LOCAL_APIC */
-extern void irq_enter(void);
-extern void irq_exit(void);
-
-static inline void entering_irq(void)
-{
-	irq_enter();
-	exit_idle();
-}
-
-static inline void entering_ack_irq(void)
-{
-	ack_APIC_irq();
-	entering_irq();
-}
-
-static inline void exiting_irq(void)
-{
-	irq_exit();
-}
-
-static inline void exiting_ack_irq(void)
-{
-	irq_exit();
-	/* Ack only at the end to avoid potential reentry */
-	ack_APIC_irq();
-}
-
-extern void ioapic_zap_locks(void);
 
 #endif /* _ASM_X86_APIC_H */

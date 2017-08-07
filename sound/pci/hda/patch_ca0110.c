@@ -20,6 +20,7 @@
 
 #include <linux/init.h>
 #include <linux/slab.h>
+#include <linux/pci.h>
 #include <linux/module.h>
 #include <sound/core.h>
 #include "hda_codec.h"
@@ -27,7 +28,6 @@
 #include "hda_auto_parser.h"
 #include "hda_jack.h"
 #include "hda_generic.h"
-
 
 static const struct hda_codec_ops ca0110_patch_ops = {
 	.build_controls = snd_hda_gen_build_controls,
@@ -51,7 +51,6 @@ static int ca0110_parse_auto_config(struct hda_codec *codec)
 
 	return 0;
 }
-
 
 static int patch_ca0110(struct hda_codec *codec)
 {
@@ -79,7 +78,6 @@ static int patch_ca0110(struct hda_codec *codec)
 	snd_hda_gen_free(codec);
 	return err;
 }
-
 
 /*
  * patch entries

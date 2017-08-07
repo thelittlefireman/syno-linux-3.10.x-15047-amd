@@ -32,6 +32,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/string.h>
 #include <linux/list.h>

@@ -25,6 +25,7 @@
  * that and only has minimal functionality.
  */
 #include <linux/compiler.h>
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/list.h>
@@ -1591,7 +1592,6 @@ static int ar5523_probe(struct usb_interface *intf,
 	if (id->driver_info & AR5523_FLAG_PRE_FIRMWARE)
 		return ar5523_load_firmware(dev);
 
-
 	hw = ieee80211_alloc_hw(sizeof(*ar), &ar5523_ops);
 	if (!hw)
 		goto out;
@@ -1761,7 +1761,6 @@ static struct usb_device_id ar5523_id_table[] = {
 	AR5523_DEVICE_UX(0x2001, 0x3a00),	/* Dlink / DWLAG132 */
 	AR5523_DEVICE_UG(0x2001, 0x3a02),	/* Dlink / DWLG132 */
 	AR5523_DEVICE_UX(0x2001, 0x3a04),	/* Dlink / DWLAG122 */
-	AR5523_DEVICE_UG(0x07d1, 0x3a07),	/* D-Link / WUA-2340 rev A1 */
 	AR5523_DEVICE_UG(0x1690, 0x0712),	/* Gigaset / AR5523 */
 	AR5523_DEVICE_UG(0x1690, 0x0710),	/* Gigaset / SMCWUSBTG */
 	AR5523_DEVICE_UG(0x129b, 0x160b),	/* Gigaset / USB stick 108

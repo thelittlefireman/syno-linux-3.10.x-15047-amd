@@ -19,7 +19,7 @@ extern int amd_cache_northbridges(void);
 extern void amd_flush_garts(void);
 extern int amd_numa_init(void);
 extern int amd_get_subcaches(int);
-extern int amd_set_subcaches(int, unsigned long);
+extern int amd_set_subcaches(int, int);
 
 struct amd_l3_cache {
 	unsigned indices;
@@ -105,6 +105,5 @@ static inline u16 amd_get_node_id(struct pci_dev *pdev)
 #define node_to_amd_nb(x)	NULL
 
 #endif
-
 
 #endif /* _ASM_X86_AMD_NB_H */

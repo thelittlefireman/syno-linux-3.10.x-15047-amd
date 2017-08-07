@@ -30,12 +30,13 @@
 #include <linux/mutex.h>
 #include <linux/delay.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/io.h>
 
 #include <asm/mach/map.h>
 
 #include <mach/hardware.h>
+
+#include <plat/regs-serial.h>
 #include <mach/regs-clock.h>
 #include <mach/regs-gpio.h>
 
@@ -280,5 +281,6 @@ int __init s3c2410_baseclk_add(void)
 	       (clkslow & S3C2410_CLKSLOW_MPLL_OFF) ? "off" : "on",
 	       (clkslow & S3C2410_CLKSLOW_UCLK_OFF) ? "off" : "on");
 
+	s3c_pwmclk_init();
 	return 0;
 }

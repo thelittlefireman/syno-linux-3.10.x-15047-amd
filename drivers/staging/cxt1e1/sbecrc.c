@@ -24,15 +24,12 @@
 #define CRC32_POLYNOMIAL                0xEDB88320L
 #define CRC_TABLE_ENTRIES                       256
 
-
-
 static      u_int32_t crcTableInit;
 
 #ifdef STATIC_CRC_TABLE
 static u_int32_t CRCTable[CRC_TABLE_ENTRIES];
 
 #endif
-
 
 /***************************************************************************
 *
@@ -63,7 +60,6 @@ genCrcTable(u_int32_t *CRCTable)
 	crcTableInit++;
 }
 
-
 /***************************************************************************
 *
 * sbeCrc - generates a CRC on a given buffer, and initial CRC
@@ -88,7 +84,7 @@ sbeCrc(u_int8_t *buffer,          /* data buffer to crc */
 	u_int32_t initialCrc,      /* starting CRC */
 	u_int32_t *result)
 {
-	u_int32_t     *tbl = NULL;
+	u_int32_t     *tbl = 0;
 	u_int32_t      temp1, temp2, crc;
 
 	/*
@@ -102,7 +98,7 @@ sbeCrc(u_int8_t *buffer,          /* data buffer to crc */
 		genCrcTable(tbl);
 #else
 		tbl = (u_int32_t *) OS_kmalloc(CRC_TABLE_ENTRIES * sizeof(u_int32_t));
-		if (!tbl) {
+		if (tbl == 0) {
 			*result = 0;   /* dummy up return value due to malloc
 					* failure */
 			return;

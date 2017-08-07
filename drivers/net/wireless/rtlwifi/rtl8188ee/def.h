@@ -111,7 +111,6 @@
 
 #define CHIP_BONDING_IDENTIFIER(_value)	(((_value)>>22)&0x3)
 
-
 /* [15:12] IC version(CUT): A-cut=0, B-cut=1, C-cut=2, D-cut=3
  * [7] Manufacturer: TSMC=0, UMC=1
  * [6:4] RF type: 1T1R=0, 1T2R=1, 2T2R=2
@@ -130,7 +129,6 @@
 #define D_CUT_VERSION			((BIT(12)|BIT(13)))
 #define E_CUT_VERSION			BIT(14)
 
-
 /* MASK */
 #define IC_TYPE_MASK			(BIT(0)|BIT(1)|BIT(2))
 #define CHIP_TYPE_MASK			BIT(3)
@@ -146,7 +144,6 @@
 #define GET_CVID_MANUFACTUER(version)	((version) & MANUFACTUER_MASK)
 #define GET_CVID_ROM_VERSION(version)	((version) & ROM_VERSION_MASK)
 #define GET_CVID_CUT_VERSION(version)	((version) & CUT_VERSION_MASK)
-
 
 #define IS_81XXC(version)						\
 	((GET_CVID_IC_TYPE(version) == 0) ? true : false)

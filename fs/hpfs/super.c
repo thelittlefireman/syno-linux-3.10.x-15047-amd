@@ -52,17 +52,20 @@ static void unmark_dirty(struct super_block *s)
 }
 
 /* Filesystem error... */
-static char err_buf[1024];
-
 void hpfs_error(struct super_block *s, const char *fmt, ...)
 {
+	struct va_format vaf;
 	va_list args;
 
 	va_start(args, fmt);
-	vsnprintf(err_buf, sizeof(err_buf), fmt, args);
+
+	vaf.fmt = fmt;
+	vaf.va = &args;
+
+	pr_err("filesystem error: %pV", &vaf);
+
 	va_end(args);
 
-	printk("HPFS: filesystem error: %s", err_buf);
 	if (!hpfs_sb(s)->sb_was_error) {
 		if (hpfs_sb(s)->sb_err == 2) {
 			printk("; crashing the system because you wanted it\n");
@@ -101,35 +104,29 @@ int hpfs_stop_cycles(struct super_block *s, int key, int *c1, int *c2,
 	return 0;
 }
 
-static void free_sbi(struct hpfs_sb_info *sbi)
-{
-	kfree(sbi->sb_cp_table);
-	kfree(sbi->sb_bmp_dir);
-	kfree(sbi);
-}
-
-static void lazy_free_sbi(struct rcu_head *rcu)
-{
-	free_sbi(container_of(rcu, struct hpfs_sb_info, rcu));
-}
-
 static void hpfs_put_super(struct super_block *s)
 {
+	struct hpfs_sb_info *sbi = hpfs_sb(s);
+
 	hpfs_lock(s);
 	unmark_dirty(s);
 	hpfs_unlock(s);
-	call_rcu(&hpfs_sb(s)->rcu, lazy_free_sbi);
+
+	kfree(sbi->sb_cp_table);
+	kfree(sbi->sb_bmp_dir);
+	s->s_fs_info = NULL;
+	kfree(sbi);
 }
 
-static unsigned hpfs_count_one_bitmap(struct super_block *s, secno secno)
+unsigned hpfs_count_one_bitmap(struct super_block *s, secno secno)
 {
 	struct quad_buffer_head qbh;
 	unsigned long *bits;
 	unsigned count;
 
-	bits = hpfs_map_4sectors(s, secno, &qbh, 0);
+	bits = hpfs_map_4sectors(s, secno, &qbh, 4);
 	if (!bits)
-		return (unsigned)-1;
+		return 0;
 	count = bitmap_weight(bits, 2048 * BITS_PER_BYTE);
 	hpfs_brelse4(&qbh);
 	return count;
@@ -140,29 +137,9 @@ static unsigned count_bitmaps(struct super_block *s)
 	unsigned n, count, n_bands;
 	n_bands = (hpfs_sb(s)->sb_fs_size + 0x3fff) >> 14;
 	count = 0;
-	for (n = 0; n < COUNT_RD_AHEAD; n++) {
-		hpfs_prefetch_bitmap(s, n);
-	}
-	for (n = 0; n < n_bands; n++) {
-		unsigned c;
-		hpfs_prefetch_bitmap(s, n + COUNT_RD_AHEAD);
-		c = hpfs_count_one_bitmap(s, le32_to_cpu(hpfs_sb(s)->sb_bmp_dir[n]));
-		if (c != (unsigned)-1)
-			count += c;
-	}
+	for (n = 0; n < n_bands; n++)
+		count += hpfs_count_one_bitmap(s, le32_to_cpu(hpfs_sb(s)->sb_bmp_dir[n]));
 	return count;
-}
-
-unsigned hpfs_get_free_dnodes(struct super_block *s)
-{
-	struct hpfs_sb_info *sbi = hpfs_sb(s);
-	if (sbi->sb_n_free_dnodes == (unsigned)-1) {
-		unsigned c = hpfs_count_one_bitmap(s, sbi->sb_dmap);
-		if (c == (unsigned)-1)
-			return 0;
-		sbi->sb_n_free_dnodes = c;
-	}
-	return sbi->sb_n_free_dnodes;
 }
 
 static int hpfs_statfs(struct dentry *dentry, struct kstatfs *buf)
@@ -170,19 +147,19 @@ static int hpfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	struct super_block *s = dentry->d_sb;
 	struct hpfs_sb_info *sbi = hpfs_sb(s);
 	u64 id = huge_encode_dev(s->s_bdev->bd_dev);
-
 	hpfs_lock(s);
 
-	if (sbi->sb_n_free == (unsigned)-1)
+	/*if (sbi->sb_n_free == -1) {*/
 		sbi->sb_n_free = count_bitmaps(s);
-
+		sbi->sb_n_free_dnodes = hpfs_count_one_bitmap(s, sbi->sb_dmap);
+	/*}*/
 	buf->f_type = s->s_magic;
 	buf->f_bsize = 512;
 	buf->f_blocks = sbi->sb_fs_size;
 	buf->f_bfree = sbi->sb_n_free;
 	buf->f_bavail = sbi->sb_n_free;
 	buf->f_files = sbi->sb_dirband_size / 4;
-	buf->f_ffree = hpfs_get_free_dnodes(s);
+	buf->f_ffree = sbi->sb_n_free_dnodes;
 	buf->f_fsid.val[0] = (u32)id;
 	buf->f_fsid.val[1] = (u32)(id >> 32);
 	buf->f_namelen = 254;
@@ -508,6 +485,9 @@ static int hpfs_fill_super(struct super_block *s, void *options, int silent)
 	}
 	s->s_fs_info = sbi;
 
+	sbi->sb_bmp_dir = NULL;
+	sbi->sb_cp_table = NULL;
+
 	mutex_init(&sbi->hpfs_mutex);
 	hpfs_lock(s);
 
@@ -699,7 +679,10 @@ bail2:	brelse(bh0);
 bail1:
 bail0:
 	hpfs_unlock(s);
-	free_sbi(sbi);
+	kfree(sbi->sb_bmp_dir);
+	kfree(sbi->sb_cp_table);
+	s->s_fs_info = NULL;
+	kfree(sbi);
 	return -EINVAL;
 }
 

@@ -23,7 +23,6 @@
 #define SRAM_PAGE_FLAGS	(SYSREG_BIT(TLBELO_D) | SYSREG_BF(SZ, 1)	\
 				| SYSREG_BF(AP, 3) | SYSREG_BIT(G))
 
-
 static unsigned long	pm_sram_start;
 static size_t		pm_sram_size;
 static struct vm_struct	*pm_sram_area;
@@ -181,7 +180,7 @@ static const struct platform_suspend_ops avr32_pm_ops = {
 	.enter	= avr32_pm_enter,
 };
 
-static unsigned long __init avr32_pm_offset(void *symbol)
+static unsigned long avr32_pm_offset(void *symbol)
 {
 	extern u8 pm_exception[];
 

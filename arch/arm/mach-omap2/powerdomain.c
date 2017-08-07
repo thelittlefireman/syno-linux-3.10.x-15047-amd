@@ -102,10 +102,6 @@ static int _pwrdm_register(struct powerdomain *pwrdm)
 	if (_pwrdm_lookup(pwrdm->name))
 		return -EEXIST;
 
-	if (arch_pwrdm && arch_pwrdm->pwrdm_has_voltdm)
-		if (!arch_pwrdm->pwrdm_has_voltdm())
-			goto skip_voltdm;
-
 	voltdm = voltdm_lookup(pwrdm->voltdm.name);
 	if (!voltdm) {
 		pr_err("powerdomain: %s: voltagedomain %s does not exist\n",
@@ -115,7 +111,6 @@ static int _pwrdm_register(struct powerdomain *pwrdm)
 	pwrdm->voltdm.ptr = voltdm;
 	INIT_LIST_HEAD(&pwrdm->voltdm_node);
 	voltdm_add_pwrdm(voltdm, pwrdm);
-skip_voltdm:
 	spin_lock_init(&pwrdm->_lock);
 
 	list_add(&pwrdm->node, &pwrdm_list);
@@ -128,8 +123,7 @@ skip_voltdm:
 	for (i = 0; i < pwrdm->banks; i++)
 		pwrdm->ret_mem_off_counter[i] = 0;
 
-	if (arch_pwrdm && arch_pwrdm->pwrdm_wait_transition)
-		arch_pwrdm->pwrdm_wait_transition(pwrdm);
+	arch_pwrdm->pwrdm_wait_transition(pwrdm);
 	pwrdm->state = pwrdm_read_pwrst(pwrdm);
 	pwrdm->state_counter[pwrdm->state] = 1;
 

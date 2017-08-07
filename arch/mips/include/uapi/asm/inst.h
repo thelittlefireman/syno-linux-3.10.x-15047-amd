@@ -8,7 +8,6 @@
  * Copyright (C) 1996, 2000 by Ralf Baechle
  * Copyright (C) 2006 by Thiemo Seufer
  * Copyright (C) 2012 MIPS Technologies, Inc.  All rights reserved.
- * Copyright (C) 2014 Imagination Technologies Ltd.
  */
 #ifndef _UAPI_ASM_INST_H
 #define _UAPI_ASM_INST_H
@@ -74,16 +73,10 @@ enum spec2_op {
 enum spec3_op {
 	ext_op, dextm_op, dextu_op, dext_op,
 	ins_op, dinsm_op, dinsu_op, dins_op,
-	lx_op     = 0x0a, lwle_op   = 0x19,
-	lwre_op   = 0x1a, cachee_op = 0x1b,
-	sbe_op    = 0x1c, she_op    = 0x1d,
-	sce_op    = 0x1e, swe_op    = 0x1f,
-	bshfl_op  = 0x20, swle_op   = 0x21,
-	swre_op   = 0x22, prefe_op  = 0x23,
-	dbshfl_op = 0x24, lbue_op   = 0x28,
-	lhue_op   = 0x29, lbe_op    = 0x2c,
-	lhe_op    = 0x2d, lle_op    = 0x2e,
-	lwe_op    = 0x2f, rdhwr_op  = 0x3b
+	lx_op = 0x0a,
+	bshfl_op = 0x20,
+	dbshfl_op = 0x24,
+	rdhwr_op = 0x3b
 };
 
 /*
@@ -105,9 +98,8 @@ enum rt_op {
  */
 enum cop_op {
 	mfc_op	      = 0x00, dmfc_op	    = 0x01,
-	cfc_op	      = 0x02, mfhc_op	    = 0x03,
-	mtc_op        = 0x04, dmtc_op	    = 0x05,
-	ctc_op	      = 0x06, mthc_op	    = 0x07,
+	cfc_op	      = 0x02, mtc_op	    = 0x04,
+	dmtc_op	      = 0x05, ctc_op	    = 0x06,
 	bc_op	      = 0x08, cop_op	    = 0x10,
 	copm_op	      = 0x18
 };
@@ -170,8 +162,8 @@ enum cop1_sdw_func {
  */
 enum cop1x_func {
 	lwxc1_op     =	0x00, ldxc1_op	   =  0x01,
-	swxc1_op     =  0x08, sdxc1_op	   =  0x09,
-	pfetch_op    =	0x0f, madd_s_op	   =  0x20,
+	pfetch_op    =	0x07, swxc1_op	   =  0x08,
+	sdxc1_op     =	0x09, madd_s_op	   =  0x20,
 	madd_d_op    =	0x21, madd_e_op	   =  0x22,
 	msub_s_op    =	0x28, msub_d_op	   =  0x29,
 	msub_e_op    =	0x2a, nmadd_s_op   =  0x30,
@@ -405,10 +397,8 @@ enum mm_32f_73_minor_op {
 	mm_movt1_op = 0xa5,
 	mm_ftruncw_op = 0xac,
 	mm_fneg1_op = 0xad,
-	mm_mfhc1_op = 0xc0,
 	mm_froundl_op = 0xcc,
 	mm_fcvtd1_op = 0xcd,
-	mm_mthc1_op = 0xe0,
 	mm_froundw_op = 0xec,
 	mm_fcvts1_op = 0xed,
 };
@@ -419,11 +409,10 @@ enum mm_32f_73_minor_op {
 enum mm_16c_minor_op {
 	mm_lwm16_op = 0x04,
 	mm_swm16_op = 0x05,
-	mm_jr16_op = 0x0c,
-	mm_jrc_op = 0x0d,
-	mm_jalr16_op = 0x0e,
-	mm_jalrs16_op = 0x0f,
-	mm_jraddiusp_op = 0x18,
+	mm_jr16_op = 0x18,
+	mm_jrc_op = 0x1a,
+	mm_jalr16_op = 0x1c,
+	mm_jalrs16_op = 0x1e,
 };
 
 /*
@@ -597,15 +586,6 @@ struct v_format {				/* MDMX vector format */
 	BITFIELD_FIELD(unsigned int vd : 5,
 	BITFIELD_FIELD(unsigned int func : 6,
 	;)))))))
-};
-
-struct spec3_format {   /* SPEC3 */
-	BITFIELD_FIELD(unsigned int opcode:6,
-	BITFIELD_FIELD(unsigned int rs:5,
-	BITFIELD_FIELD(unsigned int rt:5,
-	BITFIELD_FIELD(signed int simmediate:9,
-	BITFIELD_FIELD(unsigned int func:7,
-	;)))))
 };
 
 /*
@@ -879,7 +859,6 @@ union mips_instruction {
 	struct b_format b_format;
 	struct ps_format ps_format;
 	struct v_format v_format;
-	struct spec3_format spec3_format;
 	struct fb_format fb_format;
 	struct fp0_format fp0_format;
 	struct mm_fp0_format mm_fp0_format;

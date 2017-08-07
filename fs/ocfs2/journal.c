@@ -455,41 +455,6 @@ bail:
 	return status;
 }
 
-/*
- * If we have fewer than thresh credits, extend by OCFS2_MAX_TRANS_DATA.
- * If that fails, restart the transaction & regain write access for the
- * buffer head which is used for metadata modifications.
- * Taken from Ext4: extend_or_restart_transaction()
- */
-int ocfs2_allocate_extend_trans(handle_t *handle, int thresh)
-{
-	int status, old_nblks;
-
-	BUG_ON(!handle);
-
-	old_nblks = handle->h_buffer_credits;
-	trace_ocfs2_allocate_extend_trans(old_nblks, thresh);
-
-	if (old_nblks < thresh)
-		return 0;
-
-	status = jbd2_journal_extend(handle, OCFS2_MAX_TRANS_DATA);
-	if (status < 0) {
-		mlog_errno(status);
-		goto bail;
-	}
-
-	if (status > 0) {
-		status = jbd2_journal_restart(handle, OCFS2_MAX_TRANS_DATA);
-		if (status < 0)
-			mlog_errno(status);
-	}
-
-bail:
-	return status;
-}
-
-
 struct ocfs2_triggers {
 	struct jbd2_buffer_trigger_type	ot_triggers;
 	int				ot_offset;
@@ -836,14 +801,14 @@ int ocfs2_journal_init(struct ocfs2_journal *journal, int *dirty)
 	inode_lock = 1;
 	di = (struct ocfs2_dinode *)bh->b_data;
 
-	if (i_size_read(inode) <  OCFS2_MIN_JOURNAL_SIZE) {
+	if (inode->i_size <  OCFS2_MIN_JOURNAL_SIZE) {
 		mlog(ML_ERROR, "Journal file size (%lld) is too small!\n",
-		     i_size_read(inode));
+		     inode->i_size);
 		status = -EINVAL;
 		goto done;
 	}
 
-	trace_ocfs2_journal_init(i_size_read(inode),
+	trace_ocfs2_journal_init(inode->i_size,
 				 (unsigned long long)inode->i_blocks,
 				 OCFS2_I(inode)->ip_clusters);
 
@@ -1071,7 +1036,6 @@ done:
 	return status;
 }
 
-
 /* 'full' flag tells us whether we clear out all blocks or if we just
  * mark the journal clean */
 int ocfs2_journal_wipe(struct ocfs2_journal *journal, int full)
@@ -1131,7 +1095,7 @@ static int ocfs2_force_read_journal(struct inode *inode)
 
 	memset(bhs, 0, sizeof(struct buffer_head *) * CONCURRENT_JOURNAL_FILL);
 
-	num_blocks = ocfs2_blocks_for_bytes(inode->i_sb, i_size_read(inode));
+	num_blocks = ocfs2_blocks_for_bytes(inode->i_sb, inode->i_size);
 	v_blkno = 0;
 	while (v_blkno < num_blocks) {
 		status = ocfs2_extent_map_get_blocks(inode, v_blkno,
@@ -1976,7 +1940,6 @@ void ocfs2_orphan_scan_start(struct ocfs2_super *osb)
 }
 
 struct ocfs2_orphan_filldir_priv {
-	struct dir_context	ctx;
 	struct inode		*head;
 	struct ocfs2_super	*osb;
 };
@@ -2013,11 +1976,11 @@ static int ocfs2_queue_orphans(struct ocfs2_super *osb,
 {
 	int status;
 	struct inode *orphan_dir_inode = NULL;
-	struct ocfs2_orphan_filldir_priv priv = {
-		.ctx.actor = ocfs2_orphan_filldir,
-		.osb = osb,
-		.head = *head
-	};
+	struct ocfs2_orphan_filldir_priv priv;
+	loff_t pos = 0;
+
+	priv.osb = osb;
+	priv.head = *head;
 
 	orphan_dir_inode = ocfs2_get_system_file_inode(osb,
 						       ORPHAN_DIR_SYSTEM_INODE,
@@ -2035,7 +1998,8 @@ static int ocfs2_queue_orphans(struct ocfs2_super *osb,
 		goto out;
 	}
 
-	status = ocfs2_dir_foreach(orphan_dir_inode, &priv.ctx);
+	status = ocfs2_dir_foreach(orphan_dir_inode, &pos, &priv,
+				   ocfs2_orphan_filldir);
 	if (status) {
 		mlog_errno(status);
 		goto out_cluster;
@@ -2132,6 +2096,12 @@ static int ocfs2_recover_orphans(struct ocfs2_super *osb,
 		iter = oi->ip_next_orphan;
 
 		spin_lock(&oi->ip_lock);
+		/* The remote delete code may have set these on the
+		 * assumption that the other node would wipe them
+		 * successfully.  If they are still in the node's
+		 * orphan dir, we need to reset that state. */
+		oi->ip_flags &= ~(OCFS2_INODE_DELETED|OCFS2_INODE_SKIP_DELETE);
+
 		/* Set the proper information to get us going into
 		 * ocfs2_delete_inode. */
 		oi->ip_flags |= OCFS2_INODE_MAYBE_ORPHANED;

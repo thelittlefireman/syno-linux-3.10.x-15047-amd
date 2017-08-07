@@ -987,7 +987,7 @@ out_unlock:
 	spin_unlock(&priv->lock);
 
 out:
-	dev_consume_skb_any(skb);
+	dev_kfree_skb(skb);
 
 	return NETDEV_TX_OK;
 }
@@ -1379,7 +1379,6 @@ static const struct ethtool_ops sc92031_ethtool_ops = {
 	.get_ethtool_stats	= sc92031_ethtool_get_ethtool_stats,
 };
 
-
 static const struct net_device_ops sc92031_netdev_ops = {
 	.ndo_get_stats		= sc92031_get_stats,
 	.ndo_start_xmit		= sc92031_start_xmit,
@@ -1578,7 +1577,19 @@ static struct pci_driver sc92031_pci_driver = {
 	.resume		= sc92031_resume,
 };
 
-module_pci_driver(sc92031_pci_driver);
+static int __init sc92031_init(void)
+{
+	return pci_register_driver(&sc92031_pci_driver);
+}
+
+static void __exit sc92031_exit(void)
+{
+	pci_unregister_driver(&sc92031_pci_driver);
+}
+
+module_init(sc92031_init);
+module_exit(sc92031_exit);
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Cesar Eduardo Barros <cesarb@cesarb.net>");
 MODULE_DESCRIPTION("Silan SC92031 PCI Fast Ethernet Adapter driver");

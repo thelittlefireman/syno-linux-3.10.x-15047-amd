@@ -1031,7 +1031,6 @@ static void resizer_enable(struct vpfe_resizer_device *resizer, int en)
 		rsz_enable(resizer->base_addr, RSZ_B, en);
 }
 
-
 /*
  * resizer_ss_isr() - resizer module single-shot buffer scheduling isr
  * @resizer: vpfe resizer device pointer.
@@ -1777,14 +1776,14 @@ void vpfe_resizer_unregister_entities(struct vpfe_resizer_device *vpfe_rsz)
 	vpfe_video_unregister(&vpfe_rsz->resizer_a.video_out);
 	vpfe_video_unregister(&vpfe_rsz->resizer_b.video_out);
 
-	/* unregister subdev */
-	v4l2_device_unregister_subdev(&vpfe_rsz->crop_resizer.subdev);
-	v4l2_device_unregister_subdev(&vpfe_rsz->resizer_a.subdev);
-	v4l2_device_unregister_subdev(&vpfe_rsz->resizer_b.subdev);
 	/* cleanup entity */
 	media_entity_cleanup(&vpfe_rsz->crop_resizer.subdev.entity);
 	media_entity_cleanup(&vpfe_rsz->resizer_a.subdev.entity);
 	media_entity_cleanup(&vpfe_rsz->resizer_b.subdev.entity);
+	/* unregister subdev */
+	v4l2_device_unregister_subdev(&vpfe_rsz->crop_resizer.subdev);
+	v4l2_device_unregister_subdev(&vpfe_rsz->resizer_a.subdev);
+	v4l2_device_unregister_subdev(&vpfe_rsz->resizer_b.subdev);
 }
 
 /*
@@ -1865,12 +1864,12 @@ out_create_link:
 	vpfe_video_unregister(&resizer->resizer_b.video_out);
 out_video_out2_register:
 	vpfe_video_unregister(&resizer->resizer_a.video_out);
-	v4l2_device_unregister_subdev(&resizer->crop_resizer.subdev);
-	v4l2_device_unregister_subdev(&resizer->resizer_a.subdev);
-	v4l2_device_unregister_subdev(&resizer->resizer_b.subdev);
 	media_entity_cleanup(&resizer->crop_resizer.subdev.entity);
 	media_entity_cleanup(&resizer->resizer_a.subdev.entity);
 	media_entity_cleanup(&resizer->resizer_b.subdev.entity);
+	v4l2_device_unregister_subdev(&resizer->crop_resizer.subdev);
+	v4l2_device_unregister_subdev(&resizer->resizer_a.subdev);
+	v4l2_device_unregister_subdev(&resizer->resizer_b.subdev);
 	return ret;
 }
 

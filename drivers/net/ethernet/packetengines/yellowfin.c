@@ -206,8 +206,6 @@ IVc. Errata
 See Packet Engines confidential appendix (prototype chips only).
 */
 
-
-
 enum capability_flags {
 	HasMII=1, FullTxStatus=2, IsGigabit=4, HasMulticastBug=8, FullRxStatus=16,
 	HasMACAddrBug=32, /* Only on early revs.  */
@@ -242,7 +240,6 @@ static DEFINE_PCI_DEVICE_TABLE(yellowfin_pci_tbl) = {
 	{ }
 };
 MODULE_DEVICE_TABLE (pci, yellowfin_pci_tbl);
-
 
 /* Offsets to the Yellowfin registers.  Various sizes and alignments. */
 enum yellowfin_offsets {
@@ -513,6 +510,7 @@ err_out_unmap_rx:
 err_out_unmap_tx:
         pci_free_consistent(pdev, TX_TOTAL_SIZE, np->tx_ring, np->tx_ring_dma);
 err_out_cleardev:
+	pci_set_drvdata(pdev, NULL);
 	pci_iounmap(pdev, ioaddr);
 err_out_free_res:
 	pci_release_regions(pdev);
@@ -560,7 +558,6 @@ static void mdio_write(void __iomem *ioaddr, int phy_id, int location, int value
 		if ((ioread16(ioaddr + MII_Status) & 1) == 0)
 			break;
 }
-
 
 static int yellowfin_open(struct net_device *dev)
 {
@@ -1053,7 +1050,7 @@ static int yellowfin_rx(struct net_device *dev)
 		struct sk_buff *rx_skb = yp->rx_skbuff[entry];
 		s16 frame_status;
 		u16 desc_status;
-		int data_size, yf_size;
+		int data_size;
 		u8 *buf_addr;
 
 		if(!desc->result_status)
@@ -1070,9 +1067,6 @@ static int yellowfin_rx(struct net_device *dev)
 			       __func__, frame_status);
 		if (--boguscnt < 0)
 			break;
-
-		yf_size = sizeof(struct yellowfin_desc);
-
 		if ( ! (desc_status & RX_EOP)) {
 			if (data_size != 0)
 				netdev_warn(dev, "Oversized Ethernet frame spanned multiple buffers, status %04x, data_size %d!\n",
@@ -1099,12 +1093,12 @@ static int yellowfin_rx(struct net_device *dev)
 			if (status2 & 0x80) dev->stats.rx_dropped++;
 #ifdef YF_PROTOTYPE		/* Support for prototype hardware errata. */
 		} else if ((yp->flags & HasMACAddrBug)  &&
-			!ether_addr_equal(le32_to_cpu(yp->rx_ring_dma +
-						      entry * yf_size),
-					  dev->dev_addr) &&
-			!ether_addr_equal(le32_to_cpu(yp->rx_ring_dma +
-						      entry * yf_size),
-					  "\377\377\377\377\377\377")) {
+			memcmp(le32_to_cpu(yp->rx_ring_dma +
+				entry*sizeof(struct yellowfin_desc)),
+				dev->dev_addr, 6) != 0 &&
+			memcmp(le32_to_cpu(yp->rx_ring_dma +
+				entry*sizeof(struct yellowfin_desc)),
+				"\377\377\377\377\377\377", 6) != 0) {
 			if (bogus_rx++ == 0)
 				netdev_warn(dev, "Bad frame to %pM\n",
 					    buf_addr);
@@ -1374,7 +1368,6 @@ static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	}
 }
 
-
 static void yellowfin_remove_one(struct pci_dev *pdev)
 {
 	struct net_device *dev = pci_get_drvdata(pdev);
@@ -1394,8 +1387,8 @@ static void yellowfin_remove_one(struct pci_dev *pdev)
 	pci_release_regions (pdev);
 
 	free_netdev (dev);
+	pci_set_drvdata(pdev, NULL);
 }
-
 
 static struct pci_driver yellowfin_driver = {
 	.name		= DRV_NAME,
@@ -1403,7 +1396,6 @@ static struct pci_driver yellowfin_driver = {
 	.probe		= yellowfin_init_one,
 	.remove		= yellowfin_remove_one,
 };
-
 
 static int __init yellowfin_init (void)
 {
@@ -1414,12 +1406,10 @@ static int __init yellowfin_init (void)
 	return pci_register_driver(&yellowfin_driver);
 }
 
-
 static void __exit yellowfin_cleanup (void)
 {
 	pci_unregister_driver (&yellowfin_driver);
 }
-
 
 module_init(yellowfin_init);
 module_exit(yellowfin_cleanup);

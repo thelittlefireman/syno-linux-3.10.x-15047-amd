@@ -1703,7 +1703,6 @@ static void cy_flush_buffer(struct tty_struct *tty)
 	tty_wakeup(tty);
 }				/* cy_flush_buffer */
 
-
 static void cy_do_close(struct tty_port *port)
 {
 	struct cyclades_port *info = container_of(port, struct cyclades_port,
@@ -2709,8 +2708,6 @@ cy_ioctl(struct tty_struct *tty,
 		break;
 #ifndef CONFIG_CYZ_INTR
 	case CYZSETPOLLCYCLE:
-		if (arg > LONG_MAX / HZ)
-			return -ENODEV;
 		cyz_polling_cycle = (arg * HZ) / 1000;
 		break;
 	case CYZGETPOLLCYCLE:

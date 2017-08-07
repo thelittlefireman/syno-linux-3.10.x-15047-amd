@@ -60,7 +60,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 /* enable support for minutes as units? */
 /* (does not always work correctly, so disabled by default!) */
 #define SMSC_SUPPORT_MINUTES
@@ -345,7 +344,6 @@ static int wb_smsc_wdt_status(void)
 	return (wb_smsc_wdt_get_timeout() == 0) ? 0 : WDIOF_KEEPALIVEPING;
 }
 
-
 /* -- File operations -------------------------------------------*/
 
 /* open => enable watchdog and set initial timeout */
@@ -602,6 +600,8 @@ MODULE_AUTHOR("Sven Anders <anders@anduras.de>");
 MODULE_DESCRIPTION("Driver for SMsC 37B787 watchdog component (Version "
 								VERSION ")");
 MODULE_LICENSE("GPL");
+
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 
 #ifdef SMSC_SUPPORT_MINUTES
 module_param(unit, int, 0);

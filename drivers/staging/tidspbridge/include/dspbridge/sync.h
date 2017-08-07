@@ -22,7 +22,6 @@
 #include <dspbridge/dbdefs.h>
 #include <dspbridge/host_os.h>
 
-
 /* Special timeout value indicating an infinite wait: */
 #define SYNC_INFINITE  0xffffffff
 
@@ -59,7 +58,7 @@ static inline void sync_init_event(struct sync_object *event)
 
 static inline void sync_reset_event(struct sync_object *event)
 {
-	reinit_completion(&event->comp);
+	INIT_COMPLETION(event->comp);
 	event->multi_comp = NULL;
 }
 

@@ -89,7 +89,6 @@ struct ushc_int_data {
 #define USHC_INT_STATUS_SDIO_INT     (1 << 1)
 #define USHC_INT_STATUS_CARD_PRESENT (1 << 0)
 
-
 struct ushc_data {
 	struct usb_device *usb_dev;
 	struct mmc_host *mmc;
@@ -504,7 +503,7 @@ static int ushc_probe(struct usb_interface *intf, const struct usb_device_id *id
 		ret = -ENOMEM;
 		goto err;
 	}
-	ushc->csw = kzalloc(sizeof(struct ushc_csw), GFP_KERNEL);
+	ushc->csw = kzalloc(sizeof(struct ushc_cbw), GFP_KERNEL);
 	if (ushc->csw == NULL) {
 		ret = -ENOMEM;
 		goto err;

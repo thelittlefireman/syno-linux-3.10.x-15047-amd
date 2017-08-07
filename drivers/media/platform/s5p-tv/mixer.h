@@ -65,7 +65,7 @@ struct mxr_format {
 	int num_subframes;
 	/** specifies to which subframe belong given plane */
 	int plane2subframe[MXR_MAX_PLANES];
-	/** internal code, driver dependent */
+	/** internal code, driver dependant */
 	unsigned long cookie;
 };
 
@@ -117,7 +117,6 @@ struct mxr_buffer {
 	/** node for layer's lists */
 	struct list_head	list;
 };
-
 
 /** internal states of layer */
 enum mxr_layer_state {
@@ -363,4 +362,3 @@ void mxr_reg_vp_format(struct mxr_device *mdev,
 void mxr_reg_dump(struct mxr_device *mdev);
 
 #endif /* SAMSUNG_MIXER_H */
-

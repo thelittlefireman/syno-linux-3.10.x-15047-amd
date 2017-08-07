@@ -38,7 +38,6 @@
 #include "pio.h"
 #include "pm.h"
 
-
 #define PBMEM(base)					\
 	{						\
 		.start		= base,			\
@@ -1060,9 +1059,7 @@ struct platform_device *__init at32_add_device_usart(unsigned int id)
 
 void __init at32_setup_serial_console(unsigned int usart_id)
 {
-#ifdef CONFIG_SERIAL_ATMEL
 	atmel_default_console_device = at32_usarts[usart_id];
-#endif
 }
 
 /* --------------------------------------------------------------------
@@ -1439,7 +1436,7 @@ fail:
  *  LCDC
  * -------------------------------------------------------------------- */
 #if defined(CONFIG_CPU_AT32AP7000) || defined(CONFIG_CPU_AT32AP7002)
-static struct atmel_lcdfb_pdata atmel_lcdfb0_data;
+static struct atmel_lcdfb_info atmel_lcdfb0_data;
 static struct resource atmel_lcdfb0_resource[] = {
 	{
 		.start		= 0xff000000,
@@ -1467,12 +1464,12 @@ static struct clk atmel_lcdfb0_pixclk = {
 };
 
 struct platform_device *__init
-at32_add_device_lcdc(unsigned int id, struct atmel_lcdfb_pdata *data,
+at32_add_device_lcdc(unsigned int id, struct atmel_lcdfb_info *data,
 		     unsigned long fbmem_start, unsigned long fbmem_len,
 		     u64 pin_mask)
 {
 	struct platform_device *pdev;
-	struct atmel_lcdfb_pdata *info;
+	struct atmel_lcdfb_info *info;
 	struct fb_monspecs *monspecs;
 	struct fb_videomode *modedb;
 	unsigned int modedb_size;
@@ -1529,7 +1526,7 @@ at32_add_device_lcdc(unsigned int id, struct atmel_lcdfb_pdata *data,
 	}
 
 	info = pdev->dev.platform_data;
-	memcpy(info, data, sizeof(struct atmel_lcdfb_pdata));
+	memcpy(info, data, sizeof(struct atmel_lcdfb_info));
 	info->default_monspecs = monspecs;
 
 	pdev->name = "at32ap-lcdfb";
@@ -1982,9 +1979,6 @@ at32_add_device_nand(unsigned int id, struct atmel_nand_data *data)
 	if (platform_device_add_resources(pdev, smc_cs3_resource,
 				ARRAY_SIZE(smc_cs3_resource)))
 		goto fail;
-
-	/* For at32ap7000, we use the reset workaround for nand driver */
-	data->need_reset_workaround = true;
 
 	if (platform_device_add_data(pdev, data,
 				sizeof(struct atmel_nand_data)))

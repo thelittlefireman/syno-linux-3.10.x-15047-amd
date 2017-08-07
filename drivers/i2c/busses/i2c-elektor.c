@@ -97,7 +97,6 @@ static int pcf_isa_getown(void *data)
 	return (own);
 }
 
-
 static int pcf_isa_getclock(void *data)
 {
 	return (clock);
@@ -131,7 +130,6 @@ static void pcf_isa_waitforpin(void *data)
 	}
 }
 
-
 static irqreturn_t pcf_isa_handler(int this_irq, void *dev_id) {
 	spin_lock(&lock);
 	pcf_pending = 1;
@@ -139,7 +137,6 @@ static irqreturn_t pcf_isa_handler(int this_irq, void *dev_id) {
 	wake_up_interruptible(&pcf_wait);
 	return IRQ_HANDLED;
 }
-
 
 static int pcf_isa_init(void)
 {

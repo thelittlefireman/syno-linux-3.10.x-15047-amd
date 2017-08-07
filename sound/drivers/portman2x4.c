@@ -284,7 +284,6 @@ static void portman_write_midi(struct portman *pm,
 	/* Data sent. */
 }
 
-
 /*
  *  Read MIDI byte from port
  *  Attempt to read input byte from specified hardware input port (0..).
@@ -357,7 +356,6 @@ static int portman_read_midi(struct portman *pm, int port)
 	portman_write_data(pm, 1);	/* Cause rising edge, which shifts data. */
 	portman_write_data(pm, 0);	/* Return data clock low. */
 
-
 	/* De-assert Strobe and return data. */
 	portman_write_command(pm, cmdout);	/* Output saved address+IE. */
 
@@ -392,7 +390,6 @@ static int portman_data_avail(struct portman *pm, int channel)
 	/* No Data available */
 	return 0;
 }
-
 
 /*
  *  Flushes any input
@@ -748,8 +745,7 @@ static int snd_portman_probe(struct platform_device *pdev)
 	if ((err = snd_portman_probe_port(p)) < 0)
 		return err;
 
-	err = snd_card_new(&pdev->dev, index[dev], id[dev], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0) {
 		snd_printd("Cannot create card\n");
 		return err;
@@ -799,6 +795,8 @@ static int snd_portman_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, card);
 
+	snd_card_set_dev(card, &pdev->dev);
+
 	/* At this point card will be usable */
 	if ((err = snd_card_register(card)) < 0) {
 		snd_printd("Cannot register card\n");
@@ -822,7 +820,6 @@ static int snd_portman_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 
 static struct platform_driver snd_portman_driver = {
 	.probe  = snd_portman_probe,

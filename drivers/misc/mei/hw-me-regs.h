@@ -134,7 +134,6 @@
 /* ME_CSR_HA - ME Control Status Host Access register (read only) */
 #define ME_CSR_HA  0xC
 
-
 /* register bits of H_CSR (Host Control Status register) */
 /* Host Circular Buffer Depth - maximum number of 32-bit entries in CB */
 #define H_CBD             0xFF000000
@@ -152,7 +151,6 @@
 #define H_IS              0x00000002
 /* Host Interrupt Enable */
 #define H_IE              0x00000001
-
 
 /* register bits of ME_CSR_HA (ME Control Status Host Access register) */
 /* ME CB (Circular Buffer) Depth HRA (Host Read Access) - host read only

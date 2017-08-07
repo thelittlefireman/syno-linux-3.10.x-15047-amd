@@ -22,6 +22,7 @@
 #include <linux/spi/spi.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
+#include <linux/pinctrl/consumer.h>
 #include <net/wpan-phy.h>
 #include <net/mac802154.h>
 #include <net/ieee802154.h>
@@ -82,6 +83,7 @@ struct mrf24j40 {
 
 	struct mutex buffer_mutex; /* only used to protect buf */
 	struct completion tx_complete;
+	struct work_struct irqwork;
 	u8 *buf; /* 3 bytes. Used for SPI single-register transfers. */
 };
 
@@ -343,8 +345,6 @@ static int mrf24j40_tx(struct ieee802154_dev *dev, struct sk_buff *skb)
 	if (ret)
 		goto err;
 
-	reinit_completion(&devrec->tx_complete);
-
 	/* Set TXNTRIG bit of TXNCON to send packet */
 	ret = read_short_reg(devrec, REG_TXNCON, &val);
 	if (ret)
@@ -354,6 +354,8 @@ static int mrf24j40_tx(struct ieee802154_dev *dev, struct sk_buff *skb)
 	if (skb->data[0] & IEEE802154_FC_ACK_REQ)
 		val |= 0x4;
 	write_short_reg(devrec, REG_TXNCON, val);
+
+	INIT_COMPLETION(devrec->tx_complete);
 
 	/* Wait for the device to send the TX complete interrupt. */
 	ret = wait_for_completion_interruptible_timeout(
@@ -465,8 +467,8 @@ static int mrf24j40_filter(struct ieee802154_dev *dev,
 	if (changed & IEEE802515_AFILT_SADDR_CHANGED) {
 		/* Short Addr */
 		u8 addrh, addrl;
-		addrh = le16_to_cpu(filt->short_addr) >> 8 & 0xff;
-		addrl = le16_to_cpu(filt->short_addr) & 0xff;
+		addrh = filt->short_addr >> 8 & 0xff;
+		addrl = filt->short_addr & 0xff;
 
 		write_short_reg(devrec, REG_SADRH, addrh);
 		write_short_reg(devrec, REG_SADRL, addrl);
@@ -476,16 +478,15 @@ static int mrf24j40_filter(struct ieee802154_dev *dev,
 
 	if (changed & IEEE802515_AFILT_IEEEADDR_CHANGED) {
 		/* Device Address */
-		u8 i, addr[8];
-
-		memcpy(addr, &filt->ieee_addr, 8);
+		int i;
 		for (i = 0; i < 8; i++)
-			write_short_reg(devrec, REG_EADR0 + i, addr[i]);
+			write_short_reg(devrec, REG_EADR0+i,
+					filt->ieee_addr[7-i]);
 
 #ifdef DEBUG
 		printk(KERN_DEBUG "Set long addr to: ");
 		for (i = 0; i < 8; i++)
-			printk("%02hhx ", addr[7 - i]);
+			printk("%02hhx ", filt->ieee_addr[i]);
 		printk(KERN_DEBUG "\n");
 #endif
 	}
@@ -493,8 +494,8 @@ static int mrf24j40_filter(struct ieee802154_dev *dev,
 	if (changed & IEEE802515_AFILT_PANID_CHANGED) {
 		/* PAN ID */
 		u8 panidl, panidh;
-		panidh = le16_to_cpu(filt->pan_id) >> 8 & 0xff;
-		panidl = le16_to_cpu(filt->pan_id) & 0xff;
+		panidh = filt->pan_id >> 8 & 0xff;
+		panidl = filt->pan_id & 0xff;
 		write_short_reg(devrec, REG_PANIDH, panidh);
 		write_short_reg(devrec, REG_PANIDL, panidl);
 
@@ -590,6 +591,17 @@ static struct ieee802154_ops mrf24j40_ops = {
 static irqreturn_t mrf24j40_isr(int irq, void *data)
 {
 	struct mrf24j40 *devrec = data;
+
+	disable_irq_nosync(irq);
+
+	schedule_work(&devrec->irqwork);
+
+	return IRQ_HANDLED;
+}
+
+static void mrf24j40_isrwork(struct work_struct *work)
+{
+	struct mrf24j40 *devrec = container_of(work, struct mrf24j40, irqwork);
 	u8 intstat;
 	int ret;
 
@@ -607,7 +619,7 @@ static irqreturn_t mrf24j40_isr(int irq, void *data)
 		mrf24j40_handle_rx(devrec);
 
 out:
-	return IRQ_HANDLED;
+	enable_irq(devrec->spi->irq);
 }
 
 static int mrf24j40_probe(struct spi_device *spi)
@@ -615,6 +627,7 @@ static int mrf24j40_probe(struct spi_device *spi)
 	int ret = -ENOMEM;
 	u8 val;
 	struct mrf24j40 *devrec;
+	struct pinctrl *pinctrl;
 
 	printk(KERN_INFO "mrf24j40: probe(). IRQ: %d\n", spi->irq);
 
@@ -625,12 +638,18 @@ static int mrf24j40_probe(struct spi_device *spi)
 	if (!devrec->buf)
 		goto err_buf;
 
+	pinctrl = devm_pinctrl_get_select_default(&spi->dev);
+	if (IS_ERR(pinctrl))
+		dev_warn(&spi->dev,
+			"pinctrl pins are not configured from the driver");
+
 	spi->mode = SPI_MODE_0; /* TODO: Is this appropriate for right here? */
 	if (spi->max_speed_hz > MAX_SPI_SPEED_HZ)
 		spi->max_speed_hz = MAX_SPI_SPEED_HZ;
 
 	mutex_init(&devrec->buffer_mutex);
 	init_completion(&devrec->tx_complete);
+	INIT_WORK(&devrec->irqwork, mrf24j40_isrwork);
 	devrec->spi = spi;
 	spi_set_drvdata(spi, devrec);
 
@@ -676,12 +695,11 @@ static int mrf24j40_probe(struct spi_device *spi)
 	val &= ~0x3; /* Clear RX mode (normal) */
 	write_short_reg(devrec, REG_RXMCR, val);
 
-	ret = request_threaded_irq(spi->irq,
-				   NULL,
-				   mrf24j40_isr,
-				   IRQF_TRIGGER_LOW|IRQF_ONESHOT,
-				   dev_name(&spi->dev),
-				   devrec);
+	ret = request_irq(spi->irq,
+			  mrf24j40_isr,
+			  IRQF_TRIGGER_FALLING,
+			  dev_name(&spi->dev),
+			  devrec);
 
 	if (ret) {
 		dev_err(printdev(devrec), "Unable to get IRQ");
@@ -710,12 +728,14 @@ static int mrf24j40_remove(struct spi_device *spi)
 	dev_dbg(printdev(devrec), "remove\n");
 
 	free_irq(spi->irq, devrec);
+	flush_work(&devrec->irqwork); /* TODO: Is this the right call? */
 	ieee802154_unregister_device(devrec->dev);
 	ieee802154_free_device(devrec->dev);
 	/* TODO: Will ieee802154_free_device() wait until ->xmit() is
 	 * complete? */
 
 	/* Clean up the SPI stuff. */
+	spi_set_drvdata(spi, NULL);
 	kfree(devrec->buf);
 	kfree(devrec);
 	return 0;

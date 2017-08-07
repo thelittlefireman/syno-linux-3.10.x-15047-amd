@@ -688,7 +688,7 @@ static int vpfe_attach_irq(struct vpfe_device *vpfe_dev)
 	frame_format = ccdc_dev->hw_ops.get_frame_format();
 	if (frame_format == CCDC_FRMFMT_PROGRESSIVE) {
 		return request_irq(vpfe_dev->ccdc_irq1, vdint1_isr,
-				    0, "vpfe_capture1",
+				    IRQF_DISABLED, "vpfe_capture1",
 				    vpfe_dev);
 	}
 	return 0;
@@ -1103,7 +1103,6 @@ static int vpfe_g_input(struct file *file, void *priv, unsigned int *index)
 	return vpfe_get_app_input_index(vpfe_dev, index);
 }
 
-
 static int vpfe_s_input(struct file *file, void *priv, unsigned int index)
 {
 	struct vpfe_device *vpfe_dev = video_drvdata(file);
@@ -1513,7 +1512,6 @@ static int vpfe_streamon(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-
 	ret = mutex_lock_interruptible(&vpfe_dev->lock);
 	if (ret)
 		goto streamoff;
@@ -1684,7 +1682,6 @@ unlock_out:
 	return ret;
 }
 
-
 static long vpfe_param_handler(struct file *file, void *priv,
 		bool valid_prio, unsigned int cmd, void *param)
 {
@@ -1735,7 +1732,6 @@ unlock_out:
 	mutex_unlock(&vpfe_dev->lock);
 	return ret;
 }
-
 
 /* vpfe capture ioctl operations */
 static const struct v4l2_ioctl_ops vpfe_ioctl_ops = {
@@ -1863,7 +1859,7 @@ static int vpfe_probe(struct platform_device *pdev)
 	}
 	vpfe_dev->ccdc_irq1 = res1->start;
 
-	ret = request_irq(vpfe_dev->ccdc_irq0, vpfe_isr, 0,
+	ret = request_irq(vpfe_dev->ccdc_irq0, vpfe_isr, IRQF_DISABLED,
 			  "vpfe_capture0", vpfe_dev);
 
 	if (0 != ret) {

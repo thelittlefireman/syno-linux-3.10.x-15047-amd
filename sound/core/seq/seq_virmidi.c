@@ -254,9 +254,13 @@ static int snd_virmidi_output_open(struct snd_rawmidi_substream *substream)
  */
 static int snd_virmidi_input_close(struct snd_rawmidi_substream *substream)
 {
+	struct snd_virmidi_dev *rdev = substream->rmidi->private_data;
 	struct snd_virmidi *vmidi = substream->runtime->private_data;
-	snd_midi_event_free(vmidi->parser);
+
+	write_lock_irq(&rdev->filelist_lock);
 	list_del(&vmidi->list);
+	write_unlock_irq(&rdev->filelist_lock);
+	snd_midi_event_free(vmidi->parser);
 	substream->runtime->private_data = NULL;
 	kfree(vmidi);
 	return 0;
@@ -303,7 +307,6 @@ static int snd_virmidi_unsubscribe(void *private_data,
 	return 0;
 }
 
-
 /*
  * use callback - allow input to rawmidi device
  */
@@ -332,7 +335,6 @@ static int snd_virmidi_unuse(void *private_data,
 	module_put(rdev->card->module);
 	return 0;
 }
-
 
 /*
  *  Register functions
@@ -414,7 +416,6 @@ static int snd_virmidi_dev_attach_seq(struct snd_virmidi_dev *rdev)
 	return err;
 }
 
-
 /*
  * release the sequencer client
  */
@@ -446,12 +447,11 @@ static int snd_virmidi_dev_register(struct snd_rawmidi *rmidi)
 		/* should check presence of port more strictly.. */
 		break;
 	default:
-		pr_err("ALSA: seq_virmidi: seq_mode is not set: %d\n", rdev->seq_mode);
+		snd_printk(KERN_ERR "seq_mode is not set: %d\n", rdev->seq_mode);
 		return -EINVAL;
 	}
 	return 0;
 }
-
 
 /*
  * unregister the device

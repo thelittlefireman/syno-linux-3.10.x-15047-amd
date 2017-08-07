@@ -27,7 +27,6 @@
 #include <asm/ps3stor.h>
 #include <asm/firmware.h>
 
-
 #define DEVICE_NAME		"ps3disk"
 
 #define BOUNCE_SIZE		(64*1024)
@@ -35,9 +34,7 @@
 #define PS3DISK_MAX_DISKS	16
 #define PS3DISK_MINORS		16
 
-
 #define PS3DISK_NAME		"ps3d%c"
-
 
 struct ps3disk_private {
 	spinlock_t lock;		/* Request queue spinlock */
@@ -48,7 +45,6 @@ struct ps3disk_private {
 	u64 raw_capacity;
 	unsigned char model[ATA_ID_PROD_LEN+1];
 };
-
 
 #define LV1_STORAGE_SEND_ATA_COMMAND	(2)
 #define LV1_STORAGE_ATA_HDDOUT		(0x23)
@@ -83,36 +79,35 @@ enum lv1_ata_in_out {
 
 static int ps3disk_major;
 
-
 static const struct block_device_operations ps3disk_fops = {
 	.owner		= THIS_MODULE,
 };
-
 
 static void ps3disk_scatter_gather(struct ps3_storage_device *dev,
 				   struct request *req, int gather)
 {
 	unsigned int offset = 0;
 	struct req_iterator iter;
-	struct bio_vec bvec;
+	struct bio_vec *bvec;
 	unsigned int i = 0;
 	size_t size;
 	void *buf;
 
 	rq_for_each_segment(bvec, req, iter) {
 		unsigned long flags;
-		dev_dbg(&dev->sbd.core, "%s:%u: bio %u: %u sectors from %lu\n",
-			__func__, __LINE__, i, bio_sectors(iter.bio),
-			iter.bio->bi_iter.bi_sector);
+		dev_dbg(&dev->sbd.core,
+			"%s:%u: bio %u: %u segs %u sectors from %lu\n",
+			__func__, __LINE__, i, bio_segments(iter.bio),
+			bio_sectors(iter.bio), iter.bio->bi_sector);
 
-		size = bvec.bv_len;
-		buf = bvec_kmap_irq(&bvec, &flags);
+		size = bvec->bv_len;
+		buf = bvec_kmap_irq(bvec, &flags);
 		if (gather)
 			memcpy(dev->bounce_buf+offset, buf, size);
 		else
 			memcpy(buf, dev->bounce_buf+offset, size);
 		offset += size;
-		flush_kernel_dcache_page(bvec.bv_page);
+		flush_kernel_dcache_page(bvec->bv_page);
 		bvec_kunmap_irq(buf, &flags);
 		i++;
 	}
@@ -129,7 +124,7 @@ static int ps3disk_submit_request_sg(struct ps3_storage_device *dev,
 
 #ifdef DEBUG
 	unsigned int n = 0;
-	struct bio_vec bv;
+	struct bio_vec *bv;
 	struct req_iterator iter;
 
 	rq_for_each_segment(bv, req, iter)
@@ -298,7 +293,6 @@ static int ps3disk_sync_cache(struct ps3_storage_device *dev)
 	}
 	return 0;
 }
-
 
 /* ATA helpers copied from drivers/ata/libata-core.c */
 
@@ -547,7 +541,6 @@ static struct ps3_system_bus_driver ps3disk = {
 	.remove		= ps3disk_remove,
 	.shutdown	= ps3disk_remove,
 };
-
 
 static int __init ps3disk_init(void)
 {

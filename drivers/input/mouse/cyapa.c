@@ -161,7 +161,6 @@ enum cyapa_state {
 	CYAPA_STATE_NO_DEVICE,
 };
 
-
 struct cyapa_touch {
 	/*
 	 * high bits or x/y position value

@@ -19,7 +19,6 @@
 #include <linux/init.h>
 #include <linux/timer.h>
 #include <linux/spinlock.h>
-#include <linux/wait.h>
 
 #include <asm/io.h>
 #include <dma.h>
@@ -32,7 +31,6 @@
 #include <hwregs/intr_vect.h>
 #include <hwregs/reg_map.h>
 #include <asm/sync_serial.h>
-
 
 /* The receiver is a bit tricky because of the continuous stream of data.*/
 /*                                                                       */
@@ -453,7 +451,6 @@ static int sync_serial_open(struct inode *inode, struct file *file)
 		DEBUG(printk(KERN_DEBUG "Device is busy.. \n"));
 		goto out;
 	}
-
 
 	if (port->init_irqs) {
 		if (port->use_dma) {
@@ -935,7 +932,6 @@ static int sync_serial_ioctl(struct file *file,
 		return_val = -1;
 	}
 
-
 	if (port->started) {
 		rec_cfg.rec_en = port->input;
 		gen_cfg.en = (port->output | port->input);
@@ -946,7 +942,6 @@ static int sync_serial_ioctl(struct file *file,
 	REG_WR(sser, port->regi_sser, rw_frm_cfg, frm_cfg);
 	REG_WR(sser, port->regi_sser, rw_intr_mask, intr_mask);
 	REG_WR(sser, port->regi_sser, rw_cfg, gen_cfg);
-
 
 	if (cmd == SSP_FRAME_SYNC && (arg & (WORD_SIZE_8 | WORD_SIZE_12 |
 			WORD_SIZE_16 | WORD_SIZE_24 | WORD_SIZE_32))) {
@@ -1145,8 +1140,7 @@ static ssize_t sync_serial_read(struct file * file, char * buf,
 		if (file->f_flags & O_NONBLOCK)
 			return -EAGAIN;
 
-		wait_event_interruptible(port->in_wait_q,
-					 !(start == end && !port->full));
+		interruptible_sleep_on(&port->in_wait_q);
 		if (signal_pending(current))
 			return -EINTR;
 

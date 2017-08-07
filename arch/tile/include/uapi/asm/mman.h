@@ -30,12 +30,10 @@
 #define MAP_EXECUTABLE	0x1000		/* mark it as an executable */
 #define MAP_HUGETLB	0x4000		/* create a huge page mapping */
 
-
 /*
  * Flags for mlockall
  */
 #define MCL_CURRENT	1		/* lock all current mappings */
 #define MCL_FUTURE	2		/* lock all future mappings */
-
 
 #endif /* _ASM_TILE_MMAN_H */

@@ -65,7 +65,6 @@
 #define dbg(x)
 #endif
 
-
 /* special size referring to all the remaining space in a partition */
 #define SIZE_REMAINING ULLONG_MAX
 #define OFFSET_CONTINUOUS ULLONG_MAX
@@ -282,7 +281,6 @@ static int mtdpart_setup_real(char *s)
 		dbg(("mtdid=<%s> num_parts=<%d>\n",
 		     this_mtd->mtd_id, this_mtd->num_parts));
 
-
 		/* EOS - we're done */
 		if (*s == 0)
 			break;
@@ -369,7 +367,6 @@ static int parse_cmdline_partitions(struct mtd_info *master,
 	return part->num_parts;
 }
 
-
 /*
  * This is the handler for our kernel parameter, called from
  * main.c::checksetup(). Note that we can not yet kmalloc() anything,
@@ -395,8 +392,7 @@ static int __init cmdline_parser_init(void)
 {
 	if (mtdparts)
 		mtdpart_setup(mtdparts);
-	register_mtd_parser(&cmdline_parser);
-	return 0;
+	return register_mtd_parser(&cmdline_parser);
 }
 
 static void __exit cmdline_parser_exit(void)

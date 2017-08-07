@@ -25,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -136,7 +137,6 @@ static void optidma_mode_setup(struct ata_port *ap, struct ata_device *adev, u8 
 
 	/* Switch from IDE to control mode */
 	optidma_unlock(ap);
-
 
 	/*
  	 *	As with many controllers the address setup time is shared

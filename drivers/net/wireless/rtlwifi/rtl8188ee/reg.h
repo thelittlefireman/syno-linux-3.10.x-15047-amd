@@ -81,7 +81,6 @@
 #define REG_WOL_EVENT				0x0081
 #define REG_MCUTSTCFG				0x0084
 
-
 #define REG_HIMR				0x00B0
 #define REG_HISR				0x00B4
 #define REG_HIMRE				0x00B8
@@ -181,7 +180,6 @@
 #define	REG_UART_TX_DESA			0x0370
 #define	REG_UART_RX_DESA			0x0378
 
-
 #define	REG_HDAQ_DESA_NODEF			0x0000
 #define	REG_CMDQ_DESA_NODEF			0x0000
 
@@ -193,7 +191,6 @@
 #define REG_HGQ_INFORMATION			0x0414
 #define REG_BCNQ_INFORMATION			0x0418
 #define REG_TXPKT_EMPTY				0x041A
-
 
 #define REG_CPU_MGQ_INFORMATION			0x041C
 #define REG_FWHW_TXQ_CTRL			0x0420
@@ -398,7 +395,6 @@
 #define	HSIMR_RON_INT_EN			BIT(6)
 #define	HSIMR_PDN_INT_EN			BIT(7)
 #define	HSIMR_GPIO9_INT_EN			BIT(25)
-
 
 /* 8723/8188E Host System Interrupt Status Register (offset 0x5C, 32 byte) */
 #define	HSISR_GPIO12_0_INT			BIT(0)
@@ -608,7 +604,6 @@
 					 */
 #define	IMR_TXFOVW		BIT(9)	/* Transmit FIFO Overflow */
 #define	IMR_RXFOVW		BIT(8)	/* Receive FIFO Overflow */
-
 
 #define	HWSET_MAX_SIZE				512
 #define   EFUSE_MAX_SECTION			64
@@ -1357,7 +1352,6 @@
 #define	RCCK0_FACOUNTERUPPER			0xa58
 #define	RCCK0_CCA_CNT				0xa60
 
-
 /* PageB(0xB00) */
 #define	RPDP_ANTA				0xb00
 #define	RPDP_ANTA_4				0xb04
@@ -1465,7 +1459,6 @@
 #define	ROFDM0_TXPSEUDONOISEWGT			0xce4
 #define	ROFDM0_FRAMESYNC			0xcf0
 #define	ROFDM0_DFSREPORT			0xcf4
-
 
 #define	ROFDM1_LSTF				0xd00
 #define	ROFDM1_TRXPATHENABLE			0xd04
@@ -2214,6 +2207,22 @@
 #define	BWORD0					0x3
 #define	BWORD1					0xc
 #define	BWORD					0xf
+
+#define	MASKBYTE0				0xff
+#define	MASKBYTE1				0xff00
+#define	MASKBYTE2				0xff0000
+#define	MASKBYTE3				0xff000000
+#define	MASKHWORD				0xffff0000
+#define	MASKLWORD				0x0000ffff
+#define	MASKDWORD				0xffffffff
+#define	MASK12BITS				0xfff
+#define	MASKH4BITS				0xf0000000
+#define MASKOFDM_D				0xffc00000
+#define	MASKCCK					0x3f3f3f3f
+
+#define	MASK4BITS				0x0f
+#define	MASK20BITS				0xfffff
+#define RFREG_OFFSET_MASK			0xfffff
 
 #define	BENABLE					0x1
 #define	BDISABLE				0x0

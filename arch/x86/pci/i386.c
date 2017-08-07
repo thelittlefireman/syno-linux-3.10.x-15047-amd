@@ -38,7 +38,6 @@
 #include <asm/pci_x86.h>
 #include <asm/io_apic.h>
 
-
 /*
  * This list of dynamic mappings is for temporarily maintaining
  * original BIOS BAR addresses for possible reinstatement.
@@ -162,6 +161,10 @@ pcibios_align_resource(void *data, const struct resource *res,
 			return start;
 		if (start & 0x300)
 			start = (start + 0x3ff) & ~0x3ff;
+	} else if (res->flags & IORESOURCE_MEM) {
+		/* The low 1MB range is reserved for ISA cards */
+		if (start < BIOS_END)
+			start = BIOS_END;
 	}
 	return start;
 }
@@ -209,8 +212,6 @@ static void pcibios_allocate_bridge_resources(struct pci_dev *dev)
 	for (idx = PCI_BRIDGE_RESOURCES; idx < PCI_NUM_RESOURCES; idx++) {
 		r = &dev->resource[idx];
 		if (!r->flags)
-			continue;
-		if (r->parent)	/* Already allocated */
 			continue;
 		if (!r->start || pci_claim_resource(dev, idx) < 0) {
 			/*
@@ -319,8 +320,6 @@ static void pcibios_allocate_dev_rom_resource(struct pci_dev *dev)
 	 */
 	r = &dev->resource[PCI_ROM_RESOURCE];
 	if (!r->flags || !r->start)
-		return;
-	if (r->parent) /* Already allocated */
 		return;
 
 	if (pci_claim_resource(dev, PCI_ROM_RESOURCE) < 0) {

@@ -20,7 +20,6 @@
 #include <net/netlink.h>
 #include <net/pkt_sched.h>
 
-
 /*	Class-Based Queueing (CBQ) algorithm.
 	=======================================
 
@@ -56,7 +55,6 @@
 	In the worst case we have IntServ estimate with D = W*r+k*MTU
 	and C = MTU*r. The proof (if correct at all) is trivial.
 
-
 	--- It seems that cbq-2.0 is not very accurate. At least, I cannot
 	interpret some places, which look like wrong translations
 	from NS. Anyone is advised to find these differences
@@ -70,7 +68,6 @@
 	very close to an ideal solution.  */
 
 struct cbq_sched_data;
-
 
 struct cbq_class {
 	struct Qdisc_class_common common;
@@ -114,7 +111,6 @@ struct cbq_class {
 
 	struct Qdisc		*q;		/* Elementary queueing discipline */
 
-
 /* Variables */
 	unsigned char		cpriority;	/* Effective priority */
 	unsigned char		delayed;
@@ -130,7 +126,7 @@ struct cbq_class {
 	psched_time_t		penalized;
 	struct gnet_stats_basic_packed bstats;
 	struct gnet_stats_queue qstats;
-	struct gnet_stats_rate_est64 rate_est;
+	struct gnet_stats_rate_est rate_est;
 	struct tc_cbq_xstats	xstats;
 
 	struct tcf_proto	*filter_list;
@@ -171,7 +167,6 @@ struct cbq_sched_data {
 	int			toplevel;
 	u32			hgenerator;
 };
-
 
 #define L2T(cl, len)	qdisc_l2t((cl)->R_tab, len)
 
@@ -1058,10 +1053,9 @@ static void cbq_normalize_quanta(struct cbq_sched_data *q, int prio)
 				cl->quantum = (cl->weight*cl->allot*q->nclasses[prio])/
 					q->quanta[prio];
 			}
-			if (cl->quantum <= 0 ||
-			    cl->quantum > 32*qdisc_dev(cl->qdisc)->mtu) {
-				pr_warn("CBQ: class %08x has bad quantum==%ld, repaired.\n",
-					cl->common.classid, cl->quantum);
+			if (cl->quantum <= 0 || cl->quantum>32*qdisc_dev(cl->qdisc)->mtu) {
+				pr_warning("CBQ: class %08x has bad quantum==%ld, repaired.\n",
+					   cl->common.classid, cl->quantum);
 				cl->quantum = qdisc_dev(cl->qdisc)->mtu/2 + 1;
 			}
 		}
@@ -1241,7 +1235,6 @@ cbq_reset(struct Qdisc *sch)
 	}
 	sch->q.qlen = 0;
 }
-
 
 static int cbq_set_lss(struct cbq_class *cl, struct tc_cbq_lssopt *lss)
 {
@@ -1563,7 +1556,8 @@ static int cbq_dump(struct Qdisc *sch, struct sk_buff *skb)
 		goto nla_put_failure;
 	if (cbq_dump_attr(skb, &q->link) < 0)
 		goto nla_put_failure;
-	return nla_nest_end(skb, nest);
+	nla_nest_end(skb, nest);
+	return skb->len;
 
 nla_put_failure:
 	nla_nest_cancel(skb, nest);
@@ -1598,7 +1592,8 @@ cbq_dump_class(struct Qdisc *sch, unsigned long arg,
 		goto nla_put_failure;
 	if (cbq_dump_attr(skb, cl) < 0)
 		goto nla_put_failure;
-	return nla_nest_end(skb, nest);
+	nla_nest_end(skb, nest);
+	return skb->len;
 
 nla_put_failure:
 	nla_nest_cancel(skb, nest);
@@ -1781,7 +1776,8 @@ cbq_change_class(struct Qdisc *sch, u32 classid, u32 parentid, struct nlattr **t
 						    qdisc_root_sleeping_lock(sch),
 						    tca[TCA_RATE]);
 			if (err) {
-				qdisc_put_rtab(rtab);
+				if (rtab)
+					qdisc_put_rtab(rtab);
 				return err;
 			}
 		}

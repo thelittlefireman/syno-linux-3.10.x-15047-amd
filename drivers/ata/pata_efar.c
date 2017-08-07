@@ -14,6 +14,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -244,7 +245,6 @@ static struct ata_port_operations efar_ops = {
 	.set_dmamode		= efar_set_dmamode,
 	.prereset		= efar_pre_reset,
 };
-
 
 /**
  *	efar_init_one - Register EFAR ATA PCI device with kernel services

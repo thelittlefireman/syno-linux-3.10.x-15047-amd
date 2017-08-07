@@ -8,7 +8,6 @@
 #include <xen/xen.h>
 #include <asm/iommu_table.h>
 
-
 #include <asm/xen/swiotlb-xen.h>
 #ifdef CONFIG_X86_64
 #include <asm/iommu.h>
@@ -75,10 +74,8 @@ void __init pci_xen_swiotlb_init(void)
 		xen_swiotlb_init(1, true /* early */);
 		dma_ops = &xen_swiotlb_dma_ops;
 
-#ifdef CONFIG_PCI
 		/* Make sure ACS will be enabled */
 		pci_request_acs();
-#endif
 	}
 }
 
@@ -94,10 +91,8 @@ int pci_xen_swiotlb_init_late(void)
 		return rc;
 
 	dma_ops = &xen_swiotlb_dma_ops;
-#ifdef CONFIG_PCI
 	/* Make sure ACS will be enabled */
 	pci_request_acs();
-#endif
 
 	return 0;
 }

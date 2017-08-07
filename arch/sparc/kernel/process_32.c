@@ -22,6 +22,7 @@
 #include <linux/reboot.h>
 #include <linux/delay.h>
 #include <linux/pm.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 
 #include <asm/auxio.h>
@@ -484,4 +485,3 @@ unsigned long get_wchan(struct task_struct *task)
 out:
 	return ret;
 }
-

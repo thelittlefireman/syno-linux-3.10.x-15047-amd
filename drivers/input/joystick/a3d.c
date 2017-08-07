@@ -29,6 +29,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/slab.h>
+#include <linux/init.h>
 #include <linux/gameport.h>
 #include <linux/input.h>
 #include <linux/jiffies.h>
@@ -169,7 +170,6 @@ static void a3d_read(struct a3d *a3d, unsigned char *data)
 			break;
 	}
 }
-
 
 /*
  * a3d_poll() reads and analyzes A3D joystick data.

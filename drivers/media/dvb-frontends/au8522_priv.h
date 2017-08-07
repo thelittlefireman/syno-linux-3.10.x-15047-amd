@@ -321,7 +321,6 @@ int au8522_led_ctrl(struct au8522_state *state, int led);
 #define AU8522_AUDIOAGC2_REG605H 			0x605
 #define AU8522_AUDIOFREQ_REG606H 			0x606
 
-
 /**************************************************************/
 
 /* Format control 1 */
@@ -347,7 +346,6 @@ int au8522_led_ctrl(struct au8522_state *state, int led);
 /* Format control 2 */
 #define AU8522_TVDEC_FORMAT_CTRL2_REG062H_STD_AUTODETECT	0x00
 #define AU8522_TVDEC_FORMAT_CTRL2_REG062H_STD_NTSC		0x01
-
 
 #define AU8522_INPUT_CONTROL_REG081H_ATSC               	0xC4
 #define AU8522_INPUT_CONTROL_REG081H_ATVRF			0xC4

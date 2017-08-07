@@ -59,14 +59,11 @@ static unsigned int		longest_chain_cachesize;
 
 static int	nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *vec);
 static void	cache_cleaner_func(struct work_struct *unused);
-static unsigned long nfsd_reply_cache_count(struct shrinker *shrink,
-					    struct shrink_control *sc);
-static unsigned long nfsd_reply_cache_scan(struct shrinker *shrink,
-					   struct shrink_control *sc);
+static int 	nfsd_reply_cache_shrink(struct shrinker *shrink,
+					struct shrink_control *sc);
 
 static struct shrinker nfsd_reply_cache_shrinker = {
-	.scan_objects = nfsd_reply_cache_scan,
-	.count_objects = nfsd_reply_cache_count,
+	.shrink	= nfsd_reply_cache_shrink,
 	.seeks	= 1,
 };
 
@@ -224,29 +221,26 @@ hash_refile(struct svc_cacherep *rp)
 	hlist_add_head(&rp->c_hash, cache_hash + hash_32(rp->c_xid, maskbits));
 }
 
-static inline bool
-nfsd_cache_entry_expired(struct svc_cacherep *rp)
-{
-	return rp->c_state != RC_INPROG &&
-	       time_after(jiffies, rp->c_timestamp + RC_EXPIRE);
-}
-
 /*
  * Walk the LRU list and prune off entries that are older than RC_EXPIRE.
  * Also prune the oldest ones when the total exceeds the max number of entries.
  */
-static long
+static void
 prune_cache_entries(void)
 {
 	struct svc_cacherep *rp, *tmp;
-	long freed = 0;
 
 	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
-		if (!nfsd_cache_entry_expired(rp) &&
-		    num_drc_entries <= max_drc_entries)
+		/*
+		 * Don't free entries attached to calls that are still
+		 * in-progress, but do keep scanning the list.
+		 */
+		if (rp->c_state == RC_INPROG)
+			continue;
+		if (num_drc_entries <= max_drc_entries &&
+		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
 			break;
 		nfsd_reply_cache_free_locked(rp);
-		freed++;
 	}
 
 	/*
@@ -259,7 +253,6 @@ prune_cache_entries(void)
 		cancel_delayed_work(&cache_cleaner);
 	else
 		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
-	return freed;
 }
 
 static void
@@ -270,28 +263,20 @@ cache_cleaner_func(struct work_struct *unused)
 	spin_unlock(&cache_lock);
 }
 
-static unsigned long
-nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
+static int
+nfsd_reply_cache_shrink(struct shrinker *shrink, struct shrink_control *sc)
 {
-	unsigned long num;
+	unsigned int num;
 
 	spin_lock(&cache_lock);
+	if (sc->nr_to_scan)
+		prune_cache_entries();
 	num = num_drc_entries;
 	spin_unlock(&cache_lock);
 
 	return num;
 }
 
-static unsigned long
-nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
-{
-	unsigned long freed;
-
-	spin_lock(&cache_lock);
-	freed = prune_cache_entries();
-	spin_unlock(&cache_lock);
-	return freed;
-}
 /*
  * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
  */

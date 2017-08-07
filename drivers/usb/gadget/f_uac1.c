@@ -695,7 +695,7 @@ static int generic_get_cmd(struct usb_audio_control *con, u8 cmd)
 }
 
 /* Todo: add more control selecotor dynamically */
-static int __init control_selector_init(struct f_audio *audio)
+int __init control_selector_init(struct f_audio *audio)
 {
 	INIT_LIST_HEAD(&audio->cs);
 	list_add(&feature_unit.list, &audio->cs);
@@ -719,7 +719,7 @@ static int __init control_selector_init(struct f_audio *audio)
  *
  * Returns zero on success, else negative errno.
  */
-static int __init audio_bind_config(struct usb_configuration *c)
+int __init audio_bind_config(struct usb_configuration *c)
 {
 	struct f_audio *audio;
 	int status;

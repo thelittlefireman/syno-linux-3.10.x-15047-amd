@@ -25,7 +25,6 @@
 
 *******************************************************************************/
 
-
 #include "vf.h"
 
 static s32 e1000_check_for_link_vf(struct e1000_hw *hw);
@@ -154,7 +153,7 @@ static s32 e1000_reset_hw_vf(struct e1000_hw *hw)
 		ret_val = mbx->ops.read_posted(hw, msgbuf, 3);
 		if (!ret_val) {
 			if (msgbuf[0] == (E1000_VF_RESET | E1000_VT_MSGTYPE_ACK))
-				memcpy(hw->mac.perm_addr, addr, ETH_ALEN);
+				memcpy(hw->mac.perm_addr, addr, 6);
 			else
 				ret_val = -E1000_ERR_MAC_INIT;
 		}
@@ -314,7 +313,7 @@ static void e1000_rar_set_vf(struct e1000_hw *hw, u8 * addr, u32 index)
 
 	memset(msgbuf, 0, 12);
 	msgbuf[0] = E1000_VF_SET_MAC_ADDR;
-	memcpy(msg_addr, addr, ETH_ALEN);
+	memcpy(msg_addr, addr, 6);
 	ret_val = mbx->ops.write_posted(hw, msgbuf, 3);
 
 	if (!ret_val)
@@ -397,4 +396,3 @@ static s32 e1000_check_for_link_vf(struct e1000_hw *hw)
 out:
 	return ret_val;
 }
-

@@ -1,5 +1,5 @@
 /****************************************************************************
- * Driver for Solarflare network controllers and boards
+ * Driver for Solarflare Solarstorm network controllers and boards
  * Copyright 2007-2011 Solarflare Communications Inc.
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -388,7 +388,6 @@ static void tenxpress_phy_remove(struct efx_nic *efx)
 	kfree(efx->phy_data);
 	efx->phy_data = NULL;
 }
-
 
 /* Override the RX, TX and link LEDs */
 void tenxpress_set_id_led(struct efx_nic *efx, enum efx_led_mode mode)

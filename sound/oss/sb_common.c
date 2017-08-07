@@ -226,6 +226,8 @@ int sb_dsp_reset(sb_devc * devc)
 {
 	int loopc;
 
+	DEB(printk("Entered sb_dsp_reset()\n"));
+
 	if (devc->model == MDL_ESS) return ess_dsp_reset (devc);
 
 	/* This is only for non-ESS chips */
@@ -243,6 +245,8 @@ int sb_dsp_reset(sb_devc * devc)
 		DDB(printk("sb: No response to RESET\n"));
 		return 0;	/* Sorry */
 	}
+
+	DEB(printk("sb_dsp_reset() OK\n"));
 
 	return 1;
 }
@@ -620,7 +624,6 @@ int sb_dsp_detect(struct address_info *hw_config, int pci, int pciio, struct sb_
 	/*
 	 * Save device information for sb_dsp_init()
 	 */
-
 
 	detected_devc = kmemdup(devc, sizeof(sb_devc), GFP_KERNEL);
 	if (detected_devc == NULL)
@@ -1007,7 +1010,6 @@ static int smw_midi_init(sb_devc * devc, struct address_info *hw_config)
 	int mp_base = mpu_base + 4;		/* Microcontroller base */
 	int i;
 	unsigned char control;
-
 
 	/*
 	 *  Reset the microcontroller so that the RAM can be accessed

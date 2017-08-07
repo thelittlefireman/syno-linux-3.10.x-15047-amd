@@ -281,7 +281,7 @@ static int caif_seqpkt_recvmsg(struct kiocb *iocb, struct socket *sock,
 	int copylen;
 
 	ret = -EOPNOTSUPP;
-	if (m->msg_flags&MSG_OOB)
+	if (flags & MSG_OOB)
 		goto read_error;
 
 	skb = skb_recv_datagram(sk, flags, 0 , &ret);
@@ -307,7 +307,6 @@ read_error:
 	return ret;
 }
 
-
 /* Copied from unix_stream_wait_data, identical except for lock call. */
 static long caif_stream_data_wait(struct sock *sk, long timeo)
 {
@@ -330,6 +329,10 @@ static long caif_stream_data_wait(struct sock *sk, long timeo)
 		release_sock(sk);
 		timeo = schedule_timeout(timeo);
 		lock_sock(sk);
+
+		if (sock_flag(sk, SOCK_DEAD))
+			break;
+
 		clear_bit(SOCK_ASYNC_WAITDATA, &sk->sk_socket->flags);
 	}
 
@@ -337,7 +340,6 @@ static long caif_stream_data_wait(struct sock *sk, long timeo)
 	release_sock(sk);
 	return timeo;
 }
-
 
 /*
  * Copied from unix_stream_recvmsg, but removed credit checks,
@@ -374,6 +376,10 @@ static int caif_stream_recvmsg(struct kiocb *iocb, struct socket *sock,
 		struct sk_buff *skb;
 
 		lock_sock(sk);
+		if (sock_flag(sk, SOCK_DEAD)) {
+			err = -ECONNRESET;
+			goto unlock;
+		}
 		skb = skb_dequeue(&sk->sk_receive_queue);
 		caif_check_flow_release(sk);
 
@@ -1094,7 +1100,6 @@ static int caif_create(struct net *net, struct socket *sock, int protocol,
 	release_sock(&cf_sk->sk);
 	return 0;
 }
-
 
 static struct net_proto_family caif_family_ops = {
 	.family = PF_CAIF,

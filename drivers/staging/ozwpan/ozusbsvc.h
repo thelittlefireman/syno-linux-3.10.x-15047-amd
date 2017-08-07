@@ -29,4 +29,3 @@ int oz_usb_heartbeat(struct oz_pd *pd);
 void oz_usb_farewell(struct oz_pd *pd, u8 ep_num, u8 *data, u8 len);
 
 #endif /* _OZUSBSVC_H */
-

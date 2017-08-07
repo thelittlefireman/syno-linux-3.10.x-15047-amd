@@ -86,7 +86,6 @@ static u8 omap_w1_reset_bus(void *_hdq);
 static void omap_w1_search_bus(void *_hdq, struct w1_master *master_dev,
 		u8 search_type,	w1_slave_found_callback slave_found);
 
-
 static struct w1_bus_master omap_w1_master = {
 	.read_byte	= omap_w1_read_byte,
 	.write_byte	= omap_w1_write_byte,
@@ -577,7 +576,8 @@ static int omap_hdq_probe(struct platform_device *pdev)
 		goto err_irq;
 	}
 
-	ret = devm_request_irq(dev, irq, hdq_isr, 0, "omap_hdq", hdq_data);
+	ret = devm_request_irq(dev, irq, hdq_isr, IRQF_DISABLED,
+			"omap_hdq", hdq_data);
 	if (ret < 0) {
 		dev_dbg(&pdev->dev, "could not request irq\n");
 		goto err_irq;

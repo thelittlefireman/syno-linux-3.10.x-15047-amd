@@ -12,7 +12,6 @@
 #ifndef __ASM_ARCH_ASSABET_H
 #define __ASM_ARCH_ASSABET_H
 
-
 /* System Configuration Register flags */
 
 #define ASSABET_SCR_SDRAM_LOW	(1<<2)	/* SDRAM size (low bit) */
@@ -39,8 +38,8 @@ extern unsigned long SCR_value;
 
 #define ASSABET_BCR_CF_PWR	(1<<0)	/* Compact Flash Power (1 = 3.3v, 0 = off) */
 #define ASSABET_BCR_CF_RST	(1<<1)	/* Compact Flash Reset (1 = power up reset) */
-#define ASSABET_BCR_NGFX_RST	(1<<1)	/* Graphics Accelerator Reset (0 = hold reset) */
-#define ASSABET_BCR_NCODEC_RST	(1<<2)	/* 0 = Holds UCB1300, ADI7171, and UDA1341 in reset */
+#define ASSABET_BCR_GFX_RST	(1<<1)	/* Graphics Accelerator Reset (0 = hold reset) */
+#define ASSABET_BCR_CODEC_RST	(1<<2)	/* 0 = Holds UCB1300, ADI7171, and UDA1341 in reset */
 #define ASSABET_BCR_IRDA_FSEL	(1<<3)	/* IRDA Frequency select (0 = SIR, 1 = MIR/ FIR) */
 #define ASSABET_BCR_IRDA_MD0	(1<<4)	/* Range/Power select */
 #define ASSABET_BCR_IRDA_MD1	(1<<5)	/* Range/Power select */
@@ -69,8 +68,6 @@ extern void ASSABET_BCR_frob(unsigned int mask, unsigned int set);
 #define ASSABET_BCR_frob(x,y)	do { } while (0)
 #endif
 
-extern void assabet_uda1341_reset(int set);
-
 #define ASSABET_BCR_set(x)	ASSABET_BCR_frob((x), (x))
 #define ASSABET_BCR_clear(x)	ASSABET_BCR_frob((x), 0)
 
@@ -85,7 +82,6 @@ extern void assabet_uda1341_reset(int set);
 #define ASSABET_BSR_RAD_DSR	(1 << 29)
 #define ASSABET_BSR_RAD_DCD	(1 << 30)
 #define ASSABET_BSR_RAD_RI	(1 << 31)
-
 
 /* GPIOs (bitmasks) for which the generic definition doesn't say much */
 #define ASSABET_GPIO_RADIO_IRQ		GPIO_GPIO (14)	/* Radio interrupt request  */

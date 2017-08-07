@@ -1,5 +1,5 @@
 
-#ifdef HAVE_ARCH_X86_64_SUPPORT
+#ifdef ARCH_X86_64
 
 #define MEMCPY_FN(fn, name, desc)		\
 	extern void *fn(void *, const void *, size_t);
@@ -9,4 +9,3 @@
 #undef MEMCPY_FN
 
 #endif
-

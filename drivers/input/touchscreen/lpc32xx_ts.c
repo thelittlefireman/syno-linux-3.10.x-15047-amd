@@ -15,6 +15,7 @@
  */
 
 #include <linux/platform_device.h>
+#include <linux/init.h>
 #include <linux/input.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>

@@ -34,7 +34,6 @@
 
    Modularised 12/94 Mark Evans
 
-
    Modified to support the 82596 ethernet chips on 680x0 VME boards.
    by Richard Hirst <richard@sleepie.demon.co.uk>
    Renamed to be 82596.c
@@ -79,6 +78,7 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/skbuff.h>
+#include <linux/init.h>
 #include <linux/types.h>
 #include <linux/bitops.h>
 #include <linux/dma-mapping.h>
@@ -125,7 +125,6 @@ static inline void ca(struct net_device *dev)
 {
 	gsc_writel(0, dev->base_addr + PA_CHANNEL_ATTENTION);
 }
-
 
 static void mpu_port(struct net_device *dev, int c, dma_addr_t x)
 {

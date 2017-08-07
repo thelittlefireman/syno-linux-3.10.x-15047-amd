@@ -33,7 +33,6 @@
 #define REG_CALIB_READ2		0x106C
 #define REG_A_FREQ_EST		0x1070
 
-
 #define MASK_AMER_OFF_REG	BIT(31)
 
 #define MASK_BMER_OFF_REG	BIT(31)
@@ -79,7 +78,6 @@
 #define SHIFT_IQCAL_TONE_Q(x)	((x) >> 13)
 
 void phy_set_rf_data(struct hw_data *pHwData, u32 index, u32 value);
-void phy_calibration_winbond(struct hw_data *phw_data, u32 frequency);
 #define phy_init_rf(_A)		/* RFSynthesizer_initial(_A) */
 
 #endif

@@ -190,7 +190,6 @@
 #define	TxUIE	0x40	/* Tx Underrun/EOM IE */
 #define	BRKIE	0x80	/* Break/Abort IE */
 
-
 /* Read Register 0 */
 #define	Rx_CH_AV	0x1	/* Rx Character Available */
 #define	ZCOUNT		0x2	/* Zero count */
@@ -241,7 +240,6 @@
 /* Read Register 13 (upper byte of baud rate generator constant) */
 
 /* Read Register 15 (value of WR 15) */
-
 
 /*
  *	Interrupt handling functions for this SCC
@@ -361,7 +359,6 @@ struct z8530_channel
 	int			baud_base;		/* Baud parameters */
 	int			custom_divisor;
 
-
 	unsigned char		tx_active; /* character is being xmitted */
 	unsigned char		tx_stopped; /* output is suspended */
 
@@ -387,7 +384,6 @@ struct z8530_dev
 	spinlock_t lock;
 };
 
-
 /*
  *	Functions
  */
@@ -395,20 +391,20 @@ struct z8530_dev
 extern u8 z8530_dead_port[];
 extern u8 z8530_hdlc_kilostream_85230[];
 extern u8 z8530_hdlc_kilostream[];
-irqreturn_t z8530_interrupt(int, void *);
-void z8530_describe(struct z8530_dev *, char *mapping, unsigned long io);
-int z8530_init(struct z8530_dev *);
-int z8530_shutdown(struct z8530_dev *);
-int z8530_sync_open(struct net_device *, struct z8530_channel *);
-int z8530_sync_close(struct net_device *, struct z8530_channel *);
-int z8530_sync_dma_open(struct net_device *, struct z8530_channel *);
-int z8530_sync_dma_close(struct net_device *, struct z8530_channel *);
-int z8530_sync_txdma_open(struct net_device *, struct z8530_channel *);
-int z8530_sync_txdma_close(struct net_device *, struct z8530_channel *);
-int z8530_channel_load(struct z8530_channel *, u8 *);
-netdev_tx_t z8530_queue_xmit(struct z8530_channel *c, struct sk_buff *skb);
-void z8530_null_rx(struct z8530_channel *c, struct sk_buff *skb);
-
+extern irqreturn_t z8530_interrupt(int, void *);
+extern void z8530_describe(struct z8530_dev *, char *mapping, unsigned long io);
+extern int z8530_init(struct z8530_dev *);
+extern int z8530_shutdown(struct z8530_dev *);
+extern int z8530_sync_open(struct net_device *, struct z8530_channel *);
+extern int z8530_sync_close(struct net_device *, struct z8530_channel *);
+extern int z8530_sync_dma_open(struct net_device *, struct z8530_channel *);
+extern int z8530_sync_dma_close(struct net_device *, struct z8530_channel *);
+extern int z8530_sync_txdma_open(struct net_device *, struct z8530_channel *);
+extern int z8530_sync_txdma_close(struct net_device *, struct z8530_channel *);
+extern int z8530_channel_load(struct z8530_channel *, u8 *);
+extern netdev_tx_t z8530_queue_xmit(struct z8530_channel *c,
+					  struct sk_buff *skb);
+extern void z8530_null_rx(struct z8530_channel *c, struct sk_buff *skb);
 
 /*
  *	Standard interrupt vector sets

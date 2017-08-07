@@ -39,10 +39,8 @@ int pciehp_configure_device(struct slot *p_slot)
 	struct pci_dev *dev;
 	struct pci_dev *bridge = p_slot->ctrl->pcie->port;
 	struct pci_bus *parent = bridge->subordinate;
-	int num, ret = 0;
+	int num;
 	struct controller *ctrl = p_slot->ctrl;
-
-	pci_lock_rescan_remove();
 
 	dev = pci_get_slot(parent, PCI_DEVFN(0, 0));
 	if (dev) {
@@ -50,15 +48,13 @@ int pciehp_configure_device(struct slot *p_slot)
 			 "at %04x:%02x:00, cannot hot-add\n", pci_name(dev),
 			 pci_domain_nr(parent), parent->number);
 		pci_dev_put(dev);
-		ret = -EEXIST;
-		goto out;
+		return -EINVAL;
 	}
 
 	num = pci_scan_slot(parent, PCI_DEVFN(0, 0));
 	if (num == 0) {
 		ctrl_err(ctrl, "No new device found\n");
-		ret = -ENODEV;
-		goto out;
+		return -ENODEV;
 	}
 
 	list_for_each_entry(dev, &parent->devices, bus_list)
@@ -77,14 +73,12 @@ int pciehp_configure_device(struct slot *p_slot)
 
 	pci_bus_add_devices(parent);
 
- out:
-	pci_unlock_rescan_remove();
-	return ret;
+	return 0;
 }
 
 int pciehp_unconfigure_device(struct slot *p_slot)
 {
-	int rc = 0;
+	int ret, rc = 0;
 	u8 bctl = 0;
 	u8 presence = 0;
 	struct pci_dev *dev, *temp;
@@ -94,9 +88,9 @@ int pciehp_unconfigure_device(struct slot *p_slot)
 
 	ctrl_dbg(ctrl, "%s: domain:bus:dev = %04x:%02x:00\n",
 		 __func__, pci_domain_nr(parent), parent->number);
-	pciehp_get_adapter_status(p_slot, &presence);
-
-	pci_lock_rescan_remove();
+	ret = pciehp_get_adapter_status(p_slot, &presence);
+	if (ret)
+		presence = 0;
 
 	/*
 	 * Stopping an SR-IOV PF device removes all the associated VFs,
@@ -132,6 +126,5 @@ int pciehp_unconfigure_device(struct slot *p_slot)
 		pci_dev_put(dev);
 	}
 
-	pci_unlock_rescan_remove();
 	return rc;
 }

@@ -1,13 +1,13 @@
 #include "headers.h"
 
-static bool MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
+static BOOLEAN MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	struct bcm_ipv6_hdr *pstIpv6Header);
-static bool MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
+static BOOLEAN MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	struct bcm_ipv6_hdr *pstIpv6Header);
 static VOID DumpIpv6Header(struct bcm_ipv6_hdr *pstIpv6Header);
 
 static UCHAR *GetNextIPV6ChainedHeader(UCHAR **ppucPayload,
-	UCHAR *pucNextHeader, bool *bParseDone, USHORT *pusPayloadLength)
+	UCHAR *pucNextHeader, BOOLEAN *bParseDone, USHORT *pusPayloadLength)
 {
 	UCHAR *pucRetHeaderPtr = NULL;
 	UCHAR *pucPayloadPtr = NULL;
@@ -29,8 +29,7 @@ static UCHAR *GetNextIPV6ChainedHeader(UCHAR **ppucPayload,
 	}
 
 	/* Get the Nextt Header Type */
-	*bParseDone = false;
-
+	*bParseDone = FALSE;
 
 	switch (*pucNextHeader) {
 	case IPV6HDR_TYPE_HOPBYHOP:
@@ -121,10 +120,9 @@ static UCHAR *GetNextIPV6ChainedHeader(UCHAR **ppucPayload,
 		}
 		break;
 
-
 	}
 
-	if (*bParseDone == false) {
+	if (*bParseDone == FALSE) {
 		if (*pusPayloadLength <= usNextHeaderOffset) {
 			*bParseDone = TRUE;
 		} else {
@@ -139,12 +137,11 @@ static UCHAR *GetNextIPV6ChainedHeader(UCHAR **ppucPayload,
 	return pucRetHeaderPtr;
 }
 
-
 static UCHAR GetIpv6ProtocolPorts(UCHAR *pucPayload, USHORT *pusSrcPort,
 	USHORT *pusDestPort, USHORT usPayloadLength, UCHAR ucNextHeader)
 {
 	UCHAR *pIpv6HdrScanContext = pucPayload;
-	bool bDone = false;
+	BOOLEAN bDone = FALSE;
 	UCHAR ucHeaderType = 0;
 	UCHAR *pucNextHeader = NULL;
 	struct bcm_mini_adapter *Adapter = GET_BCM_ADAPTER(gblpnetdev);
@@ -175,7 +172,6 @@ static UCHAR GetIpv6ProtocolPorts(UCHAR *pucPayload, USHORT *pusSrcPort,
 	return ucHeaderType;
 }
 
-
 /*
  * Arg 1 struct bcm_mini_adapter *Adapter is a pointer ot the driver contorl structure
  * Arg 2 PVOID pcIpHeader is a pointer to the IP header of the packet
@@ -187,12 +183,12 @@ USHORT	IpVersion6(struct bcm_mini_adapter *Adapter, PVOID pcIpHeader,
 	USHORT	ushSrcPort = 0;
 	UCHAR   ucNextProtocolAboveIP = 0;
 	struct bcm_ipv6_hdr *pstIpv6Header = NULL;
-	bool bClassificationSucceed = false;
+	BOOLEAN bClassificationSucceed = FALSE;
 
 	BCM_DEBUG_PRINT(Adapter, DBG_TYPE_TX, IPV6_DBG,
 			DBG_LVL_ALL, "IpVersion6 ==========>\n");
 
-	pstIpv6Header = pcIpHeader;
+	pstIpv6Header = (struct bcm_ipv6_hdr *)pcIpHeader;
 
 	DumpIpv6Header(pstIpv6Header);
 
@@ -277,18 +273,17 @@ USHORT	IpVersion6(struct bcm_mini_adapter *Adapter, PVOID pcIpHeader,
 		INT iMatchedSFQueueIndex = 0;
 		iMatchedSFQueueIndex = SearchSfid(Adapter, pstClassifierRule->ulSFID);
 		if (iMatchedSFQueueIndex >= NO_OF_QUEUES) {
-			bClassificationSucceed = false;
+			bClassificationSucceed = FALSE;
 		} else {
-			if (Adapter->PackInfo[iMatchedSFQueueIndex].bActive == false)
-				bClassificationSucceed = false;
+			if (Adapter->PackInfo[iMatchedSFQueueIndex].bActive == FALSE)
+				bClassificationSucceed = FALSE;
 		}
 	}
 
 	return bClassificationSucceed;
 }
 
-
-static bool MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
+static BOOLEAN MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	struct bcm_ipv6_hdr *pstIpv6Header)
 {
 	UINT uiLoopIndex = 0;
@@ -302,10 +297,8 @@ static bool MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	 */
 	UINT  uiCountIPSrcAddresses = (UINT)pstClassifierRule->ucIPSourceAddressLength;
 
-
 	if (uiCountIPSrcAddresses == 0)
 		return TRUE;
-
 
 	/* First Convert the Ip Address in the packet to Host Endian order */
 	for (uiIpv6AddIndex = 0; uiIpv6AddIndex < uiIpv6AddrNoLongWords; uiIpv6AddIndex++)
@@ -341,10 +334,10 @@ static bool MatchSrcIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 			}
 		}
 	}
-	return false;
+	return FALSE;
 }
 
-static bool MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
+static BOOLEAN MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	struct bcm_ipv6_hdr *pstIpv6Header)
 {
 	UINT uiLoopIndex = 0;
@@ -359,10 +352,8 @@ static bool MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 	 */
 	UINT  uiCountIPDestinationAddresses = (UINT)pstClassifierRule->ucIPDestinationAddressLength;
 
-
 	if (uiCountIPDestinationAddresses == 0)
 		return TRUE;
-
 
 	/* First Convert the Ip Address in the packet to Host Endian order */
 	for (uiIpv6AddIndex = 0; uiIpv6AddIndex < uiIpv6AddrNoLongWords; uiIpv6AddIndex++)
@@ -398,7 +389,7 @@ static bool MatchDestIpv6Address(struct bcm_classifier_rule *pstClassifierRule,
 			}
 		}
 	}
-	return false;
+	return FALSE;
 
 }
 
@@ -446,6 +437,5 @@ static VOID DumpIpv6Header(struct bcm_ipv6_hdr *pstIpv6Header)
 	DumpIpv6Address(pstIpv6Header->ulDestIpAddress);
 	BCM_DEBUG_PRINT(Adapter, DBG_TYPE_TX, IPV6_DBG, DBG_LVL_ALL,
 			"----Ipv6 Header End---");
-
 
 }

@@ -16,6 +16,10 @@
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 /*
@@ -31,7 +35,6 @@
  * Configuration Options: not applicable, uses PCI auto config
  */
 
-#include <linux/module.h>
 #include <linux/pci.h>
 
 #include "../comedidev.h"
@@ -60,9 +63,10 @@ static int das08_pci_auto_attach(struct comedi_device *dev,
 	struct das08_private_struct *devpriv;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	/* The das08 driver needs the board_ptr */
 	dev->board_ptr = &das08_pci_boards[0];
@@ -75,11 +79,17 @@ static int das08_pci_auto_attach(struct comedi_device *dev,
 	return das08_common_attach(dev, dev->iobase);
 }
 
+static void das08_pci_detach(struct comedi_device *dev)
+{
+	das08_common_detach(dev);
+	comedi_pci_disable(dev);
+}
+
 static struct comedi_driver das08_pci_comedi_driver = {
 	.driver_name	= "pci-das08",
 	.module		= THIS_MODULE,
 	.auto_attach	= das08_pci_auto_attach,
-	.detach		= comedi_pci_disable,
+	.detach		= das08_pci_detach,
 };
 
 static int das08_pci_probe(struct pci_dev *dev,
@@ -89,7 +99,7 @@ static int das08_pci_probe(struct pci_dev *dev,
 				      id->driver_data);
 }
 
-static const struct pci_device_id das08_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(das08_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_CB, PCI_DEVICE_ID_PCIDAS08) },
 	{ 0 }
 };

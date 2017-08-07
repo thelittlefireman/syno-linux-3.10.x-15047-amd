@@ -363,18 +363,16 @@ static void sta32x_watchdog(struct work_struct *work)
 	}
 
 	if (!sta32x->shutdown)
-		queue_delayed_work(system_power_efficient_wq,
-				   &sta32x->watchdog_work,
-				   round_jiffies_relative(HZ));
+		schedule_delayed_work(&sta32x->watchdog_work,
+				      round_jiffies_relative(HZ));
 }
 
 static void sta32x_watchdog_start(struct sta32x_priv *sta32x)
 {
 	if (sta32x->pdata->needs_esd_watchdog) {
 		sta32x->shutdown = 0;
-		queue_delayed_work(system_power_efficient_wq,
-				   &sta32x->watchdog_work,
-				   round_jiffies_relative(HZ));
+		schedule_delayed_work(&sta32x->watchdog_work,
+				      round_jiffies_relative(HZ));
 	}
 }
 
@@ -517,7 +515,6 @@ static struct {
 	{ { 384, 2 }, { 256, 3 }, { 192, 4 }, { 128, 5 }, {64, 0 }, { 0, 0 } },
 	{ { 384, 2 }, { 256, 3 }, { 192, 4 }, { 128, 5 }, {64, 0 }, { 0, 0 } },
 };
-
 
 /**
  * sta32x_set_dai_sysclk - configure MCLK
@@ -872,6 +869,16 @@ static int sta32x_probe(struct snd_soc_codec *codec)
 		return ret;
 	}
 
+	/* Tell ASoC what kind of I/O to use to read the registers.  ASoC will
+	 * then do the I2C transactions itself.
+	 */
+	codec->control_data = sta32x->regmap;
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_REGMAP);
+	if (ret < 0) {
+		dev_err(codec->dev, "failed to set cache I/O (ret=%i)\n", ret);
+		goto err;
+	}
+
 	/* Chip documentation explicitly requires that the reset values
 	 * of reserved register bits are left untouched.
 	 * Write the register default value to cache for reserved registers,
@@ -936,6 +943,10 @@ static int sta32x_probe(struct snd_soc_codec *codec)
 	regulator_bulk_disable(ARRAY_SIZE(sta32x->supplies), sta32x->supplies);
 
 	return 0;
+
+err:
+	regulator_bulk_disable(ARRAY_SIZE(sta32x->supplies), sta32x->supplies);
+	return ret;
 }
 
 static int sta32x_remove(struct snd_soc_codec *codec)

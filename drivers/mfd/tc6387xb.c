@@ -48,7 +48,7 @@ static struct resource tc6387xb_mmc_resources[] = {
 static int tc6387xb_suspend(struct platform_device *dev, pm_message_t state)
 {
 	struct tc6387xb *tc6387xb = platform_get_drvdata(dev);
-	struct tc6387xb_platform_data *pdata = dev_get_platdata(&dev->dev);
+	struct tc6387xb_platform_data *pdata = dev->dev.platform_data;
 
 	if (pdata && pdata->suspend)
 		pdata->suspend(dev);
@@ -60,7 +60,7 @@ static int tc6387xb_suspend(struct platform_device *dev, pm_message_t state)
 static int tc6387xb_resume(struct platform_device *dev)
 {
 	struct tc6387xb *tc6387xb = platform_get_drvdata(dev);
-	struct tc6387xb_platform_data *pdata = dev_get_platdata(&dev->dev);
+	struct tc6387xb_platform_data *pdata = dev->dev.platform_data;
 
 	clk_enable(tc6387xb->clk32k);
 	if (pdata && pdata->resume)
@@ -94,7 +94,6 @@ static void tc6387xb_mmc_clk_div(struct platform_device *mmc, int state)
 	tmio_core_mmc_clk_div(tc6387xb->scr + 0x200, 0, state);
 }
 
-
 static int tc6387xb_mmc_enable(struct platform_device *mmc)
 {
 	struct platform_device *dev      = to_platform_device(mmc->dev.parent);
@@ -126,7 +125,7 @@ static struct tmio_mmc_data tc6387xb_mmc_data = {
 
 /*--------------------------------------------------------------------------*/
 
-static const struct mfd_cell tc6387xb_cells[] = {
+static struct mfd_cell tc6387xb_cells[] = {
 	[TC6387XB_CELL_MMC] = {
 		.name = "tmio-mmc",
 		.enable = tc6387xb_mmc_enable,
@@ -140,7 +139,7 @@ static const struct mfd_cell tc6387xb_cells[] = {
 
 static int tc6387xb_probe(struct platform_device *dev)
 {
-	struct tc6387xb_platform_data *pdata = dev_get_platdata(&dev->dev);
+	struct tc6387xb_platform_data *pdata = dev->dev.platform_data;
 	struct resource *iomem, *rscr;
 	struct clk *clk32k;
 	struct tc6387xb *tc6387xb;
@@ -217,11 +216,11 @@ static int tc6387xb_remove(struct platform_device *dev)
 	release_resource(&tc6387xb->rscr);
 	clk_disable(tc6387xb->clk32k);
 	clk_put(tc6387xb->clk32k);
+	platform_set_drvdata(dev, NULL);
 	kfree(tc6387xb);
 
 	return 0;
 }
-
 
 static struct platform_driver tc6387xb_platform_driver = {
 	.driver = {
@@ -239,4 +238,3 @@ MODULE_DESCRIPTION("Toshiba TC6387XB core driver");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Ian Molton");
 MODULE_ALIAS("platform:tc6387xb");
-

@@ -502,7 +502,6 @@ static int floppy_read_sectors(struct floppy_state *fs,
 	int side, track, sector;
 	int i, try;
 
-
 	swim_drive(base, fs->location);
 	for (i = req_sector; i < req_sector + sectors_nb; i++) {
 		int x;
@@ -893,7 +892,7 @@ static int swim_probe(struct platform_device *dev)
 
 	swim_base = ioremap(res->start, resource_size(res));
 	if (!swim_base) {
-		ret = -ENOMEM;
+		return -ENOMEM;
 		goto out_release_io;
 	}
 
@@ -924,6 +923,7 @@ static int swim_probe(struct platform_device *dev)
 	return 0;
 
 out_kfree:
+	platform_set_drvdata(dev, NULL);
 	kfree(swd);
 out_iounmap:
 	iounmap(swim_base);
@@ -961,6 +961,7 @@ static int swim_remove(struct platform_device *dev)
 	if (res)
 		release_mem_region(res->start, resource_size(res));
 
+	platform_set_drvdata(dev, NULL);
 	kfree(swd);
 
 	return 0;

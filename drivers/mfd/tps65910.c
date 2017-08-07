@@ -25,7 +25,6 @@
 #include <linux/mfd/core.h>
 #include <linux/regmap.h>
 #include <linux/mfd/tps65910.h>
-#include <linux/of.h>
 #include <linux/of_device.h>
 
 static struct resource rtc_resources[] = {
@@ -36,7 +35,7 @@ static struct resource rtc_resources[] = {
 	}
 };
 
-static const struct mfd_cell tps65910s[] = {
+static struct mfd_cell tps65910s[] = {
 	{
 		.name = "tps65910-gpio",
 	},
@@ -52,7 +51,6 @@ static const struct mfd_cell tps65910s[] = {
 		.name = "tps65910-power",
 	},
 };
-
 
 static const struct regmap_irq tps65911_irqs[] = {
 	/* INT_STS */
@@ -413,10 +411,14 @@ static struct tps65910_board *tps65910_parse_dt(struct i2c_client *client,
 	ret = of_property_read_u32(np, "ti,vmbch-threshold", &prop);
 	if (!ret)
 		board_info->vmbch_threshold = prop;
+	else if (*chip_id == TPS65911)
+		dev_warn(&client->dev, "VMBCH-Threshold not specified");
 
 	ret = of_property_read_u32(np, "ti,vmbch2-threshold", &prop);
 	if (!ret)
 		board_info->vmbch2_threshold = prop;
+	else if (*chip_id == TPS65911)
+		dev_warn(&client->dev, "VMBCH2-Threshold not specified");
 
 	prop = of_property_read_bool(np, "ti,en-ck32k-xtal");
 	board_info->en_ck32k_xtal = prop;
@@ -511,7 +513,6 @@ static int tps65910_i2c_probe(struct i2c_client *i2c,
 			      regmap_irq_get_domain(tps65910->irq_data));
 	if (ret < 0) {
 		dev_err(&i2c->dev, "mfd_add_devices failed: %d\n", ret);
-		tps65910_irq_exit(tps65910);
 		return ret;
 	}
 
@@ -534,7 +535,6 @@ static const struct i2c_device_id tps65910_i2c_id[] = {
        { }
 };
 MODULE_DEVICE_TABLE(i2c, tps65910_i2c_id);
-
 
 static struct i2c_driver tps65910_i2c_driver = {
 	.driver = {

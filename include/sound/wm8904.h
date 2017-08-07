@@ -51,7 +51,6 @@
 #define WM8904_MICBIAS_SEL_SHIFT                     0  /* MICBIAS_SEL - [2:0] */
 #define WM8904_MICBIAS_SEL_WIDTH                     3  /* MICBIAS_SEL - [2:0] */
 
-
 /*
  * R121 (0x79) - GPIO Control 1
  */
@@ -119,7 +118,7 @@
 #define WM8904_MIC_REGS  2
 #define WM8904_GPIO_REGS 4
 #define WM8904_DRC_REGS  4
-#define WM8904_EQ_REGS   25
+#define WM8904_EQ_REGS   24
 
 /**
  * DRC configurations are specified with a label and a set of register

@@ -201,7 +201,6 @@ int main(int argc, char **argv)
 
 	msgque.msq_id = msgget(msgque.key, IPC_CREAT | IPC_EXCL | 0666);
 	if (msgque.msq_id == -1) {
-		err = -errno;
 		printf("Can't create queue\n");
 		goto err_out;
 	}

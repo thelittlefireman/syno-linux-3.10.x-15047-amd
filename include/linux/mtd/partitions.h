@@ -11,7 +11,6 @@
 
 #include <linux/types.h>
 
-
 /*
  * Partition definition structure:
  *
@@ -37,7 +36,7 @@
  */
 
 struct mtd_partition {
-	const char *name;		/* identifier string */
+	char *name;			/* identifier string */
 	uint64_t size;			/* partition size */
 	uint64_t offset;		/* offset within the master MTD space */
 	uint32_t mask_flags;		/* master MTD flags to mask out for this partition */
@@ -48,7 +47,6 @@ struct mtd_partition {
 #define MTDPART_OFS_NXTBLK	(-2)
 #define MTDPART_OFS_APPEND	(-1)
 #define MTDPART_SIZ_FULL	(0)
-
 
 struct mtd_info;
 struct device_node;
@@ -63,7 +61,6 @@ struct mtd_part_parser_data {
 	struct device_node *of_node;
 };
 
-
 /*
  * Functions dealing with the various ways of partitioning the space
  */
@@ -76,11 +73,11 @@ struct mtd_part_parser {
 			struct mtd_part_parser_data *);
 };
 
-extern void register_mtd_parser(struct mtd_part_parser *parser);
-extern void deregister_mtd_parser(struct mtd_part_parser *parser);
+extern int register_mtd_parser(struct mtd_part_parser *parser);
+extern int deregister_mtd_parser(struct mtd_part_parser *parser);
 
 int mtd_is_partition(const struct mtd_info *mtd);
-int mtd_add_partition(struct mtd_info *master, const char *name,
+int mtd_add_partition(struct mtd_info *master, char *name,
 		      long long offset, long long length);
 int mtd_del_partition(struct mtd_info *master, int partno);
 uint64_t mtd_get_device_size(const struct mtd_info *mtd);

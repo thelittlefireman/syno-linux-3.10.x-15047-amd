@@ -139,6 +139,7 @@ static int __init ks0108_init(void)
 
 	ks0108_pardevice = parport_register_device(ks0108_parport, KS0108_NAME,
 		NULL, NULL, NULL, PARPORT_DEV_EXCL, NULL);
+	parport_put_port(ks0108_parport);
 	if (ks0108_pardevice == NULL) {
 		printk(KERN_ERR KS0108_NAME ": ERROR: "
 			"parport didn't register new device\n");
@@ -175,4 +176,3 @@ module_exit(ks0108_exit);
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("Miguel Ojeda Sandonis <miguel.ojeda.sandonis@gmail.com>");
 MODULE_DESCRIPTION("ks0108 LCD Controller driver");
-

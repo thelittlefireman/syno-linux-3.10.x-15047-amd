@@ -35,8 +35,6 @@
 #define ATC_REG_ATC_INT_STS_CLR					 0x1101c0
 /* [RW 5] Parity mask register #0 read/write */
 #define ATC_REG_ATC_PRTY_MASK					 0x1101d8
-/* [R 5] Parity register #0 read */
-#define ATC_REG_ATC_PRTY_STS					 0x1101cc
 /* [RC 5] Parity register #0 read clear */
 #define ATC_REG_ATC_PRTY_STS_CLR				 0x1101d0
 /* [RW 19] Interrupt mask register #0 read/write */
@@ -2752,8 +2750,6 @@
 #define PBF_REG_PBF_INT_STS					 0x1401c8
 /* [RW 20] Parity mask register #0 read/write */
 #define PBF_REG_PBF_PRTY_MASK					 0x1401e4
-/* [R 28] Parity register #0 read */
-#define PBF_REG_PBF_PRTY_STS					 0x1401d8
 /* [RC 20] Parity register #0 read clear */
 #define PBF_REG_PBF_PRTY_STS_CLR				 0x1401dc
 /* [RW 16] The Ethernet type value for L2 tag 0 */
@@ -2864,17 +2860,6 @@
 #define PGLUE_B_REG_INTERNAL_PFID_ENABLE_TARGET_READ		 0x9430
 #define PGLUE_B_REG_INTERNAL_PFID_ENABLE_TARGET_WRITE		 0x9434
 #define PGLUE_B_REG_INTERNAL_VFID_ENABLE			 0x9438
-/* [W 7] Writing 1 to each bit in this register clears a corresponding error
- * details register and enables logging new error details. Bit 0 - clears
- * INCORRECT_RCV_DETAILS; Bit 1 - clears RX_ERR_DETAILS; Bit 2 - clears
- * TX_ERR_WR_ADD_31_0 TX_ERR_WR_ADD_63_32 TX_ERR_WR_DETAILS
- * TX_ERR_WR_DETAILS2 TX_ERR_RD_ADD_31_0 TX_ERR_RD_ADD_63_32
- * TX_ERR_RD_DETAILS TX_ERR_RD_DETAILS2 TX_ERR_WR_DETAILS_ICPL; Bit 3 -
- * clears VF_LENGTH_VIOLATION_DETAILS. Bit 4 - clears
- * VF_GRC_SPACE_VIOLATION_DETAILS. Bit 5 - clears RX_TCPL_ERR_DETAILS. Bit 6
- * - clears TCPL_IN_TWO_RCBS_DETAILS. */
-#define PGLUE_B_REG_LATCHED_ERRORS_CLR				 0x943c
-
 /* [R 9] Interrupt register #0 read */
 #define PGLUE_B_REG_PGLUE_B_INT_STS				 0x9298
 /* [RC 9] Interrupt register #0 read clear */
@@ -4532,8 +4517,6 @@
 #define TM_REG_TM_INT_STS					 0x1640f0
 /* [RW 7] Parity mask register #0 read/write */
 #define TM_REG_TM_PRTY_MASK					 0x16410c
-/* [R 7] Parity register #0 read */
-#define TM_REG_TM_PRTY_STS					 0x164100
 /* [RC 7] Parity register #0 read clear */
 #define TM_REG_TM_PRTY_STS_CLR					 0x164104
 /* [RW 8] The event id for aggregated interrupt 0 */
@@ -5932,7 +5915,6 @@
 #define MISC_REGISTERS_RESET_REG_1_RST_NIG			 (0x1<<7)
 #define MISC_REGISTERS_RESET_REG_1_RST_PXP			 (0x1<<26)
 #define MISC_REGISTERS_RESET_REG_1_RST_PXPV			 (0x1<<27)
-#define MISC_REGISTERS_RESET_REG_1_RST_XSEM			 (0x1<<22)
 #define MISC_REGISTERS_RESET_REG_1_SET				 0x584
 #define MISC_REGISTERS_RESET_REG_2_CLEAR			 0x598
 #define MISC_REGISTERS_RESET_REG_2_MSTAT0			 (0x1<<24)
@@ -6113,7 +6095,6 @@
 #define LINK_SYNC_ATTENTION_BIT_FUNC_6	    RESERVED_GENERAL_ATTENTION_BIT_18
 #define LINK_SYNC_ATTENTION_BIT_FUNC_7	    RESERVED_GENERAL_ATTENTION_BIT_19
 
-
 #define LATCHED_ATTN_RBCR			23
 #define LATCHED_ATTN_RBCT			24
 #define LATCHED_ATTN_RBCN			25
@@ -6180,7 +6161,6 @@
 #define GRCBASE_XSEM		0x280000
 #define GRCBASE_USEM		0x300000
 #define GRCBASE_MISC_AEU	GRCBASE_MISC
-
 
 /* offset of configuration space in the pci core register */
 #define PCICFG_OFFSET					0x2000
@@ -6254,7 +6234,6 @@
 #define PCICFG_DEVICE_STATUS_AUX_PWR_DET	(1<<4)
 #define PCICFG_DEVICE_STATUS_NO_PEND		(1<<5)
 #define PCICFG_LINK_CONTROL				0xbc
-
 
 #define BAR_USTRORM_INTMEM				0x400000
 #define BAR_CSTRORM_INTMEM				0x410000
@@ -6347,7 +6326,6 @@
 #define PCI_ID_VAL2					0x438
 #define PCI_ID_VAL3					0x43c
 
-#define GRC_CONFIG_REG_VF_MSIX_CONTROL		    0x61C
 #define GRC_CONFIG_REG_PF_INIT_VF		0x624
 #define GRC_CR_PF_INIT_VF_PF_FIRST_VF_NUM_MASK	0xf
 /* First VF_NUM for PF is encoded in this register.
@@ -6389,7 +6367,6 @@
 #define PXPCS_TL_CONTROL_5_ERR_CPL_TIMEOUT     (1 << 2)    /*WC*/
 #define PXPCS_TL_CONTROL_5_ERR_FC_PRTL	   (1 << 1)    /*WC*/
 #define PXPCS_TL_CONTROL_5_ERR_PSND_TLP    (1 << 0)    /*WC*/
-
 
 #define PXPCS_TL_FUNC345_STAT	   0x854
 #define PXPCS_TL_FUNC345_STAT_PRI_SIG_TARGET_ABORT4    (1 << 29)   /* WC */
@@ -6486,7 +6463,6 @@
 	(1 << 0) /* Poisoned Error Status Status for Function 2, if set, \
 	generate pcie_err_attn output when this error is seen.. WC */
 
-
 #define PXPCS_TL_FUNC678_STAT  0x85C
 #define PXPCS_TL_FUNC678_STAT_PRI_SIG_TARGET_ABORT7    (1 << 29)   /*	 WC */
 #define PXPCS_TL_FUNC678_STAT_ERR_UNSPPORT7\
@@ -6582,7 +6558,6 @@
 	(1 << 0) /* Poisoned Error Status Status for Function 5, if set, \
 	generate pcie_err_attn output when this error is seen.. WC */
 
-
 #define BAR_USTRORM_INTMEM				0x400000
 #define BAR_CSTRORM_INTMEM				0x410000
 #define BAR_XSTRORM_INTMEM				0x420000
@@ -6604,7 +6579,6 @@
 #define ME_REG_ABS_PF_NUM_SHIFT	16
 #define ME_REG_ABS_PF_NUM\
 	(7L<<ME_REG_ABS_PF_NUM_SHIFT) /* Absolute PF Num */
-
 
 #define PXP_VF_ADDR_IGU_START				0
 #define PXP_VF_ADDR_IGU_SIZE				0x3000
@@ -6779,7 +6753,6 @@
 #define MDIO_GP_STATUS_TOP_AN_STATUS1_ACTUAL_SPEED_10G_SFI	0x1F00
 #define MDIO_GP_STATUS_TOP_AN_STATUS1_ACTUAL_SPEED_20G_KR2	0x3900
 
-
 #define MDIO_REG_BANK_10G_PARALLEL_DETECT		0x8130
 #define MDIO_10G_PARALLEL_DETECT_PAR_DET_10G_STATUS		0x10
 #define MDIO_10G_PARALLEL_DETECT_PAR_DET_10G_STATUS_PD_LINK		0x8000
@@ -6921,7 +6894,6 @@ bit15=link,bit12=duplex,bits11:10=speed,bit14=acknowledge.
 Theotherbitsarereservedandshouldbezero*/
 #define MDIO_COMBO_IEEE0_AUTO_NEG_LINK_PARTNER_ABILITY1_SGMII_MODE	0x0001
 
-
 #define MDIO_PMA_DEVAD			0x1
 /*ieee*/
 #define MDIO_PMA_REG_CTRL		0x0
@@ -7000,7 +6972,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define MDIO_PMA_REG_8481_LINK_SIGNAL_LED4_ENABLE_MASK	0x800
 #define MDIO_PMA_REG_8481_LINK_SIGNAL_LED4_ENABLE_SHIFT 11
 
-
 #define MDIO_WIS_DEVAD			0x2
 /*bcm*/
 #define MDIO_WIS_REG_LASI_CNTL		0x9002
@@ -7018,7 +6989,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define MDIO_PCS_REG_7101_SPI_FIFO_ADDR_BULK_ERASE_CMD	 (0xC7)
 #define MDIO_PCS_REG_7101_SPI_FIFO_ADDR_PAGE_PROGRAM_CMD (2)
 #define MDIO_PCS_REG_7101_SPI_BYTES_TO_TRANSFER_ADDR 0xE028
-
 
 #define MDIO_XS_DEVAD			0x4
 #define MDIO_XS_PLL_SEQUENCER		0x8000
@@ -7142,7 +7112,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define PHY84833_STATUS_CMD_CLEAR_COMPLETE		0x0080
 #define PHY84833_STATUS_CMD_OPEN_OVERRIDE		0xa5a5
 
-
 /* Warpcore clause 45 addressing */
 #define MDIO_WC_DEVAD					0x3
 #define MDIO_WC_REG_IEEE0BLK_MIICNTL			0x0
@@ -7180,7 +7149,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define MDIO_WC_REG_RX1_PCI_CTRL			0x80ca
 #define MDIO_WC_REG_RX2_PCI_CTRL			0x80da
 #define MDIO_WC_REG_RX3_PCI_CTRL			0x80ea
-#define MDIO_WC_REG_RXB_ANA_RX_CONTROL_PCI		0x80fa
 #define MDIO_WC_REG_XGXSBLK2_UNICORE_MODE_10G		0x8104
 #define MDIO_WC_REG_XGXS_STATUS3			0x8129
 #define MDIO_WC_REG_PAR_DET_10G_STATUS			0x8130
@@ -7340,7 +7308,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define COMMAND_REG_SIMD_MASK	    0x18
 #define COMMAND_REG_SIMD_NOMASK     0x1c
 
-
 #define IGU_MEM_BASE						0x0000
 
 #define IGU_MEM_MSIX_BASE					0x0000
@@ -7388,7 +7355,6 @@ Theotherbitsarereservedandshouldbezero*/
 #define IGU_VF_CONF_PARENT_SHIFT   2	     /* Parent PF	       */
 #define IGU_VF_CONF_SINGLE_ISR_EN  (0x1<<4)  /* single ISR mode enable */
 
-
 #define IGU_BC_DSB_NUM_SEGS    5
 #define IGU_BC_NDSB_NUM_SEGS   2
 #define IGU_NORM_DSB_NUM_SEGS  2
@@ -7409,10 +7375,8 @@ Theotherbitsarereservedandshouldbezero*/
 #define IGU_REG_MAPPING_MEMORY_FID_MASK	(0x7F<<7)
 #define IGU_REG_MAPPING_MEMORY_FID_SHIFT	7
 
-
 #define CDU_REGION_NUMBER_XCM_AG 2
 #define CDU_REGION_NUMBER_UCM_AG 4
-
 
 /* String-to-compress [31:8] = CID (all 24 bits)
  * String-to-compress [7:4] = Region
@@ -7486,6 +7450,5 @@ static inline u8 calc_crc8(u32 data, u8 crc)
 
 	return crc_res;
 }
-
 
 #endif /* BNX2X_REG_H */

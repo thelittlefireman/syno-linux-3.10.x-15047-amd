@@ -22,6 +22,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <linux/err.h>
@@ -45,9 +46,8 @@ static int compass_store(struct device *dev, const char *buf, size_t count,
 	int ret;
 	unsigned long val;
 
-	ret = kstrtoul(buf, 10, &val);
-	if (ret)
-		return ret;
+	if (strict_strtoul(buf, 10, &val))
+		return -EINVAL;
 	if (val >= strlen(map))
 		return -EINVAL;
 	mutex_lock(&compass_mutex);
@@ -93,7 +93,6 @@ static ssize_t compass_heading_data_show(struct device *dev,
 	ret = (i2c_data[0] << 8) | i2c_data[1];
 	return sprintf(buf, "%d.%d\n", ret/10, ret%10);
 }
-
 
 static DEVICE_ATTR(heading0_input, S_IRUGO, compass_heading_data_show, NULL);
 static DEVICE_ATTR(calibration, S_IWUSR, NULL, compass_calibration_store);

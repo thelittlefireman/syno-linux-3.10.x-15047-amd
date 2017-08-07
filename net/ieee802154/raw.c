@@ -28,7 +28,6 @@
 #include <linux/slab.h>
 #include <net/sock.h>
 #include <net/af_ieee802154.h>
-#include <net/ieee802154_netdev.h>
 
 #include "af802154.h"
 
@@ -56,24 +55,21 @@ static void raw_close(struct sock *sk, long timeout)
 	sk_common_release(sk);
 }
 
-static int raw_bind(struct sock *sk, struct sockaddr *_uaddr, int len)
+static int raw_bind(struct sock *sk, struct sockaddr *uaddr, int len)
 {
-	struct ieee802154_addr addr;
-	struct sockaddr_ieee802154 *uaddr = (struct sockaddr_ieee802154 *)_uaddr;
+	struct sockaddr_ieee802154 *addr = (struct sockaddr_ieee802154 *)uaddr;
 	int err = 0;
 	struct net_device *dev = NULL;
 
-	if (len < sizeof(*uaddr))
+	if (len < sizeof(*addr))
 		return -EINVAL;
 
-	uaddr = (struct sockaddr_ieee802154 *)_uaddr;
-	if (uaddr->family != AF_IEEE802154)
+	if (addr->family != AF_IEEE802154)
 		return -EINVAL;
 
 	lock_sock(sk);
 
-	ieee802154_addr_from_sa(&addr, &uaddr->addr);
-	dev = ieee802154_get_dev(sock_net(sk), &addr);
+	dev = ieee802154_get_dev(sock_net(sk), &addr->addr);
 	if (!dev) {
 		err = -ENODEV;
 		goto out;
@@ -213,10 +209,6 @@ out:
 
 static int raw_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
-	skb = skb_share_check(skb, GFP_ATOMIC);
-	if (!skb)
-		return NET_RX_DROP;
-
 	if (sock_queue_rcv_skb(sk, skb) < 0) {
 		kfree_skb(skb);
 		return NET_RX_DROP;
@@ -224,7 +216,6 @@ static int raw_rcv_skb(struct sock *sk, struct sk_buff *skb)
 
 	return NET_RX_SUCCESS;
 }
-
 
 void ieee802154_raw_deliver(struct net_device *dev, struct sk_buff *skb)
 {
@@ -274,4 +265,3 @@ struct proto ieee802154_raw_prot = {
 	.getsockopt	= raw_getsockopt,
 	.setsockopt	= raw_setsockopt,
 };
-

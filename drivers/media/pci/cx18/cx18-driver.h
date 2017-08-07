@@ -262,7 +262,7 @@ struct cx18_options {
 };
 
 /* per-mdl bit flags */
-#define CX18_F_M_NEED_SWAP  0	/* mdl buffer data must be endianness swapped */
+#define CX18_F_M_NEED_SWAP  0	/* mdl buffer data must be endianess swapped */
 
 /* per-stream, s_flags */
 #define CX18_F_S_CLAIMED 	3	/* this stream is claimed */
@@ -346,7 +346,6 @@ struct cx18_dvb {
 
 struct cx18;	 /* forward reference */
 struct cx18_scb; /* forward reference */
-
 
 #define CX18_MAX_MDL_ACKS 2
 #define CX18_MAX_IN_WORK_ORDERS (CX18_MAX_FW_MDLS_PER_STREAM + 7)

@@ -328,7 +328,6 @@
 #define S5P_FIMV_DPB_FLUSH_MASK		1
 #define S5P_FIMV_DPB_FLUSH_SHIFT	14
 
-
 #define S5P_FIMV_SI_CH0_RELEASE_BUF     0x2060 /* DPB release buffer register */
 #define S5P_FIMV_SI_CH0_HOST_WR_ADR	0x2064 /* address of shared memory */
 
@@ -354,7 +353,6 @@
 #define S5P_FIMV_CH_FRAME_START_REALLOC	5
 #define S5P_FIMV_CH_MASK		7
 #define S5P_FIMV_CH_SHIFT		16
-
 
 /* Host to RISC command */
 #define S5P_FIMV_H2R_CMD_EMPTY		0
@@ -382,7 +380,7 @@
 #define S5P_FIMV_R2H_CMD_EDFU_INIT_RET		16
 #define S5P_FIMV_R2H_CMD_ERR_RET		32
 
-/* Dummy definition for MFCv6 compatibility */
+/* Dummy definition for MFCv6 compatibilty */
 #define S5P_FIMV_CODEC_H264_MVC_DEC		-1
 #define S5P_FIMV_R2H_CMD_FIELD_DONE_RET		-1
 #define S5P_FIMV_MFC_RESET			-1

@@ -32,7 +32,7 @@ static void msmtc_send_ipi_mask(const struct cpumask *mask, unsigned int action)
 /*
  * Post-config but pre-boot cleanup entry point
  */
-static void msmtc_init_secondary(void)
+static void __cpuinit msmtc_init_secondary(void)
 {
 	int myvpe;
 
@@ -53,7 +53,7 @@ static void msmtc_init_secondary(void)
 /*
  * Platform "CPU" startup hook
  */
-static void msmtc_boot_secondary(int cpu, struct task_struct *idle)
+static void __cpuinit msmtc_boot_secondary(int cpu, struct task_struct *idle)
 {
 	smtc_boot_secondary(cpu, idle);
 }
@@ -61,7 +61,7 @@ static void msmtc_boot_secondary(int cpu, struct task_struct *idle)
 /*
  * SMP initialization finalization entry point
  */
-static void msmtc_smp_finish(void)
+static void __cpuinit msmtc_smp_finish(void)
 {
 	smtc_smp_finish();
 }
@@ -111,7 +111,6 @@ struct plat_smp_ops msmtc_smp_ops = {
 /*
  * IRQ affinity hook
  */
-
 
 int plat_set_irq_affinity(struct irq_data *d, const struct cpumask *affinity,
 			  bool force)

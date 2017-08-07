@@ -6,7 +6,6 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 
-
 struct pwmled {
 	struct led_classdev	cdev;
 	struct pwm_channel	pwmc;
@@ -14,7 +13,6 @@ struct pwmled {
 	u32			mult;
 	u8			active_low;
 };
-
 
 /*
  * For simplicity, we use "brightness" as if it were a linear function
@@ -42,7 +40,7 @@ static int pwmled_probe(struct platform_device *pdev)
 	int					i;
 	int					status;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 	if (!pdata || pdata->num_leds < 1)
 		return -ENODEV;
 
@@ -119,7 +117,7 @@ static int pwmled_remove(struct platform_device *pdev)
 	struct pwmled				*leds;
 	unsigned				i;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 	leds = platform_get_drvdata(pdev);
 
 	for (i = 0; i < pdata->num_leds; i++) {
@@ -129,6 +127,7 @@ static int pwmled_remove(struct platform_device *pdev)
 		pwm_channel_free(&led->pwmc);
 	}
 
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 

@@ -19,6 +19,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
+#include <linux/jiffies.h>
 #include <linux/mman.h>
 #include <linux/delay.h>
 #include <linux/init.h>
@@ -39,8 +40,6 @@
  *
  * Begin protocol definitions.
  */
-
-
 
 /*
  * Protocol versions. The low word is the minor version, the high word the major
@@ -67,8 +66,6 @@ enum {
 
 	DYNMEM_PROTOCOL_VERSION_CURRENT = DYNMEM_PROTOCOL_VERSION_WIN8
 };
-
-
 
 /*
  * Message Types
@@ -98,7 +95,6 @@ enum dm_message_type {
 	DM_VERSION_1_MAX		= 12
 };
 
-
 /*
  * Structures defining the dynamic memory management
  * protocol.
@@ -111,7 +107,6 @@ union dm_version {
 	};
 	__u32 version;
 } __packed;
-
 
 union dm_caps {
 	struct {
@@ -145,8 +140,6 @@ union dm_mem_page_range {
 	__u64  page_range;
 } __packed;
 
-
-
 /*
  * The header for all dynamic memory messages:
  *
@@ -170,7 +163,6 @@ struct dm_message {
 	struct dm_header hdr;
 	__u8 data[]; /* enclosed message */
 } __packed;
-
 
 /*
  * Specific message types supporting the dynamic memory protocol.
@@ -268,7 +260,6 @@ struct dm_status {
 	__u32 io_diff;
 } __packed;
 
-
 /*
  * Message to ask the guest to allocate memory - balloon up message.
  * This message is sent from the host to the guest. The guest may not be
@@ -282,7 +273,6 @@ struct dm_balloon {
 	__u32 num_pages;
 	__u32 reservedz;
 } __packed;
-
 
 /*
  * Balloon response message; this message is sent from the guest
@@ -339,7 +329,6 @@ struct dm_unballoon_response {
 	struct dm_header hdr;
 } __packed;
 
-
 /*
  * Hot add request message. Message sent from the host to the guest.
  *
@@ -388,7 +377,6 @@ enum dm_info_type {
 	INFO_TYPE_MAX_PAGE_CNT = 0,
 	MAX_INFO_TYPE
 };
-
 
 /*
  * Header for the information message.
@@ -459,6 +447,11 @@ static bool do_hot_add;
  */
 static uint pressure_report_delay = 45;
 
+/*
+ * The last time we posted a pressure report to host.
+ */
+static unsigned long last_post_time;
+
 module_param(hot_add, bool, (S_IRUGO | S_IWUSR));
 MODULE_PARM_DESC(hot_add, "If set attempt memory hot_add");
 
@@ -480,7 +473,6 @@ enum hv_dm_state {
 	DM_HOT_ADD,
 	DM_INIT_ERROR
 };
-
 
 static __u8 recv_buffer[PAGE_SIZE];
 static __u8 *send_buffer;
@@ -542,6 +534,7 @@ struct hv_dynmem_device {
 
 static struct hv_dynmem_device dm_device;
 
+static void post_status(struct hv_dynmem_device *dm);
 #ifdef CONFIG_MEMORY_HOTPLUG
 
 static void hv_bring_pgs_online(unsigned long start_pfn, unsigned long size)
@@ -612,7 +605,7 @@ static void hv_mem_hot_add(unsigned long start, unsigned long size,
 		 * have not been "onlined" within the allowed time.
 		 */
 		wait_for_completion_timeout(&dm_device.ol_waitevent, 5*HZ);
-
+		post_status(&dm_device);
 	}
 
 	return;
@@ -825,6 +818,7 @@ static void hot_add_req(struct work_struct *dummy)
 	memset(&resp, 0, sizeof(struct dm_hot_add_response));
 	resp.hdr.type = DM_MEM_HOT_ADD_RESPONSE;
 	resp.hdr.size = sizeof(struct dm_hot_add_response);
+	resp.hdr.trans_id = atomic_inc_return(&trans_id);
 
 #ifdef CONFIG_MEMORY_HOTPLUG
 	pg_start = dm->ha_wrk.ha_page_range.finfo.start_page;
@@ -886,7 +880,6 @@ static void hot_add_req(struct work_struct *dummy)
 		pr_info("Memory hot add failed\n");
 
 	dm->state = DM_INITIALIZED;
-	resp.hdr.trans_id = atomic_inc_return(&trans_id);
 	vmbus_sendpacket(dm->dev->channel, &resp,
 			sizeof(struct dm_hot_add_response),
 			(unsigned long)NULL,
@@ -951,11 +944,17 @@ static void post_status(struct hv_dynmem_device *dm)
 {
 	struct dm_status status;
 	struct sysinfo val;
+	unsigned long now = jiffies;
+	unsigned long last_post = last_post_time;
 
 	if (pressure_report_delay > 0) {
 		--pressure_report_delay;
 		return;
 	}
+
+	if (!time_after(now, (last_post_time + HZ)))
+		return;
+
 	si_meminfo(&val);
 	memset(&status, 0, sizeof(struct dm_status));
 	status.hdr.type = DM_STATUS_REPORT;
@@ -983,6 +982,14 @@ static void post_status(struct hv_dynmem_device *dm)
 	if (status.hdr.trans_id != atomic_read(&trans_id))
 		return;
 
+	/*
+	 * If the last post time that we sampled has changed,
+	 * we have raced, don't post the status.
+	 */
+	if (last_post != last_post_time)
+		return;
+
+	last_post_time = jiffies;
 	vmbus_sendpacket(dm->dev->channel, &status,
 				sizeof(struct dm_status),
 				(unsigned long)NULL,
@@ -1004,8 +1011,6 @@ static void free_balloon_pages(struct hv_dynmem_device *dm,
 		dm->num_pages_ballooned--;
 	}
 }
-
-
 
 static int  alloc_balloon_pages(struct hv_dynmem_device *dm, int num_pages,
 			 struct dm_balloon_response *bl_resp, int alloc_unit,
@@ -1035,7 +1040,6 @@ static int  alloc_balloon_pages(struct hv_dynmem_device *dm, int num_pages,
 			return i * alloc_unit;
 		}
 
-
 		dm->num_pages_ballooned += alloc_unit;
 
 		/*
@@ -1057,8 +1061,6 @@ static int  alloc_balloon_pages(struct hv_dynmem_device *dm, int num_pages,
 	return num_pages;
 }
 
-
-
 static void balloon_up(struct work_struct *dummy)
 {
 	int num_pages = dm_device.balloon_wrk.num_pages;
@@ -1070,7 +1072,6 @@ static void balloon_up(struct work_struct *dummy)
 	bool done = false;
 	int i;
 
-
 	/*
 	 * We will attempt 2M allocations. However, if we fail to
 	 * allocate 2M chunks, we will go back to 4k allocations.
@@ -1081,9 +1082,9 @@ static void balloon_up(struct work_struct *dummy)
 		bl_resp = (struct dm_balloon_response *)send_buffer;
 		memset(send_buffer, 0, PAGE_SIZE);
 		bl_resp->hdr.type = DM_BALLOON_RESPONSE;
+		bl_resp->hdr.trans_id = atomic_inc_return(&trans_id);
 		bl_resp->hdr.size = sizeof(struct dm_balloon_response);
 		bl_resp->more_pages = 1;
-
 
 		num_pages -= num_ballooned;
 		num_ballooned = alloc_balloon_pages(&dm_device, num_pages,
@@ -1108,7 +1109,6 @@ static void balloon_up(struct work_struct *dummy)
 		 */
 
 		do {
-			bl_resp->hdr.trans_id = atomic_inc_return(&trans_id);
 			ret = vmbus_sendpacket(dm_device.dev->channel,
 						bl_resp,
 						bl_resp->hdr.size,
@@ -1117,7 +1117,7 @@ static void balloon_up(struct work_struct *dummy)
 
 			if (ret == -EAGAIN)
 				msleep(20);
-
+			post_status(&dm_device);
 		} while (ret == -EAGAIN);
 
 		if (ret) {
@@ -1144,8 +1144,10 @@ static void balloon_down(struct hv_dynmem_device *dm,
 	struct dm_unballoon_response resp;
 	int i;
 
-	for (i = 0; i < range_count; i++)
+	for (i = 0; i < range_count; i++) {
 		free_balloon_pages(dm, &range_array[i]);
+		post_status(&dm_device);
+	}
 
 	if (req->more_pages == 1)
 		return;
@@ -1171,8 +1173,7 @@ static int dm_thread_func(void *dm_dev)
 	int t;
 
 	while (!kthread_should_stop()) {
-		t = wait_for_completion_interruptible_timeout(
-						&dm_device.config_event, 1*HZ);
+		t = wait_for_completion_timeout(&dm_device.config_event, 1*HZ);
 		/*
 		 * The host expects us to post information on the memory
 		 * pressure every second.
@@ -1185,7 +1186,6 @@ static int dm_thread_func(void *dm_dev)
 
 	return 0;
 }
-
 
 static void version_resp(struct hv_dynmem_device *dm,
 			struct dm_version_response *vresp)
@@ -1527,4 +1527,5 @@ static int __init init_balloon_drv(void)
 module_init(init_balloon_drv);
 
 MODULE_DESCRIPTION("Hyper-V Balloon");
+MODULE_VERSION(HV_DRV_VERSION);
 MODULE_LICENSE("GPL");

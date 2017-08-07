@@ -259,7 +259,6 @@ struct v4l2_ctrl_config {
 void v4l2_ctrl_fill(u32 id, const char **name, enum v4l2_ctrl_type *type,
 		    s32 *min, s32 *max, s32 *step, s32 *def, u32 *flags);
 
-
 /** v4l2_ctrl_handler_init_class() - Initialize the control handler.
   * @hdl:	The control handler.
   * @nr_of_controls_hint: A hint of how many controls this handler is
@@ -471,7 +470,6 @@ bool v4l2_ctrl_radio_filter(const struct v4l2_ctrl *ctrl);
   */
 void v4l2_ctrl_cluster(unsigned ncontrols, struct v4l2_ctrl **controls);
 
-
 /** v4l2_ctrl_auto_cluster() - Mark all controls in the cluster as belonging to
   * that cluster and set it up for autofoo/foo-type handling.
   * @ncontrols:	The number of controls in this cluster.
@@ -503,7 +501,6 @@ void v4l2_ctrl_cluster(unsigned ncontrols, struct v4l2_ctrl **controls);
   */
 void v4l2_ctrl_auto_cluster(unsigned ncontrols, struct v4l2_ctrl **controls,
 			u8 manual_val, bool set_volatile);
-
 
 /** v4l2_ctrl_find() - Find a control with the given ID.
   * @hdl:	The control handler.
@@ -571,7 +568,7 @@ static inline void v4l2_ctrl_lock(struct v4l2_ctrl *ctrl)
 	mutex_lock(ctrl->handler->lock);
 }
 
-/** v4l2_ctrl_unlock() - Helper function to unlock the handler
+/** v4l2_ctrl_lock() - Helper function to unlock the handler
   * associated with the control.
   * @ctrl:	The control to unlock.
   */

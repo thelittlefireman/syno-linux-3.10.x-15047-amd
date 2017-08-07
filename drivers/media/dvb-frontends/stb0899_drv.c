@@ -1260,7 +1260,6 @@ err:
 	return -EREMOTEIO;
 }
 
-
 static inline void CONVERT32(u32 x, char *str)
 {
 	*str++	= (x >> 24) & 0xff;
@@ -1611,7 +1610,6 @@ static struct dvb_frontend_ops stb0899_ops = {
 	.search				= stb0899_search,
 	.get_frontend                   = stb0899_get_frontend,
 
-
 	.read_status			= stb0899_read_status,
 	.read_snr			= stb0899_read_snr,
 	.read_signal_strength		= stb0899_read_signal_strength,
@@ -1628,18 +1626,19 @@ static struct dvb_frontend_ops stb0899_ops = {
 struct dvb_frontend *stb0899_attach(struct stb0899_config *config, struct i2c_adapter *i2c)
 {
 	struct stb0899_state *state = NULL;
+	enum stb0899_inversion inversion;
 
 	state = kzalloc(sizeof (struct stb0899_state), GFP_KERNEL);
 	if (state == NULL)
 		goto error;
 
+	inversion				= config->inversion;
 	state->verbose				= &verbose;
 	state->config				= config;
 	state->i2c				= i2c;
 	state->frontend.ops			= stb0899_ops;
 	state->frontend.demodulator_priv	= state;
-	/* use configured inversion as default -- we'll later autodetect inversion */
-	state->internal.inversion		= config->inversion;
+	state->internal.inversion		= inversion;
 
 	stb0899_wakeup(&state->frontend);
 	if (stb0899_get_dev_id(state) == -ENODEV) {

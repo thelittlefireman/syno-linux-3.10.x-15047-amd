@@ -123,7 +123,6 @@ struct mpoa_client *mpcs = NULL; /* FIXME */
 static struct atm_mpoa_qos *qos_head = NULL;
 static DEFINE_TIMER(mpc_timer, NULL, 0, 0);
 
-
 static struct mpoa_client *find_mpc_by_itfnum(int itf)
 {
 	struct mpoa_client *mpc;
@@ -478,7 +477,7 @@ static const uint8_t *copy_macs(struct mpoa_client *mpc,
 			return NULL;
 		}
 	}
-	ether_addr_copy(mpc->mps_macs, router_mac);
+	memcpy(mpc->mps_macs, router_mac, ETH_ALEN);
 	tlvs += 20; if (device_type == MPS_AND_MPC) tlvs += 20;
 	if (mps_macs > 0)
 		memcpy(mpc->mps_macs, tlvs, mps_macs*ETH_ALEN);
@@ -998,11 +997,13 @@ int msg_to_mpoad(struct k_message *mesg, struct mpoa_client *mpc)
 }
 
 static int mpoa_event_listener(struct notifier_block *mpoa_notifier,
-			       unsigned long event, void *ptr)
+			       unsigned long event, void *dev_ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev;
 	struct mpoa_client *mpc;
 	struct lec_priv *priv;
+
+	dev = dev_ptr;
 
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
@@ -1076,7 +1077,6 @@ static int mpoa_event_listener(struct notifier_block *mpoa_notifier,
  * Functions which are called after a message is received from mpcd.
  * Msg is reused on purpose.
  */
-
 
 static void MPOA_trigger_rcvd(struct k_message *msg, struct mpoa_client *mpc)
 {
@@ -1392,7 +1392,6 @@ static void clean_up(struct k_message *msg, struct mpoa_client *mpc, int action)
 	eg_cache_entry *entry;
 	msg->type = SND_EGRESS_PURGE;
 
-
 	/* FIXME: This knows too much of the cache structure */
 	read_lock_irq(&mpc->egress_lock);
 	entry = mpc->eg_cache;
@@ -1492,7 +1491,7 @@ static void __exit atm_mpoa_cleanup(void)
 
 	mpc_proc_clean();
 
-	del_timer_sync(&mpc_timer);
+	del_timer(&mpc_timer);
 	unregister_netdevice_notifier(&mpoa_notifier);
 	deregister_atm_ioctl(&atm_ioctl_ops);
 

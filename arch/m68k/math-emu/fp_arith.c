@@ -128,7 +128,6 @@ fp_fsub(struct fp_ext *dest, struct fp_ext *src)
 	return fp_fadd(dest, src);
 }
 
-
 struct fp_ext *
 fp_fcmp(struct fp_ext *dest, struct fp_ext *src)
 {
@@ -519,7 +518,7 @@ static void fp_roundint(struct fp_ext *dest, int mode)
 				return;
 			break;
 		case 0x401e:
-			if (oldmant.m32[1] & 0x80000000)
+			if (!(oldmant.m32[1] >= 0))
 				return;
 			if (oldmant.m32[0] & 1)
 				break;
@@ -698,4 +697,3 @@ fp_fscale(struct fp_ext *dest, struct fp_ext *src)
 
 	return dest;
 }
-

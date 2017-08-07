@@ -447,7 +447,6 @@ static netdev_tx_t cc770_start_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	stats->tx_bytes += dlc;
 
-
 	/*
 	 * HM: We had some cases of repeated IRQs so make sure the
 	 * INT is acknowledged I know it's already further up, but
@@ -823,7 +822,6 @@ static const struct net_device_ops cc770_netdev_ops = {
 	.ndo_open = cc770_open,
 	.ndo_stop = cc770_close,
 	.ndo_start_xmit = cc770_start_xmit,
-	.ndo_change_mtu = can_change_mtu,
 };
 
 int register_cc770dev(struct net_device *dev)

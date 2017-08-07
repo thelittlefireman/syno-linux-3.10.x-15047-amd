@@ -117,7 +117,6 @@
 
 #define MPC52xx_IRQ_HIGHTESTHWIRQ (0xd0)
 
-
 /* MPC5200 device tree match tables */
 static struct of_device_id mpc52xx_pic_ids[] __initdata = {
 	{ .compatible = "fsl,mpc5200-pic", },
@@ -340,7 +339,7 @@ static int mpc52xx_irqhost_map(struct irq_domain *h, unsigned int virq,
 {
 	int l1irq;
 	int l2irq;
-	struct irq_chip *uninitialized_var(irqchip);
+	struct irq_chip *irqchip;
 	void *hndlr;
 	int type;
 	u32 reg;

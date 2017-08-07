@@ -241,7 +241,6 @@ static struct dca_ops ioat_dca_ops = {
 	.dev_managed		= ioat_dca_dev_managed,
 };
 
-
 struct dca_provider *ioat_dca_init(struct pci_dev *pdev, void __iomem *iobase)
 {
 	struct dca_provider *dca;
@@ -309,7 +308,6 @@ struct dca_provider *ioat_dca_init(struct pci_dev *pdev, void __iomem *iobase)
 
 	return dca;
 }
-
 
 static int ioat2_dca_add_requester(struct dca_provider *dca, struct device *dev)
 {
@@ -455,7 +453,6 @@ struct dca_provider *ioat2_dca_init(struct pci_dev *pdev, void __iomem *iobase)
 		writew(pcie_control,
 		       ioatdca->dca_base + IOAT_PCI_CAP_ENABLE_OFFSET);
 	}
-
 
 	/* TODO version, compatibility and configuration checks */
 
@@ -676,7 +673,6 @@ struct dca_provider *ioat3_dca_init(struct pci_dev *pdev, void __iomem *iobase)
 		writew(pcie_control,
 		       ioatdca->dca_base + IOAT3_PCI_CONTROL_OFFSET);
 	}
-
 
 	/* TODO version, compatibility and configuration checks */
 

@@ -77,36 +77,9 @@ static int dma_buf_mmap_internal(struct file *file, struct vm_area_struct *vma)
 	return dmabuf->ops->mmap(dmabuf, vma);
 }
 
-static loff_t dma_buf_llseek(struct file *file, loff_t offset, int whence)
-{
-	struct dma_buf *dmabuf;
-	loff_t base;
-
-	if (!is_dma_buf_file(file))
-		return -EBADF;
-
-	dmabuf = file->private_data;
-
-	/* only support discovering the end of the buffer,
-	   but also allow SEEK_SET to maintain the idiomatic
-	   SEEK_END(0), SEEK_CUR(0) pattern */
-	if (whence == SEEK_END)
-		base = dmabuf->size;
-	else if (whence == SEEK_SET)
-		base = 0;
-	else
-		return -EINVAL;
-
-	if (offset != 0)
-		return -EINVAL;
-
-	return base + offset;
-}
-
 static const struct file_operations dma_buf_fops = {
 	.release	= dma_buf_release,
 	.mmap		= dma_buf_mmap_internal,
-	.llseek		= dma_buf_llseek,
 };
 
 /*
@@ -160,12 +133,7 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 	dmabuf->exp_name = exp_name;
 
 	file = anon_inode_getfile("dmabuf", &dma_buf_fops, dmabuf, flags);
-	if (IS_ERR(file)) {
-		kfree(dmabuf);
-		return ERR_CAST(file);
-	}
 
-	file->f_mode |= FMODE_LSEEK;
 	dmabuf->file = file;
 
 	mutex_init(&dmabuf->lock);
@@ -178,7 +146,6 @@ struct dma_buf *dma_buf_export_named(void *priv, const struct dma_buf_ops *ops,
 	return dmabuf;
 }
 EXPORT_SYMBOL_GPL(dma_buf_export_named);
-
 
 /**
  * dma_buf_fd - returns a file descriptor for the given dma_buf
@@ -251,8 +218,9 @@ EXPORT_SYMBOL_GPL(dma_buf_put);
  * @dmabuf:	[in]	buffer to attach device to.
  * @dev:	[in]	device to be attached.
  *
- * Returns struct dma_buf_attachment * for this attachment; returns ERR_PTR on
- * error.
+ * Returns struct dma_buf_attachment * for this attachment; may return negative
+ * error codes.
+ *
  */
 struct dma_buf_attachment *dma_buf_attach(struct dma_buf *dmabuf,
 					  struct device *dev)
@@ -318,8 +286,9 @@ EXPORT_SYMBOL_GPL(dma_buf_detach);
  * @attach:	[in]	attachment whose scatterlist is to be returned
  * @direction:	[in]	direction of DMA transfer
  *
- * Returns sg_table containing the scatterlist to be returned; returns ERR_PTR
- * on error.
+ * Returns sg_table containing the scatterlist to be returned; may return NULL
+ * or ERR_PTR.
+ *
  */
 struct sg_table *dma_buf_map_attachment(struct dma_buf_attachment *attach,
 					enum dma_data_direction direction)
@@ -332,8 +301,6 @@ struct sg_table *dma_buf_map_attachment(struct dma_buf_attachment *attach,
 		return ERR_PTR(-EINVAL);
 
 	sg_table = attach->dmabuf->ops->map_dma_buf(attach, direction);
-	if (!sg_table)
-		sg_table = ERR_PTR(-ENOMEM);
 
 	return sg_table;
 }
@@ -361,7 +328,6 @@ void dma_buf_unmap_attachment(struct dma_buf_attachment *attach,
 						direction);
 }
 EXPORT_SYMBOL_GPL(dma_buf_unmap_attachment);
-
 
 /**
  * dma_buf_begin_cpu_access - Must be called before accessing a dma_buf from the
@@ -482,7 +448,6 @@ void dma_buf_kunmap(struct dma_buf *dmabuf, unsigned long page_num,
 }
 EXPORT_SYMBOL_GPL(dma_buf_kunmap);
 
-
 /**
  * dma_buf_mmap - Setup up a userspace mmap with the given vma
  * @dmabuf:	[in]	buffer that should back the vma
@@ -544,8 +509,6 @@ EXPORT_SYMBOL_GPL(dma_buf_mmap);
  * These calls are optional in drivers. The intended use for them
  * is for mapping objects linear in kernel space for high use objects.
  * Please attempt to use kmap/kunmap before thinking about these interfaces.
- *
- * Returns NULL on error.
  */
 void *dma_buf_vmap(struct dma_buf *dmabuf)
 {
@@ -568,9 +531,7 @@ void *dma_buf_vmap(struct dma_buf *dmabuf)
 	BUG_ON(dmabuf->vmap_ptr);
 
 	ptr = dmabuf->ops->vmap(dmabuf);
-	if (WARN_ON_ONCE(IS_ERR(ptr)))
-		ptr = NULL;
-	if (!ptr)
+	if (IS_ERR_OR_NULL(ptr))
 		goto out_unlock;
 
 	dmabuf->vmap_ptr = ptr;
@@ -620,35 +581,36 @@ static int dma_buf_describe(struct seq_file *s)
 	if (ret)
 		return ret;
 
-	seq_puts(s, "\nDma-buf Objects:\n");
-	seq_puts(s, "size\tflags\tmode\tcount\texp_name\n");
+	seq_printf(s, "\nDma-buf Objects:\n");
+	seq_printf(s, "\texp_name\tsize\tflags\tmode\tcount\n");
 
 	list_for_each_entry(buf_obj, &db_list.head, list_node) {
 		ret = mutex_lock_interruptible(&buf_obj->lock);
 
 		if (ret) {
-			seq_puts(s,
-				 "\tERROR locking buffer object: skipping\n");
+			seq_printf(s,
+				  "\tERROR locking buffer object: skipping\n");
 			continue;
 		}
 
-		seq_printf(s, "%08zu\t%08x\t%08x\t%08ld\t%s\n",
-				buf_obj->size,
-				buf_obj->file->f_flags, buf_obj->file->f_mode,
-				(long)(buf_obj->file->f_count.counter),
-				buf_obj->exp_name);
+		seq_printf(s, "\t");
 
-		seq_puts(s, "\tAttached Devices:\n");
+		seq_printf(s, "\t%s\t%08zu\t%08x\t%08x\t%08ld\n",
+				buf_obj->exp_name, buf_obj->size,
+				buf_obj->file->f_flags, buf_obj->file->f_mode,
+				(long)(buf_obj->file->f_count.counter));
+
+		seq_printf(s, "\t\tAttached Devices:\n");
 		attach_count = 0;
 
 		list_for_each_entry(attach_obj, &buf_obj->attachments, node) {
-			seq_puts(s, "\t");
+			seq_printf(s, "\t\t");
 
-			seq_printf(s, "%s\n", dev_name(attach_obj->dev));
+			seq_printf(s, "%s\n", attach_obj->dev->init_name);
 			attach_count++;
 		}
 
-		seq_printf(s, "Total %d devices attached\n\n",
+		seq_printf(s, "\n\t\tTotal %d devices attached\n",
 				attach_count);
 
 		count++;
@@ -715,7 +677,10 @@ int dma_buf_debugfs_create_file(const char *name,
 	d = debugfs_create_file(name, S_IRUGO, dma_buf_debugfs_dir,
 			write, &dma_buf_debug_fops);
 
-	return PTR_ERR_OR_ZERO(d);
+	if (IS_ERR(d))
+		return PTR_ERR(d);
+
+	return 0;
 }
 #else
 static inline int dma_buf_init_debugfs(void)

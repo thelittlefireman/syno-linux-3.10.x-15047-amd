@@ -8,7 +8,6 @@
 #ifndef __ASM_MACH_CAVIUM_OCTEON_KERNEL_ENTRY_H
 #define __ASM_MACH_CAVIUM_OCTEON_KERNEL_ENTRY_H
 
-
 #define CP0_CYCLE_COUNTER $9, 6
 #define CP0_CVMCTL_REG $9, 7
 #define CP0_CVMMEMCTL_REG $11,7
@@ -34,10 +33,15 @@
 	ori	v0, CONFIG_CAVIUM_OCTEON_CVMSEG_SIZE
 	dmtc0	v0, CP0_CVMMEMCTL_REG	# Write the cavium mem control register
 	dmfc0	v0, CP0_CVMCTL_REG	# Read the cavium control register
+#ifdef CONFIG_CAVIUM_OCTEON_HW_FIX_UNALIGNED
 	# Disable unaligned load/store support but leave HW fixup enabled
-	# Needed for octeon specific memcpy
 	or  v0, v0, 0x5001
 	xor v0, v0, 0x1001
+#else
+	# Disable unaligned load/store and HW fixup support
+	or  v0, v0, 0x5001
+	xor v0, v0, 0x5001
+#endif
 	# Read the processor ID register
 	mfc0 v1, CP0_PRID_REG
 	# Disable instruction prefetching (Octeon Pass1 errata)

@@ -1285,7 +1285,6 @@ static int pxa_ep_set_halt(struct usb_ep *_ep, int value)
 	unsigned long flags;
 	int rc;
 
-
 	if (!_ep)
 		return -EINVAL;
 	udc_usb_ep = container_of(_ep, struct udc_usb_ep, usb_ep);
@@ -1737,12 +1736,9 @@ static void udc_init_data(struct pxa_udc *dev)
 	}
 
 	/* USB endpoints init */
-	for (i = 1; i < NR_USB_ENDPOINTS; i++) {
+	for (i = 1; i < NR_USB_ENDPOINTS; i++)
 		list_add_tail(&dev->udc_usb_ep[i].usb_ep.ep_list,
 				&dev->gadget.ep_list);
-		usb_ep_set_maxpacket_limit(&dev->udc_usb_ep[i].usb_ep,
-					   dev->udc_usb_ep[i].usb_ep.maxpacket);
-	}
 }
 
 /**
@@ -2425,7 +2421,7 @@ static int pxa_udc_probe(struct platform_device *pdev)
 		return udc->irq;
 
 	udc->dev = &pdev->dev;
-	udc->mach = dev_get_platdata(&pdev->dev);
+	udc->mach = pdev->dev.platform_data;
 	udc->transceiver = usb_get_phy(USB_PHY_TYPE_USB2);
 
 	gpio = udc->mach->gpio_pullup;
@@ -2508,6 +2504,7 @@ static int pxa_udc_remove(struct platform_device *_dev)
 	usb_put_phy(udc->transceiver);
 
 	udc->transceiver = NULL;
+	platform_set_drvdata(_dev, NULL);
 	the_controller = NULL;
 	clk_put(udc->clk);
 	iounmap(udc->regs);

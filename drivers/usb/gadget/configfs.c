@@ -4,7 +4,6 @@
 #include <linux/device.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget_configfs.h>
-#include "configfs.h"
 
 int check_user_usb_string(const char *name,
 		struct usb_gadget_strings *stringtab_dev)
@@ -129,7 +128,6 @@ CONFIGFS_ATTR_STRUCT(config_usb_cfg);
 {	\
 	return sprintf(page, "0x%04x\n", le16_to_cpup(&gi->cdev.desc.__name)); \
 }
-
 
 #define GI_DEVICE_DESC_SIMPLE_W_u8(_name)		\
 	static ssize_t gadget_dev_desc_##_name##_store(struct gadget_info *gi, \
@@ -454,7 +452,6 @@ static struct configfs_item_operations gadget_config_item_ops = {
 	.drop_link              = config_usb_cfg_unlink,
 };
 
-
 static ssize_t gadget_config_desc_MaxPower_show(struct config_usb_cfg *cfg,
 		char *page)
 {
@@ -558,19 +555,12 @@ static struct config_group *function_make(
 
 	fi = usb_get_function_instance(func_name);
 	if (IS_ERR(fi))
-		return ERR_CAST(fi);
+		return ERR_PTR(PTR_ERR(fi));
 
-	ret = config_item_set_name(&fi->group.cg_item, name);
+	ret = config_item_set_name(&fi->group.cg_item, "%s", name);
 	if (ret) {
 		usb_put_function_instance(fi);
 		return ERR_PTR(ret);
-	}
-	if (fi->set_inst_name) {
-		ret = fi->set_inst_name(fi, instance_name);
-		if (ret) {
-			usb_put_function_instance(fi);
-			return ERR_PTR(ret);
-		}
 	}
 
 	gi = container_of(group, struct gadget_info, functions_group);
@@ -765,6 +755,7 @@ static void purge_configs_funcs(struct gadget_info *gi)
 			}
 		}
 		c->next_interface_id = 0;
+		memset(c->interface, 0, sizeof(c->interface));
 		c->superspeed = 0;
 		c->highspeed = 0;
 		c->fullspeed = 0;
@@ -797,7 +788,6 @@ static int configfs_composite_bind(struct usb_gadget *gadget,
 				gi->composite.name);
 		goto err_comp_cleanup;
 	}
-
 
 	list_for_each_entry(c, &gi->cdev.configs, list) {
 		struct config_usb_cfg *cfg;
@@ -867,10 +857,8 @@ static int configfs_composite_bind(struct usb_gadget *gadget,
 		list_for_each_entry_safe(f, tmp, &cfg->func_list, list) {
 			list_del(&f->list);
 			ret = usb_add_function(c, f);
-			if (ret) {
-				list_add(&f->list, &cfg->func_list);
+			if (ret)
 				goto err_purge_funcs;
-			}
 		}
 		usb_ep_autoconfig_reset(cdev->gadget);
 	}
@@ -998,14 +986,6 @@ static struct configfs_subsystem gadget_subsys = {
 	},
 	.su_mutex = __MUTEX_INITIALIZER(gadget_subsys.su_mutex),
 };
-
-void unregister_gadget_item(struct config_item *item)
-{
-	struct gadget_info *gi = to_gadget_info(item);
-
-	unregister_gadget(gi);
-}
-EXPORT_SYMBOL(unregister_gadget_item);
 
 static int __init gadget_cfs_init(void)
 {

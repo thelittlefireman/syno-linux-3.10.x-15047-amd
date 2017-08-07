@@ -46,7 +46,6 @@ MODULE_PARM_DESC(vbi_debug, "enable debug messages [vbi]");
 #define NTSC_VBI_END_LINE   21
 #define NTSC_VBI_LINES      (NTSC_VBI_END_LINE - NTSC_VBI_START_LINE + 1)
 
-
 int cx23885_vbi_fmt(struct file *file, void *priv,
 	struct v4l2_format *f)
 {
@@ -132,7 +131,6 @@ static int cx23885_start_vbi_dma(struct cx23885_dev    *dev,
 
 	return 0;
 }
-
 
 int cx23885_restart_vbi_queue(struct cx23885_dev    *dev,
 			     struct cx23885_dmaqueue *q)

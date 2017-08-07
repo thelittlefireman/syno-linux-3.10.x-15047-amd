@@ -20,12 +20,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-
 /*
  * ToDo:
  * - add firmware download/update support
  */
-
 
 /* driver definitions */
 #define DRIVER_AUTHOR "Tobias Lorenz <tobias.lorenz@gmx.net>"
@@ -39,7 +37,6 @@
 #include <linux/slab.h>
 
 #include "radio-si470x.h"
-
 
 /* USB Device ID List */
 static struct usb_device_id si470x_usb_driver_id_table[] = {
@@ -57,8 +54,6 @@ static struct usb_device_id si470x_usb_driver_id_table[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE(usb, si470x_usb_driver_id_table);
-
-
 
 /**************************************************************************
  * Module Parameters
@@ -87,8 +82,6 @@ static unsigned short max_rds_errors = 1;
 /* 3 means   6+ errors or errors in checkword, correction not possible */
 module_param(max_rds_errors, ushort, 0644);
 MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
-
-
 
 /**************************************************************************
  * USB HID Reports
@@ -137,16 +130,12 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
 /* interrupt out endpoint 2 every 1 millisecond */
 #define UNUSED_REPORT		23
 
-#define MAX_REPORT_SIZE		64
-
-
-
 /**************************************************************************
  * Software/Hardware Versions from Scratch Page
  **************************************************************************/
+#define RADIO_SW_VERSION_NOT_BOOTLOADABLE	6
+#define RADIO_SW_VERSION			1
 #define RADIO_HW_VERSION			1
-
-
 
 /**************************************************************************
  * LED State Definitions
@@ -162,16 +151,12 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
 #define SOLID_RED_LED		0x40	/* bootload state */
 #define SOLID_ORANGE_LED	0x80
 
-
-
 /**************************************************************************
  * Stream State Definitions
  **************************************************************************/
 #define STREAM_COMMAND	0x36
 #define STREAM_VIDPID	0x00
 #define STREAM_AUDIO	0xff
-
-
 
 /**************************************************************************
  * Bootloader / Flash Commands
@@ -199,8 +184,6 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
 #define COMMAND_FAILED		0x02
 #define COMMAND_PENDING		0x03
 
-
-
 /**************************************************************************
  * General Driver Functions - REGISTER_REPORTs
  **************************************************************************/
@@ -210,7 +193,7 @@ MODULE_PARM_DESC(max_rds_errors, "RDS maximum block errors: *1*");
  */
 static int si470x_get_report(struct si470x_device *radio, void *buf, int size)
 {
-	unsigned char *report = buf;
+	unsigned char *report = (unsigned char *) buf;
 	int retval;
 
 	retval = usb_control_msg(radio->usbdev,
@@ -227,13 +210,12 @@ static int si470x_get_report(struct si470x_device *radio, void *buf, int size)
 	return retval;
 }
 
-
 /*
  * si470x_set_report - send a HID report
  */
 static int si470x_set_report(struct si470x_device *radio, void *buf, int size)
 {
-	unsigned char *report = buf;
+	unsigned char *report = (unsigned char *) buf;
 	int retval;
 
 	retval = usb_control_msg(radio->usbdev,
@@ -250,41 +232,39 @@ static int si470x_set_report(struct si470x_device *radio, void *buf, int size)
 	return retval;
 }
 
-
 /*
  * si470x_get_register - read register
  */
 int si470x_get_register(struct si470x_device *radio, int regnr)
 {
+	unsigned char buf[REGISTER_REPORT_SIZE];
 	int retval;
 
-	radio->usb_buf[0] = REGISTER_REPORT(regnr);
+	buf[0] = REGISTER_REPORT(regnr);
 
-	retval = si470x_get_report(radio, radio->usb_buf, REGISTER_REPORT_SIZE);
+	retval = si470x_get_report(radio, (void *) &buf, sizeof(buf));
 
 	if (retval >= 0)
-		radio->registers[regnr] = get_unaligned_be16(&radio->usb_buf[1]);
+		radio->registers[regnr] = get_unaligned_be16(&buf[1]);
 
 	return (retval < 0) ? -EINVAL : 0;
 }
-
 
 /*
  * si470x_set_register - write register
  */
 int si470x_set_register(struct si470x_device *radio, int regnr)
 {
+	unsigned char buf[REGISTER_REPORT_SIZE];
 	int retval;
 
-	radio->usb_buf[0] = REGISTER_REPORT(regnr);
-	put_unaligned_be16(radio->registers[regnr], &radio->usb_buf[1]);
+	buf[0] = REGISTER_REPORT(regnr);
+	put_unaligned_be16(radio->registers[regnr], &buf[1]);
 
-	retval = si470x_set_report(radio, radio->usb_buf, REGISTER_REPORT_SIZE);
+	retval = si470x_set_report(radio, (void *) &buf, sizeof(buf));
 
 	return (retval < 0) ? -EINVAL : 0;
 }
-
-
 
 /**************************************************************************
  * General Driver Functions - ENTIRE_REPORT
@@ -295,22 +275,21 @@ int si470x_set_register(struct si470x_device *radio, int regnr)
  */
 static int si470x_get_all_registers(struct si470x_device *radio)
 {
+	unsigned char buf[ENTIRE_REPORT_SIZE];
 	int retval;
 	unsigned char regnr;
 
-	radio->usb_buf[0] = ENTIRE_REPORT;
+	buf[0] = ENTIRE_REPORT;
 
-	retval = si470x_get_report(radio, radio->usb_buf, ENTIRE_REPORT_SIZE);
+	retval = si470x_get_report(radio, (void *) &buf, sizeof(buf));
 
 	if (retval >= 0)
 		for (regnr = 0; regnr < RADIO_REGISTER_NUM; regnr++)
 			radio->registers[regnr] = get_unaligned_be16(
-				&radio->usb_buf[regnr * RADIO_REGISTER_SIZE + 1]);
+				&buf[regnr * RADIO_REGISTER_SIZE + 1]);
 
 	return (retval < 0) ? -EINVAL : 0;
 }
-
-
 
 /**************************************************************************
  * General Driver Functions - LED_REPORT
@@ -322,18 +301,17 @@ static int si470x_get_all_registers(struct si470x_device *radio)
 static int si470x_set_led_state(struct si470x_device *radio,
 		unsigned char led_state)
 {
+	unsigned char buf[LED_REPORT_SIZE];
 	int retval;
 
-	radio->usb_buf[0] = LED_REPORT;
-	radio->usb_buf[1] = LED_COMMAND;
-	radio->usb_buf[2] = led_state;
+	buf[0] = LED_REPORT;
+	buf[1] = LED_COMMAND;
+	buf[2] = led_state;
 
-	retval = si470x_set_report(radio, radio->usb_buf, LED_REPORT_SIZE);
+	retval = si470x_set_report(radio, (void *) &buf, sizeof(buf));
 
 	return (retval < 0) ? -EINVAL : 0;
 }
-
-
 
 /**************************************************************************
  * General Driver Functions - SCRATCH_REPORT
@@ -344,24 +322,23 @@ static int si470x_set_led_state(struct si470x_device *radio,
  */
 static int si470x_get_scratch_page_versions(struct si470x_device *radio)
 {
+	unsigned char buf[SCRATCH_REPORT_SIZE];
 	int retval;
 
-	radio->usb_buf[0] = SCRATCH_REPORT;
+	buf[0] = SCRATCH_REPORT;
 
-	retval = si470x_get_report(radio, radio->usb_buf, SCRATCH_REPORT_SIZE);
+	retval = si470x_get_report(radio, (void *) &buf, sizeof(buf));
 
 	if (retval < 0)
 		dev_warn(&radio->intf->dev, "si470x_get_scratch: "
 			"si470x_get_report returned %d\n", retval);
 	else {
-		radio->software_version = radio->usb_buf[1];
-		radio->hardware_version = radio->usb_buf[2];
+		radio->software_version = buf[1];
+		radio->hardware_version = buf[2];
 	}
 
 	return (retval < 0) ? -EINVAL : 0;
 }
-
-
 
 /**************************************************************************
  * RDS Driver Functions
@@ -485,7 +462,6 @@ resubmit:
 	radio->status_rssi_auto_update = radio->int_in_running;
 }
 
-
 int si470x_fops_open(struct file *file)
 {
 	return v4l2_fh_open(file);
@@ -506,10 +482,8 @@ static void si470x_usb_release(struct v4l2_device *v4l2_dev)
 	v4l2_device_unregister(&radio->v4l2_dev);
 	kfree(radio->int_in_buffer);
 	kfree(radio->buffer);
-	kfree(radio->usb_buf);
 	kfree(radio);
 }
-
 
 /**************************************************************************
  * Video4Linux Interface
@@ -532,7 +506,6 @@ int si470x_vidioc_querycap(struct file *file, void *priv,
 	capability->capabilities = capability->device_caps | V4L2_CAP_DEVICE_CAPS;
 	return 0;
 }
-
 
 static int si470x_start_usb(struct si470x_device *radio)
 {
@@ -591,11 +564,6 @@ static int si470x_usb_driver_probe(struct usb_interface *intf,
 		retval = -ENOMEM;
 		goto err_initial;
 	}
-	radio->usb_buf = kmalloc(MAX_REPORT_SIZE, GFP_KERNEL);
-	if (radio->usb_buf == NULL) {
-		retval = -ENOMEM;
-		goto err_radio;
-	}
 	radio->usbdev = interface_to_usbdev(intf);
 	radio->intf = intf;
 	radio->band = 1; /* Default to 76 - 108 MHz */
@@ -615,7 +583,7 @@ static int si470x_usb_driver_probe(struct usb_interface *intf,
 	if (!radio->int_in_endpoint) {
 		dev_info(&intf->dev, "could not find interrupt in endpoint\n");
 		retval = -EIO;
-		goto err_usbbuf;
+		goto err_radio;
 	}
 
 	int_end_size = le16_to_cpu(radio->int_in_endpoint->wMaxPacketSize);
@@ -624,7 +592,7 @@ static int si470x_usb_driver_probe(struct usb_interface *intf,
 	if (!radio->int_in_buffer) {
 		dev_info(&intf->dev, "could not allocate int_in_buffer");
 		retval = -ENOMEM;
-		goto err_usbbuf;
+		goto err_radio;
 	}
 
 	radio->int_in_urb = usb_alloc_urb(0, GFP_KERNEL);
@@ -635,30 +603,6 @@ static int si470x_usb_driver_probe(struct usb_interface *intf,
 	}
 
 	radio->v4l2_dev.release = si470x_usb_release;
-
-	/*
-	 * The si470x SiLabs reference design uses the same USB IDs as
-	 * 'Thanko's Raremono' si4734 based receiver. So check here which we
-	 * have: attempt to read the device ID from the si470x: the lower 12
-	 * bits should be 0x0242 for the si470x.
-	 *
-	 * We use this check to determine which device we are dealing with.
-	 */
-	if (id->idVendor == 0x10c4 && id->idProduct == 0x818a) {
-		retval = usb_control_msg(radio->usbdev,
-				usb_rcvctrlpipe(radio->usbdev, 0),
-				HID_REQ_GET_REPORT,
-				USB_TYPE_CLASS | USB_RECIP_INTERFACE | USB_DIR_IN,
-				1, 2,
-				radio->usb_buf, 3, 500);
-		if (retval != 3 ||
-		    (get_unaligned_be16(&radio->usb_buf[1]) & 0xfff) != 0x0242) {
-			dev_info(&intf->dev, "this is not a si470x device.\n");
-			retval = -ENODEV;
-			goto err_urb;
-		}
-	}
-
 	retval = v4l2_device_register(&intf->dev, &radio->v4l2_dev);
 	if (retval < 0) {
 		dev_err(&intf->dev, "couldn't register v4l2_device\n");
@@ -707,6 +651,15 @@ static int si470x_usb_driver_probe(struct usb_interface *intf,
 	}
 	dev_info(&intf->dev, "software version %d, hardware version %d\n",
 			radio->software_version, radio->hardware_version);
+	if (radio->software_version < RADIO_SW_VERSION) {
+		dev_warn(&intf->dev,
+			"This driver is known to work with "
+			"software version %hu,\n", RADIO_SW_VERSION);
+		dev_warn(&intf->dev,
+			"but the device has software version %hu.\n",
+			radio->software_version);
+		version_warning = 1;
+	}
 	if (radio->hardware_version < RADIO_HW_VERSION) {
 		dev_warn(&intf->dev,
 			"This driver is known to work with "
@@ -770,14 +723,11 @@ err_urb:
 	usb_free_urb(radio->int_in_urb);
 err_intbuffer:
 	kfree(radio->int_in_buffer);
-err_usbbuf:
-	kfree(radio->usb_buf);
 err_radio:
 	kfree(radio);
 err_initial:
 	return retval;
 }
-
 
 /*
  * si470x_usb_driver_suspend - suspend the device
@@ -804,7 +754,6 @@ static int si470x_usb_driver_suspend(struct usb_interface *intf,
 	return 0;
 }
 
-
 /*
  * si470x_usb_driver_resume - resume the device
  */
@@ -823,7 +772,6 @@ static int si470x_usb_driver_resume(struct usb_interface *intf)
 	return ret;
 }
 
-
 /*
  * si470x_usb_driver_disconnect - disconnect the device
  */
@@ -838,7 +786,6 @@ static void si470x_usb_driver_disconnect(struct usb_interface *intf)
 	mutex_unlock(&radio->lock);
 	v4l2_device_put(&radio->v4l2_dev);
 }
-
 
 /*
  * si470x_usb_driver - usb driver interface

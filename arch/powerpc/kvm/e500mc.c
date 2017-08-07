@@ -16,8 +16,6 @@
 #include <linux/slab.h>
 #include <linux/err.h>
 #include <linux/export.h>
-#include <linux/miscdevice.h>
-#include <linux/module.h>
 
 #include <asm/reg.h>
 #include <asm/cputable.h>
@@ -47,7 +45,6 @@ void kvmppc_set_pending_interrupt(struct kvm_vcpu *vcpu, enum int_class type)
 		WARN_ONCE(1, "%s: unknown int type %d\n", __func__, type);
 		return;
 	}
-
 
 	tag = PPC_DBELL_LPID(vcpu->kvm->arch.lpid) | vcpu->vcpu_id;
 	mb();
@@ -112,7 +109,7 @@ void kvmppc_mmu_msr_notify(struct kvm_vcpu *vcpu, u32 old_msr)
 
 static DEFINE_PER_CPU(struct kvm_vcpu *, last_vcpu_on_cpu);
 
-static void kvmppc_core_vcpu_load_e500mc(struct kvm_vcpu *vcpu, int cpu)
+void kvmppc_core_vcpu_load(struct kvm_vcpu *vcpu, int cpu)
 {
 	struct kvmppc_vcpu_e500 *vcpu_e500 = to_e500(vcpu);
 
@@ -149,7 +146,7 @@ static void kvmppc_core_vcpu_load_e500mc(struct kvm_vcpu *vcpu, int cpu)
 	kvmppc_load_guest_fp(vcpu);
 }
 
-static void kvmppc_core_vcpu_put_e500mc(struct kvm_vcpu *vcpu)
+void kvmppc_core_vcpu_put(struct kvm_vcpu *vcpu)
 {
 	vcpu->arch.eplc = mfspr(SPRN_EPLC);
 	vcpu->arch.epsc = mfspr(SPRN_EPSC);
@@ -206,8 +203,7 @@ int kvmppc_core_vcpu_setup(struct kvm_vcpu *vcpu)
 	return 0;
 }
 
-static int kvmppc_core_get_sregs_e500mc(struct kvm_vcpu *vcpu,
-					struct kvm_sregs *sregs)
+void kvmppc_core_get_sregs(struct kvm_vcpu *vcpu, struct kvm_sregs *sregs)
 {
 	struct kvmppc_vcpu_e500 *vcpu_e500 = to_e500(vcpu);
 
@@ -227,11 +223,10 @@ static int kvmppc_core_get_sregs_e500mc(struct kvm_vcpu *vcpu,
 	sregs->u.e.ivor_high[4] = vcpu->arch.ivor[BOOKE_IRQPRIO_DBELL];
 	sregs->u.e.ivor_high[5] = vcpu->arch.ivor[BOOKE_IRQPRIO_DBELL_CRIT];
 
-	return kvmppc_get_sregs_ivor(vcpu, sregs);
+	kvmppc_get_sregs_ivor(vcpu, sregs);
 }
 
-static int kvmppc_core_set_sregs_e500mc(struct kvm_vcpu *vcpu,
-					struct kvm_sregs *sregs)
+int kvmppc_core_set_sregs(struct kvm_vcpu *vcpu, struct kvm_sregs *sregs)
 {
 	struct kvmppc_vcpu_e500 *vcpu_e500 = to_e500(vcpu);
 	int ret;
@@ -264,22 +259,21 @@ static int kvmppc_core_set_sregs_e500mc(struct kvm_vcpu *vcpu,
 	return kvmppc_set_sregs_ivor(vcpu, sregs);
 }
 
-static int kvmppc_get_one_reg_e500mc(struct kvm_vcpu *vcpu, u64 id,
-			      union kvmppc_one_reg *val)
+int kvmppc_get_one_reg(struct kvm_vcpu *vcpu, u64 id,
+			union kvmppc_one_reg *val)
 {
 	int r = kvmppc_get_one_reg_e500_tlb(vcpu, id, val);
 	return r;
 }
 
-static int kvmppc_set_one_reg_e500mc(struct kvm_vcpu *vcpu, u64 id,
-			      union kvmppc_one_reg *val)
+int kvmppc_set_one_reg(struct kvm_vcpu *vcpu, u64 id,
+		       union kvmppc_one_reg *val)
 {
 	int r = kvmppc_set_one_reg_e500_tlb(vcpu, id, val);
 	return r;
 }
 
-static struct kvm_vcpu *kvmppc_core_vcpu_create_e500mc(struct kvm *kvm,
-						       unsigned int id)
+struct kvm_vcpu *kvmppc_core_vcpu_create(struct kvm *kvm, unsigned int id)
 {
 	struct kvmppc_vcpu_e500 *vcpu_e500;
 	struct kvm_vcpu *vcpu;
@@ -320,7 +314,7 @@ out:
 	return ERR_PTR(err);
 }
 
-static void kvmppc_core_vcpu_free_e500mc(struct kvm_vcpu *vcpu)
+void kvmppc_core_vcpu_free(struct kvm_vcpu *vcpu)
 {
 	struct kvmppc_vcpu_e500 *vcpu_e500 = to_e500(vcpu);
 
@@ -330,7 +324,7 @@ static void kvmppc_core_vcpu_free_e500mc(struct kvm_vcpu *vcpu)
 	kmem_cache_free(kvm_vcpu_cache, vcpu_e500);
 }
 
-static int kvmppc_core_init_vm_e500mc(struct kvm *kvm)
+int kvmppc_core_init_vm(struct kvm *kvm)
 {
 	int lpid;
 
@@ -342,27 +336,10 @@ static int kvmppc_core_init_vm_e500mc(struct kvm *kvm)
 	return 0;
 }
 
-static void kvmppc_core_destroy_vm_e500mc(struct kvm *kvm)
+void kvmppc_core_destroy_vm(struct kvm *kvm)
 {
 	kvmppc_free_lpid(kvm->arch.lpid);
 }
-
-static struct kvmppc_ops kvm_ops_e500mc = {
-	.get_sregs = kvmppc_core_get_sregs_e500mc,
-	.set_sregs = kvmppc_core_set_sregs_e500mc,
-	.get_one_reg = kvmppc_get_one_reg_e500mc,
-	.set_one_reg = kvmppc_set_one_reg_e500mc,
-	.vcpu_load   = kvmppc_core_vcpu_load_e500mc,
-	.vcpu_put    = kvmppc_core_vcpu_put_e500mc,
-	.vcpu_create = kvmppc_core_vcpu_create_e500mc,
-	.vcpu_free   = kvmppc_core_vcpu_free_e500mc,
-	.mmu_destroy  = kvmppc_mmu_destroy_e500,
-	.init_vm = kvmppc_core_init_vm_e500mc,
-	.destroy_vm = kvmppc_core_destroy_vm_e500mc,
-	.emulate_op = kvmppc_core_emulate_op_e500,
-	.emulate_mtspr = kvmppc_core_emulate_mtspr_e500,
-	.emulate_mfspr = kvmppc_core_emulate_mfspr_e500,
-};
 
 static int __init kvmppc_e500mc_init(void)
 {
@@ -370,28 +347,18 @@ static int __init kvmppc_e500mc_init(void)
 
 	r = kvmppc_booke_init();
 	if (r)
-		goto err_out;
+		return r;
 
 	kvmppc_init_lpid(64);
 	kvmppc_claim_lpid(0); /* host */
 
-	r = kvm_init(NULL, sizeof(struct kvmppc_vcpu_e500), 0, THIS_MODULE);
-	if (r)
-		goto err_out;
-	kvm_ops_e500mc.owner = THIS_MODULE;
-	kvmppc_pr_ops = &kvm_ops_e500mc;
-
-err_out:
-	return r;
+	return kvm_init(NULL, sizeof(struct kvmppc_vcpu_e500), 0, THIS_MODULE);
 }
 
 static void __exit kvmppc_e500mc_exit(void)
 {
-	kvmppc_pr_ops = NULL;
 	kvmppc_booke_exit();
 }
 
 module_init(kvmppc_e500mc_init);
 module_exit(kvmppc_e500mc_exit);
-MODULE_ALIAS_MISCDEV(KVM_MINOR);
-MODULE_ALIAS("devname:kvm");

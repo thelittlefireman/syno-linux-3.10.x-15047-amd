@@ -1,4 +1,7 @@
-/* MDIO Bus interface
+/*
+ * drivers/net/phy/mdio_bus.c
+ *
+ * MDIO Bus interface
  *
  * Author: Andy Fleming
  *
@@ -33,10 +36,10 @@
 #include <linux/mii.h>
 #include <linux/ethtool.h>
 #include <linux/phy.h>
-#include <linux/io.h>
-#include <linux/uaccess.h>
 
+#include <asm/io.h>
 #include <asm/irq.h>
+#include <asm/uaccess.h>
 
 /**
  * mdiobus_alloc_size - allocate a mii_bus structure
@@ -136,7 +139,8 @@ int mdiobus_register(struct mii_bus *bus)
 	int i, err;
 
 	if (NULL == bus || NULL == bus->name ||
-	    NULL == bus->read || NULL == bus->write)
+			NULL == bus->read ||
+			NULL == bus->write)
 		return -EINVAL;
 
 	BUG_ON(bus->state != MDIOBUS_ALLOCATED &&
@@ -150,7 +154,6 @@ int mdiobus_register(struct mii_bus *bus)
 	err = device_register(&bus->dev);
 	if (err) {
 		pr_err("mii_bus %s failed to register\n", bus->id);
-		put_device(&bus->dev);
 		return -EINVAL;
 	}
 
@@ -211,7 +214,9 @@ EXPORT_SYMBOL(mdiobus_unregister);
  */
 void mdiobus_free(struct mii_bus *bus)
 {
-	/* For compatibility with error handling in drivers. */
+	/*
+	 * For compatibility with error handling in drivers.
+	 */
 	if (bus->state == MDIOBUS_ALLOCATED) {
 		kfree(bus);
 		return;
@@ -311,8 +316,8 @@ static int mdio_bus_match(struct device *dev, struct device_driver *drv)
 	if (phydrv->match_phy_device)
 		return phydrv->match_phy_device(phydev);
 
-	return (phydrv->phy_id & phydrv->phy_id_mask) ==
-		(phydev->phy_id & phydrv->phy_id_mask);
+	return ((phydrv->phy_id & phydrv->phy_id_mask) ==
+		(phydev->phy_id & phydrv->phy_id_mask));
 }
 
 #ifdef CONFIG_PM
@@ -330,13 +335,15 @@ static bool mdio_bus_phy_may_suspend(struct phy_device *phydev)
 	if (!netdev)
 		return true;
 
-	/* Don't suspend PHY if the attched netdev parent may wakeup.
+	/*
+	 * Don't suspend PHY if the attched netdev parent may wakeup.
 	 * The parent may point to a PCI device, as in tg3 driver.
 	 */
 	if (netdev->dev.parent && device_may_wakeup(netdev->dev.parent))
 		return false;
 
-	/* Also don't suspend PHY if the netdev itself may wakeup. This
+	/*
+	 * Also don't suspend PHY if the netdev itself may wakeup. This
 	 * is the case for devices w/o underlaying pwr. mgmt. aware bus,
 	 * e.g. SoC devices.
 	 */
@@ -351,7 +358,8 @@ static int mdio_bus_suspend(struct device *dev)
 	struct phy_driver *phydrv = to_phy_driver(dev->driver);
 	struct phy_device *phydev = to_phy_device(dev);
 
-	/* We must stop the state machine manually, otherwise it stops out of
+	/*
+	 * We must stop the state machine manually, otherwise it stops out of
 	 * control, possibly with the phydev->lock held. Upon resume, netdev
 	 * may call phy routines that try to grab the same lock, and that may
 	 * lead to a deadlock.
@@ -380,7 +388,7 @@ static int mdio_bus_resume(struct device *dev)
 
 no_resume:
 	if (phydev->attached_dev && phydev->adjust_link)
-		phy_start_machine(phydev);
+		phy_start_machine(phydev, NULL);
 
 	return 0;
 }
@@ -402,12 +410,12 @@ static int mdio_bus_restore(struct device *dev)
 	phydev->link = 0;
 	phydev->state = PHY_UP;
 
-	phy_start_machine(phydev);
+	phy_start_machine(phydev, NULL);
 
 	return 0;
 }
 
-static const struct dev_pm_ops mdio_bus_pm_ops = {
+static struct dev_pm_ops mdio_bus_pm_ops = {
 	.suspend = mdio_bus_suspend,
 	.resume = mdio_bus_resume,
 	.freeze = mdio_bus_suspend,
@@ -430,39 +438,17 @@ phy_id_show(struct device *dev, struct device_attribute *attr, char *buf)
 
 	return sprintf(buf, "0x%.8lx\n", (unsigned long)phydev->phy_id);
 }
-static DEVICE_ATTR_RO(phy_id);
 
-static ssize_t
-phy_interface_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct phy_device *phydev = to_phy_device(dev);
-
-	return sprintf(buf, "%s\n", phy_modes(phydev->interface));
-}
-static DEVICE_ATTR_RO(phy_interface);
-
-static ssize_t
-phy_has_fixups_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct phy_device *phydev = to_phy_device(dev);
-
-	return sprintf(buf, "%d\n", phydev->has_fixups);
-}
-static DEVICE_ATTR_RO(phy_has_fixups);
-
-static struct attribute *mdio_dev_attrs[] = {
-	&dev_attr_phy_id.attr,
-	&dev_attr_phy_interface.attr,
-	&dev_attr_phy_has_fixups.attr,
-	NULL,
+static struct device_attribute mdio_dev_attrs[] = {
+	__ATTR_RO(phy_id),
+	__ATTR_NULL
 };
-ATTRIBUTE_GROUPS(mdio_dev);
 
 struct bus_type mdio_bus_type = {
 	.name		= "mdio_bus",
 	.match		= mdio_bus_match,
 	.pm		= MDIO_BUS_PM_OPS,
-	.dev_groups	= mdio_dev_groups,
+	.dev_attrs	= mdio_dev_attrs,
 };
 EXPORT_SYMBOL(mdio_bus_type);
 

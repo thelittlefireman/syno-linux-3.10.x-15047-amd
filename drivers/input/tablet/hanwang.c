@@ -26,6 +26,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/usb/input.h>
 
 #define DRIVER_AUTHOR   "Xing Wei <weixing@hanwang.com.cn>"
@@ -329,7 +330,6 @@ static bool get_features(struct usb_device *dev, struct hanwang *hanwang)
 
 	return false;
 }
-
 
 static int hanwang_probe(struct usb_interface *intf, const struct usb_device_id *id)
 {

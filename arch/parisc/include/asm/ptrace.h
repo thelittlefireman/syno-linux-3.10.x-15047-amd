@@ -6,7 +6,6 @@
 
 #include <uapi/asm/ptrace.h>
 
-
 #define task_regs(task) ((struct pt_regs *) ((char *)(task) + TASK_REGS))
 
 #define arch_has_single_step()	1
@@ -18,10 +17,5 @@
 #define instruction_pointer(regs)	((regs)->iaoq[0] & ~3)
 #define user_stack_pointer(regs)	((regs)->gr[30])
 unsigned long profile_pc(struct pt_regs *);
-
-static inline unsigned long regs_return_value(struct pt_regs *regs)
-{
-	return regs->gr[20];
-}
 
 #endif

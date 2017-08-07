@@ -61,14 +61,12 @@
 #include <asm/irq.h>
 #include <asm/unaligned.h>
 
-
 #define	DRIVER_DESC		"PLX NET228x USB Peripheral Controller"
 #define	DRIVER_VERSION		"2005 Sept 27"
 
 #define	EP_DONTUSE		13	/* nonzero */
 
 #define USE_RDK_LEDS		/* GPIO pins control three LEDs */
-
 
 static const char driver_name [] = "net2280";
 static const char driver_desc [] = DRIVER_DESC;
@@ -94,7 +92,6 @@ static bool use_dma_chaining = 0;
 /* "modprobe net2280 use_dma=n" etc */
 module_param (use_dma, bool, S_IRUGO);
 module_param (use_dma_chaining, bool, S_IRUGO);
-
 
 /* mode 0 == ep-{a,b,c,d} 1K fifo each
  * mode 1 == ep-{a,b} 2K fifo each, ep-{c,d} unavailable
@@ -129,7 +126,7 @@ static char *type_string (u8 bmAttributes)
 	case USB_ENDPOINT_XFER_BULK:	return "bulk";
 	case USB_ENDPOINT_XFER_ISOC:	return "iso";
 	case USB_ENDPOINT_XFER_INT:	return "intr";
-	}
+	};
 	return "control";
 }
 #endif
@@ -293,7 +290,7 @@ static void ep_reset (struct net2280_regs __iomem *regs, struct net2280_ep *ep)
 	ep->desc = NULL;
 	INIT_LIST_HEAD (&ep->queue);
 
-	usb_ep_set_maxpacket_limit(&ep->ep, ~0);
+	ep->ep.maxpacket = ~0;
 	ep->ep.ops = &net2280_ep_ops;
 
 	/* disable the dma, irqs, endpoint... */
@@ -1424,8 +1421,8 @@ static const struct usb_gadget_ops net2280_ops = {
  */
 
 /* "function" sysfs attribute */
-static ssize_t function_show(struct device *_dev, struct device_attribute *attr,
-			     char *buf)
+static ssize_t
+show_function (struct device *_dev, struct device_attribute *attr, char *buf)
 {
 	struct net2280	*dev = dev_get_drvdata (_dev);
 
@@ -1435,10 +1432,10 @@ static ssize_t function_show(struct device *_dev, struct device_attribute *attr,
 		return 0;
 	return scnprintf (buf, PAGE_SIZE, "%s\n", dev->driver->function);
 }
-static DEVICE_ATTR_RO(function);
+static DEVICE_ATTR (function, S_IRUGO, show_function, NULL);
 
-static ssize_t registers_show(struct device *_dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t net2280_show_registers(struct device *_dev,
+				struct device_attribute *attr, char *buf)
 {
 	struct net2280		*dev;
 	char			*next;
@@ -1590,10 +1587,10 @@ static ssize_t registers_show(struct device *_dev,
 
 	return PAGE_SIZE - size;
 }
-static DEVICE_ATTR_RO(registers);
+static DEVICE_ATTR(registers, S_IRUGO, net2280_show_registers, NULL);
 
-static ssize_t queues_show(struct device *_dev, struct device_attribute *attr,
-			   char *buf)
+static ssize_t
+show_queues (struct device *_dev, struct device_attribute *attr, char *buf)
 {
 	struct net2280		*dev;
 	char			*next;
@@ -1630,7 +1627,7 @@ static ssize_t queues_show(struct device *_dev, struct device_attribute *attr,
 					val = "intr"; break;
 				 default:
 					val = "iso"; break;
-				 } val; }),
+				 }; val; }),
 				usb_endpoint_maxp (d) & 0x1fff,
 				ep->dma ? "dma" : "pio", ep->fifo_size
 				);
@@ -1690,8 +1687,7 @@ done:
 	spin_unlock_irqrestore (&dev->lock, flags);
 	return PAGE_SIZE - size;
 }
-static DEVICE_ATTR_RO(queues);
-
+static DEVICE_ATTR (queues, S_IRUGO, show_queues, NULL);
 
 #else
 
@@ -1805,9 +1801,9 @@ static void usb_reinit (struct net2280 *dev)
 		ep->regs = &dev->epregs [tmp];
 		ep_reset (dev->regs, ep);
 	}
-	usb_ep_set_maxpacket_limit(&dev->ep [0].ep, 64);
-	usb_ep_set_maxpacket_limit(&dev->ep [5].ep, 64);
-	usb_ep_set_maxpacket_limit(&dev->ep [6].ep, 64);
+	dev->ep [0].ep.maxpacket = 64;
+	dev->ep [5].ep.maxpacket = 64;
+	dev->ep [6].ep.maxpacket = 64;
 
 	dev->gadget.ep0 = &dev->ep [0].ep;
 	dev->ep [0].stopped = 0;
@@ -2680,6 +2676,7 @@ static void net2280_remove (struct pci_dev *pdev)
 	if (dev->enabled)
 		pci_disable_device (pdev);
 	device_remove_file (&pdev->dev, &dev_attr_registers);
+	pci_set_drvdata (pdev, NULL);
 
 	INFO (dev, "unbind\n");
 }
@@ -2849,7 +2846,6 @@ static void net2280_shutdown (struct pci_dev *pdev)
 	/* Disable full-speed test mode */
 	writel(0, &dev->usb->xcvrdiag);
 }
-
 
 /*-------------------------------------------------------------------------*/
 

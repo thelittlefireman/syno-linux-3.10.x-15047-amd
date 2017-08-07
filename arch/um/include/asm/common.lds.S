@@ -57,6 +57,7 @@
 	*(.uml.initcall.init)
 	__uml_initcall_end = .;
   }
+  __init_end = .;
 
   SECURITY_INIT
 
@@ -104,4 +105,3 @@
   .init.ramfs : {
 	INIT_RAM_FS
   }
-

@@ -82,7 +82,6 @@
 #define TMA1217_PRODUCT_ID_START	0x7E /* Start address for 10 byte ID */
 #define TMA1217_DEVICE_CAPABILITY	0x8B /* Reporting capability */
 
-
 /*
  * The touch position structure.
  */
@@ -126,7 +125,6 @@ struct cp_tm1217_device {
 
 	int gpio;
 };
-
 
 /* The following functions are used to read/write registers on the device
  * as per the RMI prorocol. Technically, a page select should be written
@@ -457,6 +455,8 @@ static int cp_tm1217_probe(struct i2c_client *client,
 	for (i = 0; i < TOUCH_SUPPORTED; i++) {
 		input_dev = input_allocate_device();
 		if (input_dev == NULL) {
+			dev_err(ts->dev,
+				"cp_tm1217:Input Device Struct alloc failed\n");
 			retval = -ENOMEM;
 			goto fail;
 		}
@@ -524,7 +524,6 @@ static int cp_tm1217_probe(struct i2c_client *client,
 
 	client->irq = retval;
 
-
 	retval = request_threaded_irq(client->irq,
 		NULL, cp_tm1217_sample_thread,
 		IRQF_TRIGGER_FALLING, "cp_tm1217_touch", ts);
@@ -545,8 +544,10 @@ fail_gpio:
 fail:
 	/* Clean up before returning failure */
 	for (i = 0; i < TOUCH_SUPPORTED; i++) {
-		if (ts->cp_input_info[i].input)
+		if (ts->cp_input_info[i].input) {
 			input_unregister_device(ts->cp_input_info[i].input);
+			input_free_device(ts->cp_input_info[i].input);
+		}
 	}
 	kfree(ts);
 	return retval;

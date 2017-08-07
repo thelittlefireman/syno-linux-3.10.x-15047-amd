@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -180,7 +182,6 @@ void netxen_nic_set_link_parameters(struct netxen_adapter *adapter);
 	((config_word) &= ~(1 << 4))
 #define netxen_gb_unset_gb3_mask(config_word)  \
 	((config_word) &= ~(1 << 6))
-
 
 /*
  * PHY-Specific MII control/status registers.

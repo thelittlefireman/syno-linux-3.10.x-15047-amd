@@ -890,7 +890,6 @@ static int pm860x_batt_set_prop(struct power_supply *psy,
 	return 0;
 }
 
-
 static enum power_supply_property pm860x_batt_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY,
@@ -975,7 +974,6 @@ static int pm860x_battery_probe(struct platform_device *pdev)
 		goto out_coulomb;
 	}
 
-
 	return 0;
 
 out_coulomb:
@@ -992,6 +990,7 @@ static int pm860x_battery_remove(struct platform_device *pdev)
 	free_irq(info->irq_batt, info);
 	free_irq(info->irq_cc, info);
 	power_supply_unregister(&info->battery);
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 }
 

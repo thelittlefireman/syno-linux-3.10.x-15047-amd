@@ -40,6 +40,7 @@
 #include <linux/gpio.h>
 #include "../codecs/ssm2602.h"
 #include "bf5xx-sport.h"
+#include "bf5xx-i2s-pcm.h"
 
 static struct snd_soc_card bf5xx_ssm2602;
 
@@ -123,4 +124,3 @@ module_exit(bf5xx_ssm2602_exit);
 MODULE_AUTHOR("Cliff Cai");
 MODULE_DESCRIPTION("ALSA SoC SSM2602 BF527-EZKIT");
 MODULE_LICENSE("GPL");
-

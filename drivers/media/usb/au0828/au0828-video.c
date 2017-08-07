@@ -36,6 +36,7 @@
 #include <media/v4l2-common.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-event.h>
+#include <media/v4l2-chip-ident.h>
 #include <media/tuner.h>
 #include "au0828.h"
 #include "au0828-reg.h"
@@ -486,7 +487,6 @@ static void au0828_copy_vbi(struct au0828_dev *dev,
 	dma_q->pos += len;
 }
 
-
 /*
  * video-buf generic routine to get the next available VBI buffer
  */
@@ -787,11 +787,27 @@ static int au0828_i2s_init(struct au0828_dev *dev)
 
 /*
  * Auvitek au0828 analog stream enable
- * Please set interface0 to AS5 before enable the stream
  */
 static int au0828_analog_stream_enable(struct au0828_dev *d)
 {
+	struct usb_interface *iface;
+	int ret;
+
 	dprintk(1, "au0828_analog_stream_enable called\n");
+
+	iface = usb_ifnum_to_if(d->usbdev, 0);
+	if (iface && iface->cur_altsetting->desc.bAlternateSetting != 5) {
+		dprintk(1, "Changing intf#0 to alt 5\n");
+		/* set au0828 interface0 to AS5 here again */
+		ret = usb_set_interface(d->usbdev, 0, 5);
+		if (ret < 0) {
+			printk(KERN_INFO "Au0828 can't set alt setting to 5!\n");
+			return -EBUSY;
+		}
+	}
+
+	/* FIXME: size should be calculated using d->width, d->height */
+
 	au0828_writereg(d, AU0828_SENSORCTRL_VBI_103, 0x00);
 	au0828_writereg(d, 0x106, 0x00);
 	/* set x position */
@@ -858,7 +874,6 @@ void au0828_analog_unregister(struct au0828_dev *dev)
 
 	mutex_unlock(&au0828_sysfs_lock);
 }
-
 
 /* Usage lock check functions */
 static int res_get(struct au0828_fh *fh, unsigned int bit)
@@ -966,7 +981,6 @@ static void au0828_vbi_buffer_timeout(unsigned long data)
 	spin_unlock_irqrestore(&dev->slock, flags);
 }
 
-
 static int au0828_v4l2_open(struct file *filp)
 {
 	int ret = 0;
@@ -1002,15 +1016,6 @@ static int au0828_v4l2_open(struct file *filp)
 		return -ERESTARTSYS;
 	}
 	if (dev->users == 0) {
-		/* set au0828 interface0 to AS5 here again */
-		ret = usb_set_interface(dev->usbdev, 0, 5);
-		if (ret < 0) {
-			mutex_unlock(&dev->lock);
-			printk(KERN_INFO "Au0828 can't set alternate to 5!\n");
-			kfree(fh);
-			return -EBUSY;
-		}
-
 		au0828_analog_stream_enable(dev);
 		au0828_analog_stream_reset(dev);
 
@@ -1252,18 +1257,10 @@ static int au0828_set_format(struct au0828_dev *dev, unsigned int cmd,
 		}
 	}
 
-	/* set au0828 interface0 to AS5 here again */
-	ret = usb_set_interface(dev->usbdev, 0, 5);
-	if (ret < 0) {
-		printk(KERN_INFO "Au0828 can't set alt setting to 5!\n");
-		return -EBUSY;
-	}
-
 	au0828_analog_stream_enable(dev);
 
 	return 0;
 }
-
 
 static int vidioc_querycap(struct file *file, void  *priv,
 			   struct v4l2_capability *cap)
@@ -1613,7 +1610,6 @@ static int vidioc_s_frequency(struct file *file, void *priv,
 	return 0;
 }
 
-
 /* RAW VBI ioctls */
 
 static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
@@ -1633,6 +1629,26 @@ static int vidioc_g_fmt_vbi_cap(struct file *file, void *priv,
 	format->fmt.vbi.start[0] = 21;
 	format->fmt.vbi.start[1] = 284;
 	memset(format->fmt.vbi.reserved, 0, sizeof(format->fmt.vbi.reserved));
+
+	return 0;
+}
+
+static int vidioc_g_chip_ident(struct file *file, void *priv,
+	       struct v4l2_dbg_chip_ident *chip)
+{
+	struct au0828_fh *fh = priv;
+	struct au0828_dev *dev = fh->dev;
+	chip->ident = V4L2_IDENT_NONE;
+	chip->revision = 0;
+
+	if (v4l2_chip_match_host(&chip->match)) {
+		chip->ident = V4L2_IDENT_AU0828;
+		return 0;
+	}
+
+	v4l2_device_call_all(&dev->v4l2_dev, 0, core, g_chip_ident, chip);
+	if (chip->ident == V4L2_IDENT_NONE)
+		return -EINVAL;
 
 	return 0;
 }
@@ -1758,8 +1774,16 @@ static int vidioc_g_register(struct file *file, void *priv,
 	struct au0828_fh *fh = priv;
 	struct au0828_dev *dev = fh->dev;
 
+	switch (reg->match.type) {
+	case V4L2_CHIP_MATCH_I2C_DRIVER:
+		v4l2_device_call_all(&dev->v4l2_dev, 0, core, g_register, reg);
+		return 0;
+	default:
+		if (!v4l2_chip_match_host(&reg->match))
+			return -EINVAL;
+	}
+
 	reg->val = au0828_read(dev, reg->reg);
-	reg->size = 1;
 	return 0;
 }
 
@@ -1769,6 +1793,14 @@ static int vidioc_s_register(struct file *file, void *priv,
 	struct au0828_fh *fh = priv;
 	struct au0828_dev *dev = fh->dev;
 
+	switch (reg->match.type) {
+	case V4L2_CHIP_MATCH_I2C_DRIVER:
+		v4l2_device_call_all(&dev->v4l2_dev, 0, core, s_register, reg);
+		return 0;
+	default:
+		if (!v4l2_chip_match_host(&reg->match))
+			return -EINVAL;
+	}
 	return au0828_writereg(dev, reg->reg, reg->val);
 }
 #endif
@@ -1906,6 +1938,7 @@ static const struct v4l2_ioctl_ops video_ioctl_ops = {
 	.vidioc_g_register          = vidioc_g_register,
 	.vidioc_s_register          = vidioc_s_register,
 #endif
+	.vidioc_g_chip_ident        = vidioc_g_chip_ident,
 	.vidioc_log_status	    = vidioc_log_status,
 	.vidioc_subscribe_event     = v4l2_ctrl_subscribe_event,
 	.vidioc_unsubscribe_event   = v4l2_event_unsubscribe,
@@ -2048,4 +2081,3 @@ err_vdev:
 	video_device_release(dev->vdev);
 	return ret;
 }
-

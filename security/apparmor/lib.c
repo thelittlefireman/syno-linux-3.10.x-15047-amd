@@ -20,7 +20,6 @@
 #include "include/audit.h"
 #include "include/apparmor.h"
 
-
 /**
  * aa_split_fqname - split a fqname into a profile and namespace name
  * @fqname: a full qualified name in namespace profile format (NOT NULL)
@@ -103,18 +102,4 @@ void *__aa_kvmalloc(size_t size, gfp_t flags)
 			buffer = vmalloc(size);
 	}
 	return buffer;
-}
-
-/**
- * kvfree - free an allocation do by kvmalloc
- * @buffer: buffer to free (MAYBE_NULL)
- *
- * Free a buffer allocated by kvmalloc
- */
-void kvfree(void *buffer)
-{
-	if (is_vmalloc_addr(buffer))
-		vfree(buffer);
-	else
-		kfree(buffer);
 }

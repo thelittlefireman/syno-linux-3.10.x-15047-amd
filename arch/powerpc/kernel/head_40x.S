@@ -241,7 +241,6 @@ label:
 	EXC_XFER_TEMPLATE(hdlr, n+1, MSR_KERNEL, COPY_EE, transfer_to_handler, \
 			  ret_from_except)
 
-
 /*
  * 0x0100 - Critical Interrupt Exception
  */
@@ -821,6 +820,14 @@ finish_tlb_load:
 	PPC405_ERR77_SYNC
 	rfi			/* Should sync shadow TLBs */
 	b	.		/* prevent prefetch past rfi */
+
+/* extern void giveup_fpu(struct task_struct *prev)
+ *
+ * The PowerPC 4xx family of processors do not have an FPU, so this just
+ * returns.
+ */
+_ENTRY(giveup_fpu)
+	blr
 
 /* This is where the main kernel code starts.
  */

@@ -16,7 +16,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/phy.h>
-#include <linux/clk-provider.h>
 
 #include <asm/setup.h>
 #include <asm/irq.h>
@@ -26,14 +25,6 @@
 
 #include "at91_aic.h"
 #include "generic.h"
-
-static void __init sama5_dt_timer_init(void)
-{
-#if defined(CONFIG_COMMON_CLK)
-	of_clk_init(NULL);
-#endif
-	at91sam926x_pit_init();
-}
 
 static const struct of_device_id irq_of_match[] __initconst = {
 
@@ -50,23 +41,27 @@ static int ksz9021rn_phy_fixup(struct phy_device *phy)
 {
 	int value;
 
+#define GMII_RCCPSR	260
+#define GMII_RRDPSR	261
+#define GMII_ERCR	11
+#define GMII_ERDWR	12
+
 	/* Set delay values */
-	value = MICREL_KSZ9021_RGMII_CLK_CTRL_PAD_SCEW | 0x8000;
-	phy_write(phy, MICREL_KSZ9021_EXTREG_CTRL, value);
+	value = GMII_RCCPSR | 0x8000;
+	phy_write(phy, GMII_ERCR, value);
 	value = 0xF2F4;
-	phy_write(phy, MICREL_KSZ9021_EXTREG_DATA_WRITE, value);
-	value = MICREL_KSZ9021_RGMII_RX_DATA_PAD_SCEW | 0x8000;
-	phy_write(phy, MICREL_KSZ9021_EXTREG_CTRL, value);
+	phy_write(phy, GMII_ERDWR, value);
+	value = GMII_RRDPSR | 0x8000;
+	phy_write(phy, GMII_ERCR, value);
 	value = 0x2222;
-	phy_write(phy, MICREL_KSZ9021_EXTREG_DATA_WRITE, value);
+	phy_write(phy, GMII_ERDWR, value);
 
 	return 0;
 }
 
 static void __init sama5_dt_device_init(void)
 {
-	if (of_machine_is_compatible("atmel,sama5d3xcm") &&
-	    IS_ENABLED(CONFIG_PHYLIB))
+	if (of_machine_is_compatible("atmel,sama5d3xcm"))
 		phy_register_fixup_for_uid(PHY_ID_KSZ9021, MICREL_PHY_ID_MASK,
 			ksz9021rn_phy_fixup);
 
@@ -80,7 +75,7 @@ static const char *sama5_dt_board_compat[] __initdata = {
 
 DT_MACHINE_START(sama5_dt, "Atmel SAMA5 (Device Tree)")
 	/* Maintainer: Atmel */
-	.init_time	= sama5_dt_timer_init,
+	.init_time	= at91sam926x_pit_init,
 	.map_io		= at91_map_io,
 	.handle_irq	= at91_aic5_handle_irq,
 	.init_early	= at91_dt_initialize,

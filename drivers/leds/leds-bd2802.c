@@ -104,7 +104,6 @@ struct bd2802_led {
 	int				rgb_current;
 };
 
-
 /*--------------------------------------------------------------*/
 /*	BD2802GU helper functions					*/
 /*--------------------------------------------------------------*/
@@ -154,7 +153,6 @@ static inline u8 bd2802_get_reg_addr(enum led_ids id, enum led_colors color,
 {
 	return reg_offset + bd2802_get_base_offset(id, color);
 }
-
 
 /*--------------------------------------------------------------*/
 /*	BD2802GU core functions					*/
@@ -684,7 +682,7 @@ static int bd2802_probe(struct i2c_client *client,
 	}
 
 	led->client = client;
-	pdata = led->pdata = dev_get_platdata(&client->dev);
+	pdata = led->pdata = client->dev.platform_data;
 	i2c_set_clientdata(client, led);
 
 	/* Configure RESET GPIO (L: RESET, H: RESET cancel) */

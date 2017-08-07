@@ -43,7 +43,6 @@
 #include "snd_ps3.h"
 #include "snd_ps3_reg.h"
 
-
 /*
  * global
  */
@@ -61,7 +60,6 @@ module_param(index, int, 0444);
 MODULE_PARM_DESC(index, "Index value for PS3 soundchip.");
 module_param(id, charp, 0444);
 MODULE_PARM_DESC(id, "ID string for PS3 soundchip.");
-
 
 /*
  * PS3 audio register access
@@ -203,7 +201,6 @@ static dma_addr_t v_to_bus(struct snd_ps3_card_info *card, void *paddr, int ch)
 	return card->dma_start_bus_addr[ch] +
 		(paddr - card->dma_start_vaddr[ch]);
 };
-
 
 /*
  * increment ring buffer pointer.
@@ -430,7 +427,6 @@ static int snd_ps3_change_avsetting(struct snd_ps3_card_info *card)
 
 	/* enable 3wire#0 buffer */
 	update_reg(PS3_AUDIO_AO_3WMCTRL, PS3_AUDIO_AO_3WMCTRL_ASOEN(0));
-
 
 	/* In 24bit mode,ALSA inserts a zero byte at first byte of per sample */
 	update_mask_reg(PS3_AUDIO_AO_3WCTRL(0),
@@ -785,7 +781,6 @@ static struct snd_pcm_ops snd_ps3_pcm_spdif_ops = {
 	.pointer = snd_ps3_pcm_pointer,
 };
 
-
 static int snd_ps3_map_mmio(void)
 {
 	the_card.mapped_mmio_vaddr =
@@ -933,10 +928,8 @@ static int snd_ps3_driver_probe(struct ps3_system_bus_device *dev)
 	int i, ret;
 	u64 lpar_addr, lpar_size;
 
-	if (WARN_ON(!firmware_has_feature(FW_FEATURE_PS3_LV1)))
-		return -ENODEV;
-	if (WARN_ON(dev->match_id != PS3_MATCH_ID_SOUND))
-		return -ENODEV;
+	BUG_ON(!firmware_has_feature(FW_FEATURE_PS3_LV1));
+	BUG_ON(dev->match_id != PS3_MATCH_ID_SOUND);
 
 	the_card.ps3_dev = dev;
 
@@ -984,8 +977,7 @@ static int snd_ps3_driver_probe(struct ps3_system_bus_device *dev)
 	}
 
 	/* create card instance */
-	ret = snd_card_new(&dev->core, index, id, THIS_MODULE,
-			   0, &the_card.card);
+	ret = snd_card_create(index, id, THIS_MODULE, 0, &the_card.card);
 	if (ret < 0)
 		goto clean_irq;
 
@@ -1053,6 +1045,7 @@ static int snd_ps3_driver_probe(struct ps3_system_bus_device *dev)
 	snd_ps3_init_avsetting(&the_card);
 
 	/* register the card */
+	snd_card_set_dev(the_card.card, &dev->core);
 	ret = snd_card_register(the_card.card);
 	if (ret < 0)
 		goto clean_dma_map;
@@ -1129,7 +1122,6 @@ static struct ps3_system_bus_driver snd_ps3_bus_driver_info = {
 		.owner = THIS_MODULE,
 	},
 };
-
 
 /*
  * module/subsystem initialize/terminate

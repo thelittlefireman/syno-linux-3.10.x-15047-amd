@@ -47,7 +47,6 @@ Status: works
 Devices: [Quatech] DAQP-208 (daqp), DAQP-308
 */
 
-#include <linux/module.h>
 #include "../comedidev.h"
 #include <linux/semaphore.h>
 
@@ -208,12 +207,14 @@ static enum irqreturn daqp_interrupt(int irq, void *dev_id)
 	case buffer:
 		while (!((status = inb(dev->iobase + DAQP_STATUS))
 			 & DAQP_STATUS_FIFO_EMPTY)) {
-			unsigned short data;
+
+			short data;
 
 			if (status & DAQP_STATUS_DATA_LOST) {
 				s->async->events |=
 				    COMEDI_CB_EOA | COMEDI_CB_OVERFLOW;
 				dev_warn(dev->class_dev, "data lost\n");
+				daqp_ai_cancel(dev, s);
 				break;
 			}
 
@@ -230,6 +231,7 @@ static enum irqreturn daqp_interrupt(int irq, void *dev_id)
 			if (devpriv->count > 0) {
 				devpriv->count--;
 				if (devpriv->count == 0) {
+					daqp_ai_cancel(dev, s);
 					s->async->events |= COMEDI_CB_EOA;
 					break;
 				}
@@ -242,12 +244,13 @@ static enum irqreturn daqp_interrupt(int irq, void *dev_id)
 		if (loop_limit <= 0) {
 			dev_warn(dev->class_dev,
 				 "loop_limit reached in daqp_interrupt()\n");
+			daqp_ai_cancel(dev, s);
 			s->async->events |= COMEDI_CB_EOA | COMEDI_CB_ERROR;
 		}
 
 		s->async->events |= COMEDI_CB_BLOCK;
 
-		cfc_handle_events(dev, s);
+		comedi_event(dev, s);
 	}
 	return IRQ_HANDLED;
 }
@@ -686,12 +689,18 @@ static int daqp_do_insn_bits(struct comedi_device *dev,
 			     unsigned int *data)
 {
 	struct daqp_private *devpriv = dev->private;
+	unsigned int mask = data[0];
+	unsigned int bits = data[1];
 
 	if (devpriv->stop)
 		return -EIO;
 
-	if (comedi_dio_update_state(s, data))
+	if (mask) {
+		s->state &= ~mask;
+		s->state |= (bits & mask);
+
 		outb(s->state, dev->iobase + DAQP_DIGITAL_IO);
+	}
 
 	data[1] = s->state;
 
@@ -706,9 +715,10 @@ static int daqp_auto_attach(struct comedi_device *dev,
 	struct comedi_subdevice *s;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	link->config_flags |= CONF_AUTO_SET_IO | CONF_ENABLE_IRQ;
 	ret = comedi_pcmcia_enable(dev, NULL);

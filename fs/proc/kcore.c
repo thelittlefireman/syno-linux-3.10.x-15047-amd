@@ -39,7 +39,6 @@
 
 static struct proc_dir_entry *proc_root_kcore;
 
-
 #ifndef kc_vaddr_to_offset
 #define	kc_vaddr_to_offset(v) ((v) - PAGE_OFFSET)
 #endif
@@ -133,7 +132,6 @@ static void __kcore_update_ram(struct list_head *list)
 	free_kclist_ents(&garbage);
 }
 
-
 #ifdef CONFIG_HIGHMEM
 /*
  * If no highmem, we can assume [0...max_low_pfn) continuous range of memory
@@ -168,7 +166,6 @@ get_sparsemem_vmemmap_info(struct kcore_list *ent, struct list_head *head)
 	unsigned long nr_pages = ent->size >> PAGE_SHIFT;
 	unsigned long start, end;
 	struct kcore_list *vmm, *tmp;
-
 
 	start = ((unsigned long)pfn_to_page(pfn)) & PAGE_MASK;
 	end = ((unsigned long)pfn_to_page(pfn + nr_pages)) - 1;
@@ -255,7 +252,8 @@ static int kcore_update_ram(void)
 	end_pfn = 0;
 	for_each_node_state(nid, N_MEMORY) {
 		unsigned long node_end;
-		node_end = node_end_pfn(nid);
+		node_end  = NODE_DATA(nid)->node_start_pfn +
+			NODE_DATA(nid)->node_spanned_pages;
 		if (end_pfn < node_end)
 			end_pfn = node_end;
 	}
@@ -407,7 +405,7 @@ static void elf_kcore_store_hdr(char *bufp, int nphdr, int dataoff)
 	prpsinfo.pr_zomb	= 0;
 
 	strcpy(prpsinfo.pr_fname, "vmlinux");
-	strlcpy(prpsinfo.pr_psargs, saved_command_line, sizeof(prpsinfo.pr_psargs));
+	strncpy(prpsinfo.pr_psargs, saved_command_line, ELF_PRARGSZ);
 
 	nhdr->p_filesz	+= notesize(&notes[1]);
 	bufp = storenote(&notes[1], bufp);
@@ -544,7 +542,6 @@ read_kcore(struct file *file, char __user *buffer, size_t buflen, loff_t *fpos)
 	return acc;
 }
 
-
 static int open_kcore(struct inode *inode, struct file *filp)
 {
 	if (!capable(CAP_SYS_RAWIO))
@@ -558,7 +555,6 @@ static int open_kcore(struct inode *inode, struct file *filp)
 	}
 	return 0;
 }
-
 
 static const struct file_operations proc_kcore_operations = {
 	.read		= read_kcore,
@@ -639,4 +635,4 @@ static int __init proc_kcore_init(void)
 
 	return 0;
 }
-fs_initcall(proc_kcore_init);
+module_init(proc_kcore_init);

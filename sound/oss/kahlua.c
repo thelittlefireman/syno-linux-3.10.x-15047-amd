@@ -178,6 +178,7 @@ static int probe_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	return 0;
 
 err_out_free:
+	pci_set_drvdata(pdev, NULL);
 	kfree(hw_config);
 	return 1;
 }
@@ -186,6 +187,7 @@ static void remove_one(struct pci_dev *pdev)
 {
 	struct address_info *hw_config = pci_get_drvdata(pdev);
 	sb_dsp_unload(hw_config, 0);
+	pci_set_drvdata(pdev, NULL);
 	kfree(hw_config);
 }
 
@@ -211,7 +213,6 @@ static struct pci_driver kahlua_driver = {
 	.remove		= remove_one,
 };
 
-
 static int __init kahlua_init_module(void)
 {
 	printk(KERN_INFO "Cyrix Kahlua VSA1 XpressAudio support (c) Copyright 2003 Red Hat Inc\n");
@@ -223,7 +224,5 @@ static void kahlua_cleanup_module(void)
 	pci_unregister_driver(&kahlua_driver);
 }
 
-
 module_init(kahlua_init_module);
 module_exit(kahlua_cleanup_module);
-

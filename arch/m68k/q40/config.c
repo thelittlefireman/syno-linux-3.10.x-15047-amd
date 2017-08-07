@@ -61,7 +61,6 @@ static struct console q40_console_driver = {
 	.index	= -1,
 };
 
-
 /* early debugging function:*/
 extern char *q40_mem_cptr; /*=(char *)0xff020000;*/
 static int _cpleft;
@@ -154,7 +153,7 @@ static unsigned int serports[] =
 	0x3f8,0x2f8,0x3e8,0x2e8,0
 };
 
-static void __init q40_disable_irqs(void)
+static void q40_disable_irqs(void)
 {
 	unsigned i, j;
 
@@ -197,18 +196,15 @@ void __init config_q40(void)
 	mach_max_dma_address = 1024*1024*1024;
 }
 
-
-int __init q40_parse_bootinfo(const struct bi_record *rec)
+int q40_parse_bootinfo(const struct bi_record *rec)
 {
 	return 1;
 }
-
 
 static u32 q40_gettimeoffset(void)
 {
 	return 5000 * (ql_ticks != 0) * 1000;
 }
-
 
 /*
  * Looks like op is non-zero for setting the clock, and zero for
@@ -294,7 +290,6 @@ static int q40_set_clock_mmss(unsigned long nowtime)
 	return retval;
 }
 
-
 /* get and set PLL calibration of RTC clock */
 #define Q40_RTC_PLL_MASK ((1<<5)-1)
 #define Q40_RTC_PLL_SIGN (1<<5)
@@ -338,6 +333,6 @@ static __init int q40_add_kbd_device(void)
 		return -ENODEV;
 
 	pdev = platform_device_register_simple("q40kbd", -1, NULL, 0);
-	return PTR_ERR_OR_ZERO(pdev);
+	return PTR_RET(pdev);
 }
 arch_initcall(q40_add_kbd_device);

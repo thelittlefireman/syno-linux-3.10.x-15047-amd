@@ -44,18 +44,24 @@ csum_partial(const void *buff, int len, __wsum sum)
  * here even more important to align src and dst on a 32-bit (or even
  * better 64-bit) boundary
  *
- * Copy from userspace and compute checksum.
+ * Copy from userspace and compute checksum.  If we catch an exception
+ * then zero the rest of the buffer.
  */
 static inline __wsum
 csum_partial_copy_from_user(const void __user *src, void *dst,
                                           int len, __wsum sum,
                                           int *err_ptr)
 {
-	if (unlikely(copy_from_user(dst, src, len)))
+	int missing;
+
+	missing = copy_from_user(dst, src, len);
+	if (missing) {
+		memset(dst + len - missing, 0, missing);
 		*err_ptr = -EFAULT;
+	}
+		
 	return csum_partial(dst, len, sum);
 }
-
 
 static inline __wsum
 csum_partial_copy_nocheck (const void *src, void *dst, int len, __wsum sum)
@@ -136,5 +142,3 @@ static inline __sum16 ip_compute_csum(const void *buff, int len)
 }
 
 #endif /* _S390_CHECKSUM_H */
-
-

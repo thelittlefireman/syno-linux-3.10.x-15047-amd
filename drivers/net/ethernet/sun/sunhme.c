@@ -316,7 +316,6 @@ static inline u32 hme_read_desc32(struct happy_meal *hp, hme32 *p)
 #endif
 #endif
 
-
 /* Oh yes, the MIF BitBang is mighty fun to program.  BitBucket is more like it. */
 static void BB_PUT_BIT(struct happy_meal *hp, void __iomem *tregs, int bit)
 {
@@ -2506,7 +2505,7 @@ static struct quattro *quattro_sbus_find(struct platform_device *child)
 	struct quattro *qp;
 
 	op = to_platform_device(parent);
-	qp = platform_get_drvdata(op);
+	qp = dev_get_drvdata(&op->dev);
 	if (qp)
 		return qp;
 
@@ -2521,7 +2520,7 @@ static struct quattro *quattro_sbus_find(struct platform_device *child)
 		qp->next = qfe_sbus_list;
 		qfe_sbus_list = qp;
 
-		platform_set_drvdata(op, qp);
+		dev_set_drvdata(&op->dev, qp);
 	}
 	return qp;
 }
@@ -2675,10 +2674,10 @@ static int happy_meal_sbus_probe_one(struct platform_device *op, int is_qfe)
 
 		addr = of_get_property(dp, "local-mac-address", &len);
 
-		if (qfe_slot != -1 && addr && len == ETH_ALEN)
-			memcpy(dev->dev_addr, addr, ETH_ALEN);
+		if (qfe_slot != -1 && addr && len == 6)
+			memcpy(dev->dev_addr, addr, 6);
 		else
-			memcpy(dev->dev_addr, idprom->id_ethaddr, ETH_ALEN);
+			memcpy(dev->dev_addr, idprom->id_ethaddr, 6);
 	}
 
 	hp = netdev_priv(dev);
@@ -2798,7 +2797,7 @@ static int happy_meal_sbus_probe_one(struct platform_device *op, int is_qfe)
 		goto err_out_free_coherent;
 	}
 
-	platform_set_drvdata(op, hp);
+	dev_set_drvdata(&op->dev, hp);
 
 	if (qfe_slot != -1)
 		printk(KERN_INFO "%s: Quattro HME slot %d (SBUS) 10/100baseT Ethernet ",
@@ -3024,9 +3023,9 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 		    (addr = of_get_property(dp, "local-mac-address", &len))
 			!= NULL &&
 		    len == 6) {
-			memcpy(dev->dev_addr, addr, ETH_ALEN);
+			memcpy(dev->dev_addr, addr, 6);
 		} else {
-			memcpy(dev->dev_addr, idprom->id_ethaddr, ETH_ALEN);
+			memcpy(dev->dev_addr, idprom->id_ethaddr, 6);
 		}
 #else
 		get_hme_mac_nonsparc(pdev, &dev->dev_addr[0]);
@@ -3111,7 +3110,7 @@ static int happy_meal_pci_probe(struct pci_dev *pdev,
 		goto err_out_iounmap;
 	}
 
-	pci_set_drvdata(pdev, hp);
+	dev_set_drvdata(&pdev->dev, hp);
 
 	if (!qfe_slot) {
 		struct pci_dev *qpdev = qp->quattro_dev;
@@ -3159,7 +3158,7 @@ err_out:
 
 static void happy_meal_pci_remove(struct pci_dev *pdev)
 {
-	struct happy_meal *hp = pci_get_drvdata(pdev);
+	struct happy_meal *hp = dev_get_drvdata(&pdev->dev);
 	struct net_device *net_dev = hp->dev;
 
 	unregister_netdev(net_dev);
@@ -3170,6 +3169,8 @@ static void happy_meal_pci_remove(struct pci_dev *pdev)
 	pci_release_regions(hp->happy_dev);
 
 	free_netdev(net_dev);
+
+	dev_set_drvdata(&pdev->dev, NULL);
 }
 
 static DEFINE_PCI_DEVICE_TABLE(happymeal_pci_ids) = {
@@ -3229,7 +3230,7 @@ static int hme_sbus_probe(struct platform_device *op)
 
 static int hme_sbus_remove(struct platform_device *op)
 {
-	struct happy_meal *hp = platform_get_drvdata(op);
+	struct happy_meal *hp = dev_get_drvdata(&op->dev);
 	struct net_device *net_dev = hp->dev;
 
 	unregister_netdev(net_dev);
@@ -3247,6 +3248,8 @@ static int hme_sbus_remove(struct platform_device *op)
 			  hp->hblock_dvma);
 
 	free_netdev(net_dev);
+
+	dev_set_drvdata(&op->dev, NULL);
 
 	return 0;
 }
@@ -3324,7 +3327,6 @@ static int __init happy_meal_probe(void)
 
 	return err;
 }
-
 
 static void __exit happy_meal_exit(void)
 {

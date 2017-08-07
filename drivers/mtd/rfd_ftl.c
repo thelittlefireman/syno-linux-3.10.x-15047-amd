@@ -389,7 +389,6 @@ static int move_block_contents(struct partition *part, int block_no, u_long *old
 		u16 entry = le16_to_cpu(map[HEADER_MAP_OFFSET + i]);
 		u_long addr;
 
-
 		if (entry == SECTOR_FREE || entry == SECTOR_DELETED)
 			continue;
 
@@ -602,7 +601,8 @@ static int mark_sector_deleted(struct partition *part, u_long old_addr)
 	if (rc) {
 		printk(KERN_ERR PREFIX "error writing '%s' at "
 			"0x%lx\n", part->mbd.mtd->name, addr);
-		goto err;
+		if (rc)
+			goto err;
 	}
 	if (block == part->current_block)
 		part->header_cache[offset + HEADER_MAP_OFFSET] = del;
@@ -674,7 +674,8 @@ static int do_writesect(struct mtd_blktrans_dev *dev, u_long sector, char *buf, 
 	if (rc) {
 		printk(KERN_ERR PREFIX "error writing '%s' at 0x%lx\n",
 				part->mbd.mtd->name, addr);
-		goto err;
+		if (rc)
+			goto err;
 	}
 
 	part->sector_map[sector] = addr;
@@ -693,7 +694,8 @@ static int do_writesect(struct mtd_blktrans_dev *dev, u_long sector, char *buf, 
 	if (rc) {
 		printk(KERN_ERR PREFIX "error writing '%s' at 0x%lx\n",
 				part->mbd.mtd->name, addr);
-		goto err;
+		if (rc)
+			goto err;
 	}
 	block->used_sectors++;
 	block->free_sectors--;
@@ -846,4 +848,3 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sean Young <sean@mess.org>");
 MODULE_DESCRIPTION("Support code for RFD Flash Translation Layer, "
 		"used by General Software's Embedded BIOS");
-

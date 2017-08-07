@@ -31,7 +31,6 @@
 #include <linux/uaccess.h>
 #include <linux/io.h>
 
-
 #define WATCHDOG_VERSION  "1.00"
 #define WATCHDOG_NAME     "W83977F WDT"
 
@@ -283,7 +282,6 @@ static int wdt_get_status(int *status)
 	return 0;
 }
 
-
 /*
  *	/dev/watchdog handling
  */
@@ -527,3 +525,4 @@ module_exit(w83977f_wdt_exit);
 MODULE_AUTHOR("Jose Goncalves <jose.goncalves@inov.pt>");
 MODULE_DESCRIPTION("Driver for watchdog timer in W83977F I/O chip");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

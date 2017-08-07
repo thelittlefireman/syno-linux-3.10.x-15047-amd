@@ -59,11 +59,8 @@
 #ifndef _LINUX_SFI_ACPI_H
 #define _LINUX_SFI_ACPI_H
 
-#include <linux/acpi.h>
-#include <linux/sfi.h>
-
 #ifdef CONFIG_SFI
-#include <acpi/acpi.h>	/* FIXME: inclusion should be removed */
+#include <acpi/acpi.h>		/* struct acpi_table_header */
 
 extern int sfi_acpi_table_parse(char *signature, char *oem_id,
 				char *oem_table_id,

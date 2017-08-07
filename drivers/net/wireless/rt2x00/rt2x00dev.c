@@ -14,7 +14,9 @@
 	GNU General Public License for more details.
 
 	You should have received a copy of the GNU General Public License
-	along with this program; if not, see <http://www.gnu.org/licenses/>.
+	along with this program; if not, write to the
+	Free Software Foundation, Inc.,
+	59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 /*
@@ -86,7 +88,7 @@ int rt2x00lib_enable_radio(struct rt2x00_dev *rt2x00dev)
 	rt2x00queue_start_queues(rt2x00dev);
 	rt2x00link_start_tuner(rt2x00dev);
 	rt2x00link_start_agc(rt2x00dev);
-	if (rt2x00_has_cap_vco_recalibration(rt2x00dev))
+	if (test_bit(CAPABILITY_VCO_RECALIBRATION, &rt2x00dev->cap_flags))
 		rt2x00link_start_vcocal(rt2x00dev);
 
 	/*
@@ -111,7 +113,7 @@ void rt2x00lib_disable_radio(struct rt2x00_dev *rt2x00dev)
 	 * Stop all queues
 	 */
 	rt2x00link_stop_agc(rt2x00dev);
-	if (rt2x00_has_cap_vco_recalibration(rt2x00dev))
+	if (test_bit(CAPABILITY_VCO_RECALIBRATION, &rt2x00dev->cap_flags))
 		rt2x00link_stop_vcocal(rt2x00dev);
 	rt2x00link_stop_tuner(rt2x00dev);
 	rt2x00queue_stop_queues(rt2x00dev);
@@ -233,7 +235,7 @@ void rt2x00lib_beacondone(struct rt2x00_dev *rt2x00dev)
 	 * here as they will fetch the next beacon directly prior to
 	 * transmission.
 	 */
-	if (rt2x00_has_cap_pre_tbtt_interrupt(rt2x00dev))
+	if (test_bit(CAPABILITY_PRE_TBTT_INTERRUPT, &rt2x00dev->cap_flags))
 		return;
 
 	/* fetch next beacon */
@@ -333,7 +335,7 @@ void rt2x00lib_txdone(struct queue_entry *entry,
 	/*
 	 * Remove the extra tx headroom from the skb.
 	 */
-	skb_pull(entry->skb, rt2x00dev->extra_tx_headroom);
+	skb_pull(entry->skb, rt2x00dev->ops->extra_tx_headroom);
 
 	/*
 	 * Signal that the TX descriptor is no longer in the skb.
@@ -357,7 +359,7 @@ void rt2x00lib_txdone(struct queue_entry *entry,
 	 * mac80211 will expect the same data to be present it the
 	 * frame as it was passed to us.
 	 */
-	if (rt2x00_has_cap_hw_crypto(rt2x00dev))
+	if (test_bit(CAPABILITY_HW_CRYPTO, &rt2x00dev->cap_flags))
 		rt2x00crypto_tx_insert_iv(entry->skb, header_length);
 
 	/*
@@ -565,10 +567,10 @@ static void rt2x00lib_rxdone_check_ba(struct rt2x00_dev *rt2x00dev,
 
 #undef TID_CHECK
 
-		if (!ether_addr_equal_64bits(ba->ra, entry->ta))
+		if (compare_ether_addr(ba->ra, entry->ta))
 			continue;
 
-		if (!ether_addr_equal_64bits(ba->ta, entry->ra))
+		if (compare_ether_addr(ba->ta, entry->ra))
 			continue;
 
 		/* Mark BAR since we received the according BA */
@@ -1048,7 +1050,7 @@ static int rt2x00lib_probe_hw(struct rt2x00_dev *rt2x00dev)
 	 */
 	rt2x00dev->hw->extra_tx_headroom =
 		max_t(unsigned int, IEEE80211_TX_STATUS_HEADROOM,
-		      rt2x00dev->extra_tx_headroom);
+		      rt2x00dev->ops->extra_tx_headroom);
 
 	/*
 	 * Take TX headroom required for alignment into account.
@@ -1076,7 +1078,7 @@ static int rt2x00lib_probe_hw(struct rt2x00_dev *rt2x00dev)
 		 */
 		int kfifo_size =
 			roundup_pow_of_two(rt2x00dev->ops->tx_queues *
-					   rt2x00dev->tx->limit *
+					   rt2x00dev->ops->tx->entry_num *
 					   sizeof(u32));
 
 		status = kfifo_alloc(&rt2x00dev->txstatus_fifo, kfifo_size,
@@ -1126,9 +1128,10 @@ static void rt2x00lib_uninitialize(struct rt2x00_dev *rt2x00dev)
 		return;
 
 	/*
-	 * Unregister extra components.
+	 * Stop rfkill polling.
 	 */
-	rt2x00rfkill_unregister(rt2x00dev);
+	if (test_bit(REQUIRE_DELAYED_RFKILL, &rt2x00dev->cap_flags))
+		rt2x00rfkill_unregister(rt2x00dev);
 
 	/*
 	 * Allow the HW to uninitialize.
@@ -1165,6 +1168,12 @@ static int rt2x00lib_initialize(struct rt2x00_dev *rt2x00dev)
 	}
 
 	set_bit(DEVICE_STATE_INITIALIZED, &rt2x00dev->flags);
+
+	/*
+	 * Start rfkill polling.
+	 */
+	if (test_bit(REQUIRE_DELAYED_RFKILL, &rt2x00dev->cap_flags))
+		rt2x00rfkill_register(rt2x00dev);
 
 	return 0;
 }
@@ -1255,17 +1264,6 @@ static inline void rt2x00lib_set_if_combinations(struct rt2x00_dev *rt2x00dev)
 	rt2x00dev->hw->wiphy->n_iface_combinations = 1;
 }
 
-static unsigned int rt2x00dev_extra_tx_headroom(struct rt2x00_dev *rt2x00dev)
-{
-	if (WARN_ON(!rt2x00dev->tx))
-		return 0;
-
-	if (rt2x00_is_usb(rt2x00dev))
-		return rt2x00dev->tx[0].winfo_size + rt2x00dev->tx[0].desc_size;
-
-	return rt2x00dev->tx[0].winfo_size;
-}
-
 /*
  * driver allocation handlers.
  */
@@ -1311,10 +1309,27 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 		(rt2x00dev->ops->max_ap_intf - 1);
 
 	/*
+	 * Determine which operating modes are supported, all modes
+	 * which require beaconing, depend on the availability of
+	 * beacon entries.
+	 */
+	rt2x00dev->hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION);
+	if (rt2x00dev->ops->bcn->entry_num > 0)
+		rt2x00dev->hw->wiphy->interface_modes |=
+		    BIT(NL80211_IFTYPE_ADHOC) |
+		    BIT(NL80211_IFTYPE_AP) |
+#ifdef CONFIG_MAC80211_MESH
+		    BIT(NL80211_IFTYPE_MESH_POINT) |
+#endif
+		    BIT(NL80211_IFTYPE_WDS);
+
+	rt2x00dev->hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
+
+	/*
 	 * Initialize work.
 	 */
 	rt2x00dev->workqueue =
-	    alloc_ordered_workqueue("%s", 0, wiphy_name(rt2x00dev->hw->wiphy));
+	    alloc_ordered_workqueue(wiphy_name(rt2x00dev->hw->wiphy), 0);
 	if (!rt2x00dev->workqueue) {
 		retval = -ENOMEM;
 		goto exit;
@@ -1340,26 +1355,6 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 	if (retval)
 		goto exit;
 
-	/* Cache TX headroom value */
-	rt2x00dev->extra_tx_headroom = rt2x00dev_extra_tx_headroom(rt2x00dev);
-
-	/*
-	 * Determine which operating modes are supported, all modes
-	 * which require beaconing, depend on the availability of
-	 * beacon entries.
-	 */
-	rt2x00dev->hw->wiphy->interface_modes = BIT(NL80211_IFTYPE_STATION);
-	if (rt2x00dev->bcn->limit > 0)
-		rt2x00dev->hw->wiphy->interface_modes |=
-		    BIT(NL80211_IFTYPE_ADHOC) |
-		    BIT(NL80211_IFTYPE_AP) |
-#ifdef CONFIG_MAC80211_MESH
-		    BIT(NL80211_IFTYPE_MESH_POINT) |
-#endif
-		    BIT(NL80211_IFTYPE_WDS);
-
-	rt2x00dev->hw->wiphy->flags |= WIPHY_FLAG_IBSS_RSN;
-
 	/*
 	 * Initialize ieee80211 structure.
 	 */
@@ -1375,7 +1370,12 @@ int rt2x00lib_probe_dev(struct rt2x00_dev *rt2x00dev)
 	rt2x00link_register(rt2x00dev);
 	rt2x00leds_register(rt2x00dev);
 	rt2x00debug_register(rt2x00dev);
-	rt2x00rfkill_register(rt2x00dev);
+
+	/*
+	 * Start rfkill polling.
+	 */
+	if (!test_bit(REQUIRE_DELAYED_RFKILL, &rt2x00dev->cap_flags))
+		rt2x00rfkill_register(rt2x00dev);
 
 	return 0;
 
@@ -1389,6 +1389,12 @@ EXPORT_SYMBOL_GPL(rt2x00lib_probe_dev);
 void rt2x00lib_remove_dev(struct rt2x00_dev *rt2x00dev)
 {
 	clear_bit(DEVICE_STATE_PRESENT, &rt2x00dev->flags);
+
+	/*
+	 * Stop rfkill polling.
+	 */
+	if (!test_bit(REQUIRE_DELAYED_RFKILL, &rt2x00dev->cap_flags))
+		rt2x00rfkill_unregister(rt2x00dev);
 
 	/*
 	 * Disable radio.

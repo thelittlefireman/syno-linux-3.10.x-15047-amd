@@ -29,6 +29,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/usb.h>
 #include <linux/serio.h>
@@ -40,7 +41,6 @@
  * Despite the name of this module, I am *not* going to access the ioports.
  */
 #include <linux/ioport.h>
-
 
 #define IFORCE_MAX_LENGTH	16
 
@@ -142,7 +142,6 @@ struct iforce {
 
 /* Encode a time value */
 #define TIME_SCALE(a)	(a)
-
 
 /* Public functions */
 /* iforce-serio.c */

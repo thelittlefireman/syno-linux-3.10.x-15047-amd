@@ -26,7 +26,6 @@
 #include <acpi/pdc_intel.h>
 
 #include <asm/numa.h>
-#include <asm/fixmap.h>
 #include <asm/processor.h>
 #include <asm/mmu.h>
 #include <asm/mpspec.h>
@@ -70,7 +69,6 @@ int __acpi_release_global_lock(unsigned int *lock);
 	    : "r"(d32),				     \
 	     "0"(n_lo), "1"(n_hi))
 
-
 #define ACPI_SHIFT_RIGHT_64(n_hi, n_lo) \
 	asm("shrl   $1,%2	;"	\
 	    "rcrl   $1,%3;"		\
@@ -87,7 +85,6 @@ extern int acpi_pci_disabled;
 extern int acpi_skip_timer_override;
 extern int acpi_use_timer_override;
 extern int acpi_fix_pin2_polarity;
-extern int acpi_disable_cmcff;
 
 extern u8 acpi_sci_flags;
 extern int acpi_sci_override_gsi;
@@ -113,7 +110,7 @@ static inline void acpi_disable_pci(void)
 }
 
 /* Low-level suspend routine. */
-extern int (*acpi_suspend_lowlevel)(void);
+extern int acpi_suspend_lowlevel(void);
 
 /* Physical address to resume after wakeup */
 #define acpi_wakeup_address ((unsigned long)(real_mode_header->wakeup_start))
@@ -170,7 +167,6 @@ static inline void arch_acpi_set_pdc_bits(u32 *buf)
 
 #define acpi_lapic 0
 #define acpi_ioapic 0
-#define acpi_disable_cmcff 0
 static inline void acpi_noirq_set(void) { }
 static inline void acpi_disable_pci(void) { }
 static inline void disable_acpi(void) { }

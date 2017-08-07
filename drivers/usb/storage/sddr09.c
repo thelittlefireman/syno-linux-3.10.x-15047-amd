@@ -61,7 +61,6 @@ static int usb_stor_sddr09_dpcm_init(struct us_data *us);
 static int sddr09_transport(struct scsi_cmnd *srb, struct us_data *us);
 static int usb_stor_sddr09_init(struct us_data *us);
 
-
 /*
  * The table of devices
  */
@@ -99,7 +98,6 @@ static struct us_unusual_dev sddr09_unusual_dev_list[] = {
 };
 
 #undef UNUSUAL_DEV
-
 
 #define short_pack(lsb,msb) ( ((u16)(lsb)) | ( ((u16)(msb))<<8 ) )
 #define LSB_of(s) ((s)&0xFF)
@@ -219,7 +217,11 @@ static void nand_init_ecc(void) {
 /* compute 3-byte ecc on 256 bytes */
 static void nand_compute_ecc(unsigned char *data, unsigned char *ecc) {
 	int i, j, a;
-	unsigned char par = 0, bit, bits[8] = {0};
+	unsigned char par, bit, bits[8];
+
+	par = 0;
+	for (j = 0; j < 8; j++)
+		bits[j] = 0;
 
 	/* collect 16 checksum bits */
 	for (i = 0; i < 256; i++) {
@@ -1438,7 +1440,6 @@ sddr09_common_init(struct us_data *us) {
 	return 0;
 }
 
-
 /*
  * This is needed at a very early stage. If this is not listed in the
  * unusual devices list but called from here then LUN 0 of the combo reader
@@ -1530,7 +1531,6 @@ static int dpcm_transport(struct scsi_cmnd *srb, struct us_data *us)
 	}
 	return ret;
 }
-
 
 /*
  * Transport for the Sandisk SDDR-09

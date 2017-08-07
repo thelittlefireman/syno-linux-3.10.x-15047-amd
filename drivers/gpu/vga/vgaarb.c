@@ -74,7 +74,6 @@ static bool vga_arbiter_used;
 static DEFINE_SPINLOCK(vga_lock);
 static DECLARE_WAIT_QUEUE_HEAD(vga_wait_queue);
 
-
 static const char *vga_iostate_to_str(unsigned int iostate)
 {
 	/* Ignore VGA_RSRC_IO and VGA_RSRC_MEM */
@@ -154,7 +153,6 @@ static inline void vga_irq_set_state(struct vga_device *vgadev, bool state)
 	if (vgadev->irq_set_state)
 		vgadev->irq_set_state(vgadev->cookie, state);
 }
-
 
 /* If we don't ever use VGA arb we should avoid
    turning off anything anywhere due to old X servers getting
@@ -257,9 +255,9 @@ static struct vga_device *__vga_tryget(struct vga_device *vgadev,
 		if (!conflict->bridge_has_one_vga) {
 			vga_irq_set_state(conflict, false);
 			flags |= PCI_VGA_STATE_CHANGE_DECODES;
-			if (match & (VGA_RSRC_LEGACY_MEM|VGA_RSRC_NORMAL_MEM))
+			if (lwants & (VGA_RSRC_LEGACY_MEM|VGA_RSRC_NORMAL_MEM))
 				pci_bits |= PCI_COMMAND_MEMORY;
-			if (match & (VGA_RSRC_LEGACY_IO|VGA_RSRC_NORMAL_IO))
+			if (lwants & (VGA_RSRC_LEGACY_IO|VGA_RSRC_NORMAL_IO))
 				pci_bits |= PCI_COMMAND_IO;
 		}
 
@@ -267,11 +265,11 @@ static struct vga_device *__vga_tryget(struct vga_device *vgadev,
 			flags |= PCI_VGA_STATE_CHANGE_BRIDGE;
 
 		pci_set_vga_state(conflict->pdev, false, pci_bits, flags);
-		conflict->owns &= ~match;
+		conflict->owns &= ~lwants;
 		/* If he also owned non-legacy, that is no longer the case */
-		if (match & VGA_RSRC_LEGACY_MEM)
+		if (lwants & VGA_RSRC_LEGACY_MEM)
 			conflict->owns &= ~VGA_RSRC_NORMAL_MEM;
-		if (match & VGA_RSRC_LEGACY_IO)
+		if (lwants & VGA_RSRC_LEGACY_IO)
 			conflict->owns &= ~VGA_RSRC_NORMAL_IO;
 	}
 
@@ -380,7 +378,6 @@ int vga_get(struct pci_dev *pdev, unsigned int rsrc, int interruptible)
 		if (conflict == NULL)
 			break;
 
-
 		/* We have a conflict, we wait until somebody kicks the
 		 * work queue. Currently we have one work queue that we
 		 * kick each time some resources are released, but it would
@@ -392,8 +389,10 @@ int vga_get(struct pci_dev *pdev, unsigned int rsrc, int interruptible)
 		set_current_state(interruptible ?
 				  TASK_INTERRUPTIBLE :
 				  TASK_UNINTERRUPTIBLE);
-		if (signal_pending(current)) {
-			rc = -EINTR;
+		if (interruptible && signal_pending(current)) {
+			__set_current_state(TASK_RUNNING);
+			remove_wait_queue(&vga_wait_queue, &wait);
+			rc = -ERESTARTSYS;
 			break;
 		}
 		schedule();
@@ -644,12 +643,10 @@ bail:
 static inline void vga_update_device_decodes(struct vga_device *vgadev,
 					     int new_decodes)
 {
-	int old_decodes, decodes_removed, decodes_unlocked;
+	int old_decodes;
+	struct vga_device *new_vgadev, *conflict;
 
 	old_decodes = vgadev->decodes;
-	decodes_removed = ~new_decodes & old_decodes;
-	decodes_unlocked = vgadev->locks & decodes_removed;
-	vgadev->owns &= ~decodes_removed;
 	vgadev->decodes = new_decodes;
 
 	pr_info("vgaarb: device changed decodes: PCI:%s,olddecodes=%s,decodes=%s:owns=%s\n",
@@ -658,22 +655,30 @@ static inline void vga_update_device_decodes(struct vga_device *vgadev,
 		vga_iostate_to_str(vgadev->decodes),
 		vga_iostate_to_str(vgadev->owns));
 
-	/* if we removed locked decodes, lock count goes to zero, and release */
-	if (decodes_unlocked) {
-		if (decodes_unlocked & VGA_RSRC_LEGACY_IO)
-			vgadev->io_lock_cnt = 0;
-		if (decodes_unlocked & VGA_RSRC_LEGACY_MEM)
-			vgadev->mem_lock_cnt = 0;
-		__vga_put(vgadev, decodes_unlocked);
+	/* if we own the decodes we should move them along to
+	   another card */
+	if ((vgadev->owns & old_decodes) && (vga_count > 1)) {
+		/* set us to own nothing */
+		vgadev->owns &= ~old_decodes;
+		list_for_each_entry(new_vgadev, &vga_list, list) {
+			if ((new_vgadev != vgadev) &&
+			    (new_vgadev->decodes & VGA_RSRC_LEGACY_MASK)) {
+				pr_info("vgaarb: transferring owner from PCI:%s to PCI:%s\n", pci_name(vgadev->pdev), pci_name(new_vgadev->pdev));
+				conflict = __vga_tryget(new_vgadev, VGA_RSRC_LEGACY_MASK);
+				if (!conflict)
+					__vga_put(new_vgadev, VGA_RSRC_LEGACY_MASK);
+				break;
+			}
+		}
 	}
 
 	/* change decodes counter */
-	if (old_decodes & VGA_RSRC_LEGACY_MASK &&
-	    !(new_decodes & VGA_RSRC_LEGACY_MASK))
-		vga_decode_count--;
-	if (!(old_decodes & VGA_RSRC_LEGACY_MASK) &&
-	    new_decodes & VGA_RSRC_LEGACY_MASK)
-		vga_decode_count++;
+	if (old_decodes != new_decodes) {
+		if (new_decodes & (VGA_RSRC_LEGACY_IO | VGA_RSRC_LEGACY_MEM))
+			vga_decode_count++;
+		else
+			vga_decode_count--;
+	}
 	pr_debug("vgaarb: decoding count now is: %d\n", vga_decode_count);
 }
 
@@ -811,7 +816,6 @@ struct vga_arb_private {
 static LIST_HEAD(vga_user_list);
 static DEFINE_SPINLOCK(vga_user_lock);
 
-
 /*
  * This function gets a string in the format: "PCI:domain:bus:dev.fn" and
  * returns the respective values. If the string is not in this format,
@@ -822,7 +826,6 @@ static int vga_pci_str_to_vars(char *buf, int count, unsigned int *domain,
 {
 	int n;
 	unsigned int slot, func;
-
 
 	n = sscanf(buf, "PCI:%x:%x:%x.%x", domain, bus, &slot, &func);
 	if (n != 4)
@@ -914,7 +917,6 @@ static ssize_t vga_arb_write(struct file *file, const char __user * buf,
 
 	int ret_val;
 	int i;
-
 
 	kbuf = kmalloc(count + 1, GFP_KERNEL);
 	if (!kbuf)
@@ -1122,7 +1124,6 @@ static ssize_t vga_arb_write(struct file *file, const char __user * buf,
 		pci_dev_put(pdev);
 		goto done;
 
-
 	} else if (strncmp(curr_pos, "decodes ", 8) == 0) {
 		curr_pos += 8;
 		remaining -= 8;
@@ -1185,7 +1186,6 @@ static int vga_arb_open(struct inode *inode, struct file *file)
 	priv->cards[0].pdev = priv->target;
 	priv->cards[0].io_cnt = 0;
 	priv->cards[0].mem_cnt = 0;
-
 
 	return 0;
 }

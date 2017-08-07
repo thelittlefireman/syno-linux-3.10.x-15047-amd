@@ -35,7 +35,7 @@ static int mpic_msi_reserve_u3_hwirqs(struct mpic *mpic)
 	const struct irq_domain_ops *ops = mpic->irqhost->ops;
 	struct device_node *np;
 	int flags, index, i;
-	struct of_phandle_args oirq;
+	struct of_irq oirq;
 
 	pr_debug("mpic: found U3, guessing msi allocator setup\n");
 
@@ -57,15 +57,14 @@ static int mpic_msi_reserve_u3_hwirqs(struct mpic *mpic)
 	for (i = 124; i < mpic->num_sources; i++)
 		msi_bitmap_reserve_hwirq(&mpic->msi_bitmap, i);
 
-
 	np = NULL;
 	while ((np = of_find_all_nodes(np))) {
 		pr_debug("mpic: mapping hwirqs for %s\n", np->full_name);
 
 		index = 0;
-		while (of_irq_parse_one(np, index++, &oirq) == 0) {
-			ops->xlate(mpic->irqhost, NULL, oirq.args,
-						oirq.args_count, &hwirq, &flags);
+		while (of_irq_map_one(np, index++, &oirq) == 0) {
+			ops->xlate(mpic->irqhost, NULL, oirq.specifier,
+						oirq.size, &hwirq, &flags);
 			msi_bitmap_reserve_hwirq(&mpic->msi_bitmap, hwirq);
 		}
 	}

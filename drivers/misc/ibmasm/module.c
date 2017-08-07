@@ -61,7 +61,6 @@ int ibmasm_debug = 0;
 module_param(ibmasm_debug, int , S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(ibmasm_debug, " Set debug mode on or off");
 
-
 static int ibmasm_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	int result;
@@ -153,6 +152,7 @@ error_ioremap:
 error_heartbeat:
 	ibmasm_event_buffer_exit(sp);
 error_eventbuffer:
+	pci_set_drvdata(pdev, NULL);
 	kfree(sp);
 error_kmalloc:
         pci_release_regions(pdev);
@@ -164,7 +164,7 @@ error_resources:
 
 static void ibmasm_remove_one(struct pci_dev *pdev)
 {
-	struct service_processor *sp = pci_get_drvdata(pdev);
+	struct service_processor *sp = (struct service_processor *)pci_get_drvdata(pdev);
 
 	dbg("Unregistering UART\n");
 	ibmasm_unregister_uart(sp);
@@ -181,6 +181,7 @@ static void ibmasm_remove_one(struct pci_dev *pdev)
 	ibmasm_free_remote_input_dev(sp);
 	iounmap(sp->base_address);
 	ibmasm_event_buffer_exit(sp);
+	pci_set_drvdata(pdev, NULL);
 	kfree(sp);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
@@ -232,4 +233,3 @@ MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 MODULE_DEVICE_TABLE(pci, ibmasm_pci_table);
-

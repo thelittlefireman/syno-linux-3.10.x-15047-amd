@@ -92,8 +92,6 @@ struct cx88_audio_dev {
 };
 typedef struct cx88_audio_dev snd_cx88_card_t;
 
-
-
 /****************************************************************************
 			Module global static vars
  ****************************************************************************/
@@ -107,7 +105,6 @@ MODULE_PARM_DESC(enable, "Enable cx88x soundcard. default enabled.");
 
 module_param_array(index, int, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for cx88x capture interface(s).");
-
 
 /****************************************************************************
 				Module macros
@@ -289,7 +286,6 @@ static irqreturn_t cx8801_irq(int irq, void *dev_id)
  out:
 	return IRQ_RETVAL(handled);
 }
-
 
 static int dsp_buffer_free(snd_cx88_card_t *chip)
 {
@@ -785,7 +781,6 @@ static void snd_cx88_dev_free(struct snd_card * card)
 	snd_cx88_free(chip);
 }
 
-
 /*
  * Alsa Constructor - Component probe
  */
@@ -823,7 +818,6 @@ static int snd_cx88_create(struct snd_card *card, struct pci_dev *pci,
 		return err;
 	}
 
-
 	/* pci init */
 	chip->card = card;
 	chip->pci = pci;
@@ -834,7 +828,7 @@ static int snd_cx88_create(struct snd_card *card, struct pci_dev *pci,
 
 	/* get irq */
 	err = request_irq(chip->pci->irq, cx8801_irq,
-			  IRQF_SHARED, chip->core->name, chip);
+			  IRQF_SHARED | IRQF_DISABLED, chip->core->name, chip);
 	if (err < 0) {
 		dprintk(0, "%s: can't get IRQ %d\n",
 		       chip->core->name, chip->pci->irq);
@@ -851,6 +845,8 @@ static int snd_cx88_create(struct snd_card *card, struct pci_dev *pci,
 
 	chip->irq = pci->irq;
 	synchronize_irq(chip->irq);
+
+	snd_card_set_dev(card, &pci->dev);
 
 	*rchip = chip;
 	*core_ptr = core;
@@ -874,8 +870,8 @@ static int cx88_audio_initdev(struct pci_dev *pci,
 		return (-ENOENT);
 	}
 
-	err = snd_card_new(&pci->dev, index[devno], id[devno], THIS_MODULE,
-			   sizeof(snd_cx88_card_t), &card);
+	err = snd_card_create(index[devno], id[devno], THIS_MODULE,
+			      sizeof(snd_cx88_card_t), &card);
 	if (err < 0)
 		return err;
 
@@ -929,9 +925,11 @@ error:
  */
 static void cx88_audio_finidev(struct pci_dev *pci)
 {
-	struct snd_card *card = pci_get_drvdata(pci);
+	struct cx88_audio_dev *card = pci_get_drvdata(pci);
 
-	snd_card_free(card);
+	snd_card_free((void *)card);
+
+	pci_set_drvdata(pci, NULL);
 
 	devno--;
 }
@@ -947,4 +945,27 @@ static struct pci_driver cx88_audio_pci_driver = {
 	.remove   = cx88_audio_finidev,
 };
 
-module_pci_driver(cx88_audio_pci_driver);
+/****************************************************************************
+				LINUX MODULE INIT
+ ****************************************************************************/
+
+/*
+ * module init
+ */
+static int __init cx88_audio_init(void)
+{
+	printk(KERN_INFO "cx2388x alsa driver version %s loaded\n",
+	       CX88_VERSION);
+	return pci_register_driver(&cx88_audio_pci_driver);
+}
+
+/*
+ * module remove
+ */
+static void __exit cx88_audio_fini(void)
+{
+	pci_unregister_driver(&cx88_audio_pci_driver);
+}
+
+module_init(cx88_audio_init);
+module_exit(cx88_audio_fini);

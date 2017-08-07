@@ -12,6 +12,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/leds.h>
 #include <linux/mfd/core.h>
 #include <linux/mutex.h>
@@ -20,7 +21,6 @@
 #include <linux/workqueue.h>
 
 #include <linux/mfd/lm3533.h>
-
 
 #define LM3533_LVCTRLBANK_MIN		2
 #define LM3533_LVCTRLBANK_MAX		5
@@ -44,7 +44,6 @@
 
 #define LM3533_LED_FLAG_PATTERN_ENABLE		1
 
-
 struct lm3533_led {
 	struct lm3533 *lm3533;
 	struct lm3533_ctrlbank cb;
@@ -57,7 +56,6 @@ struct lm3533_led {
 	struct work_struct work;
 	u8 new_brightness;
 };
-
 
 static inline struct lm3533_led *to_lm3533_led(struct led_classdev *cdev)
 {
@@ -670,7 +668,7 @@ static int lm3533_led_probe(struct platform_device *pdev)
 	if (!lm3533)
 		return -EINVAL;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "no platform data\n");
 		return -EINVAL;

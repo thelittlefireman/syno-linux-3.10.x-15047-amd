@@ -46,6 +46,8 @@ struct thread_info {
 
 #endif
 
+#define PREEMPT_ACTIVE		0x10000000
+
 #ifdef CONFIG_4KSTACKS
 #define THREAD_SHIFT		12
 #else
@@ -121,7 +123,6 @@ static inline int kstack_end(void *addr)
 					   TIF_NEED_RESCHED */
 #define TIF_MEMDIE		9	/* is terminating due to OOM killer */
 #define TIF_SYSCALL_TRACEPOINT  10	/* syscall tracepoint instrumentation */
-
 
 #define _TIF_SYSCALL_TRACE	(1<<TIF_SYSCALL_TRACE)
 #define _TIF_SIGPENDING		(1<<TIF_SIGPENDING)

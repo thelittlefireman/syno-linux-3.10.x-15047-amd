@@ -241,8 +241,8 @@ struct nilfs_root {
 	struct the_nilfs *nilfs;
 	struct inode *ifile;
 
-	atomic64_t inodes_count;
-	atomic64_t blocks_count;
+	atomic_t inodes_count;
+	atomic_t blocks_count;
 };
 
 /* Special checkpoint number */
@@ -279,7 +279,6 @@ void nilfs_put_root(struct nilfs_root *root);
 int nilfs_near_disk_full(struct the_nilfs *);
 void nilfs_fall_back_super_block(struct the_nilfs *);
 void nilfs_swap_super_block(struct the_nilfs *);
-
 
 static inline void nilfs_get_root(struct nilfs_root *root)
 {

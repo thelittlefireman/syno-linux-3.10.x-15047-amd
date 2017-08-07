@@ -318,12 +318,8 @@
 /** hv_set_pte_super_shift */
 #define HV_DISPATCH_SET_PTE_SUPER_SHIFT           57
 
-/** hv_console_set_ipi */
-#define HV_DISPATCH_CONSOLE_SET_IPI               63
-
 /** One more than the largest dispatch value */
-#define _HV_DISPATCH_END                          64
-
+#define _HV_DISPATCH_END                          58
 
 #ifndef __ASSEMBLER__
 
@@ -336,7 +332,6 @@ typedef u64 __hv64;        /**< 64-bit value */
 typedef uint32_t __hv32;   /**< 32-bit value */
 typedef uint64_t __hv64;   /**< 64-bit value */
 #endif
-
 
 /** Hypervisor physical address. */
 typedef __hv64 HV_PhysAddr;
@@ -413,7 +408,6 @@ typedef enum {
 void hv_init(HV_VersionNumber interface_version_number,
              int chip_num, int chip_rev_num, int client_pl);
 
-
 /** Queries we can make for hv_sysconf().
  *
  * These numbers are part of the binary API and guaranteed not to change.
@@ -479,7 +473,6 @@ typedef enum {
  */
 long hv_sysconf(HV_SysconfQuery query);
 
-
 /** Queries we can make for hv_confstr().
  *
  * These numbers are part of the binary API and guaranteed not to change.
@@ -544,24 +537,14 @@ typedef enum {
   HV_CONFSTR_CPUMOD_REV      = 18,
 
   /** Human-readable CPU module description. */
-  HV_CONFSTR_CPUMOD_DESC     = 19,
-
-  /** Per-tile hypervisor statistics.  When this identifier is specified,
-   *  the hv_confstr call takes two extra arguments.  The first is the
-   *  HV_XY_TO_LOTAR of the target tile's coordinates.  The second is
-   *  a flag word.  The only current flag is the lowest bit, which means
-   *  "zero out the stats instead of retrieving them"; in this case the
-   *  buffer and buffer length are ignored. */
-  HV_CONFSTR_HV_STATS        = 20
+  HV_CONFSTR_CPUMOD_DESC     = 19
 
 } HV_ConfstrQuery;
 
 /** Query a configuration string from the hypervisor.
  *
  * @param query Identifier for the specific string to be retrieved
- *        (HV_CONFSTR_xxx).  Some strings may require or permit extra
- *        arguments to be appended which select specific objects to be
- *        described; see the string descriptions above.
+ *        (HV_CONFSTR_xxx).
  * @param buf Buffer in which to place the string.
  * @param len Length of the buffer.
  * @return If query is valid, then the length of the corresponding string,
@@ -569,18 +552,22 @@ typedef enum {
  *        was truncated.  If query is invalid, HV_EINVAL.  If the specified
  *        buffer is not writable by the client, HV_EFAULT.
  */
-int hv_confstr(HV_ConfstrQuery query, HV_VirtAddr buf, int len, ...);
+int hv_confstr(HV_ConfstrQuery query, HV_VirtAddr buf, int len);
 
 /** Tile coordinate */
 typedef struct
 {
+#ifndef __BIG_ENDIAN__
   /** X coordinate, relative to supervisor's top-left coordinate */
   int x;
 
   /** Y coordinate, relative to supervisor's top-left coordinate */
   int y;
+#else
+  int y;
+  int x;
+#endif
 } HV_Coord;
-
 
 #if CHIP_HAS_IPI()
 
@@ -592,30 +579,6 @@ typedef struct
  * @result Zero if no error, non-zero for invalid parameters.
  */
 int hv_get_ipi_pte(HV_Coord tile, int pl, HV_PTE* pte);
-
-/** Configure the console interrupt.
- *
- * When the console client interrupt is enabled, the hypervisor will
- * deliver the specified IPI to the client in the following situations:
- *
- * - The console has at least one character available for input.
- *
- * - The console can accept new characters for output, and the last call
- *   to hv_console_write() did not write all of the characters requested
- *   by the client.
- *
- * Note that in some system configurations, console interrupt will not
- * be available; clients should be prepared for this routine to fail and
- * to fall back to periodic console polling in that case.
- *
- * @param ipi Index of the IPI register which will receive the interrupt.
- * @param event IPI event number for console interrupt. If less than 0,
- *        disable the console IPI interrupt.
- * @param coord Tile to be targeted for console interrupt.
- * @return 0 on success, otherwise, HV_EINVAL if illegal parameter,
- *         HV_ENOTSUP if console interrupt are not available.
- */
-int hv_console_set_ipi(int ipi, int event, HV_Coord coord);
 
 #else /* !CHIP_HAS_IPI() */
 
@@ -715,7 +678,6 @@ typedef struct {
  */
 HV_RTCTime hv_get_rtc(void);
 
-
 /** Set the current time-of-day clock.
  * @param time time to reset time-of-day to (GMT).
  */
@@ -784,7 +746,6 @@ int hv_install_context(HV_PhysAddr page_table, HV_PTE access, HV_ASID asid,
 
 #ifndef __ASSEMBLER__
 
-
 /** Set the number of pages ganged together by HV_PTE_SUPER at a
  * particular level of the page table.
  *
@@ -805,7 +766,6 @@ int hv_install_context(HV_PhysAddr page_table, HV_PTE access, HV_ASID asid,
  * @return Zero on success, or a hypervisor error code on failure.
  */
 int hv_set_pte_super_shift(int level, int log2_count);
-
 
 /** Value returned from hv_inquire_context(). */
 typedef struct
@@ -828,7 +788,6 @@ typedef struct
  */
 HV_Context hv_inquire_context(void);
 
-
 /** Flushes all translations associated with the named address space
  *  identifier from the TLB and any other hypervisor data structures.
  *  Translations installed with the "global" bit are not flushed.
@@ -841,7 +800,6 @@ HV_Context hv_inquire_context(void);
  * @return Zero on success, or a hypervisor error code on failure.
 */
 int hv_flush_asid(HV_ASID asid);
-
 
 /** Flushes all translations associated with the named virtual address
  *  and page size from the TLB and other hypervisor data structures. Only
@@ -860,7 +818,6 @@ int hv_flush_asid(HV_ASID asid);
  * @return Zero on success, or a hypervisor error code on failure.
  */
 int hv_flush_page(HV_VirtAddr address, HV_PageSize page_size);
-
 
 /** Flushes all translations associated with the named virtual address range
  *  and page size from the TLB and other hypervisor data structures. Only
@@ -883,7 +840,6 @@ int hv_flush_page(HV_VirtAddr address, HV_PageSize page_size);
 int hv_flush_pages(HV_VirtAddr start, HV_PageSize page_size,
                    unsigned long size);
 
-
 /** Flushes all non-global translations (if preserve_global is true),
  *  or absolutely all translations (if preserve_global is false).
  *
@@ -892,21 +848,17 @@ int hv_flush_pages(HV_VirtAddr start, HV_PageSize page_size,
 */
 int hv_flush_all(int preserve_global);
 
-
 /** Restart machine with optional restart command and optional args.
  * @param cmd Const pointer to command to restart with, or NULL
  * @param args Const pointer to argument string to restart with, or NULL
  */
 void hv_restart(HV_VirtAddr cmd, HV_VirtAddr args);
 
-
 /** Halt machine. */
 void hv_halt(void);
 
-
 /** Power off machine. */
 void hv_power_off(void);
-
 
 /** Re-enter virtual-is-physical memory translation mode and restart
  *  execution at a given address.
@@ -915,7 +867,6 @@ void hv_power_off(void);
  *         successful the call does not return.
  */
 int hv_reexec(HV_PhysAddr entry);
-
 
 /** Chip topology */
 typedef struct
@@ -976,7 +927,6 @@ typedef enum {
  * @param length Number of bytes available for the returned bitmask.
  **/
 HV_Errno hv_inquire_tiles(HV_InqTileSet set, HV_VirtAddr cpumask, int length);
-
 
 /** An identifier for a memory controller. Multiple memory controllers
  * may be connected to one chip, and this uniquely identifies each one.
@@ -1084,7 +1034,6 @@ typedef struct
 HV_MemoryControllerInfo hv_inquire_memory_controller(HV_Coord coord,
                                                      int controller);
 
-
 /** A range of virtual memory. */
 typedef struct
 {
@@ -1120,12 +1069,16 @@ typedef struct
  */
 HV_VirtAddrRange hv_inquire_virtual(int idx);
 
-
 /** A range of ASID values. */
 typedef struct
 {
+#ifndef __BIG_ENDIAN__
   HV_ASID start;        /**< First ASID in the range. */
   unsigned int size;    /**< Number of ASIDs. Zero for an invalid range. */
+#else
+  unsigned int size;    /**< Number of ASIDs. Zero for an invalid range. */
+  HV_ASID start;        /**< First ASID in the range. */
+#endif
 } HV_ASIDRange;
 
 /** Returns information about a range of ASIDs.
@@ -1145,7 +1098,6 @@ typedef struct
  */
 HV_ASIDRange hv_inquire_asid(int idx);
 
-
 /** Waits for at least the specified number of nanoseconds then returns.
  *
  * NOTE: this deprecated function currently assumes a 750 MHz clock,
@@ -1157,14 +1109,12 @@ HV_ASIDRange hv_inquire_asid(int idx);
  */
 void hv_nanosleep(int nanosecs);
 
-
 /** Reads a character from the console without blocking.
  *
  * @return A value from 0-255 indicates the value successfully read.
  * A negative value means no value was ready.
  */
 int hv_console_read_if_ready(void);
-
 
 /** Writes a character to the console, blocking if the console is busy.
  *
@@ -1174,14 +1124,12 @@ int hv_console_read_if_ready(void);
  */
 void hv_console_putc(int byte);
 
-
 /** Writes a string to the console, blocking if the console is busy.
  * @param bytes Pointer to characters to write.
  * @param len Number of characters to write.
  * @return Number of characters written, or HV_EFAULT if the buffer is invalid.
  */
 int hv_console_write(HV_VirtAddr bytes, int len);
-
 
 /** Dispatch the next interrupt from the client downcall mechanism.
  *
@@ -1264,7 +1212,6 @@ void hv_downcall_dispatch(void);
  */
 int hv_fs_findfile(HV_VirtAddr filename);
 
-
 /** Data returned from an fstat request.
  * Note that this structure should be no more than 40 bytes in size so
  * that it can always be returned completely in registers.
@@ -1303,7 +1250,6 @@ typedef enum
  */
 HV_FS_StatInfo hv_fs_fstat(int inode);
 
-
 /** Read data from a specific hypervisor file.
  * On error, may return HV_EBADF for a bad inode or HV_EFAULT for a bad buf.
  * Reads near the end of the file will return fewer bytes than requested.
@@ -1317,7 +1263,6 @@ HV_FS_StatInfo hv_fs_fstat(int inode);
  */
 int hv_fs_pread(int inode, HV_VirtAddr buf, int length, int offset);
 
-
 /** Read a 64-bit word from the specified physical address.
  * The address must be 8-byte aligned.
  * Specifying an invalid physical address will lead to client termination.
@@ -1326,7 +1271,6 @@ int hv_fs_pread(int inode, HV_VirtAddr buf, int length, int offset);
  * @return The 64-bit value read from the given address
  */
 unsigned long long hv_physaddr_read64(HV_PhysAddr addr, HV_PTE access);
-
 
 /** Write a 64-bit word to the specified physical address.
  * The address must be 8-byte aligned.
@@ -1337,7 +1281,6 @@ unsigned long long hv_physaddr_read64(HV_PhysAddr addr, HV_PTE access);
  */
 void hv_physaddr_write64(HV_PhysAddr addr, HV_PTE access,
                          unsigned long long val);
-
 
 /** Get the value of the command-line for the supervisor, if any.
  * This will not include the filename of the booted supervisor, but may
@@ -1350,7 +1293,6 @@ void hv_physaddr_write64(HV_PhysAddr addr, HV_PTE access,
  *         (may be larger than "length").
  */
 int hv_get_command_line(HV_VirtAddr buf, int length);
-
 
 /** Set a new value for the command-line for the supervisor, which will
  *  be returned from subsequent invocations of hv_get_command_line() on
@@ -1385,7 +1327,6 @@ HV_Errno hv_set_command_line(HV_VirtAddr buf, int length);
  */
 void hv_set_caching(unsigned long bitmask);
 
-
 /** Zero out a specified number of pages.
  * The va and size must both be multiples of 4096.
  * Caches are bypassed and memory is directly set to zero.
@@ -1396,7 +1337,6 @@ void hv_set_caching(unsigned long bitmask);
  * @param size Number of bytes (must be a page size multiple)
  */
 void hv_bzero_page(HV_VirtAddr va, unsigned int size);
-
 
 /** State object for the hypervisor messaging subsystem. */
 typedef struct
@@ -1449,6 +1389,7 @@ typedef enum
 /** Message recipient. */
 typedef struct
 {
+#ifndef __BIG_ENDIAN__
   /** X coordinate, relative to supervisor's top-left coordinate */
   unsigned int x:11;
 
@@ -1457,6 +1398,11 @@ typedef struct
 
   /** Status of this recipient */
   HV_Recip_State state:10;
+#else //__BIG_ENDIAN__
+  HV_Recip_State state:10;
+  unsigned int y:11;
+  unsigned int x:11;
+#endif
 } HV_Recipient;
 
 /** Send a message to a set of recipients.
@@ -1530,7 +1476,6 @@ int hv_send_message(HV_Recipient *recips, int nrecip,
 /** Maximum hypervisor message size, in bytes */
 #define HV_MAX_MESSAGE_SIZE 28
 
-
 /** Return value from hv_receive_message() */
 typedef struct
 {
@@ -1584,7 +1529,6 @@ typedef struct
 HV_RcvMsgInfo hv_receive_message(HV_MsgState msgstate, HV_VirtAddr buf,
                                  int buflen);
 
-
 /** Start remaining tiles owned by this supervisor.  Initially, only one tile
  *  executes the client program; after it calls this service, the other tiles
  *  are started.  This allows the initial tile to do one-time configuration
@@ -1592,7 +1536,6 @@ HV_RcvMsgInfo hv_receive_message(HV_MsgState msgstate, HV_VirtAddr buf,
  *  access.
  */
 void hv_start_all_tiles(void);
-
 
 /** Open a hypervisor device.
  *
@@ -1613,7 +1556,6 @@ void hv_start_all_tiles(void);
  */
 int hv_dev_open(HV_VirtAddr name, __hv32 flags);
 
-
 /** Close a hypervisor device.
  *
  *  This service uninitializes an I/O device and its hypervisor driver
@@ -1625,7 +1567,6 @@ int hv_dev_open(HV_VirtAddr name, __hv32 flags);
  * @return Zero if the close is successful, otherwise, a negative error code.
  */
 int hv_dev_close(int devhdl);
-
 
 /** Read data from a hypervisor device synchronously.
  *
@@ -1698,7 +1639,6 @@ int hv_dev_pread(int devhdl, __hv32 flags, HV_VirtAddr va, __hv32 len,
 int hv_dev_pwrite(int devhdl, __hv32 flags, HV_VirtAddr va, __hv32 len,
                   __hv64 offset);
 
-
 /** Interrupt arguments, used in the asynchronous I/O interfaces. */
 #if CHIP_VA_WIDTH() > 32
 typedef __hv64 HV_IntArg;
@@ -1761,7 +1701,6 @@ int hv_dev_poll(int devhdl, __hv32 events, HV_IntArg intarg);
 #define HV_DEVPOLL_WRITE    0x2   /**< Test device for writability */
 #define HV_DEVPOLL_FLUSH    0x4   /**< Test device for output drained */
 
-
 /** Cancel a request for an interrupt when a device event occurs.
  *
  *  This service requests that no interrupt be delivered when the events
@@ -1774,7 +1713,6 @@ int hv_dev_poll(int devhdl, __hv32 events, HV_IntArg intarg);
  *         error code.
  */
 int hv_dev_poll_cancel(int devhdl);
-
 
 /** Scatter-gather list for preada/pwritea calls. */
 typedef struct
@@ -1837,7 +1775,6 @@ __attribute__ ((packed, aligned(4)))
 int hv_dev_preada(int devhdl, __hv32 flags, __hv32 sgl_len,
                   HV_SGL sgl[/* sgl_len */], __hv64 offset, HV_IntArg intarg);
 
-
 /** Write data to a hypervisor device asynchronously.
  *
  *  This service transfers data from a memory buffer to a hypervisor
@@ -1882,7 +1819,6 @@ int hv_dev_preada(int devhdl, __hv32 flags, __hv32 sgl_len,
  */
 int hv_dev_pwritea(int devhdl, __hv32 flags, __hv32 sgl_len,
                    HV_SGL sgl[/* sgl_len */], __hv64 offset, HV_IntArg intarg);
-
 
 /** Define a pair of tile and ASID to identify a user process context. */
 typedef struct
@@ -1970,13 +1906,11 @@ int hv_flush_remote(HV_PhysAddr cache_pa, unsigned long cache_control,
 
 #endif  /* !__ASSEMBLER__ */
 
-
 /** Bits in the size of an HV_PTE */
 #define HV_LOG2_PTE_SIZE 3
 
 /** Size of an HV_PTE */
 #define HV_PTE_SIZE (1 << HV_LOG2_PTE_SIZE)
-
 
 /* Bits in HV_PTE's low word. */
 #define HV_PTE_INDEX_PRESENT          0  /**< PTE is valid */
@@ -2063,7 +1997,6 @@ int hv_flush_remote(HV_PhysAddr cache_pa, unsigned long cache_control,
  *  The EXECUTABLE bit may not be set in an MMIO PTE.
  */
 #define HV_PTE_MODE_MMIO              5
-
 
 /* C wants 1ULL so it is typed as __hv64, but the assembler needs just numbers.
  * The assembler can't handle shifts greater than 31, but treats them
@@ -2413,7 +2346,6 @@ hv_pte_set_pa(HV_PTE pte, HV_PhysAddr pa)
   return hv_pte_set_ptfn(pte, pa >> HV_LOG2_PAGE_TABLE_ALIGN);
 }
 
-
 /** Get the remote tile caching this page.
  *
  * Specifies the remote tile which is providing the L3 cache for this page.
@@ -2431,7 +2363,6 @@ hv_pte_get_lotar(const HV_PTE pte)
   return HV_XY_TO_LOTAR( (lotar >> (HV_PTE_LOTAR_BITS / 2)),
                          (lotar & ((1 << (HV_PTE_LOTAR_BITS / 2)) - 1)) );
 }
-
 
 /** Set the remote tile caching a page into a PTE.  See hv_pte_get_lotar. */
 static __inline HV_PTE

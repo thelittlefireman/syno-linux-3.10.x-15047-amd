@@ -337,7 +337,6 @@ static s32 sis5595_access(struct i2c_adapter *adap, u16 addr,
 	    ((read_write == I2C_SMBUS_WRITE) || (size == SIS5595_QUICK)))
 		return 0;
 
-
 	switch (size) {
 	case SIS5595_BYTE:
 	case SIS5595_BYTE_DATA:
@@ -369,7 +368,7 @@ static struct i2c_adapter sis5595_adapter = {
 	.algo		= &smbus_algorithm,
 };
 
-static const struct pci_device_id sis5595_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(sis5595_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_SI, PCI_DEVICE_ID_SI_503) }, 
 	{ 0, }
 };

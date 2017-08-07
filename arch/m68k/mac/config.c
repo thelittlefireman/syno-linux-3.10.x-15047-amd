@@ -26,10 +26,9 @@
 #include <linux/adb.h>
 #include <linux/cuda.h>
 
+#define BOOTINFO_COMPAT_1_0
 #include <asm/setup.h>
 #include <asm/bootinfo.h>
-#include <asm/bootinfo-mac.h>
-#include <asm/byteorder.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -108,46 +107,45 @@ static void __init mac_sched_init(irq_handler_t vector)
 int __init mac_parse_bootinfo(const struct bi_record *record)
 {
 	int unknown = 0;
-	const void *data = record->data;
+	const u_long *data = record->data;
 
-	switch (be16_to_cpu(record->tag)) {
+	switch (record->tag) {
 	case BI_MAC_MODEL:
-		mac_bi_data.id = be32_to_cpup(data);
+		mac_bi_data.id = *data;
 		break;
 	case BI_MAC_VADDR:
-		mac_bi_data.videoaddr = be32_to_cpup(data);
+		mac_bi_data.videoaddr = *data;
 		break;
 	case BI_MAC_VDEPTH:
-		mac_bi_data.videodepth = be32_to_cpup(data);
+		mac_bi_data.videodepth = *data;
 		break;
 	case BI_MAC_VROW:
-		mac_bi_data.videorow = be32_to_cpup(data);
+		mac_bi_data.videorow = *data;
 		break;
 	case BI_MAC_VDIM:
-		mac_bi_data.dimensions = be32_to_cpup(data);
+		mac_bi_data.dimensions = *data;
 		break;
 	case BI_MAC_VLOGICAL:
-		mac_orig_videoaddr = be32_to_cpup(data);
-		mac_bi_data.videological =
-			VIDEOMEMBASE + (mac_orig_videoaddr & ~VIDEOMEMMASK);
+		mac_bi_data.videological = VIDEOMEMBASE + (*data & ~VIDEOMEMMASK);
+		mac_orig_videoaddr = *data;
 		break;
 	case BI_MAC_SCCBASE:
-		mac_bi_data.sccbase = be32_to_cpup(data);
+		mac_bi_data.sccbase = *data;
 		break;
 	case BI_MAC_BTIME:
-		mac_bi_data.boottime = be32_to_cpup(data);
+		mac_bi_data.boottime = *data;
 		break;
 	case BI_MAC_GMTBIAS:
-		mac_bi_data.gmtbias = be32_to_cpup(data);
+		mac_bi_data.gmtbias = *data;
 		break;
 	case BI_MAC_MEMSIZE:
-		mac_bi_data.memsize = be32_to_cpup(data);
+		mac_bi_data.memsize = *data;
 		break;
 	case BI_MAC_CPUID:
-		mac_bi_data.cpuid = be32_to_cpup(data);
+		mac_bi_data.cpuid = *data;
 		break;
 	case BI_MAC_ROMBASE:
-		mac_bi_data.rombase = be32_to_cpup(data);
+		mac_bi_data.rombase = *data;
 		break;
 	default:
 		unknown = 1;
@@ -211,7 +209,6 @@ void __init config_mac(void)
 	    || macintosh_config->ident == MAC_MODEL_IIFX)
 		mach_l2_flush = mac_cache_card_flush;
 }
-
 
 /*
  * Macintosh Table: hardcoded model configuration data.

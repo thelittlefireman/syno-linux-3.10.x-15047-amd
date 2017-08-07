@@ -78,7 +78,7 @@ enum print_line_t trace_print_printk_msg_only(struct trace_iterator *iter)
 
 	trace_assign_type(field, entry);
 
-	ret = trace_seq_puts(s, field->buf);
+	ret = trace_seq_printf(s, "%s", field->buf);
 	if (!ret)
 		return TRACE_TYPE_PARTIAL_LINE;
 
@@ -431,44 +431,13 @@ int ftrace_raw_output_prep(struct trace_iterator *iter,
 	}
 
 	trace_seq_init(p);
-	ret = trace_seq_printf(s, "%s: ", ftrace_event_name(event));
+	ret = trace_seq_printf(s, "%s: ", event->name);
 	if (!ret)
 		return TRACE_TYPE_PARTIAL_LINE;
 
 	return 0;
 }
 EXPORT_SYMBOL(ftrace_raw_output_prep);
-
-static int ftrace_output_raw(struct trace_iterator *iter, char *name,
-			     char *fmt, va_list ap)
-{
-	struct trace_seq *s = &iter->seq;
-	int ret;
-
-	ret = trace_seq_printf(s, "%s: ", name);
-	if (!ret)
-		return TRACE_TYPE_PARTIAL_LINE;
-
-	ret = trace_seq_vprintf(s, fmt, ap);
-
-	if (!ret)
-		return TRACE_TYPE_PARTIAL_LINE;
-
-	return TRACE_TYPE_HANDLED;
-}
-
-int ftrace_output_call(struct trace_iterator *iter, char *name, char *fmt, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, fmt);
-	ret = ftrace_output_raw(iter, name, fmt, ap);
-	va_end(ap);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(ftrace_output_call);
 
 #ifdef CONFIG_KRETPROBES
 static inline const char *kretprobed(const char *name)
@@ -589,14 +558,14 @@ seq_print_userip_objs(const struct userstack_entry *entry, struct trace_seq *s,
 			if (ret)
 				ret = trace_seq_puts(s, "??");
 			if (ret)
-				ret = trace_seq_putc(s, '\n');
+				ret = trace_seq_puts(s, "\n");
 			continue;
 		}
 		if (!ret)
 			break;
 		if (ret)
 			ret = seq_print_user_ip(s, mm, ip, sym_flags);
-		ret = trace_seq_putc(s, '\n');
+		ret = trace_seq_puts(s, "\n");
 	}
 
 	if (mm)
@@ -610,7 +579,7 @@ seq_print_ip_sym(struct trace_seq *s, unsigned long ip, unsigned long sym_flags)
 	int ret;
 
 	if (!ip)
-		return trace_seq_putc(s, '0');
+		return trace_seq_printf(s, "0");
 
 	if (sym_flags & TRACE_ITER_SYM_OFFSET)
 		ret = seq_print_sym_offset(s, "%s", ip);
@@ -649,23 +618,8 @@ int trace_print_lat_fmt(struct trace_seq *s, struct trace_entry *entry)
 		(entry->flags & TRACE_FLAG_IRQS_OFF) ? 'd' :
 		(entry->flags & TRACE_FLAG_IRQS_NOSUPPORT) ? 'X' :
 		'.';
-
-	switch (entry->flags & (TRACE_FLAG_NEED_RESCHED |
-				TRACE_FLAG_PREEMPT_RESCHED)) {
-	case TRACE_FLAG_NEED_RESCHED | TRACE_FLAG_PREEMPT_RESCHED:
-		need_resched = 'N';
-		break;
-	case TRACE_FLAG_NEED_RESCHED:
-		need_resched = 'n';
-		break;
-	case TRACE_FLAG_PREEMPT_RESCHED:
-		need_resched = 'p';
-		break;
-	default:
-		need_resched = '.';
-		break;
-	}
-
+	need_resched =
+		(entry->flags & TRACE_FLAG_NEED_RESCHED) ? 'N' : '.';
 	hardsoft_irq =
 		(hardirq && softirq) ? 'H' :
 		hardirq ? 'h' :
@@ -1010,14 +964,14 @@ static enum print_line_t trace_fn_trace(struct trace_iterator *iter, int flags,
 		goto partial;
 
 	if ((flags & TRACE_ITER_PRINT_PARENT) && field->parent_ip) {
-		if (!trace_seq_puts(s, " <-"))
+		if (!trace_seq_printf(s, " <-"))
 			goto partial;
 		if (!seq_print_ip_sym(s,
 				      field->parent_ip,
 				      flags))
 			goto partial;
 	}
-	if (!trace_seq_putc(s, '\n'))
+	if (!trace_seq_printf(s, "\n"))
 		goto partial;
 
 	return TRACE_TYPE_HANDLED;
@@ -1089,7 +1043,6 @@ static enum print_line_t trace_ctxwake_print(struct trace_iterator *iter,
 	char comm[TASK_COMM_LEN];
 	int S, T;
 
-
 	trace_assign_type(field, iter->ent);
 
 	T = task_state_char(field->next_state);
@@ -1155,7 +1108,6 @@ static enum print_line_t trace_wake_raw(struct trace_iterator *iter, int flags,
 {
 	return trace_ctxwake_raw(iter, '+');
 }
-
 
 static int trace_ctxwake_hex(struct trace_iterator *iter, char S)
 {
@@ -1256,7 +1208,7 @@ static enum print_line_t trace_stack_print(struct trace_iterator *iter,
 
 		if (!seq_print_ip_sym(s, *p, flags))
 			goto partial;
-		if (!trace_seq_putc(s, '\n'))
+		if (!trace_seq_puts(s, "\n"))
 			goto partial;
 	}
 
@@ -1331,7 +1283,6 @@ trace_bputs_print(struct trace_iterator *iter, int flags,
 	return TRACE_TYPE_PARTIAL_LINE;
 }
 
-
 static enum print_line_t
 trace_bputs_raw(struct trace_iterator *iter, int flags,
 		struct trace_event *event)
@@ -1388,7 +1339,6 @@ trace_bprint_print(struct trace_iterator *iter, int flags,
  partial:
 	return TRACE_TYPE_PARTIAL_LINE;
 }
-
 
 static enum print_line_t
 trace_bprint_raw(struct trace_iterator *iter, int flags,
@@ -1467,7 +1417,6 @@ static struct trace_event trace_print_event = {
 	.type	 	= TRACE_PRINT,
 	.funcs		= &trace_print_funcs,
 };
-
 
 static struct trace_event *events[] __initdata = {
 	&trace_fn_event,

@@ -40,6 +40,7 @@
 #include <linux/errno.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
+#include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/timer.h>
 #include <linux/completion.h>
@@ -90,7 +91,6 @@ static void mtx1_wdt_reset(void)
 	ticks = mtx1_wdt_device.default_ticks;
 }
 
-
 static void mtx1_wdt_start(void)
 {
 	unsigned long flags;
@@ -129,7 +129,6 @@ static int mtx1_wdt_open(struct inode *inode, struct file *file)
 		return -EBUSY;
 	return nonseekable_open(inode, file);
 }
-
 
 static int mtx1_wdt_release(struct inode *inode, struct file *file)
 {
@@ -176,7 +175,6 @@ static long mtx1_wdt_ioctl(struct file *file, unsigned int cmd,
 	return 0;
 }
 
-
 static ssize_t mtx1_wdt_write(struct file *file, const char *buf,
 						size_t count, loff_t *ppos)
 {
@@ -195,20 +193,18 @@ static const struct file_operations mtx1_wdt_fops = {
 	.release	= mtx1_wdt_release,
 };
 
-
 static struct miscdevice mtx1_wdt_misc = {
 	.minor	= WATCHDOG_MINOR,
 	.name	= "watchdog",
 	.fops	= &mtx1_wdt_fops,
 };
 
-
 static int mtx1_wdt_probe(struct platform_device *pdev)
 {
 	int ret;
 
 	mtx1_wdt_device.gpio = pdev->resource[0].start;
-	ret = devm_gpio_request_one(&pdev->dev, mtx1_wdt_device.gpio,
+	ret = gpio_request_one(mtx1_wdt_device.gpio,
 				GPIOF_OUT_INIT_HIGH, "mtx1-wdt");
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to request gpio");
@@ -240,6 +236,7 @@ static int mtx1_wdt_remove(struct platform_device *pdev)
 		wait_for_completion(&mtx1_wdt_device.stop);
 	}
 
+	gpio_free(mtx1_wdt_device.gpio);
 	misc_deregister(&mtx1_wdt_misc);
 	return 0;
 }
@@ -256,4 +253,5 @@ module_platform_driver(mtx1_wdt_driver);
 MODULE_AUTHOR("Michael Stickel, Florian Fainelli");
 MODULE_DESCRIPTION("Driver for the MTX-1 watchdog");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_ALIAS("platform:mtx1-wdt");

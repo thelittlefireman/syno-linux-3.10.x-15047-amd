@@ -22,7 +22,6 @@
 #define PRINT_USER_FAULTS /* (turn this on if you want user faults to be */
 			 /*  dumped to the console via printk)          */
 
-
 /* Various important other fields */
 #define bit22set(x)		(x & 0x00000200)
 #define bits23_25set(x)		(x & 0x000001c0)
@@ -30,7 +29,6 @@
 				/* extended opcode is 0x6a */
 
 #define BITSSET		0x1c0	/* for identifying LDCW */
-
 
 DEFINE_PER_CPU(struct exception_data, exception_data);
 
@@ -117,7 +115,6 @@ parisc_acctyp(unsigned long code, unsigned int inst)
 #undef isGraphicsFlushRead
 #undef BITSSET
 
-
 #if 0
 /* This is the treewalk to find a vma which is the highest that has
  * a start < addr.  We're using find_vma_prev instead right now, but
@@ -142,16 +139,10 @@ int fixup_exception(struct pt_regs *regs)
 {
 	const struct exception_table_entry *fix;
 
-	/* If we only stored 32bit addresses in the exception table we can drop
-	 * out if we faulted on a 64bit address. */
-	if ((sizeof(regs->iaoq[0]) > sizeof(fix->insn))
-		&& (regs->iaoq[0] >> 32))
-			return 0;
-
 	fix = search_exception_tables(regs->iaoq[0]);
 	if (fix) {
 		struct exception_data *d;
-		d = this_cpu_ptr(&exception_data);
+		d = &__get_cpu_var(exception_data);
 		d->fault_ip = regs->iaoq[0];
 		d->fault_space = regs->isr;
 		d->fault_addr = regs->ior;
@@ -177,25 +168,17 @@ void do_page_fault(struct pt_regs *regs, unsigned long code,
 			      unsigned long address)
 {
 	struct vm_area_struct *vma, *prev_vma;
-	struct task_struct *tsk;
-	struct mm_struct *mm;
+	struct task_struct *tsk = current;
+	struct mm_struct *mm = tsk->mm;
 	unsigned long acc_type;
 	int fault;
-	unsigned int flags;
+	unsigned int flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 
-	if (in_atomic())
+	if (in_atomic() || !mm)
 		goto no_context;
 
-	tsk = current;
-	mm = tsk->mm;
-	if (!mm)
-		goto no_context;
-
-	flags = FAULT_FLAG_ALLOW_RETRY | FAULT_FLAG_KILLABLE;
 	if (user_mode(regs))
 		flags |= FAULT_FLAG_USER;
-
-	acc_type = parisc_acctyp(code, regs->iir);
 	if (acc_type & VM_WRITE)
 		flags |= FAULT_FLAG_WRITE;
 retry:
@@ -209,6 +192,8 @@ retry:
  */
 
 good_area:
+
+	acc_type = parisc_acctyp(code,regs->iir);
 
 	if ((vma->vm_flags & acc_type) != acc_type)
 		goto bad_area;
@@ -232,6 +217,8 @@ good_area:
 		 */
 		if (fault & VM_FAULT_OOM)
 			goto out_of_memory;
+		else if (fault & VM_FAULT_SIGSEGV)
+			goto bad_area;
 		else if (fault & VM_FAULT_SIGBUS)
 			goto bad_area;
 		BUG();
@@ -280,40 +267,12 @@ bad_area:
 		}
 		show_regs(regs);
 #endif
-		switch (code) {
-		case 15:	/* Data TLB miss fault/Data page fault */
-			/* send SIGSEGV when outside of vma */
-			if (!vma ||
-			    address < vma->vm_start || address > vma->vm_end) {
-				si.si_signo = SIGSEGV;
-				si.si_code = SEGV_MAPERR;
-				break;
-			}
-
-			/* send SIGSEGV for wrong permissions */
-			if ((vma->vm_flags & acc_type) != acc_type) {
-				si.si_signo = SIGSEGV;
-				si.si_code = SEGV_ACCERR;
-				break;
-			}
-
-			/* probably address is outside of mapped file */
-			/* fall through */
-		case 17:	/* NA data TLB miss / page fault */
-		case 18:	/* Unaligned access - PCXS only */
-			si.si_signo = SIGBUS;
-			si.si_code = (code == 18) ? BUS_ADRALN : BUS_ADRERR;
-			break;
-		case 16:	/* Non-access instruction TLB miss fault */
-		case 26:	/* PCXL: Data memory access rights trap */
-		default:
-			si.si_signo = SIGSEGV;
-			si.si_code = (code == 26) ? SEGV_ACCERR : SEGV_MAPERR;
-			break;
-		}
+		/* FIXME: actually we need to get the signo and code correct */
+		si.si_signo = SIGSEGV;
 		si.si_errno = 0;
+		si.si_code = SEGV_MAPERR;
 		si.si_addr = (void __user *) address;
-		force_sig_info(si.si_signo, &si, current);
+		force_sig_info(SIGSEGV, &si, current);
 		return;
 	}
 

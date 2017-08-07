@@ -23,7 +23,6 @@
 #include <sound/soc.h>
 #include <asm/dmabrg.h>
 
-
 /* registers and bits */
 #define BRGATXSAR	0x00
 #define BRGARXDAR	0x04
@@ -47,7 +46,6 @@
 #define ACR_TAM_NONE	(0 << 8)
 #define ACR_TAM_4BYTE	(1 << 8)
 #define ACR_TAM_2WORD	(2 << 8)
-
 
 struct camelot_pcm {
 	unsigned long mmio;  /* DMABRG audio channel control reg MMIO */
@@ -89,12 +87,29 @@ struct camelot_pcm {
 #define DMABRG_PREALLOC_BUFFER		32 * 1024
 #define DMABRG_PREALLOC_BUFFER_MAX	32 * 1024
 
+/* support everything the SSI supports */
+#define DMABRG_RATES	\
+	SNDRV_PCM_RATE_8000_192000
+
+#define DMABRG_FMTS	\
+	(SNDRV_PCM_FMTBIT_S8      | SNDRV_PCM_FMTBIT_U8      |	\
+	 SNDRV_PCM_FMTBIT_S16_LE  | SNDRV_PCM_FMTBIT_U16_LE  |	\
+	 SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_U20_3LE |	\
+	 SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_U24_3LE |	\
+	 SNDRV_PCM_FMTBIT_S32_LE  | SNDRV_PCM_FMTBIT_U32_LE)
+
 static struct snd_pcm_hardware camelot_pcm_hardware = {
 	.info = (SNDRV_PCM_INFO_MMAP |
 		SNDRV_PCM_INFO_INTERLEAVED |
 		SNDRV_PCM_INFO_BLOCK_TRANSFER |
 		SNDRV_PCM_INFO_MMAP_VALID |
 		SNDRV_PCM_INFO_BATCH),
+	.formats =	DMABRG_FMTS,
+	.rates =	DMABRG_RATES,
+	.rate_min =		8000,
+	.rate_max =		192000,
+	.channels_min =		2,
+	.channels_max =		8,		/* max of the SSI */
 	.buffer_bytes_max =	DMABRG_PERIOD_MAX,
 	.period_bytes_min =	DMABRG_PERIOD_MIN,
 	.period_bytes_max =	DMABRG_PERIOD_MAX / 2,

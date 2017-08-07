@@ -83,7 +83,7 @@ void kill_bdev(struct block_device *bdev)
 {
 	struct address_space *mapping = bdev->bd_inode->i_mapping;
 
-	if (mapping->nrpages == 0 && mapping->nrshadows == 0)
+	if (mapping->nrpages == 0)
 		return;
 
 	invalidate_bh_lrus();
@@ -332,10 +332,31 @@ static int blkdev_write_end(struct file *file, struct address_space *mapping,
 static loff_t block_llseek(struct file *file, loff_t offset, int whence)
 {
 	struct inode *bd_inode = file->f_mapping->host;
+	loff_t size;
 	loff_t retval;
 
 	mutex_lock(&bd_inode->i_mutex);
-	retval = fixed_size_llseek(file, offset, whence, i_size_read(bd_inode));
+	size = i_size_read(bd_inode);
+
+	retval = -EINVAL;
+	switch (whence) {
+		case SEEK_END:
+			offset += size;
+			break;
+		case SEEK_CUR:
+			offset += file->f_pos;
+		case SEEK_SET:
+			break;
+		default:
+			goto out;
+	}
+	if (offset >= 0 && offset <= size) {
+		if (offset != file->f_pos) {
+			file->f_pos = offset;
+		}
+		retval = offset;
+	}
+out:
 	mutex_unlock(&bd_inode->i_mutex);
 	return retval;
 }
@@ -419,7 +440,7 @@ static void bdev_evict_inode(struct inode *inode)
 {
 	struct block_device *bdev = &BDEV_I(inode)->bdev;
 	struct list_head *p;
-	truncate_inode_pages_final(&inode->i_data);
+	truncate_inode_pages(&inode->i_data, 0);
 	invalidate_inode_buffers(inode); /* is it needed here? */
 	clear_inode(inode);
 	spin_lock(&bdev_lock);
@@ -592,7 +613,7 @@ static struct block_device *bd_acquire(struct inode *inode)
 	return bdev;
 }
 
-int sb_is_blkdev_sb(struct super_block *sb)
+static inline int sb_is_blkdev_sb(struct super_block *sb)
 {
 	return sb == blockdev_superblock;
 }
@@ -1518,12 +1539,12 @@ ssize_t blkdev_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	BUG_ON(iocb->ki_pos != pos);
 
 	blk_start_plug(&plug);
-	ret = __generic_file_aio_write(iocb, iov, nr_segs);
-	if (ret > 0) {
+	ret = __generic_file_aio_write(iocb, iov, nr_segs, &iocb->ki_pos);
+	if (ret > 0 || ret == -EIOCBQUEUED) {
 		ssize_t err;
 
 		err = generic_write_sync(file, pos, ret);
-		if (err < 0)
+		if (err < 0 && ret > 0)
 			ret = err;
 	}
 	blk_finish_plug(&plug);
@@ -1542,7 +1563,7 @@ static ssize_t blkdev_aio_read(struct kiocb *iocb, const struct iovec *iov,
 		return 0;
 
 	size -= pos;
-	if (size < iocb->ki_nbytes)
+	if (size < iocb->ki_left)
 		nr_segs = iov_shorten((struct iovec *)iov, nr_segs, size);
 	return generic_file_aio_read(iocb, iov, nr_segs, pos);
 }
@@ -1569,7 +1590,6 @@ static const struct address_space_operations def_blk_aops = {
 	.writepages	= generic_writepages,
 	.releasepage	= blkdev_releasepage,
 	.direct_IO	= blkdev_direct_IO,
-	.is_dirty_writeback = buffer_check_dirty_writeback,
 };
 
 const struct file_operations def_blk_fops = {

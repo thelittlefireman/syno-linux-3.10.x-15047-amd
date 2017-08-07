@@ -181,7 +181,6 @@ static void octeon_cf_set_piomode(struct ata_port *ap, struct ata_device *dev)
 		/* True IDE mode, program both chip selects.  */
 		octeon_cf_set_boot_reg_cfg(cf_port->cs1, div);
 
-
 	use_iordy = ata_pio_need_iordy(dev);
 
 	reg_tim.u64 = cvmx_read_csr(CVMX_MIO_BOOT_REG_TIMX(cf_port->cs0));
@@ -509,7 +508,6 @@ static void octeon_cf_tf_load16(struct ata_port *ap,
 	ata_wait_idle(ap);
 }
 
-
 static void octeon_cf_dev_select(struct ata_port *ap, unsigned int device)
 {
 /*  There is only one device, do nothing. */
@@ -537,7 +535,6 @@ static void octeon_cf_exec_command16(struct ata_port *ap,
 	DPRINTK("ata%u: cmd 0x%X\n", ap->print_id, tf->command);
 	blob |= (tf->command << 8);
 	__raw_writew(blob, base + 6);
-
 
 	ata_wait_idle(ap);
 }
@@ -638,7 +635,6 @@ static unsigned int octeon_cf_dma_finished(struct ata_port *ap,
 
 	VPRINTK("ata%u: protocol %d task_state %d\n",
 		ap->print_id, qc->tf.protocol, ap->hsm_task_state);
-
 
 	if (ap->hsm_task_state != HSM_ST_LAST)
 		return 0;
@@ -860,7 +856,6 @@ static int octeon_cf_probe(struct platform_device *pdev)
 	struct octeon_cf_port *cf_port;
 	int rv = -ENOMEM;
 
-
 	node = pdev->dev.of_node;
 	if (node == NULL)
 		return -EINVAL;
@@ -1014,12 +1009,10 @@ static int octeon_cf_probe(struct platform_device *pdev)
 	}
 	cf_port->c0 = ap->ioaddr.ctl_addr;
 
-	rv = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (rv)
-		return rv;
+	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+	pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 
 	ata_port_desc(ap, "cmd %p ctl %p", base, ap->ioaddr.ctl_addr);
-
 
 	dev_info(&pdev->dev, "version " DRV_VERSION" %d bit%s.\n",
 		 is_16bit ? 16 : 8,
@@ -1038,7 +1031,7 @@ static void octeon_cf_shutdown(struct device *dev)
 	union cvmx_mio_boot_dma_cfgx dma_cfg;
 	union cvmx_mio_boot_dma_intx dma_int;
 
-	struct octeon_cf_port *cf_port = dev_get_platdata(dev);
+	struct octeon_cf_port *cf_port = dev->platform_data;
 
 	if (cf_port->dma_base) {
 		/* Stop and clear the dma engine.  */
@@ -1069,7 +1062,7 @@ static struct of_device_id octeon_cf_match[] = {
 	},
 	{},
 };
-MODULE_DEVICE_TABLE(of, octeon_i2c_match);
+MODULE_DEVICE_TABLE(of, octeon_cf_match);
 
 static struct platform_driver octeon_cf_driver = {
 	.probe		= octeon_cf_probe,
@@ -1085,7 +1078,6 @@ static int __init octeon_cf_init(void)
 {
 	return platform_driver_register(&octeon_cf_driver);
 }
-
 
 MODULE_AUTHOR("David Daney <ddaney@caviumnetworks.com>");
 MODULE_DESCRIPTION("low-level driver for Cavium OCTEON Compact Flash PATA");

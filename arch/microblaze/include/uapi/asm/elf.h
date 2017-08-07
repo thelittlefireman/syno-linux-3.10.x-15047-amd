@@ -81,7 +81,6 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_NFPREG];
 
 #define ELF_EXEC_PAGESIZE	PAGE_SIZE
 
-
 #define ELF_CORE_COPY_REGS(_dest, _regs)			\
 	memcpy((char *) &_dest, (char *) _regs,		\
 	sizeof(struct pt_regs));
@@ -114,7 +113,6 @@ do {							\
 	_r->r28 = _r->r29 = _r->r30 = _r->r31 =		\
 	0;						\
 } while (0)
-
 
 #endif /* __uClinux__ */
 

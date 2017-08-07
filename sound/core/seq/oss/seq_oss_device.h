@@ -31,6 +31,9 @@
 #include <sound/seq_kernel.h>
 #include <sound/info.h>
 
+/* enable debug print */
+#define SNDRV_SEQ_OSS_DEBUG
+
 /* max. applications */
 #define SNDRV_SEQ_OSS_MAX_CLIENTS	16
 #define SNDRV_SEQ_OSS_MAX_SYNTH_DEVS	16
@@ -43,8 +46,8 @@
 #define SNDRV_SEQ_OSS_VERSION_STR	"0.1.8"
 
 /* device and proc interface name */
+#define SNDRV_SEQ_OSS_DEVNAME		"seq_oss"
 #define SNDRV_SEQ_OSS_PROCNAME		"oss"
-
 
 /*
  * type definitions
@@ -52,7 +55,6 @@
 
 typedef unsigned int reltime_t;
 typedef unsigned int abstime_t;
-
 
 /*
  * synthesizer channel information
@@ -73,7 +75,6 @@ struct seq_oss_synthinfo {
 	int is_midi;
 	int midi_mapped;
 };
-
 
 /*
  * sequencer client information
@@ -109,7 +110,6 @@ struct seq_oss_devinfo {
 	struct seq_oss_timer *timer;
 };
 
-
 /*
  * function prototypes
  */
@@ -127,11 +127,9 @@ int snd_seq_oss_write(struct seq_oss_devinfo *dp, const char __user *buf, int co
 unsigned int snd_seq_oss_poll(struct seq_oss_devinfo *dp, struct file *file, poll_table * wait);
 
 void snd_seq_oss_reset(struct seq_oss_devinfo *dp);
-void snd_seq_oss_drain_write(struct seq_oss_devinfo *dp);
 
 /* */
 void snd_seq_oss_process_queue(struct seq_oss_devinfo *dp, abstime_t time);
-
 
 /* proc interface */
 void snd_seq_oss_system_info_read(struct snd_info_buffer *buf);
@@ -169,8 +167,15 @@ snd_seq_oss_fill_addr(struct seq_oss_devinfo *dp, struct snd_seq_event *ev,
 	ev->dest.port = dest_port;
 }
 
-
 /* misc. functions for proc interface */
 char *enabled_str(int bool);
+
+/* for debug */
+#ifdef SNDRV_SEQ_OSS_DEBUG
+extern int seq_oss_debug;
+#define debug_printk(x)	do { if (seq_oss_debug > 0) snd_printd x; } while (0)
+#else
+#define debug_printk(x)	/**/
+#endif
 
 #endif /* __SEQ_OSS_DEVICE_H */

@@ -12,6 +12,7 @@
  */
 
 #include <linux/attribute_container.h>
+#include <linux/init.h>
 #include <linux/device.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
@@ -42,7 +43,6 @@ static void internal_container_klist_put(struct klist_node *n)
 		container_of(n, struct internal_container, node);
 	put_device(&ic->classdev);
 }
-
 
 /**
  * attribute_container_classdev_to_container - given a classdev, return the container
@@ -166,7 +166,7 @@ attribute_container_add_device(struct device *dev,
 		ic->classdev.parent = get_device(dev);
 		ic->classdev.class = cont->class;
 		cont->class->dev_release = attribute_container_release;
-		dev_set_name(&ic->classdev, "%s", dev_name(dev));
+		dev_set_name(&ic->classdev, dev_name(dev));
 		if (fn)
 			fn(cont, dev, &ic->classdev);
 		else
@@ -186,7 +186,6 @@ attribute_container_add_device(struct device *dev,
 			({ klist_iter_exit(iter) ; NULL; }); \
 	}) ) != NULL; )
 			
-
 /**
  * attribute_container_remove_device - make device eligible for removal.
  *

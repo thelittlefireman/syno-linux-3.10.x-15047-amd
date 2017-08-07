@@ -30,7 +30,7 @@ EXPORT_SYMBOL(cpu_to_node_map);
 cpumask_t node_to_cpu_mask[MAX_NUMNODES] __cacheline_aligned;
 EXPORT_SYMBOL(node_to_cpu_mask);
 
-void map_cpu_to_node(int cpu, int nid)
+void __cpuinit map_cpu_to_node(int cpu, int nid)
 {
 	int oldnid;
 	if (nid < 0) { /* just initialize by zero */
@@ -51,14 +51,13 @@ void map_cpu_to_node(int cpu, int nid)
 	return;
 }
 
-void unmap_cpu_from_node(int cpu, int nid)
+void __cpuinit unmap_cpu_from_node(int cpu, int nid)
 {
 	WARN_ON(!cpu_isset(cpu, node_to_cpu_mask[nid]));
 	WARN_ON(cpu_to_node_map[cpu] != nid);
 	cpu_to_node_map[cpu] = 0;
 	cpu_clear(cpu, node_to_cpu_mask[nid]);
 }
-
 
 /**
  * build_cpu_to_node_map - setup cpu to node and node to cpumask arrays

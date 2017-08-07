@@ -13,8 +13,6 @@
 
 #include <asm/amigahw.h>
 #include <asm/amigayle.h>
-#include <asm/byteorder.h>
-
 
 #ifdef CONFIG_ZORRO
 
@@ -45,7 +43,6 @@ static const struct resource zorro_resources[] __initconst = {
 	}
 };
 
-
 static int __init amiga_init_bus(void)
 {
 	struct platform_device *pdev;
@@ -57,22 +54,19 @@ static int __init amiga_init_bus(void)
 	n = AMIGAHW_PRESENT(ZORRO3) ? 4 : 2;
 	pdev = platform_device_register_simple("amiga-zorro", -1,
 					       zorro_resources, n);
-	return PTR_ERR_OR_ZERO(pdev);
+	return PTR_RET(pdev);
 }
 
 subsys_initcall(amiga_init_bus);
-
 
 static int __init z_dev_present(zorro_id id)
 {
 	unsigned int i;
 
-	for (i = 0; i < zorro_num_autocon; i++) {
-		const struct ExpansionRom *rom = &zorro_autocon_init[i].rom;
-		if (be16_to_cpu(rom->er_Manufacturer) == ZORRO_MANUF(id) &&
-		    rom->er_Product == ZORRO_PROD(id))
+	for (i = 0; i < zorro_num_autocon; i++)
+		if (zorro_autocon[i].rom.er_Manufacturer == ZORRO_MANUF(id) &&
+		    zorro_autocon[i].rom.er_Product == ZORRO_PROD(id))
 			return 1;
-	}
 
 	return 0;
 }
@@ -83,20 +77,17 @@ static inline int z_dev_present(zorro_id id) { return 0; }
 
 #endif /* !CONFIG_ZORRO */
 
-
 static const struct resource a3000_scsi_resource __initconst = {
 	.start	= 0xdd0000,
 	.end	= 0xdd00ff,
 	.flags	= IORESOURCE_MEM,
 };
 
-
 static const struct resource a4000t_scsi_resource __initconst = {
 	.start	= 0xdd0000,
 	.end	= 0xdd0fff,
 	.flags	= IORESOURCE_MEM,
 };
-
 
 static const struct resource a1200_ide_resource __initconst = {
 	.start	= 0xda0000,
@@ -110,7 +101,6 @@ static const struct gayle_ide_platform_data a1200_ide_pdata __initconst = {
 	.explicit_ack	= 1,
 };
 
-
 static const struct resource a4000_ide_resource __initconst = {
 	.start	= 0xdd2000,
 	.end	= 0xdd3fff,
@@ -123,13 +113,11 @@ static const struct gayle_ide_platform_data a4000_ide_pdata __initconst = {
 	.explicit_ack	= 0,
 };
 
-
 static const struct resource amiga_rtc_resource __initconst = {
 	.start	= 0x00dc0000,
 	.end	= 0x00dcffff,
 	.flags	= IORESOURCE_MEM,
 };
-
 
 static int __init amiga_init_devices(void)
 {
@@ -147,7 +135,6 @@ static int __init amiga_init_devices(void)
 			return PTR_ERR(pdev);
 	}
 
-
 	/* sound hardware */
 	if (AMIGAHW_PRESENT(AMI_AUDIO)) {
 		pdev = platform_device_register_simple("amiga-audio", -1, NULL,
@@ -155,7 +142,6 @@ static int __init amiga_init_devices(void)
 		if (IS_ERR(pdev))
 			return PTR_ERR(pdev);
 	}
-
 
 	/* storage interfaces */
 	if (AMIGAHW_PRESENT(AMI_FLOPPY)) {
@@ -203,7 +189,6 @@ static int __init amiga_init_devices(void)
 			return error;
 	}
 
-
 	/* other I/O hardware */
 	if (AMIGAHW_PRESENT(AMI_KEYBOARD)) {
 		pdev = platform_device_register_simple("amiga-keyboard", -1,
@@ -232,7 +217,6 @@ static int __init amiga_init_devices(void)
 		if (IS_ERR(pdev))
 			return PTR_ERR(pdev);
 	}
-
 
 	/* real time clocks */
 	if (AMIGAHW_PRESENT(A2000_CLK)) {

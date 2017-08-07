@@ -15,12 +15,11 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <linux/module.h>
-#include <linux/reboot.h>
 #include <asm/system_misc.h>
 
 static void restart_poweroff_do_poweroff(void)
 {
-	arm_pm_restart(REBOOT_HARD, NULL);
+	arm_pm_restart('h', NULL);
 }
 
 static int restart_poweroff_probe(struct platform_device *pdev)

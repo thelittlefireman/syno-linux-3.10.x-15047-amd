@@ -302,7 +302,8 @@ static int sh_mtu2_setup(struct sh_mtu2_priv *p, struct platform_device *pdev)
 	p->irqaction.handler = sh_mtu2_interrupt;
 	p->irqaction.dev_id = p;
 	p->irqaction.irq = irq;
-	p->irqaction.flags = IRQF_TIMER | IRQF_IRQPOLL | IRQF_NOBALANCING;
+	p->irqaction.flags = IRQF_DISABLED | IRQF_TIMER | \
+			     IRQF_IRQPOLL  | IRQF_NOBALANCING;
 
 	/* get hold of clock */
 	p->clk = clk_get(&p->pdev->dev, "mtu2_fck");
@@ -312,20 +313,8 @@ static int sh_mtu2_setup(struct sh_mtu2_priv *p, struct platform_device *pdev)
 		goto err1;
 	}
 
-	ret = clk_prepare(p->clk);
-	if (ret < 0)
-		goto err2;
-
-	ret = sh_mtu2_register(p, (char *)dev_name(&p->pdev->dev),
-			       cfg->clockevent_rating);
-	if (ret < 0)
-		goto err3;
-
-	return 0;
- err3:
-	clk_unprepare(p->clk);
- err2:
-	clk_put(p->clk);
+	return sh_mtu2_register(p, (char *)dev_name(&p->pdev->dev),
+				cfg->clockevent_rating);
  err1:
 	iounmap(p->mapbase);
  err0:
@@ -357,6 +346,7 @@ static int sh_mtu2_probe(struct platform_device *pdev)
 	ret = sh_mtu2_setup(p, pdev);
 	if (ret) {
 		kfree(p);
+		platform_set_drvdata(pdev, NULL);
 		pm_runtime_idle(&pdev->dev);
 		return ret;
 	}

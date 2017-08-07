@@ -15,6 +15,7 @@
 
 #include <linux/module.h>
 #include <linux/usb.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/mutex.h>
@@ -299,7 +300,7 @@ static ssize_t iowarrior_read(struct file *file, char __user *buffer,
 	do {
 		atomic_set(&dev->overflow_flag, 0);
 		if ((read_idx = read_index(dev)) == -1) {
-			/* queue empty */
+			/* queue emty */
 			if (file->f_flags & O_NONBLOCK)
 				return -EAGAIN;
 			else {
@@ -790,6 +791,12 @@ static int iowarrior_probe(struct usb_interface *interface,
 
 	iface_desc = interface->cur_altsetting;
 	dev->product_id = le16_to_cpu(udev->descriptor.idProduct);
+
+	if (iface_desc->desc.bNumEndpoints < 1) {
+		dev_err(&interface->dev, "Invalid number of endpoints\n");
+		retval = -EINVAL;
+		goto error;
+	}
 
 	/* set up the endpoint information */
 	for (i = 0; i < iface_desc->desc.bNumEndpoints; ++i) {

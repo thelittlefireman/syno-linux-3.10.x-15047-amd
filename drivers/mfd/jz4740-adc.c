@@ -30,7 +30,6 @@
 
 #include <linux/jz4740-adc.h>
 
-
 #define JZ_REG_ADC_ENABLE	0x00
 #define JZ_REG_ADC_CFG		0x04
 #define JZ_REG_ADC_CTRL		0x08
@@ -79,20 +78,19 @@ static void jz4740_adc_irq_demux(unsigned int irq, struct irq_desc *desc)
 	}
 }
 
-
 /* Refcounting for the ADC clock is done in here instead of in the clock
  * framework, because it is the only clock which is shared between multiple
  * devices and thus is the only clock which needs refcounting */
 static inline void jz4740_adc_clk_enable(struct jz4740_adc *adc)
 {
 	if (atomic_inc_return(&adc->clk_ref) == 1)
-		clk_prepare_enable(adc->clk);
+		clk_enable(adc->clk);
 }
 
 static inline void jz4740_adc_clk_disable(struct jz4740_adc *adc)
 {
 	if (atomic_dec_return(&adc->clk_ref) == 0)
-		clk_disable_unprepare(adc->clk);
+		clk_disable(adc->clk);
 }
 
 static inline void jz4740_adc_set_enabled(struct jz4740_adc *adc, int engine,
@@ -181,7 +179,7 @@ static struct resource jz4740_battery_resources[] = {
 	},
 };
 
-static const struct mfd_cell jz4740_adc_cells[] = {
+static struct mfd_cell jz4740_adc_cells[] = {
 	{
 		.id = 0,
 		.name = "jz4740-hwmon",
@@ -294,6 +292,7 @@ static int jz4740_adc_probe(struct platform_device *pdev)
 err_clk_put:
 	clk_put(adc->clk);
 err_iounmap:
+	platform_set_drvdata(pdev, NULL);
 	iounmap(adc->base);
 err_release_mem_region:
 	release_mem_region(adc->mem->start, resource_size(adc->mem));
@@ -315,6 +314,8 @@ static int jz4740_adc_remove(struct platform_device *pdev)
 	release_mem_region(adc->mem->start, resource_size(adc->mem));
 
 	clk_put(adc->clk);
+
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

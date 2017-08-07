@@ -63,7 +63,6 @@ static struct ext_phys_mem_pool ext_mem_pool;
 /*  ----------------------------------- Function Prototypes */
 static int request_bridge_resources(struct cfg_hostres *res);
 
-
 /* GPP PROCESS CLEANUP CODE */
 
 static int drv_proc_free_node_res(int id, void *p, void *data);
@@ -738,7 +737,7 @@ void mem_ext_phys_pool_release(void)
  *     Allocate physically contiguous, uncached memory from external memory pool
  */
 
-static void *mem_ext_phys_mem_alloc(u32 bytes, u32 align, u32 *phys_addr)
+static void *mem_ext_phys_mem_alloc(u32 bytes, u32 align, u32 * phys_addr)
 {
 	u32 new_alloc_ptr;
 	u32 offset;

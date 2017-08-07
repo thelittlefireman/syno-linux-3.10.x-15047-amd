@@ -46,9 +46,6 @@ enum nfqnl_attr_type {
 	NFQA_CT_INFO,			/* enum ip_conntrack_info */
 	NFQA_CAP_LEN,			/* __u32 length of captured packet */
 	NFQA_SKB_INFO,			/* __u32 skb meta information */
-	NFQA_EXP,			/* nf_conntrack_netlink.h */
-	NFQA_UID,			/* __u32 sk uid */
-	NFQA_GID,			/* __u32 sk gid */
 
 	__NFQA_MAX
 };
@@ -58,7 +55,6 @@ struct nfqnl_msg_verdict_hdr {
 	__be32 verdict;
 	__be32 id;
 };
-
 
 enum nfqnl_msg_config_cmds {
 	NFQNL_CFG_CMD_NONE,
@@ -85,7 +81,6 @@ struct nfqnl_msg_config_params {
 	__u8	copy_mode;	/* enum nfqnl_config_mode */
 } __attribute__ ((packed));
 
-
 enum nfqnl_attr_config {
 	NFQA_CFG_UNSPEC,
 	NFQA_CFG_CMD,			/* nfqnl_msg_config_cmd */
@@ -101,15 +96,12 @@ enum nfqnl_attr_config {
 #define NFQA_CFG_F_FAIL_OPEN			(1 << 0)
 #define NFQA_CFG_F_CONNTRACK			(1 << 1)
 #define NFQA_CFG_F_GSO				(1 << 2)
-#define NFQA_CFG_F_UID_GID			(1 << 3)
-#define NFQA_CFG_F_MAX				(1 << 4)
+#define NFQA_CFG_F_MAX				(1 << 3)
 
 /* flags for NFQA_SKB_INFO */
 /* packet appears to have wrong checksums, but they are ok */
 #define NFQA_SKB_CSUMNOTREADY (1 << 0)
 /* packet is GSO (i.e., exceeds device mtu) */
 #define NFQA_SKB_GSO (1 << 1)
-/* csum not validated (incoming device doesn't support hw checksum, etc.) */
-#define NFQA_SKB_CSUM_NOTVERIFIED (1 << 2)
 
 #endif /* _NFNETLINK_QUEUE_H */

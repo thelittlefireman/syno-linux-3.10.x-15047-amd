@@ -18,7 +18,6 @@
 #include <linux/of_fdt.h>
 #include <linux/of_irq.h>
 #include <linux/of_platform.h>
-#include <linux/smp.h>
 
 #include <asm/cputype.h>
 #include <asm/setup.h>
@@ -34,7 +33,7 @@ void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 
 void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
 {
-	return memblock_virt_alloc(size, align);
+	return alloc_bootmem_align(size, align);
 }
 
 void __init arm_dt_memblock_reserve(void)
@@ -64,34 +63,6 @@ void __init arm_dt_memblock_reserve(void)
 	}
 }
 
-#ifdef CONFIG_SMP
-extern struct of_cpu_method __cpu_method_of_table_begin[];
-extern struct of_cpu_method __cpu_method_of_table_end[];
-
-static int __init set_smp_ops_by_method(struct device_node *node)
-{
-	const char *method;
-	struct of_cpu_method *m = __cpu_method_of_table_begin;
-
-	if (of_property_read_string(node, "enable-method", &method))
-		return 0;
-
-	for (; m < __cpu_method_of_table_end; m++)
-		if (!strcmp(m->method, method)) {
-			smp_set_ops(m->ops);
-			return 1;
-		}
-
-	return 0;
-}
-#else
-static inline int set_smp_ops_by_method(struct device_node *node)
-{
-	return 1;
-}
-#endif
-
-
 /*
  * arm_dt_init_cpu_maps - Function retrieves cpu nodes from the device tree
  * and builds the cpu logical map array containing MPIDR values related to
@@ -108,7 +79,6 @@ void __init arm_dt_init_cpu_maps(void)
 	 * read as 0.
 	 */
 	struct device_node *cpu, *cpus;
-	int found_method = 0;
 	u32 i, j, cpuidx = 1;
 	u32 mpidr = is_smp() ? read_cpuid_mpidr() & MPIDR_HWID_BITMASK : 0;
 
@@ -180,17 +150,7 @@ void __init arm_dt_init_cpu_maps(void)
 		}
 
 		tmp_map[i] = hwid;
-
-		if (!found_method)
-			found_method = set_smp_ops_by_method(cpu);
 	}
-
-	/*
-	 * Fallback to an enable-method in the cpus node if nothing found in
-	 * a cpu node.
-	 */
-	if (!found_method)
-		set_smp_ops_by_method(cpus);
 
 	if (!bootcpu_valid) {
 		pr_warn("DT missing boot CPU MPIDR[23:0], fall back to default cpu_logical_map\n");
@@ -209,24 +169,6 @@ void __init arm_dt_init_cpu_maps(void)
 	}
 }
 
-bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
-{
-	return phys_id == cpu_logical_map(cpu);
-}
-
-static const void * __init arch_get_next_mach(const char *const **match)
-{
-	static const struct machine_desc *mdesc = __arch_info_begin;
-	const struct machine_desc *m = mdesc;
-
-	if (m >= __arch_info_end)
-		return NULL;
-
-	mdesc++;
-	*match = m->dt_compat;
-	return m;
-}
-
 /**
  * setup_machine_fdt - Machine setup when an dtb was passed to the kernel
  * @dt_phys: physical address of dt blob
@@ -234,31 +176,47 @@ static const void * __init arch_get_next_mach(const char *const **match)
  * If a dtb was passed to the kernel in r2, then use it to choose the
  * correct machine_desc and to setup the system.
  */
-const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
+struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 {
-	const struct machine_desc *mdesc, *mdesc_best = NULL;
+	struct boot_param_header *devtree;
+	struct machine_desc *mdesc, *mdesc_best = NULL;
+	unsigned int score, mdesc_score = ~1;
+	unsigned long dt_root;
+	const char *model;
 
 #ifdef CONFIG_ARCH_MULTIPLATFORM
 	DT_MACHINE_START(GENERIC_DT, "Generic DT based system")
 	MACHINE_END
 
-	mdesc_best = &__mach_desc_GENERIC_DT;
+	mdesc_best = (struct machine_desc *)&__mach_desc_GENERIC_DT;
 #endif
 
-	if (!dt_phys || !early_init_dt_scan(phys_to_virt(dt_phys)))
+	if (!dt_phys)
 		return NULL;
 
-	mdesc = of_flat_dt_match_machine(mdesc_best, arch_get_next_mach);
+	devtree = phys_to_virt(dt_phys);
 
-	if (!mdesc) {
+	/* check device tree validity */
+	if (be32_to_cpu(devtree->magic) != OF_DT_HEADER)
+		return NULL;
+
+	/* Search the mdescs for the 'best' compatible value match */
+	initial_boot_params = devtree;
+	dt_root = of_get_flat_dt_root();
+	for_each_machine_desc(mdesc) {
+		score = of_flat_dt_match(dt_root, mdesc->dt_compat);
+		if (score > 0 && score < mdesc_score) {
+			mdesc_best = mdesc;
+			mdesc_score = score;
+		}
+	}
+	if (!mdesc_best) {
 		const char *prop;
 		long size;
-		unsigned long dt_root;
 
 		early_print("\nError: unrecognized/unsupported "
 			    "device tree compatible list:\n[ ");
 
-		dt_root = of_get_flat_dt_root();
 		prop = of_get_flat_dt_prop(dt_root, "compatible", &size);
 		while (size > 0) {
 			early_print("'%s' ", prop);
@@ -270,8 +228,22 @@ const struct machine_desc * __init setup_machine_fdt(unsigned int dt_phys)
 		dump_machine_table(); /* does not return */
 	}
 
-	/* Change machine number to match the mdesc we're using */
-	__machine_arch_type = mdesc->nr;
+	model = of_get_flat_dt_prop(dt_root, "model", NULL);
+	if (!model)
+		model = of_get_flat_dt_prop(dt_root, "compatible", NULL);
+	if (!model)
+		model = "<unknown>";
+	pr_info("Machine: %s, model: %s\n", mdesc_best->name, model);
 
-	return mdesc;
+	/* Retrieve various information from the /chosen node */
+	of_scan_flat_dt(early_init_dt_scan_chosen, boot_command_line);
+	/* Initialize {size,address}-cells info */
+	of_scan_flat_dt(early_init_dt_scan_root, NULL);
+	/* Setup memory, calling early_init_dt_add_memory_arch */
+	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
+
+	/* Change machine number to match the mdesc we're using */
+	__machine_arch_type = mdesc_best->nr;
+
+	return mdesc_best;
 }

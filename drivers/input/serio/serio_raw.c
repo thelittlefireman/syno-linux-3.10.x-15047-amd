@@ -15,6 +15,7 @@
 #include <linux/poll.h>
 #include <linux/module.h>
 #include <linux/serio.h>
+#include <linux/init.h>
 #include <linux/major.h>
 #include <linux/device.h>
 #include <linux/miscdevice.h>
@@ -265,7 +266,6 @@ static const struct file_operations serio_raw_fops = {
 	.llseek		= noop_llseek,
 };
 
-
 /*********************************************************************
  *                   Interface with serio port                       *
  *********************************************************************/
@@ -389,7 +389,6 @@ static void serio_raw_hangup(struct serio_raw *serio_raw)
 
 	wake_up_interruptible(&serio_raw->wait);
 }
-
 
 static void serio_raw_disconnect(struct serio *serio)
 {

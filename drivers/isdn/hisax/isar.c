@@ -45,7 +45,6 @@ waitforHIA(struct IsdnCardState *cs, int timeout)
 	return (timeout);
 }
 
-
 static int
 sendmsg(struct IsdnCardState *cs, u_char his, u_char creg, u_char len,
 	u_char *msg)
@@ -74,7 +73,7 @@ sendmsg(struct IsdnCardState *cs, u_char his, u_char creg, u_char len,
 				t = tmp;
 				t += sprintf(t, "sendmbox cnt %d", len);
 				QuickHex(t, &msg[len-i], (i > 64) ? 64 : i);
-				debugl1(cs, "%s", tmp);
+				debugl1(cs, tmp);
 				i -= 64;
 			}
 		}
@@ -105,7 +104,7 @@ rcv_mbox(struct IsdnCardState *cs, struct isar_reg *ireg, u_char *msg)
 				t = tmp;
 				t += sprintf(t, "rcv_mbox cnt %d", ireg->clsb);
 				QuickHex(t, &msg[ireg->clsb - i], (i > 64) ? 64 : i);
-				debugl1(cs, "%s", tmp);
+				debugl1(cs, tmp);
 				i -= 64;
 			}
 		}
@@ -134,7 +133,6 @@ waitrecmsg(struct IsdnCardState *cs, u_char *len,
 {
 	int timeout = 0;
 	struct isar_reg *ir = cs->bcs[0].hw.isar.reg;
-
 
 	while ((!(cs->BC_Read_Reg(cs, 0, ISAR_IRQBIT) & ISAR_IRQSTA)) &&
 	      (timeout++ < maxdelay))
@@ -1248,7 +1246,7 @@ isar_int_main(struct IsdnCardState *cs)
 			tp += sprintf(debbuf, "msg iis(%x) msb(%x)",
 				      ireg->iis, ireg->cmsb);
 			QuickHex(tp, (u_char *)ireg->par, ireg->clsb);
-			debugl1(cs, "%s", debbuf);
+			debugl1(cs, debbuf);
 		}
 		break;
 	case ISAR_IIS_INVMSG:

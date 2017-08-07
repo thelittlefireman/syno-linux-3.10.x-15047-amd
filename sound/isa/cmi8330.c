@@ -192,7 +192,6 @@ MODULE_DEVICE_TABLE(pnp_card, snd_cmi8330_pnpids);
 
 #endif
 
-
 static struct snd_kcontrol_new snd_cmi8330_controls[] = {
 WSS_DOUBLE("Master Playback Volume", 0,
 		CMI8330_MASTVOL, CMI8330_MASTVOL, 4, 0, 15, 0),
@@ -279,7 +278,6 @@ static unsigned char cmi8330_sb_init_values[][2] = {
 	{ SB_DSP4_OUTPUT_SW, 0 },
 	{ SB_DSP4_SPEAKER_DEV, 0 },
 };
-
 
 static int cmi8330_add_sb_mixers(struct snd_sb *chip)
 {
@@ -477,7 +475,6 @@ static int snd_cmi8330_pcm(struct snd_card *card, struct snd_cmi8330 *chip)
 	return 0;
 }
 
-
 #ifdef CONFIG_PM
 static int snd_cmi8330_suspend(struct snd_card *card)
 {
@@ -502,7 +499,6 @@ static int snd_cmi8330_resume(struct snd_card *card)
 }
 #endif
 
-
 /*
  */
 
@@ -514,15 +510,14 @@ static int snd_cmi8330_resume(struct snd_card *card)
 
 #define PFX	"cmi8330: "
 
-static int snd_cmi8330_card_new(struct device *pdev, int dev,
-				struct snd_card **cardp)
+static int snd_cmi8330_card_new(int dev, struct snd_card **cardp)
 {
 	struct snd_card *card;
 	struct snd_cmi8330 *acard;
 	int err;
 
-	err = snd_card_new(pdev, index[dev], id[dev], THIS_MODULE,
-			   sizeof(struct snd_cmi8330), &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct snd_cmi8330), &card);
 	if (err < 0) {
 		snd_printk(KERN_ERR PFX "could not get a new card\n");
 		return err;
@@ -636,9 +631,10 @@ static int snd_cmi8330_isa_probe(struct device *pdev,
 	struct snd_card *card;
 	int err;
 
-	err = snd_cmi8330_card_new(pdev, dev, &card);
+	err = snd_cmi8330_card_new(dev, &card);
 	if (err < 0)
 		return err;
+	snd_card_set_dev(card, pdev);
 	if ((err = snd_cmi8330_probe(card, dev)) < 0) {
 		snd_card_free(card);
 		return err;
@@ -651,6 +647,7 @@ static int snd_cmi8330_isa_remove(struct device *devptr,
 				  unsigned int dev)
 {
 	snd_card_free(dev_get_drvdata(devptr));
+	dev_set_drvdata(devptr, NULL);
 	return 0;
 }
 
@@ -682,7 +679,6 @@ static struct isa_driver snd_cmi8330_driver = {
 	},
 };
 
-
 #ifdef CONFIG_PNP
 static int snd_cmi8330_pnp_detect(struct pnp_card_link *pcard,
 				  const struct pnp_card_device_id *pid)
@@ -698,7 +694,7 @@ static int snd_cmi8330_pnp_detect(struct pnp_card_link *pcard,
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
 			       
-	res = snd_cmi8330_card_new(&pcard->card->dev, dev, &card);
+	res = snd_cmi8330_card_new(dev, &card);
 	if (res < 0)
 		return res;
 	if ((res = snd_cmi8330_pnp(dev, card->private_data, pcard, pid)) < 0) {
@@ -706,6 +702,7 @@ static int snd_cmi8330_pnp_detect(struct pnp_card_link *pcard,
 		snd_card_free(card);
 		return res;
 	}
+	snd_card_set_dev(card, &pcard->card->dev);
 	if ((res = snd_cmi8330_probe(card, dev)) < 0) {
 		snd_card_free(card);
 		return res;

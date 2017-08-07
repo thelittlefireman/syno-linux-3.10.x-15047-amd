@@ -126,7 +126,6 @@ static kdbmsg_t kdbmsgs[] = {
 
 static const int __nkdb_err = ARRAY_SIZE(kdbmsgs);
 
-
 /*
  * Initial environment.   This is all kept static and local to
  * this file.   We don't want to rely on the memory allocation
@@ -1050,7 +1049,6 @@ int kdb_parse(const char *cmdstr)
 	}
 }
 
-
 static int handle_ctrl_cmd(char *cmd)
 {
 #define CTRL_P	16
@@ -1200,9 +1198,6 @@ static int kdb_local(kdb_reason_t reason, int error, struct pt_regs *regs,
 			   instruction_pointer(regs));
 		kdb_dumpregs(regs);
 		break;
-	case KDB_REASON_SYSTEM_NMI:
-		kdb_printf("due to System NonMaskable Interrupt\n");
-		break;
 	case KDB_REASON_NMI:
 		kdb_printf("due to NonMaskable Interrupt @ "
 			   kdb_machreg_fmt "\n",
@@ -1300,7 +1295,6 @@ do_full_getstr:
 	KDB_DEBUG_STATE("kdb_local 9", diag);
 	return diag;
 }
-
 
 /*
  * kdb_print_state - Print the state data for the current processor
@@ -2535,7 +2529,7 @@ static int kdb_summary(int argc, const char **argv)
 #define K(x) ((x) << (PAGE_SHIFT - 10))
 	kdb_printf("\nMemTotal:       %8lu kB\nMemFree:        %8lu kB\n"
 		   "Buffers:        %8lu kB\n",
-		   val.totalram, val.freeram, val.bufferram);
+		   K(val.totalram), K(val.freeram), K(val.bufferram));
 	return 0;
 }
 
@@ -2701,7 +2695,6 @@ int kdb_register_repeat(char *cmd,
 	return 0;
 }
 EXPORT_SYMBOL_GPL(kdb_register_repeat);
-
 
 /*
  * kdb_register - Compatibility register function for commands that do

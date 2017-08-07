@@ -15,6 +15,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 /*
 Driver: cb_pcimdda
@@ -74,7 +79,6 @@ Configuration Options: not applicable, uses PCI auto config
     -Calin Culianu <calin@ajvar.org>
  */
 
-#include <linux/module.h>
 #include <linux/pci.h>
 
 #include "../comedidev.h"
@@ -157,9 +161,10 @@ static int cb_pcimdda_auto_attach(struct comedi_device *dev,
 	struct comedi_subdevice *s;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	ret = comedi_pci_enable(dev);
 	if (ret)
@@ -187,14 +192,22 @@ static int cb_pcimdda_auto_attach(struct comedi_device *dev,
 	if (ret)
 		return ret;
 
-	return 0;
+	dev_info(dev->class_dev, "%s attached\n", dev->board_name);
+
+	return 1;
+}
+
+static void cb_pcimdda_detach(struct comedi_device *dev)
+{
+	comedi_spriv_free(dev, 1);
+	comedi_pci_disable(dev);
 }
 
 static struct comedi_driver cb_pcimdda_driver = {
 	.driver_name	= "cb_pcimdda",
 	.module		= THIS_MODULE,
 	.auto_attach	= cb_pcimdda_auto_attach,
-	.detach		= comedi_pci_disable,
+	.detach		= cb_pcimdda_detach,
 };
 
 static int cb_pcimdda_pci_probe(struct pci_dev *dev,
@@ -204,7 +217,7 @@ static int cb_pcimdda_pci_probe(struct pci_dev *dev,
 				      id->driver_data);
 }
 
-static const struct pci_device_id cb_pcimdda_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(cb_pcimdda_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_CB, PCI_ID_PCIM_DDA06_16) },
 	{ 0 }
 };

@@ -671,7 +671,6 @@ static void cx23885_reset(struct cx23885_dev *dev)
 	cx23885_gpio_setup(dev);
 }
 
-
 static int cx23885_pci_quirks(struct cx23885_dev *dev)
 {
 	dprintk(1, "%s()\n", __func__);
@@ -1260,14 +1259,11 @@ int cx23885_risc_vbibuffer(struct pci_dev *pci, struct btcx_riscmem *risc,
 		rp = cx23885_risc_field(rp, sglist, bottom_offset, 0x207,
 					bpl, padding, lines, 0);
 
-
-
 	/* save pointer to jmp instruction address */
 	risc->jmp = rp;
 	BUG_ON((risc->jmp - risc->cpu + 2) * sizeof(*risc->cpu) > risc->size);
 	return 0;
 }
-
 
 int cx23885_risc_stopper(struct pci_dev *pci, struct btcx_riscmem *risc,
 				u32 reg, u32 mask, u32 value)
@@ -1941,7 +1937,10 @@ static irqreturn_t cx23885_irq(int irq, void *dev_id)
 
 	if ((pci_status & pci_mask) & PCI_MSK_AV_CORE) {
 		cx23885_irq_disable(dev, PCI_MSK_AV_CORE);
-		schedule_work(&dev->cx25840_work);
+		if (!schedule_work(&dev->cx25840_work))
+			printk(KERN_ERR "%s: failed to set up deferred work for"
+			       " AV Core/IR interrupt. Interrupt is disabled"
+			       " and won't be re-enabled\n", dev->name);
 		handled++;
 	}
 
@@ -2129,7 +2128,7 @@ static int cx23885_initdev(struct pci_dev *pci_dev,
 	}
 
 	err = request_irq(pci_dev->irq, cx23885_irq,
-			  IRQF_SHARED, dev->name, dev);
+			  IRQF_SHARED | IRQF_DISABLED, dev->name, dev);
 	if (err < 0) {
 		printk(KERN_ERR "%s: can't get IRQ %d\n",
 		       dev->name, pci_dev->irq);

@@ -22,7 +22,6 @@
 
 #include "drm_fb_helper.h"
 
-
 #ifdef CONFIG_DEBUG_FS
 
 static int gem_show(struct seq_file *m, void *arg)
@@ -48,7 +47,7 @@ static int mm_show(struct seq_file *m, void *arg)
 {
 	struct drm_info_node *node = (struct drm_info_node *) m->private;
 	struct drm_device *dev = node->minor->dev;
-	return drm_mm_dump_table(m, &dev->vma_offset_manager->vm_addr_space_mm);
+	return drm_mm_dump_table(m, dev->mm_private);
 }
 
 static int fb_show(struct seq_file *m, void *arg)

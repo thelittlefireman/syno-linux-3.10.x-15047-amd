@@ -610,7 +610,6 @@ static int sis190_rx_interrupt(struct net_device *dev,
 				continue;
 			}
 
-
 			if (sis190_try_rx_copy(tp, &skb, pkt_size, addr)) {
 				pci_dma_sync_single_for_device(pdev, addr,
 					tp->rx_buf_sz, PCI_DMA_FROMDEVICE);
@@ -1770,6 +1769,9 @@ static void sis190_get_regs(struct net_device *dev, struct ethtool_regs *regs,
 	struct sis190_private *tp = netdev_priv(dev);
 	unsigned long flags;
 
+	if (regs->len > SIS190_REGS_SIZE)
+		regs->len = SIS190_REGS_SIZE;
+
 	spin_lock_irqsave(&tp->lock, flags);
 	memcpy_fromio(p, tp->mmio_addr, regs->len);
 	spin_unlock_irqrestore(&tp->lock, flags);
@@ -1921,6 +1923,7 @@ static void sis190_remove_one(struct pci_dev *pdev)
 	cancel_work_sync(&tp->phy_task);
 	unregister_netdev(dev);
 	sis190_release_board(pdev);
+	pci_set_drvdata(pdev, NULL);
 }
 
 static struct pci_driver sis190_pci_driver = {
@@ -1930,4 +1933,15 @@ static struct pci_driver sis190_pci_driver = {
 	.remove		= sis190_remove_one,
 };
 
-module_pci_driver(sis190_pci_driver);
+static int __init sis190_init_module(void)
+{
+	return pci_register_driver(&sis190_pci_driver);
+}
+
+static void __exit sis190_cleanup_module(void)
+{
+	pci_unregister_driver(&sis190_pci_driver);
+}
+
+module_init(sis190_init_module);
+module_exit(sis190_cleanup_module);

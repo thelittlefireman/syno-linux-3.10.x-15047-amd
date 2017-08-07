@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -904,7 +906,6 @@ netxen_get_dump_data(struct net_device *netdev, struct ethtool_dump *dump,
 	u32 *hdr_ptr, *data;
 	struct netxen_adapter *adapter = netdev_priv(netdev);
 	struct netxen_minidump *mdump = &adapter->mdump;
-
 
 	if (!adapter->fw_mdump_rdy) {
 		netdev_info(netdev, "Dump not available\n");

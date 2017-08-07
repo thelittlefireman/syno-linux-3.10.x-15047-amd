@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/usb/input.h>
 #include <asm/unaligned.h>
 
@@ -63,7 +64,6 @@ static void kbtab_irq(struct urb *urb)
 			__func__, urb->status);
 		goto exit;
 	}
-
 
 	input_report_key(dev, BTN_TOOL_PEN, 1);
 

@@ -14,6 +14,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 /*
 Driver: cb_pcimdas
@@ -35,14 +40,17 @@ No interrupts, multi channel or FIFO AI, although the card looks like it could s
 See http://www.mccdaq.com/PDFs/Manuals/pcim-das1602-16.pdf for more details.
 */
 
-#include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/delay.h>
 #include <linux/interrupt.h>
 
 #include "../comedidev.h"
 
 #include "plx9052.h"
 #include "8255.h"
+
+/* #define CBPCIMDAS_DEBUG */
+#undef CBPCIMDAS_DEBUG
 
 /* Registers for the PCIM-DAS1602/16 */
 
@@ -85,31 +93,21 @@ struct cb_pcimdas_private {
 	unsigned int ao_readback[2];
 };
 
-static int cb_pcimdas_ai_eoc(struct comedi_device *dev,
-			     struct comedi_subdevice *s,
-			     struct comedi_insn *insn,
-			     unsigned long context)
-{
-	struct cb_pcimdas_private *devpriv = dev->private;
-	unsigned int status;
-
-	status = inb(devpriv->BADR3 + 2);
-	if ((status & 0x80) == 0)
-		return 0;
-	return -EBUSY;
-}
-
+/*
+ * "instructions" read/write data in "one-shot" or "software-triggered"
+ * mode.
+ */
 static int cb_pcimdas_ai_rinsn(struct comedi_device *dev,
 			       struct comedi_subdevice *s,
 			       struct comedi_insn *insn, unsigned int *data)
 {
 	struct cb_pcimdas_private *devpriv = dev->private;
-	int n;
+	int n, i;
 	unsigned int d;
+	unsigned int busy;
 	int chan = CR_CHAN(insn->chanspec);
 	unsigned short chanlims;
 	int maxchans;
-	int ret;
 
 	/*  only support sw initiated reads from a single channel */
 
@@ -143,11 +141,19 @@ static int cb_pcimdas_ai_rinsn(struct comedi_device *dev,
 		/* trigger conversion */
 		outw(0, dev->iobase + 0);
 
-		/* wait for conversion to end */
-		ret = comedi_timeout(dev, s, insn, cb_pcimdas_ai_eoc, 0);
-		if (ret)
-			return ret;
+#define TIMEOUT 1000		/* typically takes 5 loops on a lightly loaded Pentium 100MHz, */
+		/* this is likely to be 100 loops on a 2GHz machine, so set 1000 as the limit. */
 
+		/* wait for conversion to end */
+		for (i = 0; i < TIMEOUT; i++) {
+			busy = inb(devpriv->BADR3 + 2) & 0x80;
+			if (!busy)
+				break;
+		}
+		if (i == TIMEOUT) {
+			printk("timeout\n");
+			return -ETIMEDOUT;
+		}
 		/* read data */
 		data[n] = inw(dev->iobase + 0);
 	}
@@ -209,9 +215,10 @@ static int cb_pcimdas_auto_attach(struct comedi_device *dev,
 	unsigned long iobase_8255;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	ret = comedi_pci_enable(dev);
 	if (ret)
@@ -220,6 +227,15 @@ static int cb_pcimdas_auto_attach(struct comedi_device *dev,
 	dev->iobase = pci_resource_start(pcidev, 2);
 	devpriv->BADR3 = pci_resource_start(pcidev, 3);
 	iobase_8255 = pci_resource_start(pcidev, 4);
+
+/* Dont support IRQ yet */
+/*  get irq */
+/* if(request_irq(pcidev->irq, cb_pcimdas_interrupt, IRQF_SHARED, "cb_pcimdas", dev )) */
+/* { */
+/* printk(" unable to allocate irq %u\n", pcidev->irq); */
+/* return -EINVAL; */
+/* } */
+/* dev->irq = pcidev->irq; */
 
 	ret = comedi_alloc_subdevices(dev, 3);
 	if (ret)
@@ -250,9 +266,9 @@ static int cb_pcimdas_auto_attach(struct comedi_device *dev,
 
 	s = &dev->subdevices[2];
 	/* digital i/o subdevice */
-	ret = subdev_8255_init(dev, s, NULL, iobase_8255);
-	if (ret)
-		return ret;
+	subdev_8255_init(dev, s, NULL, iobase_8255);
+
+	dev_info(dev->class_dev, "%s attached\n", dev->board_name);
 
 	return 0;
 }
@@ -278,7 +294,7 @@ static int cb_pcimdas_pci_probe(struct pci_dev *dev,
 				      id->driver_data);
 }
 
-static const struct pci_device_id cb_pcimdas_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(cb_pcimdas_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_CB, 0x0056) },
 	{ 0 }
 };

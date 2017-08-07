@@ -43,6 +43,7 @@
 #include <linux/debugfs.h>
 #endif
 
+#include <mach/hardware.h>
 #include <asm/irq.h>
 
 #include <plat/cpu-freq.h>
@@ -51,7 +52,7 @@
 #include <plat/cpu.h>
 
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h> /* for s3c24xx_uart_devs */
+#include <plat/regs-serial.h> /* for s3c24xx_uart_devs */
 
 /* clock information */
 
@@ -114,7 +115,6 @@ void clk_disable(struct clk *clk)
 	spin_unlock_irqrestore(&clocks_lock, flags);
 	clk_disable(clk->parent);
 }
-
 
 unsigned long clk_get_rate(struct clk *clk)
 {
@@ -263,7 +263,6 @@ struct clk clk_usb_bus = {
 	.rate		= 0,
 	.parent		= &clk_upll,
 };
-
 
 struct clk s3c24xx_uclk = {
 	.name		= "uclk",

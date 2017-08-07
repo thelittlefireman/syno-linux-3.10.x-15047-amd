@@ -4,7 +4,6 @@
 ;;
 ;; Author: Mikael Starvik
 
-
 	.global cris_spin_lock
 	.type   cris_spin_lock,@function
 	.global cris_spin_trylock
@@ -37,4 +36,3 @@ cris_spin_trylock:
 	movu.b	$r11,$r10
 
 	.size   cris_spin_trylock, . - cris_spin_trylock
-

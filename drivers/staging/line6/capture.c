@@ -157,7 +157,6 @@ void line6_capture_copy(struct snd_line6_pcm *line6pcm, char *fbuf, int fsize)
 		   copy two separate chunks.
 		 */
 		int len;
-
 		len = runtime->buffer_size - line6pcm->pos_in_done;
 
 		if (len > 0) {

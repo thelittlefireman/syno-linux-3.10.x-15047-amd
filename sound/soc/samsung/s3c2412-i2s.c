@@ -26,18 +26,16 @@
 #include <sound/pcm_params.h>
 
 #include <mach/dma.h>
-#include <mach/gpio-samsung.h>
-#include <plat/gpio-cfg.h>
 
 #include "dma.h"
 #include "regs-i2s-v2.h"
 #include "s3c2412-i2s.h"
 
-static struct s3c_dma_client s3c2412_dma_client_out = {
+static struct s3c2410_dma_client s3c2412_dma_client_out = {
 	.name		= "I2S PCM Stereo out"
 };
 
-static struct s3c_dma_client s3c2412_dma_client_in = {
+static struct s3c2410_dma_client s3c2412_dma_client_in = {
 	.name		= "I2S PCM Stereo in"
 };
 
@@ -178,7 +176,7 @@ static int s3c2412_iis_dev_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	ret = samsung_asoc_dma_platform_register(&pdev->dev);
+	ret = asoc_dma_platform_register(&pdev->dev);
 	if (ret) {
 		pr_err("failed to register the DMA: %d\n", ret);
 		goto err;
@@ -192,7 +190,7 @@ err:
 
 static int s3c2412_iis_dev_remove(struct platform_device *pdev)
 {
-	samsung_asoc_dma_platform_unregister(&pdev->dev);
+	asoc_dma_platform_unregister(&pdev->dev);
 	snd_soc_unregister_component(&pdev->dev);
 	return 0;
 }

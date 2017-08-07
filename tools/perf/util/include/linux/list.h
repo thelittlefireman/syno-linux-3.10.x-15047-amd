@@ -1,4 +1,5 @@
 #include <linux/kernel.h>
+#include <linux/prefetch.h>
 
 #include "../../../../include/linux/list.h"
 

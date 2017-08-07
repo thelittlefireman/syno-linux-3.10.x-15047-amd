@@ -41,7 +41,6 @@
 #define AT91SAM9261_ID_IRQ1	30	/* Advanced Interrupt Controller (IRQ1) */
 #define AT91SAM9261_ID_IRQ2	31	/* Advanced Interrupt Controller (IRQ2) */
 
-
 /*
  * User Peripheral physical base addresses.
  */
@@ -61,7 +60,6 @@
 #define AT91SAM9261_BASE_SPI0		0xfffc8000
 #define AT91SAM9261_BASE_SPI1		0xfffcc000
 
-
 /*
  * System Peripherals
  */
@@ -79,7 +77,6 @@
 #define AT91SAM9261_BASE_WDT	0xfffffd40
 #define AT91SAM9261_BASE_GPBR	0xfffffd50
 
-
 /*
  * Internal Memory.
  */
@@ -94,6 +91,5 @@
 
 #define AT91SAM9261_UHP_BASE	0x00500000	/* USB Host controller */
 #define AT91SAM9261_LCDC_BASE	0x00600000	/* LDC controller */
-
 
 #endif

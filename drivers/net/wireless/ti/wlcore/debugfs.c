@@ -128,7 +128,6 @@ static void chip_op_handler(struct wl1271 *wl, unsigned long value,
 	wl1271_ps_elp_sleep(wl);
 }
 
-
 static inline void no_write_handler(struct wl1271 *wl,
 				    unsigned long value,
 				    unsigned long param)
@@ -437,7 +436,6 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
 	int res = 0;
 	ssize_t ret;
 	char *buf;
-	struct wl12xx_vif *wlvif;
 
 #define DRIVER_STATE_BUF_LEN 1024
 
@@ -451,27 +449,11 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
 	(res += scnprintf(buf + res, DRIVER_STATE_BUF_LEN - res,\
 			  #x " = " fmt "\n", wl->x))
 
-#define DRIVER_STATE_PRINT_GENERIC(x, fmt, args...)   \
-	(res += scnprintf(buf + res, DRIVER_STATE_BUF_LEN - res,\
-			  #x " = " fmt "\n", args))
-
 #define DRIVER_STATE_PRINT_LONG(x) DRIVER_STATE_PRINT(x, "%ld")
 #define DRIVER_STATE_PRINT_INT(x)  DRIVER_STATE_PRINT(x, "%d")
 #define DRIVER_STATE_PRINT_STR(x)  DRIVER_STATE_PRINT(x, "%s")
 #define DRIVER_STATE_PRINT_LHEX(x) DRIVER_STATE_PRINT(x, "0x%lx")
 #define DRIVER_STATE_PRINT_HEX(x)  DRIVER_STATE_PRINT(x, "0x%x")
-
-	wl12xx_for_each_wlvif_sta(wl, wlvif) {
-		if (!test_bit(WLVIF_FLAG_STA_ASSOCIATED, &wlvif->flags))
-			continue;
-
-		DRIVER_STATE_PRINT_GENERIC(channel, "%d (%s)", wlvif->channel,
-					   wlvif->p2p ? "P2P-CL" : "STA");
-	}
-
-	wl12xx_for_each_wlvif_ap(wl, wlvif)
-		DRIVER_STATE_PRINT_GENERIC(channel, "%d (%s)", wlvif->channel,
-					   wlvif->p2p ? "P2P-GO" : "AP");
 
 	DRIVER_STATE_PRINT_INT(tx_blocks_available);
 	DRIVER_STATE_PRINT_INT(tx_allocated_blocks);
@@ -491,6 +473,7 @@ static ssize_t driver_state_read(struct file *file, char __user *user_buf,
 	DRIVER_STATE_PRINT_INT(tx_blocks_freed);
 	DRIVER_STATE_PRINT_INT(rx_counter);
 	DRIVER_STATE_PRINT_INT(state);
+	DRIVER_STATE_PRINT_INT(channel);
 	DRIVER_STATE_PRINT_INT(band);
 	DRIVER_STATE_PRINT_INT(power_level);
 	DRIVER_STATE_PRINT_INT(sg_enabled);
@@ -697,8 +680,6 @@ static const struct file_operations dtim_interval_ops = {
 	.llseek = default_llseek,
 };
 
-
-
 static ssize_t suspend_dtim_interval_read(struct file *file,
 					  char __user *user_buf,
 					  size_t count, loff_t *ppos)
@@ -746,7 +727,6 @@ static ssize_t suspend_dtim_interval_write(struct file *file,
 	mutex_unlock(&wl->mutex);
 	return count;
 }
-
 
 static const struct file_operations suspend_dtim_interval_ops = {
 	.read = suspend_dtim_interval_read,
@@ -1072,7 +1052,7 @@ static ssize_t dev_mem_read(struct file *file,
 		return -EINVAL;
 
 	memset(&part, 0, sizeof(part));
-	part.mem.start = *ppos;
+	part.mem.start = file->f_pos;
 	part.mem.size = bytes;
 
 	buf = kmalloc(bytes, GFP_KERNEL);
@@ -1153,7 +1133,7 @@ static ssize_t dev_mem_write(struct file *file, const char __user *user_buf,
 		return -EINVAL;
 
 	memset(&part, 0, sizeof(part));
-	part.mem.start = *ppos;
+	part.mem.start = file->f_pos;
 	part.mem.size = bytes;
 
 	buf = kmalloc(bytes, GFP_KERNEL);

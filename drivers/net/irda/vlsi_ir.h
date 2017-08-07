@@ -18,7 +18,9 @@
  *	GNU General Public License for more details.
  *
  *	You should have received a copy of the GNU General Public License 
- *	along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *	along with this program; if not, write to the Free Software 
+ *	Foundation, Inc., 59 Temple Place, Suite 330, Boston, 
+ *	MA 02111-1307 USA
  *
  ********************************************************************/
 
@@ -277,7 +279,6 @@ enum vlsi_pio_irintr {
 #define RINGSIZE_TO_RXSIZE(rs)		((((rs)&0x0f00)>>6)+4)
 #define RINGSIZE_TO_TXSIZE(rs)		((((rs)&0xf000)>>10)+4)
 
-
 /* ------------------------------------------ */
 
 /* VLSI_PIO_PROMPT: Ring Prompting Register (u16, write-to-start) */
@@ -459,7 +460,6 @@ calc_width_bits(unsigned baudrate, unsigned widthselect, unsigned clockselect)
  */
 
 /* ------------------------------------------ */
-
 
 /* VLSI_PIO_MAXPKT: Maximum Packet Length register (u16, rw) */
 
@@ -753,4 +753,3 @@ typedef struct vlsi_irda_dev {
 /********************************************************/
 
 #endif /* IRDA_VLSI_FIR_H */
-

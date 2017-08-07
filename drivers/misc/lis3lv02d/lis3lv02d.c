@@ -23,6 +23,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/dmi.h>
 #include <linux/module.h>
 #include <linux/types.h>
@@ -445,7 +446,6 @@ int lis3lv02d_poweron(struct lis3lv02d *lis3)
 }
 EXPORT_SYMBOL_GPL(lis3lv02d_poweron);
 
-
 static void lis3lv02d_joystick_poll(struct input_polled_dev *pidev)
 {
 	struct lis3lv02d *lis3 = pidev->private;
@@ -830,11 +830,9 @@ static ssize_t lis3lv02d_rate_set(struct device *dev,
 {
 	struct lis3lv02d *lis3 = dev_get_drvdata(dev);
 	unsigned long rate;
-	int ret;
 
-	ret = kstrtoul(buf, 0, &rate);
-	if (ret)
-		return ret;
+	if (strict_strtoul(buf, 0, &rate))
+		return -EINVAL;
 
 	lis3lv02d_sysfs_poweron(lis3);
 	if (lis3lv02d_set_odr(lis3, rate))
@@ -858,7 +856,6 @@ static struct attribute *lis3lv02d_attributes[] = {
 static struct attribute_group lis3lv02d_attribute_group = {
 	.attrs = lis3lv02d_attributes
 };
-
 
 static int lis3lv02d_add_fs(struct lis3lv02d *lis3)
 {
@@ -1077,7 +1074,6 @@ int lis3lv02d_init_dt(struct lis3lv02d *lis3)
 		pdata->st_max_limits[1] = val;
 	if (of_get_property(np, "st,max-limit-z", &val))
 		pdata->st_max_limits[2] = val;
-
 
 	lis3->pdata = pdata;
 

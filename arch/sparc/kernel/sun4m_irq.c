@@ -9,8 +9,6 @@
  *  Copyright (C) 1996 Dave Redman (djhr@tadpole.co.uk)
  */
 
-#include <linux/slab.h>
-
 #include <asm/timer.h>
 #include <asm/traps.h>
 #include <asm/pgalloc.h>
@@ -96,7 +94,6 @@
  * floppy:	0x2b	onboard Floppy
  * power:	0x22	onboard power device (XXX unknown mask bit XXX)
  */
-
 
 /* Code in entry.S needs to get at these register mappings.  */
 struct sun4m_irq_percpu __iomem *sun4m_irq_percpu[SUN4M_NCPUS];
@@ -242,7 +239,6 @@ static struct irq_chip sun4m_irq = {
 	.irq_mask	= sun4m_mask_irq,
 	.irq_unmask	= sun4m_unmask_irq,
 };
-
 
 static unsigned int sun4m_build_device_irq(struct platform_device *op,
 					   unsigned int real_irq)
@@ -469,7 +465,6 @@ void __init sun4m_init_IRQ(void)
 	sparc_config.clock_rate       = SBUS_CLOCK_RATE;
 	sparc_config.clear_clock_irq  = sun4m_clear_clock_irq;
 	sparc_config.load_profile_irq = sun4m_load_profile_irq;
-
 
 	/* Cannot enable interrupts until OBP ticker is disabled. */
 }

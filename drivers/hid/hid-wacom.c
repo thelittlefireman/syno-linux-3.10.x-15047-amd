@@ -46,7 +46,6 @@ struct wacom_data {
 	__u8 battery_capacity;
 	__u8 power_raw;
 	__u8 ps_connected;
-	__u8 bat_charging;
 	struct power_supply battery;
 	struct power_supply ac;
 	__u8 led_selector;
@@ -63,7 +62,6 @@ static enum power_supply_property wacom_battery_props[] = {
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_CAPACITY,
 	POWER_SUPPLY_PROP_SCOPE,
-	POWER_SUPPLY_PROP_STATUS,
 };
 
 static enum power_supply_property wacom_ac_props[] = {
@@ -128,8 +126,8 @@ static void wacom_set_image(struct hid_device *hdev, const char *image,
 
 	rep_data[0] = WAC_CMD_ICON_START_STOP;
 	rep_data[1] = 0;
-	ret = hid_hw_raw_request(hdev, rep_data[0], rep_data, 2,
-				 HID_FEATURE_REPORT, HID_REQ_SET_REPORT);
+	ret = hdev->hid_output_raw_report(hdev, rep_data, 2,
+				HID_FEATURE_REPORT);
 	if (ret < 0)
 		goto err;
 
@@ -143,15 +141,15 @@ static void wacom_set_image(struct hid_device *hdev, const char *image,
 			rep_data[j + 3] = p[(i << 6) + j];
 
 		rep_data[2] = i;
-		ret = hid_hw_raw_request(hdev, rep_data[0], rep_data, 67,
-					HID_FEATURE_REPORT, HID_REQ_SET_REPORT);
+		ret = hdev->hid_output_raw_report(hdev, rep_data, 67,
+					HID_FEATURE_REPORT);
 	}
 
 	rep_data[0] = WAC_CMD_ICON_START_STOP;
 	rep_data[1] = 0;
 
-	ret = hid_hw_raw_request(hdev, rep_data[0], rep_data, 2,
-				 HID_FEATURE_REPORT, HID_REQ_SET_REPORT);
+	ret = hdev->hid_output_raw_report(hdev, rep_data, 2,
+				HID_FEATURE_REPORT);
 
 err:
 	return;
@@ -183,8 +181,7 @@ static void wacom_leds_set_brightness(struct led_classdev *led_dev,
 		buf[3] = value;
 		/* use fixed brightness for OLEDs */
 		buf[4] = 0x08;
-		hid_hw_raw_request(hdev, buf[0], buf, 9, HID_FEATURE_REPORT,
-				   HID_REQ_SET_REPORT);
+		hdev->hid_output_raw_report(hdev, buf, 9, HID_FEATURE_REPORT);
 		kfree(buf);
 	}
 
@@ -209,7 +206,6 @@ static enum led_brightness wacom_leds_get_brightness(struct led_classdev *led_de
 
 	return value;
 }
-
 
 static int wacom_initialize_leds(struct hid_device *hdev)
 {
@@ -290,15 +286,6 @@ static int wacom_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CAPACITY:
 		val->intval = wdata->battery_capacity;
 		break;
-	case POWER_SUPPLY_PROP_STATUS:
-		if (wdata->bat_charging)
-			val->intval = POWER_SUPPLY_STATUS_CHARGING;
-		else
-			if (wdata->battery_capacity == 100 && wdata->ps_connected)
-				val->intval = POWER_SUPPLY_STATUS_FULL;
-			else
-				val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
-		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -340,8 +327,8 @@ static void wacom_set_features(struct hid_device *hdev, u8 speed)
 		rep_data[0] = 0x03 ; rep_data[1] = 0x00;
 		limit = 3;
 		do {
-			ret = hid_hw_raw_request(hdev, rep_data[0], rep_data, 2,
-					HID_FEATURE_REPORT, HID_REQ_SET_REPORT);
+			ret = hdev->hid_output_raw_report(hdev, rep_data, 2,
+					HID_FEATURE_REPORT);
 		} while (ret < 0 && limit-- > 0);
 
 		if (ret >= 0) {
@@ -353,9 +340,8 @@ static void wacom_set_features(struct hid_device *hdev, u8 speed)
 			rep_data[1] = 0x00;
 			limit = 3;
 			do {
-				ret = hid_hw_raw_request(hdev, rep_data[0],
-					rep_data, 2, HID_FEATURE_REPORT,
-					HID_REQ_SET_REPORT);
+				ret = hdev->hid_output_raw_report(hdev,
+					rep_data, 2, HID_FEATURE_REPORT);
 			} while (ret < 0 && limit-- > 0);
 
 			if (ret >= 0) {
@@ -380,8 +366,8 @@ static void wacom_set_features(struct hid_device *hdev, u8 speed)
 		rep_data[0] = 0x03;
 		rep_data[1] = wdata->features;
 
-		ret = hid_hw_raw_request(hdev, rep_data[0], rep_data, 2,
-				HID_FEATURE_REPORT, HID_REQ_SET_REPORT);
+		ret = hdev->hid_output_raw_report(hdev, rep_data, 2,
+					HID_FEATURE_REPORT);
 		if (ret >= 0)
 			wdata->high_speed = speed;
 		break;
@@ -740,8 +726,7 @@ static int wacom_raw_event(struct hid_device *hdev, struct hid_report *report,
 			if (power_raw != wdata->power_raw) {
 				wdata->power_raw = power_raw;
 				wdata->battery_capacity = batcap_i4[power_raw & 0x07];
-				wdata->bat_charging = (power_raw & 0x08) ? 1 : 0;
-				wdata->ps_connected = (power_raw & 0x10) ? 1 : 0;
+				wdata->ps_connected = power_raw & 0x08;
 			}
 
 			break;
@@ -883,7 +868,6 @@ OLED_INIT(7);
 	wdata->battery.name = "wacom_battery";
 	wdata->battery.type = POWER_SUPPLY_TYPE_BATTERY;
 	wdata->battery.use_for_apm = 0;
-
 
 	ret = power_supply_register(&hdev->dev, &wdata->battery);
 	if (ret) {

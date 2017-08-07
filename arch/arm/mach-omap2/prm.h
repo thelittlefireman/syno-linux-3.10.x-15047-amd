@@ -18,9 +18,7 @@
 # ifndef __ASSEMBLER__
 extern void __iomem *prm_base;
 extern void omap2_set_globals_prm(void __iomem *prm);
-int of_prcm_init(void);
 # endif
-
 
 /*
  * MAX_MODULE_SOFTRESET_WAIT: Maximum microseconds to wait for OMAP
@@ -48,7 +46,6 @@ int of_prcm_init(void);
  *	 PM_PWSTST_NEON
  */
 #define OMAP_INTRANSITION_MASK				(1 << 20)
-
 
 /*
  * 24XX: PM_PWSTST_GFX, PM_PWSTST_DSP
@@ -136,6 +133,5 @@ extern bool prm_was_any_context_lost_old(u8 part, s16 inst, u16 idx);
 extern void prm_clear_context_loss_flags_old(u8 part, s16 inst, u16 idx);
 
 #endif
-
 
 #endif

@@ -1,22 +1,29 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 #include <linux/smp.h>
 #include <linux/timex.h>
 #include <linux/string.h>
 #include <linux/seq_file.h>
 #include <linux/cpufreq.h>
 
-/*
- *	Get CPU information for use by the procfs.
- */
+#if defined(MY_ABC_HERE)
+char syno_cpu_model_name[64];
+#endif  
+
 static void show_cpuinfo_core(struct seq_file *m, struct cpuinfo_x86 *c,
 			      unsigned int cpu)
 {
 #ifdef CONFIG_SMP
-	seq_printf(m, "physical id\t: %d\n", c->phys_proc_id);
-	seq_printf(m, "siblings\t: %d\n", cpumask_weight(cpu_core_mask(cpu)));
-	seq_printf(m, "core id\t\t: %d\n", c->cpu_core_id);
-	seq_printf(m, "cpu cores\t: %d\n", c->booted_cores);
-	seq_printf(m, "apicid\t\t: %d\n", c->apicid);
-	seq_printf(m, "initial apicid\t: %d\n", c->initial_apicid);
+	if (c->x86_max_cores * smp_num_siblings > 1) {
+		seq_printf(m, "physical id\t: %d\n", c->phys_proc_id);
+		seq_printf(m, "siblings\t: %d\n",
+			   cpumask_weight(cpu_core_mask(cpu)));
+		seq_printf(m, "core id\t\t: %d\n", c->cpu_core_id);
+		seq_printf(m, "cpu cores\t: %d\n", c->booted_cores);
+		seq_printf(m, "apicid\t\t: %d\n", c->apicid);
+		seq_printf(m, "initial apicid\t: %d\n", c->initial_apicid);
+	}
 #endif
 }
 
@@ -34,8 +41,8 @@ static void show_cpuinfo_misc(struct seq_file *m, struct cpuinfo_x86 *c)
 		   static_cpu_has_bug(X86_BUG_FDIV) ? "yes" : "no",
 		   static_cpu_has_bug(X86_BUG_F00F) ? "yes" : "no",
 		   static_cpu_has_bug(X86_BUG_COMA) ? "yes" : "no",
-		   static_cpu_has(X86_FEATURE_FPU) ? "yes" : "no",
-		   static_cpu_has(X86_FEATURE_FPU) ? "yes" : "no",
+		   c->hard_math ? "yes" : "no",
+		   c->hard_math ? "yes" : "no",
 		   c->cpuid_level,
 		   c->wp_works_ok ? "yes" : "no");
 }
@@ -85,7 +92,10 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 			   freq / 1000, (freq % 1000));
 	}
 
-	/* Cache size */
+#if defined(MY_ABC_HERE)
+	strncpy(syno_cpu_model_name, c->x86_model_id, sizeof(c->x86_model_id));
+#endif  
+
 	if (c->x86_cache_size >= 0)
 		seq_printf(m, "cache size\t: %d KB\n", c->x86_cache_size);
 
@@ -145,6 +155,14 @@ static void *c_next(struct seq_file *m, void *v, loff_t *pos)
 static void c_stop(struct seq_file *m, void *v)
 {
 }
+
+#if defined(MY_ABC_HERE)
+static char *syno_get_cpu_model_name(void)
+{
+	return syno_cpu_model_name;
+}
+EXPORT_SYMBOL(syno_get_cpu_model_name);
+#endif  
 
 const struct seq_operations cpuinfo_op = {
 	.start	= c_start,

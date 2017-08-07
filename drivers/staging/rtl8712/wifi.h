@@ -183,7 +183,6 @@ enum WIFI_REG_DOMAIN {
 
 #define get_tofr_ds(pframe)	((GetToDs(pframe) << 1) | GetFrDs(pframe))
 
-
 #define SetMFrag(pbuf) ({ \
 	*(unsigned short *)(pbuf) |= cpu_to_le16(_MORE_FRAG_); \
 })
@@ -238,7 +237,6 @@ enum WIFI_REG_DOMAIN {
 #define ClearPrivacy(pbuf) ({ \
 	*(unsigned short *)(pbuf) &= (~cpu_to_le16(_PRIVACY_)); \
 })
-
 
 #define GetOrder(pbuf)	(((*(unsigned short *)(pbuf)) & \
 			le16_to_cpu(_ORDER_)) != 0)
@@ -325,8 +323,6 @@ enum WIFI_REG_DOMAIN {
 
 #define GetAddr4Ptr(pbuf)	((unsigned char *)((addr_t)(pbuf) + 24))
 
-
-
 static inline int IS_MCAST(unsigned char *da)
 {
 	if ((*da) & 0x01)
@@ -334,7 +330,6 @@ static inline int IS_MCAST(unsigned char *da)
 	else
 		return false;
 }
-
 
 static inline unsigned char *get_da(unsigned char *pframe)
 {
@@ -357,7 +352,6 @@ static inline unsigned char *get_da(unsigned char *pframe)
 	}
 	return da;
 }
-
 
 static inline unsigned char *get_sa(unsigned char *pframe)
 {
@@ -404,8 +398,6 @@ static inline unsigned char *get_hdr_bssid(unsigned char *pframe)
 	return sa;
 }
 
-
-
 /*-----------------------------------------------------------------------------
 			Below is for the security related definition
 ------------------------------------------------------------------------------*/
@@ -449,7 +441,6 @@ static inline unsigned char *get_hdr_bssid(unsigned char *pframe)
 
 #define	_RESERVED47_		47
 
-
 /* ---------------------------------------------------------------------------
 					Below is the fixed elements...
 -----------------------------------------------------------------------------*/
@@ -490,7 +481,6 @@ static inline unsigned char *get_hdr_bssid(unsigned char *pframe)
 #define _WMM_IE_Length_				7  /* for WMM STA */
 #define _WMM_Para_Element_Length_		24
 
-
 /*-----------------------------------------------------------------------------
 				Below is the definition for 802.11n
 ------------------------------------------------------------------------------*/
@@ -508,7 +498,6 @@ static inline unsigned char *get_hdr_bssid(unsigned char *pframe)
 
 #define GetOrderBit(pbuf)	(((*(unsigned short *)(pbuf)) & \
 				le16_to_cpu(_ORDER_)) != 0)
-
 
 /**
  * struct ieee80211_bar - HT Block Ack Request
@@ -528,7 +517,6 @@ struct ieee80211_bar {
 /* 802.11 BAR control masks */
 #define IEEE80211_BAR_CTRL_ACK_POLICY_NORMAL     0x0000
 #define IEEE80211_BAR_CTRL_CBMTID_COMPRESSED_BA  0x0004
-
 
  /**
  * struct ieee80211_ht_cap - HT capabilities
@@ -606,7 +594,6 @@ struct ieee80211_ht_addt_info {
 #define IEEE80211_MIN_AMPDU_BUF 0x8
 #define IEEE80211_MAX_AMPDU_BUF 0x40
 
-
 /* Spatial Multiplexing Power Save Modes */
 #define WLAN_HT_CAP_SM_PS_STATIC		0
 #define WLAN_HT_CAP_SM_PS_DYNAMIC	1
@@ -614,4 +601,3 @@ struct ieee80211_ht_addt_info {
 #define WLAN_HT_CAP_SM_PS_DISABLED	3
 
 #endif /* _WIFI_H_ */
-

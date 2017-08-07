@@ -113,7 +113,7 @@ static struct lock_class_key gpio_lock_class;
 
 /* pins are just named GPIO0..GPIO53 */
 #define BCM2835_GPIO_PIN(a) PINCTRL_PIN(a, "gpio" #a)
-static struct pinctrl_pin_desc bcm2835_gpio_pins[] = {
+struct pinctrl_pin_desc bcm2835_gpio_pins[] = {
 	BCM2835_GPIO_PIN(0),
 	BCM2835_GPIO_PIN(1),
 	BCM2835_GPIO_PIN(2),
@@ -384,7 +384,7 @@ static struct gpio_chip bcm2835_gpio_chip = {
 	.to_irq = bcm2835_gpio_to_irq,
 	.base = -1,
 	.ngpio = BCM2835_NUM_GPIOS,
-	.can_sleep = false,
+	.can_sleep = 0,
 };
 
 static irqreturn_t bcm2835_gpio_irq_handler(int irq, void *dev_id)
@@ -893,35 +893,28 @@ static int bcm2835_pinconf_get(struct pinctrl_dev *pctldev,
 }
 
 static int bcm2835_pinconf_set(struct pinctrl_dev *pctldev,
-			unsigned pin, unsigned long *configs,
-			unsigned num_configs)
+			unsigned pin, unsigned long config)
 {
 	struct bcm2835_pinctrl *pc = pinctrl_dev_get_drvdata(pctldev);
-	enum bcm2835_pinconf_param param;
-	u16 arg;
+	enum bcm2835_pinconf_param param = BCM2835_PINCONF_UNPACK_PARAM(config);
+	u16 arg = BCM2835_PINCONF_UNPACK_ARG(config);
 	u32 off, bit;
-	int i;
 
-	for (i = 0; i < num_configs; i++) {
-		param = BCM2835_PINCONF_UNPACK_PARAM(configs[i]);
-		arg = BCM2835_PINCONF_UNPACK_ARG(configs[i]);
+	if (param != BCM2835_PINCONF_PARAM_PULL)
+		return -EINVAL;
 
-		if (param != BCM2835_PINCONF_PARAM_PULL)
-			return -EINVAL;
+	off = GPIO_REG_OFFSET(pin);
+	bit = GPIO_REG_SHIFT(pin);
 
-		off = GPIO_REG_OFFSET(pin);
-		bit = GPIO_REG_SHIFT(pin);
-
-		bcm2835_gpio_wr(pc, GPPUD, arg & 3);
-		/*
-		 * Docs say to wait 150 cycles, but not of what. We assume a
-		 * 1 MHz clock here, which is pretty slow...
-		 */
-		udelay(150);
-		bcm2835_gpio_wr(pc, GPPUDCLK0 + (off * 4), BIT(bit));
-		udelay(150);
-		bcm2835_gpio_wr(pc, GPPUDCLK0 + (off * 4), 0);
-	} /* for each config */
+	bcm2835_gpio_wr(pc, GPPUD, arg & 3);
+	/*
+	 * Docs say to wait 150 cycles, but not of what. We assume a
+	 * 1 MHz clock here, which is pretty slow...
+	 */
+	udelay(150);
+	bcm2835_gpio_wr(pc, GPPUDCLK0 + (off * 4), BIT(bit));
+	udelay(150);
+	bcm2835_gpio_wr(pc, GPPUDCLK0 + (off * 4), 0);
 
 	return 0;
 }

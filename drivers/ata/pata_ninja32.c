@@ -37,6 +37,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -44,7 +45,6 @@
 
 #define DRV_NAME "pata_ninja32"
 #define DRV_VERSION "0.1.5"
-
 
 /**
  *	ninja32_set_piomode	-	set initial PIO mode data
@@ -64,7 +64,6 @@ static void ninja32_set_piomode(struct ata_port *ap, struct ata_device *adev)
 		 ap->ioaddr.bmdma_addr + 0x1f);
 	ap->private_data = adev;
 }
-
 
 static void ninja32_dev_select(struct ata_port *ap, unsigned int device)
 {
@@ -156,7 +155,7 @@ static int ninja32_init_one(struct pci_dev *dev, const struct pci_device_id *id)
 
 static int ninja32_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

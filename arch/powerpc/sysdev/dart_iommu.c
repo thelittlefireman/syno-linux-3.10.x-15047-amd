@@ -200,7 +200,6 @@ static int dart_build(struct iommu_table *tbl, long index,
 	return 0;
 }
 
-
 static void dart_free(struct iommu_table *tbl, long index, long npages)
 {
 	unsigned int *dp;
@@ -217,7 +216,6 @@ static void dart_free(struct iommu_table *tbl, long index, long npages)
 	while (npages--)
 		*(dp++) = dart_emptyval;
 }
-
 
 static int __init dart_init(struct device_node *dart_node)
 {
@@ -292,7 +290,6 @@ static void iommu_table_dart_setup(void)
 	iommu_table_dart.it_offset = 0;
 	/* it_size is in number of entries */
 	iommu_table_dart.it_size = dart_tablesize / sizeof(u32);
-	iommu_table_dart.it_page_shift = IOMMU_PAGE_SHIFT_4K;
 
 	/* Initialize the common IOMMU code */
 	iommu_table_dart.it_base = (unsigned long)dart_vbase;

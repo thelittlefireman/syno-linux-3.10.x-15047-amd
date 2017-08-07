@@ -92,33 +92,33 @@
 union rx_descr {
 	struct {
 #ifdef	LITTLE_ENDIAN
-	unsigned int	rx_length :16 ;	/* frame length lower/upper byte */
-	unsigned int	rx_erfbb  :2 ;	/* received frame byte boundary */
-	unsigned int	rx_reserv2:2 ;	/* reserved */
-	unsigned int	rx_sfrmty :3 ;	/* frame type bits */
-	unsigned int	rx_sadrrg :1 ;	/* DA == MA or broad-/multicast */
-	unsigned int	rx_sfrmerr:1 ;	/* received frame not valid */
-	unsigned int	rx_seac0  :1 ;	/* frame-copied  C-indicator */
-	unsigned int	rx_seac1  :1 ;	/* address-match A-indicator */
-	unsigned int	rx_seac2  :1 ;	/* frame-error   E-indicator */
-	unsigned int	rx_ssrcrtg:1 ;	/* == 1 SA has MSB set */
-	unsigned int	rx_reserv1:1 ;	/* reserved */
-	unsigned int	rx_msrabt :1 ;	/* memory status receive abort */
-	unsigned int	rx_msvalid:1 ;	/* memory status valid */
+	unsigned	rx_length :16 ;	/* frame length lower/upper byte */
+	unsigned	rx_erfbb  :2 ;	/* received frame byte boundary */
+	unsigned	rx_reserv2:2 ;	/* reserved */	
+	unsigned	rx_sfrmty :3 ;	/* frame type bits */
+	unsigned	rx_sadrrg :1 ;	/* DA == MA or broad-/multicast */
+	unsigned	rx_sfrmerr:1 ;	/* received frame not valid */
+	unsigned	rx_seac0  :1 ;	/* frame-copied  C-indicator */
+	unsigned	rx_seac1  :1 ;	/* address-match A-indicator */
+	unsigned	rx_seac2  :1 ;	/* frame-error   E-indicator */
+	unsigned	rx_ssrcrtg:1 ;	/* == 1 SA has MSB set */
+	unsigned	rx_reserv1:1 ;	/* reserved */	
+	unsigned	rx_msrabt :1 ;	/* memory status receive abort */
+	unsigned	rx_msvalid:1 ;	/* memory status valid */
 #else
-	unsigned int	rx_msvalid:1 ;	/* memory status valid */
-	unsigned int	rx_msrabt :1 ;	/* memory status receive abort */
-	unsigned int	rx_reserv1:1 ;	/* reserved */
-	unsigned int	rx_ssrcrtg:1 ;	/* == 1 SA has MSB set */
-	unsigned int	rx_seac2  :1 ;	/* frame-error   E-indicator */
-	unsigned int	rx_seac1  :1 ;	/* address-match A-indicator */
-	unsigned int	rx_seac0  :1 ;	/* frame-copied  C-indicator */
-	unsigned int	rx_sfrmerr:1 ;	/* received frame not valid */
-	unsigned int	rx_sadrrg :1 ;	/* DA == MA or broad-/multicast */
-	unsigned int	rx_sfrmty :3 ;	/* frame type bits */
-	unsigned int	rx_erfbb  :2 ;	/* received frame byte boundary */
-	unsigned int	rx_reserv2:2 ;	/* reserved */
-	unsigned int	rx_length :16 ;	/* frame length lower/upper byte */
+	unsigned	rx_msvalid:1 ;	/* memory status valid */
+	unsigned	rx_msrabt :1 ;	/* memory status receive abort */
+	unsigned	rx_reserv1:1 ;	/* reserved */	
+	unsigned	rx_ssrcrtg:1 ;	/* == 1 SA has MSB set */
+	unsigned	rx_seac2  :1 ;	/* frame-error   E-indicator */
+	unsigned	rx_seac1  :1 ;	/* address-match A-indicator */
+	unsigned	rx_seac0  :1 ;	/* frame-copied  C-indicator */
+	unsigned	rx_sfrmerr:1 ;	/* received frame not valid */
+	unsigned	rx_sadrrg :1 ;	/* DA == MA or broad-/multicast */
+	unsigned	rx_sfrmty :3 ;	/* frame type bits */
+	unsigned	rx_erfbb  :2 ;	/* received frame byte boundary */
+	unsigned	rx_reserv2:2 ;	/* reserved */	
+	unsigned	rx_length :16 ;	/* frame length lower/upper byte */
 #endif
 	} r ;
 	long	i ;
@@ -162,23 +162,23 @@ union rx_descr {
 union tx_descr {
 	struct {
 #ifdef	LITTLE_ENDIAN
-	unsigned int	tx_length:16 ;	/* frame length lower/upper byte */
-	unsigned int	tx_res	 :8 ;	/* reserved 	 (bit 16..23) */
-	unsigned int	tx_xmtabt:1 ;	/* transmit abort */
-	unsigned int	tx_nfcs  :1 ;	/* no frame check sequence */
-	unsigned int	tx_xdone :1 ;	/* give up token */
-	unsigned int	tx_rpxm  :2 ;	/* byte offset */
-	unsigned int	tx_pat1  :2 ;	/* must be TXP1 */
-	unsigned int	tx_more	 :1 ;	/* more frame in chain */
+	unsigned	tx_length:16 ;	/* frame length lower/upper byte */
+	unsigned	tx_res	 :8 ;	/* reserved 	 (bit 16..23) */
+	unsigned	tx_xmtabt:1 ;	/* transmit abort */
+	unsigned	tx_nfcs  :1 ;	/* no frame check sequence */
+	unsigned	tx_xdone :1 ;	/* give up token */
+	unsigned	tx_rpxm  :2 ;	/* byte offset */
+	unsigned	tx_pat1  :2 ;	/* must be TXP1 */
+	unsigned	tx_more	 :1 ;	/* more frame in chain */
 #else
-	unsigned int	tx_more	 :1 ;	/* more frame in chain */
-	unsigned int	tx_pat1  :2 ;	/* must be TXP1 */
-	unsigned int	tx_rpxm  :2 ;	/* byte offset */
-	unsigned int	tx_xdone :1 ;	/* give up token */
-	unsigned int	tx_nfcs  :1 ;	/* no frame check sequence */
-	unsigned int	tx_xmtabt:1 ;	/* transmit abort */
-	unsigned int	tx_res	 :8 ;	/* reserved 	 (bit 16..23) */
-	unsigned int	tx_length:16 ;	/* frame length lower/upper byte */
+	unsigned	tx_more	 :1 ;	/* more frame in chain */
+	unsigned	tx_pat1  :2 ;	/* must be TXP1 */
+	unsigned	tx_rpxm  :2 ;	/* byte offset */
+	unsigned	tx_xdone :1 ;	/* give up token */
+	unsigned	tx_nfcs  :1 ;	/* no frame check sequence */
+	unsigned	tx_xmtabt:1 ;	/* transmit abort */
+	unsigned	tx_res	 :8 ;	/* reserved 	 (bit 16..23) */
+	unsigned	tx_length:16 ;	/* frame length lower/upper byte */
 #endif
 	} t ;
 	long	i ;
@@ -202,13 +202,13 @@ union tx_descr {
 union tx_pointer {
 	struct t {
 #ifdef	LITTLE_ENDIAN
-	unsigned int	tp_pointer:16 ;	/* pointer to tx_descr (low/high) */
-	unsigned int	tp_res	  :8 ;	/* reserved 	 (bit 16..23) */
-	unsigned int	tp_pattern:8 ;	/* fixed pattern (bit 24..31) */
+	unsigned	tp_pointer:16 ;	/* pointer to tx_descr (low/high) */
+	unsigned	tp_res	  :8 ;	/* reserved 	 (bit 16..23) */
+	unsigned	tp_pattern:8 ;	/* fixed pattern (bit 24..31) */
 #else
-	unsigned int	tp_pattern:8 ;	/* fixed pattern (bit 24..31) */
-	unsigned int	tp_res	  :8 ;	/* reserved 	 (bit 16..23) */
-	unsigned int	tp_pointer:16 ;	/* pointer to tx_descr (low/high) */
+	unsigned	tp_pattern:8 ;	/* fixed pattern (bit 24..31) */
+	unsigned	tp_res	  :8 ;	/* reserved 	 (bit 16..23) */
+	unsigned	tp_pointer:16 ;	/* pointer to tx_descr (low/high) */
 #endif
 	} t ;
 	long	i ;
@@ -219,7 +219,6 @@ union tx_pointer {
 #define TD_P_RPXU	0x0000ff00L
 #define TD_P_RPXL	0x000000ffL
 #define TD_P_RPX	0x0000ffffL
-
 
 #define TX_PATTERN	0xa0
 #define TX_POINTER_END	0xa0000000L
@@ -360,7 +359,6 @@ struct tx_queue {
 /* Supernet 3: Orion (PDX?) Registers */
 #define	FM_ORBIST	0xd0		/* r/w Orion BIST signature */
 #define	FM_ORSTAT	0xd2		/* r/w Orion Status Register */
-
 
 /*
  * Mode Register 1 (MDREG1)
@@ -701,7 +699,6 @@ struct tx_queue {
 					/* SN3: reserved */
 #define	FM_ITR		0x50		/* SN3: Transmit Command */
 
-
 /*
  *	defines for PLC (Am79C864)
  */
@@ -902,7 +899,6 @@ struct tx_queue {
 
 #define	PL_SIGNAL_DET	0x0400		/* 1=that signal detect is deasserted*/
 
-
 /*
  * PLC status register B (PL_STATUS_B: log. addr. 0x11)
  * It contains signals and status from the repeat filter and PCM state machine.
@@ -947,7 +943,6 @@ struct tx_queue {
 #define	PL_RF_IDLE	(1<<14)		/* IDLE */
 #define	PL_RF_HALT1	(2<<14)		/* HALT1 */
 #define	PL_RF_HALT2	(3<<14)		/* HALT2 */
-
 
 /*
  * PLC interrupt event register (PL_INTR_EVENT: log. addr. 0x17)

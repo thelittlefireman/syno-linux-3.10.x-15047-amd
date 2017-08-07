@@ -17,29 +17,33 @@
  */
 #include "xfs.h"
 #include "xfs_fs.h"
-#include "xfs_shared.h"
-#include "xfs_format.h"
-#include "xfs_log_format.h"
-#include "xfs_trans_resv.h"
+#include "xfs_log.h"
+#include "xfs_trans.h"
 #include "xfs_sb.h"
 #include "xfs_ag.h"
+#include "xfs_alloc.h"
+#include "xfs_quota.h"
 #include "xfs_mount.h"
-#include "xfs_inode.h"
-#include "xfs_btree.h"
 #include "xfs_bmap_btree.h"
+#include "xfs_alloc_btree.h"
+#include "xfs_ialloc_btree.h"
+#include "xfs_dinode.h"
+#include "xfs_inode.h"
+#include "xfs_inode_item.h"
+#include "xfs_btree.h"
 #include "xfs_bmap.h"
-#include "xfs_bmap_util.h"
+#include "xfs_rtalloc.h"
 #include "xfs_error.h"
-#include "xfs_trans.h"
+#include "xfs_itable.h"
+#include "xfs_attr.h"
+#include "xfs_buf_item.h"
 #include "xfs_trans_space.h"
+#include "xfs_utils.h"
 #include "xfs_iomap.h"
 #include "xfs_trace.h"
 #include "xfs_icache.h"
-#include "xfs_quota.h"
 #include "xfs_dquot_item.h"
 #include "xfs_dquot.h"
-#include "xfs_dinode.h"
-
 
 #define XFS_WRITEIO_ALIGN(mp,off)	(((off) >> mp->m_writeio_log) \
 						<< mp->m_writeio_log)
@@ -104,7 +108,7 @@ xfs_alert_fsblock_zero(
 	xfs_alert_tag(ip->i_mount, XFS_PTAG_FSBLOCK_ZERO,
 			"Access to block zero in inode %llu "
 			"start_block: %llx start_off: %llx "
-			"blkcnt: %llx extent-state: %x",
+			"blkcnt: %llx extent-state: %x\n",
 		(unsigned long long)ip->i_ino,
 		(unsigned long long)imap->br_startblock,
 		(unsigned long long)imap->br_startoff,
@@ -128,6 +132,7 @@ xfs_iomap_write_direct(
 	xfs_fsblock_t	firstfsb;
 	xfs_extlen_t	extsz, temp;
 	int		nimaps;
+	int		bmapi_flag;
 	int		quota_flag;
 	int		rt;
 	xfs_trans_t	*tp;
@@ -181,8 +186,10 @@ xfs_iomap_write_direct(
 	 * Allocate and setup the transaction
 	 */
 	tp = xfs_trans_alloc(mp, XFS_TRANS_DIOSTRAT);
-	error = xfs_trans_reserve(tp, &M_RES(mp)->tr_write,
-				  resblks, resrtextents);
+	error = xfs_trans_reserve(tp, resblks,
+			XFS_WRITE_LOG_RES(mp), resrtextents,
+			XFS_TRANS_PERM_LOG_RES,
+			XFS_WRITE_LOG_COUNT);
 	/*
 	 * Check for running out of space, note: need lock to return
 	 */
@@ -199,15 +206,18 @@ xfs_iomap_write_direct(
 
 	xfs_trans_ijoin(tp, ip, 0);
 
+	bmapi_flag = 0;
+	if (offset < XFS_ISIZE(ip) || extsz)
+		bmapi_flag |= XFS_BMAPI_PREALLOC;
+
 	/*
 	 * From this point onwards we overwrite the imap pointer that the
 	 * caller gave to us.
 	 */
 	xfs_bmap_init(&free_list, &firstfsb);
 	nimaps = 1;
-	error = xfs_bmapi_write(tp, ip, offset_fsb, count_fsb,
-				XFS_BMAPI_PREALLOC, &firstfsb, 0,
-				imap, &nimaps, &free_list);
+	error = xfs_bmapi_write(tp, ip, offset_fsb, count_fsb, bmapi_flag,
+				&firstfsb, 0, imap, &nimaps, &free_list);
 	if (error)
 		goto out_bmap_cancel;
 
@@ -273,15 +283,6 @@ xfs_iomap_eof_want_preallocate(
 		return 0;
 
 	/*
-	 * If the file is smaller than the minimum prealloc and we are using
-	 * dynamic preallocation, don't do any preallocation at all as it is
-	 * likely this is the only write to the file that is going to be done.
-	 */
-	if (!(mp->m_flags & XFS_MOUNT_DFLT_IOSIZE) &&
-	    XFS_ISIZE(ip) < XFS_FSB_TO_B(mp, mp->m_writeio_blocks))
-		return 0;
-
-	/*
 	 * If there are any real blocks past eof, then don't
 	 * do any speculative allocation.
 	 */
@@ -341,10 +342,6 @@ xfs_iomap_eof_prealloc_initial_size(
 
 	/* if we are using a specific prealloc size, return now */
 	if (mp->m_flags & XFS_MOUNT_DFLT_IOSIZE)
-		return 0;
-
-	/* If the file is small, then use the minimum prealloc */
-	if (XFS_ISIZE(ip) < XFS_FSB_TO_B(mp, mp->m_dalign))
 		return 0;
 
 	/*
@@ -645,6 +642,7 @@ int
 xfs_iomap_write_allocate(
 	xfs_inode_t	*ip,
 	xfs_off_t	offset,
+	size_t		count,
 	xfs_bmbt_irec_t *imap)
 {
 	xfs_mount_t	*mp = ip->i_mount;
@@ -686,8 +684,10 @@ xfs_iomap_write_allocate(
 			tp = xfs_trans_alloc(mp, XFS_TRANS_STRAT_WRITE);
 			tp->t_flags |= XFS_TRANS_RESERVE;
 			nres = XFS_EXTENTADD_SPACE_RES(mp, XFS_DATA_FORK);
-			error = xfs_trans_reserve(tp, &M_RES(mp)->tr_write,
-						  nres, 0);
+			error = xfs_trans_reserve(tp, nres,
+					XFS_WRITE_LOG_RES(mp),
+					0, XFS_TRANS_PERM_LOG_RES,
+					XFS_WRITE_LOG_COUNT);
 			if (error) {
 				xfs_trans_cancel(tp, 0);
 				return XFS_ERROR(error);
@@ -850,8 +850,10 @@ xfs_iomap_write_unwritten(
 		sb_start_intwrite(mp->m_super);
 		tp = _xfs_trans_alloc(mp, XFS_TRANS_STRAT_WRITE, KM_NOFS);
 		tp->t_flags |= XFS_TRANS_RESERVE | XFS_TRANS_FREEZE_PROT;
-		error = xfs_trans_reserve(tp, &M_RES(mp)->tr_write,
-					  resblks, 0);
+		error = xfs_trans_reserve(tp, resblks,
+				XFS_WRITE_LOG_RES(mp), 0,
+				XFS_TRANS_PERM_LOG_RES,
+				XFS_WRITE_LOG_COUNT);
 		if (error) {
 			xfs_trans_cancel(tp, 0);
 			return XFS_ERROR(error);

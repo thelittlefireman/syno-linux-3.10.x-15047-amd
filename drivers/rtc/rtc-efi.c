@@ -95,7 +95,6 @@ convert_from_efi_time(efi_time_t *eft, struct rtc_time *wtime)
 	/* day in the year [1-365]*/
 	wtime->tm_yday = compute_yday(eft);
 
-
 	switch (eft->daylight & EFI_ISDST) {
 	case EFI_ISDST:
 		wtime->tm_isdst = 1;
@@ -201,11 +200,17 @@ static int __init efi_rtc_probe(struct platform_device *dev)
 	return 0;
 }
 
+static int __exit efi_rtc_remove(struct platform_device *dev)
+{
+	return 0;
+}
+
 static struct platform_driver efi_rtc_driver = {
 	.driver = {
 		.name = "rtc-efi",
 		.owner = THIS_MODULE,
 	},
+	.remove = __exit_p(efi_rtc_remove),
 };
 
 module_platform_driver_probe(efi_rtc_driver, efi_rtc_probe);

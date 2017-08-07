@@ -13,7 +13,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *
  *
  * This driver is designed for the Broadcom SiByte SOC built-in
@@ -35,6 +36,7 @@
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/skbuff.h>
+#include <linux/init.h>
 #include <linux/bitops.h>
 #include <linux/err.h>
 #include <linux/ethtool.h>
@@ -53,7 +55,6 @@
 
 /* Time in jiffies before concluding the transmitter is hung. */
 #define TX_TIMEOUT  (2*HZ)
-
 
 MODULE_AUTHOR("Mitch Lichtenberg (Broadcom Corp.)");
 MODULE_DESCRIPTION("Broadcom SiByte SOC GB Ethernet driver");
@@ -146,15 +147,12 @@ enum sbmac_state {
 	sbmac_state_broken,
 };
 
-
 /**********************************************************************
  *  Macros
  ********************************************************************* */
 
-
 #define SBDMA_NEXTBUF(d,f) ((((d)->f+1) == (d)->sbdma_dscrtable_end) ? \
 			  (d)->sbdma_dscrtable : (d)->f+1)
-
 
 #define NUMCACHEBLKS(x) (((x)+SMP_CACHE_BYTES-1)/SMP_CACHE_BYTES)
 
@@ -224,7 +222,6 @@ struct sbmacdma {
 						   to remove */
 };
 
-
 /**********************************************************************
  *  Ethernet softc structure
  ********************************************************************* */
@@ -270,7 +267,6 @@ struct sbmac_softc {
 	int			rx_hw_checksum;
 	int			sbe_idx;
 };
-
 
 /**********************************************************************
  *  Externs
@@ -324,7 +320,6 @@ static int sbmac_mii_read(struct mii_bus *bus, int phyaddr, int regidx);
 static int sbmac_mii_write(struct mii_bus *bus, int phyaddr, int regidx,
 			   u16 val);
 
-
 /**********************************************************************
  *  Globals
  ********************************************************************* */
@@ -332,7 +327,6 @@ static int sbmac_mii_write(struct mii_bus *bus, int phyaddr, int regidx,
 static char sbmac_string[] = "sb1250-mac";
 
 static char sbmac_mdio_string[] = "sb1250-mac-mdio";
-
 
 /**********************************************************************
  *  MDIO constants
@@ -416,8 +410,6 @@ static void sbmac_mii_senddata(void __iomem *sbm_mdio, unsigned int data,
 		curmask >>= 1;
 	}
 }
-
-
 
 /**********************************************************************
  *  SBMAC_MII_READ(bus, phyaddr, regidx)
@@ -509,7 +501,6 @@ static int sbmac_mii_read(struct mii_bus *bus, int phyaddr, int regidx)
 	return 0xffff;
 }
 
-
 /**********************************************************************
  *  SBMAC_MII_WRITE(bus, phyaddr, regidx, regval)
  *
@@ -547,8 +538,6 @@ static int sbmac_mii_write(struct mii_bus *bus, int phyaddr, int regidx,
 
 	return 0;
 }
-
-
 
 /**********************************************************************
  *  SBDMA_INITCTX(d,s,chan,txrx,maxdescr)
@@ -764,7 +753,6 @@ static inline void sbdma_align_skb(struct sk_buff *skb,
 	skb_reserve(skb, newaddr - addr + offset);
 }
 
-
 /**********************************************************************
  *  SBDMA_ADD_RCVBUFFER(d,sb)
  *
@@ -780,7 +768,6 @@ static inline void sbdma_align_skb(struct sk_buff *skb,
  *  	   0 if buffer could not be added (ring is full)
  *  	   1 if buffer added successfully
  ********************************************************************* */
-
 
 static int sbdma_add_rcvbuffer(struct sbmac_softc *sc, struct sbmacdma *d,
 			       struct sk_buff *sb)
@@ -897,7 +884,6 @@ static int sbdma_add_rcvbuffer(struct sbmac_softc *sc, struct sbmacdma *d,
  *  	   otherwise error code
  ********************************************************************* */
 
-
 static int sbdma_add_txbuffer(struct sbmacdma *d, struct sk_buff *sb)
 {
 	struct sbdmadscr *dsc;
@@ -972,9 +958,6 @@ static int sbdma_add_txbuffer(struct sbmacdma *d, struct sk_buff *sb)
 	return 0;					/* we did it */
 }
 
-
-
-
 /**********************************************************************
  *  SBDMA_EMPTYRING(d)
  *
@@ -1000,7 +983,6 @@ static void sbdma_emptyring(struct sbmacdma *d)
 		}
 	}
 }
-
 
 /**********************************************************************
  *  SBDMA_FILLRING(d)
@@ -1194,7 +1176,6 @@ again:
 			sbdma_add_rcvbuffer(sc, d, sb);
 		}
 
-
 		/*
 		 * .. and advance to the next buffer.
 		 */
@@ -1315,8 +1296,6 @@ end_unlock:
 
 }
 
-
-
 /**********************************************************************
  *  SBMAC_INITCTX(s)
  *
@@ -1365,7 +1344,6 @@ static int sbmac_initctx(struct sbmac_softc *s)
 	return 0;
 }
 
-
 static void sbdma_uninitctx(struct sbmacdma *d)
 {
 	if (d->sbdma_dscrtable_unaligned) {
@@ -1379,13 +1357,11 @@ static void sbdma_uninitctx(struct sbmacdma *d)
 	}
 }
 
-
 static void sbmac_uninitctx(struct sbmac_softc *sc)
 {
 	sbdma_uninitctx(&(sc->sbm_txdma));
 	sbdma_uninitctx(&(sc->sbm_rxdma));
 }
-
 
 /**********************************************************************
  *  SBMAC_CHANNEL_START(s)
@@ -1489,7 +1465,6 @@ static void sbmac_channel_start(struct sbmac_softc *s)
 		__raw_writeq(0, port);
 		port += sizeof(uint64_t);
 	}
-
 
 	port = s->sbm_base + R_MAC_CHLO0_BASE;
 	for (idx = 0; idx < MAC_CHMAP_COUNT; idx++) {
@@ -1602,7 +1577,6 @@ static void sbmac_channel_start(struct sbmac_softc *s)
 
 }
 
-
 /**********************************************************************
  *  SBMAC_CHANNEL_STOP(s)
  *
@@ -1695,7 +1669,6 @@ static enum sbmac_state sbmac_set_channel_state(struct sbmac_softc *sc,
 	return oldstate;
 }
 
-
 /**********************************************************************
  *  SBMAC_PROMISCUOUS_MODE(sc,onoff)
  *
@@ -1758,7 +1731,6 @@ static void sbmac_set_iphdr_offset(struct sbmac_softc *sc)
 	}
 }
 
-
 /**********************************************************************
  *  SBMAC_ADDR2REG(ptr)
  *
@@ -1792,7 +1764,6 @@ static uint64_t sbmac_addr2reg(unsigned char *ptr)
 
 	return reg;
 }
-
 
 /**********************************************************************
  *  SBMAC_SET_SPEED(s,speed)
@@ -1924,7 +1895,6 @@ static int sbmac_set_duplex(struct sbmac_softc *s, enum sbmac_duplex duplex,
 
 	cfg &= ~(M_MAC_FC_SEL | M_MAC_FC_CMD | M_MAC_HDX_EN);
 
-
 	switch (duplex) {
 	case sbmac_duplex_half:
 		switch (fc) {
@@ -1974,9 +1944,6 @@ static int sbmac_set_duplex(struct sbmac_softc *s, enum sbmac_duplex duplex,
 
 	return 1;
 }
-
-
-
 
 /**********************************************************************
  *  SBMAC_INTR()
@@ -2125,7 +2092,6 @@ static void sbmac_setmulti(struct sbmac_softc *sc)
 		return;
 	}
 
-
 	/*
 	 * Progam new multicast entries.  For now, only use the
 	 * perfect filter.  In the future we'll need to use the
@@ -2195,7 +2161,7 @@ static const struct net_device_ops sbmac_netdev_ops = {
 
 static int sbmac_init(struct platform_device *pldev, long long base)
 {
-	struct net_device *dev = platform_get_drvdata(pldev);
+	struct net_device *dev = dev_get_drvdata(&pldev->dev);
 	int idx = pldev->id;
 	struct sbmac_softc *sc = netdev_priv(dev);
 	unsigned char *eaddr;
@@ -2273,7 +2239,7 @@ static int sbmac_init(struct platform_device *pldev, long long base)
 		       dev->name);
 		goto free_mdio;
 	}
-	platform_set_drvdata(pldev, sc->mii_bus);
+	dev_set_drvdata(&pldev->dev, sc->mii_bus);
 
 	err = register_netdev(dev);
 	if (err) {
@@ -2298,13 +2264,13 @@ static int sbmac_init(struct platform_device *pldev, long long base)
 	return 0;
 unreg_mdio:
 	mdiobus_unregister(sc->mii_bus);
+	dev_set_drvdata(&pldev->dev, NULL);
 free_mdio:
 	mdiobus_free(sc->mii_bus);
 uninit_ctx:
 	sbmac_uninitctx(sc);
 	return err;
 }
-
 
 static int sbmac_open(struct net_device *dev)
 {
@@ -2408,7 +2374,6 @@ static int sbmac_mii_probe(struct net_device *dev)
 	return 0;
 }
 
-
 static void sbmac_mii_poll(struct net_device *dev)
 {
 	struct sbmac_softc *sc = netdev_priv(dev);
@@ -2472,14 +2437,12 @@ static void sbmac_mii_poll(struct net_device *dev)
 	spin_unlock_irqrestore(&sc->sbm_lock, flags);
 }
 
-
 static void sbmac_tx_timeout (struct net_device *dev)
 {
 	struct sbmac_softc *sc = netdev_priv(dev);
 	unsigned long flags;
 
 	spin_lock_irqsave(&sc->sbm_lock, flags);
-
 
 	dev->trans_start = jiffies; /* prevent tx timeout */
 	dev->stats.tx_errors++;
@@ -2488,9 +2451,6 @@ static void sbmac_tx_timeout (struct net_device *dev)
 
 	printk (KERN_WARNING "%s: Transmit timed out\n",dev->name);
 }
-
-
-
 
 static void sbmac_set_rx_mode(struct net_device *dev)
 {
@@ -2579,7 +2539,6 @@ static int sbmac_poll(struct napi_struct *napi, int budget)
 	return work_done;
 }
 
-
 static int sbmac_probe(struct platform_device *pldev)
 {
 	struct net_device *dev;
@@ -2621,7 +2580,7 @@ static int sbmac_probe(struct platform_device *pldev)
 		goto out_unmap;
 	}
 
-	platform_set_drvdata(pldev, dev);
+	dev_set_drvdata(&pldev->dev, dev);
 	SET_NETDEV_DEV(dev, &pldev->dev);
 
 	sc = netdev_priv(dev);
@@ -2646,7 +2605,7 @@ out_out:
 
 static int __exit sbmac_remove(struct platform_device *pldev)
 {
-	struct net_device *dev = platform_get_drvdata(pldev);
+	struct net_device *dev = dev_get_drvdata(&pldev->dev);
 	struct sbmac_softc *sc = netdev_priv(dev);
 
 	unregister_netdev(dev);

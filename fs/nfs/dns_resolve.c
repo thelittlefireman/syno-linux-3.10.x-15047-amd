@@ -29,6 +29,7 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name, size_t namelen,
 	kfree(ip_addr);
 	return ret;
 }
+EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
 
 #else
 
@@ -46,9 +47,7 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name, size_t namelen,
 #include <linux/sunrpc/cache.h>
 #include <linux/sunrpc/svcauth.h>
 #include <linux/sunrpc/rpc_pipe_fs.h>
-#include <linux/nfs_fs.h>
 
-#include "nfs4_fs.h"
 #include "dns_resolve.h"
 #include "cache_lib.h"
 #include "netns.h"
@@ -65,7 +64,6 @@ struct nfs_dns_ent {
 	struct sockaddr_storage addr;
 	size_t addrlen;
 };
-
 
 static void nfs_dns_ent_update(struct cache_head *cnew,
 		struct cache_head *ckey)
@@ -352,6 +350,7 @@ ssize_t nfs_dns_resolve_name(struct net *net, char *name,
 		ret = -ESRCH;
 	return ret;
 }
+EXPORT_SYMBOL_GPL(nfs_dns_resolve_name);
 
 static struct cache_detail nfs_dns_resolve_template = {
 	.owner		= THIS_MODULE,
@@ -367,7 +366,6 @@ static struct cache_detail nfs_dns_resolve_template = {
 	.update		= nfs_dns_ent_update,
 	.alloc		= nfs_dns_ent_alloc,
 };
-
 
 int nfs_dns_resolver_cache_init(struct net *net)
 {
@@ -395,21 +393,6 @@ void nfs_dns_resolver_cache_destroy(struct net *net)
 	nfs_cache_unregister_net(net, nn->nfs_dns_resolve);
 	cache_destroy_net(nn->nfs_dns_resolve, net);
 }
-
-static int nfs4_dns_net_init(struct net *net)
-{
-	return nfs_dns_resolver_cache_init(net);
-}
-
-static void nfs4_dns_net_exit(struct net *net)
-{
-	nfs_dns_resolver_cache_destroy(net);
-}
-
-static struct pernet_operations nfs4_dns_resolver_ops = {
-	.init = nfs4_dns_net_init,
-	.exit = nfs4_dns_net_exit,
-};
 
 static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
 			   void *ptr)
@@ -447,24 +430,11 @@ static struct notifier_block nfs_dns_resolver_block = {
 
 int nfs_dns_resolver_init(void)
 {
-	int err;
-
-	err = register_pernet_subsys(&nfs4_dns_resolver_ops);
-	if (err < 0)
-		goto out;
-	err = rpc_pipefs_notifier_register(&nfs_dns_resolver_block);
-	if (err < 0)
-		goto out1;
-	return 0;
-out1:
-	unregister_pernet_subsys(&nfs4_dns_resolver_ops);
-out:
-	return err;
+	return rpc_pipefs_notifier_register(&nfs_dns_resolver_block);
 }
 
 void nfs_dns_resolver_destroy(void)
 {
 	rpc_pipefs_notifier_unregister(&nfs_dns_resolver_block);
-	unregister_pernet_subsys(&nfs4_dns_resolver_ops);
 }
 #endif

@@ -35,7 +35,6 @@
  *    so, software should control DATA0/1 sequence of each devices.
  */
 
-
 /*
  *		image of mod_host
  *
@@ -65,7 +64,6 @@
  * @ :	uep requested free pipe, but all have been used.
  *	now it is waiting for free pipe
  */
-
 
 /*
  *		struct
@@ -101,7 +99,6 @@ struct usbhsh_hpriv {
 	struct completion	setup_ack_done;
 };
 
-
 static const char usbhsh_hcd_name[] = "renesas_usbhs host";
 
 /*
@@ -111,9 +108,9 @@ static const char usbhsh_hcd_name[] = "renesas_usbhs host";
 	container_of(usbhs_mod_get(priv, USBHS_HOST), struct usbhsh_hpriv, mod)
 
 #define __usbhsh_for_each_udev(start, pos, h, i)	\
-	for ((i) = start;						\
-	     ((i) < USBHSH_DEVICE_MAX) && ((pos) = (h)->udev + (i));	\
-	     (i)++)
+	for (i = start, pos = (h)->udev + i;		\
+	     i < USBHSH_DEVICE_MAX;			\
+	     i++, pos = (h)->udev + i)
 
 #define usbhsh_for_each_udev(pos, hpriv, i)	\
 	__usbhsh_for_each_udev(1, pos, hpriv, i)
@@ -1469,7 +1466,6 @@ static int usbhsh_start(struct usbhs_priv *priv)
 	ret = usb_add_hcd(hcd, 0, 0);
 	if (ret < 0)
 		return 0;
-	device_wakeup_enable(hcd->self.controller);
 
 	/*
 	 * pipe initialize and enable DCP

@@ -23,7 +23,7 @@
 #include <linux/security.h>
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/acpi.h>
+#include <acpi/acpi.h>
 
 #include "tpm.h"
 #include "tpm_eventlog.h"

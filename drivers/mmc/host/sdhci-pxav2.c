@@ -175,7 +175,7 @@ static int sdhci_pxav2_probe(struct platform_device *pdev)
 	if (!pxa)
 		return -ENOMEM;
 
-	host = sdhci_pltfm_init(pdev, NULL, 0);
+	host = sdhci_pltfm_init(pdev, NULL);
 	if (IS_ERR(host)) {
 		kfree(pxa);
 		return PTR_ERR(host);
@@ -253,6 +253,8 @@ static int sdhci_pxav2_remove(struct platform_device *pdev)
 	sdhci_pltfm_free(pdev);
 	kfree(pxa);
 
+	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
 
@@ -274,4 +276,3 @@ module_platform_driver(sdhci_pxav2_driver);
 MODULE_DESCRIPTION("SDHCI driver for pxav2");
 MODULE_AUTHOR("Marvell International Ltd.");
 MODULE_LICENSE("GPL v2");
-

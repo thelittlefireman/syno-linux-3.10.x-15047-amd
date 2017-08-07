@@ -377,7 +377,6 @@ static int tvaudio_checkcarrier(struct saa7134_dev *dev, struct mainscan *scan)
 	return value;
 }
 
-
 static int tvaudio_getstereo(struct saa7134_dev *dev, struct saa7134_tvaudio *audio)
 {
 	__u32 idp, nicam, nicam_status;
@@ -694,7 +693,6 @@ static inline int saa_dsp_wait_bit(struct saa7134_dev *dev, int bit)
 	return 0;
 }
 
-
 int saa_dsp_writel(struct saa7134_dev *dev, int reg, u32 value)
 {
 	int err;
@@ -753,7 +751,6 @@ static int mute_input_7133(struct saa7134_dev *dev)
 	saa_dsp_writel(dev, 0x46c >> 2, xbarout);
 
 	saa_writel(0x594 >> 2, reg);
-
 
 	/* switch gpio-connected external audio mux */
 	if (0 != card(dev).gpiomask) {

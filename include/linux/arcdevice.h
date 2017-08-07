@@ -38,7 +38,6 @@
  */
 #define RECON_THRESHOLD 30
 
-
 /*
  * Define this to the minimum "timeout" value.  If a transmit takes longer
  * than TX_TIMEOUT jiffies, Linux will abort the TX and retry.  On a large
@@ -48,10 +47,8 @@
  */
 #define TX_TIMEOUT (HZ * 200 / 1000)
 
-
 /* Display warnings about the driver being an ALPHA version. */
 #undef ALPHA_WARNING
-
 
 /*
  * Debugging bitflags: each option can be enabled individually.
@@ -109,7 +106,6 @@ extern int arcnet_debug;
 	else { \
 		    call;\
 	}
-
 
 /*
  * Time needed to reset the card - in ms (milliseconds).  This works on my
@@ -186,7 +182,6 @@ extern int arcnet_debug;
 #define ARC_CAN_10MBIT  2   /* card uses COM20022, supporting 10MBit,
 				 but default is 2.5MBit. */
 
-
 /* information needed to define an encapsulation driver */
 struct ArcProto {
 	char suffix;		/* a for RFC1201, e for ether-encap, etc. */
@@ -208,7 +203,6 @@ struct ArcProto {
 extern struct ArcProto *arc_proto_map[256], *arc_proto_default,
 	*arc_bcast_proto, *arc_raw_proto;
 
-
 /*
  * "Incoming" is information needed for each address that could be sending
  * to us.  Mostly for partially-received split packets.
@@ -219,7 +213,6 @@ struct Incoming {
 	uint8_t lastpacket,	/* number of last packet (from 1) */
 		numpackets;	/* number of packets in split     */
 };
-
 
 /* only needed for RFC1201 */
 struct Outgoing {
@@ -233,7 +226,6 @@ struct Outgoing {
 		segnum,		/* segment being sent */
 		numsegs;	/* number of segments */
 };
-
 
 struct arcnet_local {
 	uint8_t config,		/* current value of CONFIG register */
@@ -254,7 +246,6 @@ struct arcnet_local {
 	unsigned long last_timeout;	/* time of last reported timeout */
 	char *card_name;	/* card ident string */
 	int card_flags;		/* special card features */
-
 
 	/* On preemtive and SMB a lock is needed */
 	spinlock_t lock;
@@ -318,13 +309,10 @@ struct arcnet_local {
 	void __iomem *mem_start;	/* pointer to ioremap'ed MMIO */
 };
 
-
 #define ARCRESET(x)  (lp->hw.reset(dev, (x)))
 #define ACOMMAND(x)  (lp->hw.command(dev, (x)))
 #define ASTATUS()    (lp->hw.status(dev))
 #define AINTMASK(x)  (lp->hw.intmask(dev, (x)))
-
-
 
 #if ARCNET_DEBUG_MAX & D_SKB
 void arcnet_dump_skb(struct net_device *dev, struct sk_buff *skb, char *desc);

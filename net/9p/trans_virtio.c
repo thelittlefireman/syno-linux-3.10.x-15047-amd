@@ -164,7 +164,8 @@ static void req_done(struct virtqueue *vq)
 		p9_debug(P9_DEBUG_TRANS, ": rc %p\n", rc);
 		p9_debug(P9_DEBUG_TRANS, ": lookup tag %d\n", rc->tag);
 		req = p9_tag_lookup(chan->client, rc->tag);
-		p9_client_cb(chan->client, req, REQ_STATUS_RCVD);
+		req->status = REQ_STATUS_RCVD;
+		p9_client_cb(chan->client, req);
 	}
 }
 
@@ -546,7 +547,9 @@ static int p9_virtio_probe(struct virtio_device *vdev)
 
 	chan->inuse = false;
 	if (virtio_has_feature(vdev, VIRTIO_9P_MOUNT_TAG)) {
-		virtio_cread(vdev, struct virtio_9p_config, tag_len, &tag_len);
+		vdev->config->get(vdev,
+				offsetof(struct virtio_9p_config, tag_len),
+				&tag_len, sizeof(tag_len));
 	} else {
 		err = -EINVAL;
 		goto out_free_vq;
@@ -556,9 +559,8 @@ static int p9_virtio_probe(struct virtio_device *vdev)
 		err = -ENOMEM;
 		goto out_free_vq;
 	}
-
-	virtio_cread_bytes(vdev, offsetof(struct virtio_9p_config, tag),
-			   tag, tag_len);
+	vdev->config->get(vdev, offsetof(struct virtio_9p_config, tag),
+			tag, tag_len);
 	chan->tag = tag;
 	chan->tag_len = tag_len;
 	err = sysfs_create_file(&(vdev->dev.kobj), &dev_attr_mount_tag.attr);
@@ -592,7 +594,6 @@ out_free_vq:
 fail:
 	return err;
 }
-
 
 /**
  * p9_virtio_create - allocate a new virtio channel
@@ -700,7 +701,7 @@ static struct p9_trans_module p9_virtio_trans = {
 	 * page in zero copy.
 	 */
 	.maxsize = PAGE_SIZE * (VIRTQUEUE_NUM - 3),
-	.def = 1,
+	.def = 0,
 	.owner = THIS_MODULE,
 };
 

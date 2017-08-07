@@ -95,7 +95,6 @@ struct nfsd_net {
 	time_t nfsd4_grace;
 
 	bool nfsd_net_up;
-	bool lockd_up;
 
 	/*
 	 * Time of server startup

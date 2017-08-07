@@ -147,7 +147,6 @@ static const struct v4l2_ctrl_ops si476x_ctrl_ops = {
 	.s_ctrl			= si476x_radio_s_ctrl,
 };
 
-
 enum si476x_ctrl_idx {
 	SI476X_IDX_RSSI_THRESHOLD,
 	SI476X_IDX_SNR_THRESHOLD,
@@ -268,8 +267,8 @@ struct si476x_radio;
  *
  * @tune_freq: Tune chip to a specific frequency
  * @seek_start: Star station seeking
- * @rsq_status: Get Received Signal Quality(RSQ) status
- * @rds_blckcnt: Get received RDS blocks count
+ * @rsq_status: Get Recieved Signal Quality(RSQ) status
+ * @rds_blckcnt: Get recived RDS blocks count
  * @phase_diversity: Change phase diversity mode of the tuner
  * @phase_div_status: Get phase diversity mode status
  * @acf_status: Get the status of Automatically Controlled
@@ -839,8 +838,6 @@ static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
 unlock:
 	si476x_core_unlock(radio->core);
 
-
-
 	return err;
 }
 
@@ -1018,6 +1015,15 @@ static int si476x_radio_s_ctrl(struct v4l2_ctrl *ctrl)
 	return retval;
 }
 
+static int si476x_radio_g_chip_ident(struct file *file, void *fh,
+				     struct v4l2_dbg_chip_ident *chip)
+{
+	if (chip->match.type == V4L2_CHIP_MATCH_HOST &&
+	    v4l2_chip_match_host(&chip->match))
+		return 0;
+	return -EINVAL;
+}
+
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 static int si476x_radio_g_register(struct file *file, void *fh,
 				   struct v4l2_dbg_register *reg)
@@ -1179,7 +1185,6 @@ static const struct v4l2_file_operations si476x_fops = {
 	.release		= si476x_radio_fops_release,
 };
 
-
 static const struct v4l2_ioctl_ops si4761_ioctl_ops = {
 	.vidioc_querycap		= si476x_radio_querycap,
 	.vidioc_g_tuner			= si476x_radio_g_tuner,
@@ -1193,20 +1198,18 @@ static const struct v4l2_ioctl_ops si4761_ioctl_ops = {
 	.vidioc_subscribe_event		= v4l2_ctrl_subscribe_event,
 	.vidioc_unsubscribe_event	= v4l2_event_unsubscribe,
 
+	.vidioc_g_chip_ident		= si476x_radio_g_chip_ident,
 #ifdef CONFIG_VIDEO_ADV_DEBUG
 	.vidioc_g_register		= si476x_radio_g_register,
 	.vidioc_s_register		= si476x_radio_s_register,
 #endif
 };
 
-
 static const struct video_device si476x_viddev_template = {
 	.fops			= &si476x_fops,
 	.name			= DRIVER_NAME,
 	.release		= video_device_release_empty,
 };
-
-
 
 static ssize_t si476x_radio_read_acf_blob(struct file *file,
 					  char __user *user_buf,
@@ -1363,7 +1366,6 @@ static const struct file_operations radio_rsq_primary_fops = {
 	.read	= si476x_radio_read_rsq_primary_blob,
 };
 
-
 static int si476x_radio_init_debugfs(struct si476x_radio *radio)
 {
 	struct dentry	*dentry;
@@ -1419,7 +1421,6 @@ cleanup:
 exit:
 	return ret;
 }
-
 
 static int si476x_radio_add_new_custom(struct si476x_radio *radio,
 				       enum si476x_ctrl_idx idx)

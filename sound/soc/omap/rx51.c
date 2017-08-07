@@ -74,30 +74,26 @@ static void rx51_ext_control(struct snd_soc_dapm_context *dapm)
 		break;
 	}
 
-	snd_soc_dapm_mutex_lock(dapm);
-
 	if (rx51_spk_func)
-		snd_soc_dapm_enable_pin_unlocked(dapm, "Ext Spk");
+		snd_soc_dapm_enable_pin(dapm, "Ext Spk");
 	else
-		snd_soc_dapm_disable_pin_unlocked(dapm, "Ext Spk");
+		snd_soc_dapm_disable_pin(dapm, "Ext Spk");
 	if (rx51_dmic_func)
-		snd_soc_dapm_enable_pin_unlocked(dapm, "DMic");
+		snd_soc_dapm_enable_pin(dapm, "DMic");
 	else
-		snd_soc_dapm_disable_pin_unlocked(dapm, "DMic");
+		snd_soc_dapm_disable_pin(dapm, "DMic");
 	if (hp)
-		snd_soc_dapm_enable_pin_unlocked(dapm, "Headphone Jack");
+		snd_soc_dapm_enable_pin(dapm, "Headphone Jack");
 	else
-		snd_soc_dapm_disable_pin_unlocked(dapm, "Headphone Jack");
+		snd_soc_dapm_disable_pin(dapm, "Headphone Jack");
 	if (hs)
-		snd_soc_dapm_enable_pin_unlocked(dapm, "HS Mic");
+		snd_soc_dapm_enable_pin(dapm, "HS Mic");
 	else
-		snd_soc_dapm_disable_pin_unlocked(dapm, "HS Mic");
+		snd_soc_dapm_disable_pin(dapm, "HS Mic");
 
 	gpio_set_value(RX51_TVOUT_SEL_GPIO, tvout);
 
-	snd_soc_dapm_sync_unlocked(dapm);
-
-	snd_soc_dapm_mutex_unlock(dapm);
+	snd_soc_dapm_sync(dapm);
 }
 
 static int rx51_startup(struct snd_pcm_substream *substream)
@@ -400,7 +396,7 @@ static int __init rx51_soc_init(void)
 {
 	int err;
 
-	if (!machine_is_nokia_rx51() && !of_machine_is_compatible("nokia,omap3-n900"))
+	if (!machine_is_nokia_rx51())
 		return -ENODEV;
 
 	err = gpio_request_one(RX51_TVOUT_SEL_GPIO,

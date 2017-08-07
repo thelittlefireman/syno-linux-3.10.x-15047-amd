@@ -667,15 +667,15 @@ static void fuse_copy_finish(struct fuse_copy_state *cs)
 		struct pipe_buffer *buf = cs->currbuf;
 
 		if (!cs->write) {
-			kunmap_atomic(cs->mapaddr);
+			buf->ops->unmap(cs->pipe, buf, cs->mapaddr);
 		} else {
-			kunmap_atomic(cs->mapaddr);
+			kunmap(buf->page);
 			buf->len = PAGE_SIZE - cs->len;
 		}
 		cs->currbuf = NULL;
 		cs->mapaddr = NULL;
 	} else if (cs->mapaddr) {
-		kunmap_atomic(cs->mapaddr);
+		kunmap(cs->pg);
 		if (cs->write) {
 			flush_dcache_page(cs->pg);
 			set_page_dirty_lock(cs->pg);
@@ -706,7 +706,7 @@ static int fuse_copy_fill(struct fuse_copy_state *cs)
 
 			BUG_ON(!cs->nr_segs);
 			cs->currbuf = buf;
-			cs->mapaddr = kmap_atomic(buf->page);
+			cs->mapaddr = buf->ops->map(cs->pipe, buf, 0);
 			cs->len = buf->len;
 			cs->buf = cs->mapaddr + buf->offset;
 			cs->pipebufs++;
@@ -726,7 +726,7 @@ static int fuse_copy_fill(struct fuse_copy_state *cs)
 			buf->len = 0;
 
 			cs->currbuf = buf;
-			cs->mapaddr = kmap_atomic(page);
+			cs->mapaddr = kmap(page);
 			cs->buf = cs->mapaddr;
 			cs->len = PAGE_SIZE;
 			cs->pipebufs++;
@@ -745,7 +745,7 @@ static int fuse_copy_fill(struct fuse_copy_state *cs)
 			return err;
 		BUG_ON(err != 1);
 		offset = cs->addr % PAGE_SIZE;
-		cs->mapaddr = kmap_atomic(cs->pg);
+		cs->mapaddr = kmap(cs->pg);
 		cs->buf = cs->mapaddr + offset;
 		cs->len = min(PAGE_SIZE - offset, cs->seglen);
 		cs->seglen -= cs->len;
@@ -819,8 +819,8 @@ static int fuse_try_move_page(struct fuse_copy_state *cs, struct page **pagep)
 
 	newpage = buf->page;
 
-	if (WARN_ON(!PageUptodate(newpage)))
-		return -EIO;
+	if (!PageUptodate(newpage))
+		SetPageUptodate(newpage);
 
 	ClearPageMappedToDisk(newpage);
 
@@ -874,7 +874,7 @@ static int fuse_try_move_page(struct fuse_copy_state *cs, struct page **pagep)
 out_fallback_unlock:
 	unlock_page(newpage);
 out_fallback:
-	cs->mapaddr = kmap_atomic(buf->page);
+	cs->mapaddr = buf->ops->map(cs->pipe, buf, 1);
 	cs->buf = cs->mapaddr + buf->offset;
 
 	err = lock_request(cs->fc, cs->req);
@@ -1587,8 +1587,7 @@ static int fuse_notify_store(struct fuse_conn *fc, unsigned int size,
 
 		this_num = min_t(unsigned, num, PAGE_CACHE_SIZE - offset);
 		err = fuse_copy_page(cs, &page, offset, this_num, 0);
-		if (!err && offset == 0 &&
-		    (this_num == PAGE_CACHE_SIZE || file_size == end))
+		if (!err && offset == 0 && (num != 0 || file_size == end))
 			SetPageUptodate(page);
 		unlock_page(page);
 		page_cache_release(page);
@@ -1726,6 +1725,9 @@ copy_finish:
 static int fuse_notify(struct fuse_conn *fc, enum fuse_notify_code code,
 		       unsigned int size, struct fuse_copy_state *cs)
 {
+	/* Don't try to move pages (yet) */
+	cs->move_pages = 0;
+
 	switch (code) {
 	case FUSE_NOTIFY_POLL:
 		return fuse_notify_poll(fc, size, cs);
@@ -1754,9 +1756,11 @@ static int fuse_notify(struct fuse_conn *fc, enum fuse_notify_code code,
 /* Look up request on processing list by unique ID */
 static struct fuse_req *request_find(struct fuse_conn *fc, u64 unique)
 {
-	struct fuse_req *req;
+	struct list_head *entry;
 
-	list_for_each_entry(req, &fc->processing, list) {
+	list_for_each(entry, &fc->processing) {
+		struct fuse_req *req;
+		req = list_entry(entry, struct fuse_req, list);
 		if (req->in.h.unique == unique || req->intr_unique == unique)
 			return req;
 	}

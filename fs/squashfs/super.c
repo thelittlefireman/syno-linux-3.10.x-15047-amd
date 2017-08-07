@@ -73,7 +73,6 @@ static const struct squashfs_decompressor *supported_squashfs_filesystem(short
 	return decompressor;
 }
 
-
 static int squashfs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct squashfs_sb_info *msblk;
@@ -98,6 +97,7 @@ static int squashfs_fill_super(struct super_block *sb, void *data, int silent)
 	msblk->devblksize = sb_min_blocksize(sb, SQUASHFS_DEVBLK_SIZE);
 	msblk->devblksize_log2 = ffz(~msblk->devblksize);
 
+	mutex_init(&msblk->read_data_mutex);
 	mutex_init(&msblk->meta_index_mutex);
 
 	/*
@@ -205,14 +205,13 @@ static int squashfs_fill_super(struct super_block *sb, void *data, int silent)
 		goto failed_mount;
 
 	/* Allocate read_page block */
-	msblk->read_page = squashfs_cache_init("data",
-		squashfs_max_decompressors(), msblk->block_size);
+	msblk->read_page = squashfs_cache_init("data", 1, msblk->block_size);
 	if (msblk->read_page == NULL) {
 		ERROR("Failed to allocate read_page block\n");
 		goto failed_mount;
 	}
 
-	msblk->stream = squashfs_decompressor_setup(sb, flags);
+	msblk->stream = squashfs_decompressor_init(sb, flags);
 	if (IS_ERR(msblk->stream)) {
 		err = PTR_ERR(msblk->stream);
 		msblk->stream = NULL;
@@ -336,7 +335,7 @@ failed_mount:
 	squashfs_cache_delete(msblk->block_cache);
 	squashfs_cache_delete(msblk->fragment_cache);
 	squashfs_cache_delete(msblk->read_page);
-	squashfs_decompressor_destroy(msblk);
+	squashfs_decompressor_free(msblk, msblk->stream);
 	kfree(msblk->inode_lookup_table);
 	kfree(msblk->fragment_index);
 	kfree(msblk->id_table);
@@ -346,7 +345,6 @@ failed_mount:
 	kfree(sblk);
 	return err;
 }
-
 
 static int squashfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 {
@@ -368,14 +366,12 @@ static int squashfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 	return 0;
 }
 
-
 static int squashfs_remount(struct super_block *sb, int *flags, char *data)
 {
 	sync_filesystem(sb);
 	*flags |= MS_RDONLY;
 	return 0;
 }
-
 
 static void squashfs_put_super(struct super_block *sb)
 {
@@ -384,7 +380,7 @@ static void squashfs_put_super(struct super_block *sb)
 		squashfs_cache_delete(sbi->block_cache);
 		squashfs_cache_delete(sbi->fragment_cache);
 		squashfs_cache_delete(sbi->read_page);
-		squashfs_decompressor_destroy(sbi);
+		squashfs_decompressor_free(sbi, sbi->stream);
 		kfree(sbi->id_table);
 		kfree(sbi->fragment_index);
 		kfree(sbi->meta_index);
@@ -395,16 +391,13 @@ static void squashfs_put_super(struct super_block *sb)
 	}
 }
 
-
 static struct dentry *squashfs_mount(struct file_system_type *fs_type,
 				int flags, const char *dev_name, void *data)
 {
 	return mount_bdev(fs_type, flags, dev_name, data, squashfs_fill_super);
 }
 
-
 static struct kmem_cache *squashfs_inode_cachep;
-
 
 static void init_once(void *foo)
 {
@@ -412,7 +405,6 @@ static void init_once(void *foo)
 
 	inode_init_once(&ei->vfs_inode);
 }
-
 
 static int __init init_inodecache(void)
 {
@@ -423,7 +415,6 @@ static int __init init_inodecache(void)
 	return squashfs_inode_cachep ? 0 : -ENOMEM;
 }
 
-
 static void destroy_inodecache(void)
 {
 	/*
@@ -433,7 +424,6 @@ static void destroy_inodecache(void)
 	rcu_barrier();
 	kmem_cache_destroy(squashfs_inode_cachep);
 }
-
 
 static int __init init_squashfs_fs(void)
 {
@@ -454,13 +444,11 @@ static int __init init_squashfs_fs(void)
 	return 0;
 }
 
-
 static void __exit exit_squashfs_fs(void)
 {
 	unregister_filesystem(&squashfs_fs_type);
 	destroy_inodecache();
 }
-
 
 static struct inode *squashfs_alloc_inode(struct super_block *sb)
 {
@@ -469,7 +457,6 @@ static struct inode *squashfs_alloc_inode(struct super_block *sb)
 
 	return ei ? &ei->vfs_inode : NULL;
 }
-
 
 static void squashfs_i_callback(struct rcu_head *head)
 {
@@ -481,7 +468,6 @@ static void squashfs_destroy_inode(struct inode *inode)
 {
 	call_rcu(&inode->i_rcu, squashfs_i_callback);
 }
-
 
 static struct file_system_type squashfs_fs_type = {
 	.owner = THIS_MODULE,

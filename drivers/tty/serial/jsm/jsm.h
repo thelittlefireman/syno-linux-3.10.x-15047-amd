@@ -87,7 +87,6 @@ do {								\
 #define BD_TRIBOOT	0x8
 #define BD_BADKME	0x80
 
-
 /* 4 extra for alignment play space */
 #define WRITEBUFLEN	((4096) + 4)
 
@@ -118,7 +117,6 @@ struct board_ops {
 	u32 (*get_uart_bytes_left) (struct jsm_channel *ch);
 	void (*send_immediate_char) (struct jsm_channel *ch, unsigned char);
 };
-
 
 /*
  *	Per-board information
@@ -185,7 +183,6 @@ struct jsm_board
 #define RQUEUESIZE	(RQUEUEMASK + 1)
 #define EQUEUESIZE	RQUEUESIZE
 
-
 /************************************************************************
  * Channel information structure.
  ************************************************************************/
@@ -231,7 +228,6 @@ struct jsm_channel {
 
 	u8		ch_r_watermark;	/* Receive Watermark */
 
-
 	u32		ch_stops_sent;	/* How many times I have sent a stop character
 					 * to try to stop the other guy sending.
 					 */
@@ -243,7 +239,6 @@ struct jsm_channel {
 	u64		ch_xon_sends;	/* Count of xons transmitted */
 	u64		ch_xoff_sends;	/* Count of xoffs transmitted */
 };
-
 
 /************************************************************************
  * Per channel/port NEO UART structure					*

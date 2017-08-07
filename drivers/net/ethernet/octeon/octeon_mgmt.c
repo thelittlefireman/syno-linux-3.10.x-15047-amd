@@ -404,7 +404,6 @@ static u64 octeon_mgmt_dequeue_rx_buffer(struct octeon_mgmt *p,
 	return re.d64;
 }
 
-
 static int octeon_mgmt_receive_one(struct octeon_mgmt *p)
 {
 	struct net_device *netdev = p->netdev;
@@ -415,7 +414,6 @@ static int octeon_mgmt_receive_one(struct octeon_mgmt *p)
 	struct sk_buff *skb_new;
 	union mgmt_port_ring_entry re2;
 	int rc = 1;
-
 
 	re.d64 = octeon_mgmt_dequeue_rx_buffer(p, &skb);
 	if (likely(re.s.code == RING_ENTRY_CODE_DONE)) {
@@ -935,7 +933,6 @@ static void octeon_mgmt_adjust_link(struct net_device *netdev)
 
 	spin_lock_irqsave(&p->lock, flags);
 
-
 	if (!p->phydev->link && p->last_link)
 		link_changed = -1;
 
@@ -1012,7 +1009,6 @@ static int octeon_mgmt_open(struct net_device *netdev)
 	p->tx_next = 0;
 	p->tx_next_clean = 0;
 	p->tx_current_fill = 0;
-
 
 	p->rx_ring = kzalloc(ring_size_to_bytes(OCTEON_MGMT_RX_RING_SIZE),
 			     GFP_KERNEL);
@@ -1448,7 +1444,7 @@ static int octeon_mgmt_probe(struct platform_device *pdev)
 
 	SET_NETDEV_DEV(netdev, &pdev->dev);
 
-	platform_set_drvdata(pdev, netdev);
+	dev_set_drvdata(&pdev->dev, netdev);
 	p = netdev_priv(netdev);
 	netif_napi_add(netdev, &p->napi, octeon_mgmt_napi_poll,
 		       OCTEON_MGMT_NAPI_WEIGHT);
@@ -1502,7 +1498,6 @@ static int octeon_mgmt_probe(struct platform_device *pdev)
 	p->agl_prt_ctl_phys = res_agl_prt_ctl->start;
 	p->agl_prt_ctl_size = resource_size(res_agl_prt_ctl);
 
-
 	if (!devm_request_mem_region(&pdev->dev, p->mix_phys, p->mix_size,
 				     res_mix->name)) {
 		dev_err(&pdev->dev, "request_mem_region (%s) failed\n",
@@ -1545,16 +1540,15 @@ static int octeon_mgmt_probe(struct platform_device *pdev)
 
 	mac = of_get_mac_address(pdev->dev.of_node);
 
-	if (mac)
+	if (mac && is_valid_ether_addr(mac))
 		memcpy(netdev->dev_addr, mac, ETH_ALEN);
 	else
 		eth_hw_addr_random(netdev);
 
 	p->phy_np = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
 
-	result = dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
-	if (result)
-		goto err;
+	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(64);
+	pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
 
 	netif_carrier_off(netdev);
 	result = register_netdev(netdev);
@@ -1571,7 +1565,7 @@ err:
 
 static int octeon_mgmt_remove(struct platform_device *pdev)
 {
-	struct net_device *netdev = platform_get_drvdata(pdev);
+	struct net_device *netdev = dev_get_drvdata(&pdev->dev);
 
 	unregister_netdev(netdev);
 	free_netdev(netdev);

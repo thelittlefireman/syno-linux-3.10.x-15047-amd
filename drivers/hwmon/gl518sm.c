@@ -4,7 +4,7 @@
  * Copyright (C) 1998, 1999 Frodo Looijaard <frodol@dds.nl> and
  * Kyosti Malkki <kmalkki@cc.hut.fi>
  * Copyright (C) 2004 Hong-Gunn Chew <hglinux@gunnet.org> and
- * Jean Delvare <jdelvare@suse.de>
+ * Jean Delvare <khali@linux-fr.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,7 +72,6 @@ enum chips { gl518sm_r00, gl518sm_r80 };
 #define GL518_REG_VIN2		0x13
 #define GL518_REG_VIN1		0x14
 #define GL518_REG_VDD		0x15
-
 
 /*
  * Conversions. Rounding and limit checking is only done on the TO_REG
@@ -583,7 +582,6 @@ exit_remove_files:
 		sysfs_remove_group(&client->dev.kobj, &gl518_group_r80);
 	return err;
 }
-
 
 /*
  * Called when we have found a new GL518SM.

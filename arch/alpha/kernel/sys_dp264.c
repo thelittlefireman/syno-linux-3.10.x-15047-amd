@@ -35,7 +35,6 @@
 #include "pci_impl.h"
 #include "machvec_impl.h"
 
-
 /* Note mask bit is true for ENABLED irqs.  */
 static unsigned long cached_irq_mask;
 /* dp264 boards handle at max four CPUs */
@@ -190,6 +189,9 @@ static struct irq_chip clipper_irq_type = {
 static void
 dp264_device_interrupt(unsigned long vector)
 {
+#if 1
+	printk("dp264_device_interrupt: NOT IMPLEMENTED YET!!\n");
+#else
 	unsigned long pld;
 	unsigned int i;
 
@@ -207,7 +209,12 @@ dp264_device_interrupt(unsigned long vector)
 			isa_device_interrupt(vector);
 		else
 			handle_irq(16 + i);
+#if 0
+		TSUNAMI_cchip->dir0.csr = 1UL << i; mb();
+		tmp = TSUNAMI_cchip->dir0.csr;
+#endif
 	}
+#endif
 }
 
 static void 
@@ -299,7 +306,6 @@ clipper_init_irq(void)
 	init_i8259a_irqs();
 	init_tsunami_irqs(&clipper_irq_type, 24, 63);
 }
-
 
 /*
  * PCI Fixup configuration.
@@ -534,7 +540,6 @@ webbrick_init_arch(void)
 	hose_head->sg_isa->align_entry = 4;
 	hose_head->sg_pci->align_entry = 4;
 }
-
 
 /*
  * The System Vectors

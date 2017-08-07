@@ -23,17 +23,14 @@
 #include <linux/irq.h>
 #include <linux/seq_file.h>
 #include <linux/of.h>
-#include <linux/of_fdt.h>
 #include <linux/interrupt.h>
 #include <linux/bug.h>
-#include <linux/pci.h>
 
 #include <asm/machdep.h>
 #include <asm/firmware.h>
 #include <asm/xics.h>
 #include <asm/rtas.h>
 #include <asm/opal.h>
-#include <asm/kexec.h>
 
 #include "powernv.h"
 
@@ -57,12 +54,6 @@ static void __init pnv_setup_arch(void)
 
 static void __init pnv_init_early(void)
 {
-	/*
-	 * Initialize the LPC bus now so that legacy serial
-	 * ports can be found on it
-	 */
-	opal_lpc_init();
-
 #ifdef CONFIG_HVC_OPAL
 	if (firmware_has_feature(FW_FEATURE_OPAL))
 		hvc_opal_init_early();
@@ -102,8 +93,6 @@ static void  __noreturn pnv_restart(char *cmd)
 {
 	long rc = OPAL_BUSY;
 
-	opal_notifier_disable();
-
 	while (rc == OPAL_BUSY || rc == OPAL_BUSY_EVENT) {
 		rc = opal_cec_reboot();
 		if (rc == OPAL_BUSY_EVENT)
@@ -118,8 +107,6 @@ static void  __noreturn pnv_restart(char *cmd)
 static void __noreturn pnv_power_off(void)
 {
 	long rc = OPAL_BUSY;
-
-	opal_notifier_disable();
 
 	while (rc == OPAL_BUSY || rc == OPAL_BUSY_EVENT) {
 		rc = opal_cec_power_down(0);
@@ -141,22 +128,13 @@ static void pnv_progress(char *s, unsigned short hex)
 {
 }
 
-static int pnv_dma_set_mask(struct device *dev, u64 dma_mask)
-{
-	if (dev_is_pci(dev))
-		return pnv_pci_dma_set_mask(to_pci_dev(dev), dma_mask);
-	return __dma_set_mask(dev, dma_mask);
-}
-
 static void pnv_shutdown(void)
 {
 	/* Let the PCI code clear up IODA tables */
 	pnv_pci_shutdown();
 
-	/*
-	 * Stop OPAL activity: Unregister all OPAL interrupts so they
-	 * don't fire up while we kexec and make sure all potentially
-	 * DMA'ing ops are complete (such as dump retrieval).
+	/* And unregister all OPAL interrupts so they don't fire
+	 * up while we kexec
 	 */
 	opal_shutdown();
 }
@@ -165,16 +143,6 @@ static void pnv_shutdown(void)
 static void pnv_kexec_cpu_down(int crash_shutdown, int secondary)
 {
 	xics_kexec_teardown_cpu(secondary);
-
-	/* Return secondary CPUs to firmware on OPAL v3 */
-	if (firmware_has_feature(FW_FEATURE_OPALv3) && secondary) {
-		mb();
-		get_paca()->kexec_state = KEXEC_STATE_REAL_MODE;
-		mb();
-
-		/* Return the CPU to OPAL */
-		opal_return_cpu();
-	}
 }
 #endif /* CONFIG_KEXEC */
 
@@ -187,7 +155,6 @@ static void __init pnv_setup_machdep_opal(void)
 	ppc_md.power_off = pnv_power_off;
 	ppc_md.halt = pnv_halt;
 	ppc_md.machine_check_exception = opal_machine_check;
-	ppc_md.mce_check_early_recovery = opal_mce_check_early_recovery;
 }
 
 #ifdef CONFIG_PPC_POWERNV_RTAS
@@ -236,7 +203,6 @@ define_machine(powernv) {
 	.machine_shutdown	= pnv_shutdown,
 	.power_save             = power7_idle,
 	.calibrate_decr		= generic_calibrate_decr,
-	.dma_set_mask		= pnv_dma_set_mask,
 #ifdef CONFIG_KEXEC
 	.kexec_cpu_down		= pnv_kexec_cpu_down,
 #endif

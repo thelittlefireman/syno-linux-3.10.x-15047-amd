@@ -178,7 +178,6 @@ __dma_alloc_coherent(struct device *dev, size_t size, dma_addr_t *handle, gfp_t 
 		}
 	}
 
-
 	size = PAGE_ALIGN(size);
 	limit = (mask + 1) & ~mask;
 	if ((limit && size >= limit) ||
@@ -287,7 +286,9 @@ void __dma_free_coherent(size_t size, void *vaddr)
 			pte_clear(&init_mm, addr, ptep);
 			if (pfn_valid(pfn)) {
 				struct page *page = pfn_to_page(pfn);
-				__free_reserved_page(page);
+
+				ClearPageReserved(page);
+				__free_page(page);
 			}
 		}
 		addr += PAGE_SIZE;

@@ -21,6 +21,7 @@
 #include <linux/ioport.h>
 #include <linux/slab.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
 #include <linux/proc_fs.h>
@@ -43,7 +44,6 @@
 #include <mach/at91_matrix.h>
 
 #include "at91_udc.h"
-
 
 /*
  * This controller is simple and PIO-only.  It's used in many AT91-series
@@ -248,7 +248,6 @@ static inline void create_debug_file(struct at91_udc *udc) {}
 static inline void remove_debug_file(struct at91_udc *udc) {}
 
 #endif
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -833,7 +832,7 @@ static void udc_reinit(struct at91_udc *udc)
 		ep->ep.desc = NULL;
 		ep->stopped = 0;
 		ep->fifo_bank = 0;
-		usb_ep_set_maxpacket_limit(&ep->ep, ep->maxpacket);
+		ep->ep.maxpacket = ep->maxpacket;
 		ep->creg = (void __iomem *) udc->udp_baseaddr + AT91_UDP_CSR(i);
 		/* initialize one queue per endpoint */
 		INIT_LIST_HEAD(&ep->queue);
@@ -869,13 +868,8 @@ static void clk_on(struct at91_udc *udc)
 	if (udc->clocked)
 		return;
 	udc->clocked = 1;
-
-	if (IS_ENABLED(CONFIG_COMMON_CLK)) {
-		clk_set_rate(udc->uclk, 48000000);
-		clk_prepare_enable(udc->uclk);
-	}
-	clk_prepare_enable(udc->iclk);
-	clk_prepare_enable(udc->fclk);
+	clk_enable(udc->iclk);
+	clk_enable(udc->fclk);
 }
 
 static void clk_off(struct at91_udc *udc)
@@ -884,10 +878,8 @@ static void clk_off(struct at91_udc *udc)
 		return;
 	udc->clocked = 0;
 	udc->gadget.speed = USB_SPEED_UNKNOWN;
-	clk_disable_unprepare(udc->fclk);
-	clk_disable_unprepare(udc->iclk);
-	if (IS_ENABLED(CONFIG_COMMON_CLK))
-		clk_disable_unprepare(udc->uclk);
+	clk_disable(udc->fclk);
+	clk_disable(udc->iclk);
 }
 
 /*
@@ -1703,19 +1695,9 @@ static int at91udc_probe(struct platform_device *pdev)
 	int		retval;
 	struct resource	*res;
 
-	if (!dev_get_platdata(dev) && !pdev->dev.of_node) {
+	if (!dev->platform_data && !pdev->dev.of_node) {
 		/* small (so we copy it) but critical! */
 		DBG("missing platform_data\n");
-		return -ENODEV;
-	}
-
-	if (pdev->num_resources != 2) {
-		DBG("invalid num_resources\n");
-		return -ENODEV;
-	}
-	if ((pdev->resource[0].flags != IORESOURCE_MEM)
-			|| (pdev->resource[1].flags != IORESOURCE_IRQ)) {
-		DBG("invalid resource type\n");
 		return -ENODEV;
 	}
 
@@ -1731,10 +1713,10 @@ static int at91udc_probe(struct platform_device *pdev)
 	/* init software state */
 	udc = &controller;
 	udc->gadget.dev.parent = dev;
-	if (IS_ENABLED(CONFIG_OF) && pdev->dev.of_node)
+	if (pdev->dev.of_node)
 		at91udc_of_init(udc, pdev->dev.of_node);
 	else
-		memcpy(&udc->board, dev_get_platdata(dev),
+		memcpy(&udc->board, dev->platform_data,
 		       sizeof(struct at91_udc_data));
 	udc->pdev = pdev;
 	udc->enabled = 0;
@@ -1780,24 +1762,20 @@ static int at91udc_probe(struct platform_device *pdev)
 	/* get interface and function clocks */
 	udc->iclk = clk_get(dev, "udc_clk");
 	udc->fclk = clk_get(dev, "udpck");
-	if (IS_ENABLED(CONFIG_COMMON_CLK))
-		udc->uclk = clk_get(dev, "usb_clk");
-	if (IS_ERR(udc->iclk) || IS_ERR(udc->fclk) ||
-	    (IS_ENABLED(CONFIG_COMMON_CLK) && IS_ERR(udc->uclk))) {
+	if (IS_ERR(udc->iclk) || IS_ERR(udc->fclk)) {
 		DBG("clocks missing\n");
 		retval = -ENODEV;
+		/* NOTE: we "know" here that refcounts on these are NOPs */
 		goto fail1;
 	}
 
 	/* don't do anything until we have both gadget driver and VBUS */
-	retval = clk_prepare_enable(udc->iclk);
-	if (retval)
-		goto fail1;
+	clk_enable(udc->iclk);
 	at91_udp_write(udc, AT91_UDP_TXVC, AT91_UDP_TXVC_TXVDIS);
 	at91_udp_write(udc, AT91_UDP_IDR, 0xffffffff);
 	/* Clear all pending interrupts - UDP may be used by bootloader. */
 	at91_udp_write(udc, AT91_UDP_ICR, 0xffffffff);
-	clk_disable_unprepare(udc->iclk);
+	clk_disable(udc->iclk);
 
 	/* request UDC and maybe VBUS irqs */
 	udc->udp_irq = platform_get_irq(pdev, 0);
@@ -1859,12 +1837,6 @@ fail3:
 fail2:
 	free_irq(udc->udp_irq, udc);
 fail1:
-	if (IS_ENABLED(CONFIG_COMMON_CLK) && !IS_ERR(udc->uclk))
-		clk_put(udc->uclk);
-	if (!IS_ERR(udc->fclk))
-		clk_put(udc->fclk);
-	if (!IS_ERR(udc->iclk))
-		clk_put(udc->iclk);
 	iounmap(udc->udp_baseaddr);
 fail0a:
 	if (cpu_is_at91rm9200())
@@ -1908,8 +1880,6 @@ static int __exit at91udc_remove(struct platform_device *pdev)
 
 	clk_put(udc->iclk);
 	clk_put(udc->fclk);
-	if (IS_ENABLED(CONFIG_COMMON_CLK))
-		clk_put(udc->uclk);
 
 	return 0;
 }

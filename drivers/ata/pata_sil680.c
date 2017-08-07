@@ -25,6 +25,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -71,7 +72,6 @@ static unsigned long sil680_seldev(struct ata_port *ap, struct ata_device *adev,
 	base |= adev->devno ? 2 : 0;
 	return base;
 }
-
 
 /**
  *	sil680_cable_detect	-	cable detection
@@ -230,7 +230,6 @@ static bool sil680_sff_irq_check(struct ata_port *ap)
 static struct scsi_host_template sil680_sht = {
 	ATA_BMDMA_SHT(DRV_NAME),
 };
-
 
 static struct ata_port_operations sil680_port_ops = {
 	.inherits		= &ata_bmdma32_port_ops,
@@ -406,7 +405,7 @@ use_ioports:
 #ifdef CONFIG_PM
 static int sil680_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int try_mmio, rc;
 
 	rc = ata_pci_device_do_resume(pdev);

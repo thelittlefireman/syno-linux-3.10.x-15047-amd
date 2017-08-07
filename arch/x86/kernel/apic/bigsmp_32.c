@@ -126,7 +126,6 @@ static int hp_ht_bigsmp(const struct dmi_system_id *d)
 	return 0;
 }
 
-
 static const struct dmi_system_id bigsmp_dmi_table[] = {
 	{ hp_ht_bigsmp, "HP ProLiant DL760 G2",
 		{	DMI_MATCH(DMI_BIOS_VENDOR, "HP"),
@@ -199,7 +198,8 @@ static struct apic apic_bigsmp = {
 	.trampoline_phys_low		= DEFAULT_TRAMPOLINE_PHYS_LOW,
 	.trampoline_phys_high		= DEFAULT_TRAMPOLINE_PHYS_HIGH,
 
-	.wait_for_init_deassert		= true,
+	.wait_for_init_deassert		= default_wait_for_init_deassert,
+
 	.smp_callin_clear_local_apic	= NULL,
 	.inquire_remote_apic		= default_inquire_remote_apic,
 

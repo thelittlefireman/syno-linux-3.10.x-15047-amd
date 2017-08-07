@@ -11,7 +11,6 @@
 
 #include <uapi/asm/siginfo.h>
 
-
 /*
  * Duplicated here because of <asm-generic/siginfo.h> braindamage ...
  */

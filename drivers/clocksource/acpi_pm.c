@@ -71,7 +71,6 @@ static struct clocksource clocksource_acpi_pm = {
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
 };
 
-
 #ifdef CONFIG_PCI
 static int acpi_pm_good;
 static int __init acpi_pm_good_setup(char *__str)
@@ -200,14 +199,14 @@ static int __init init_acpi_pm_clocksource(void)
 			if ((value2 < value1) && ((value2) < 0xFFF))
 				break;
 			printk(KERN_INFO "PM-Timer had inconsistent results:"
-			       " %#llx, %#llx - aborting.\n",
+			       " 0x%#llx, 0x%#llx - aborting.\n",
 			       value1, value2);
 			pmtmr_ioport = 0;
 			return -EINVAL;
 		}
 		if (i == ACPI_PM_READ_CHECKS) {
 			printk(KERN_INFO "PM-Timer failed consistency check "
-			       " (%#llx) - aborting.\n", value1);
+			       " (0x%#llx) - aborting.\n", value1);
 			pmtmr_ioport = 0;
 			return -ENODEV;
 		}

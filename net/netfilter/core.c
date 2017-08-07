@@ -146,7 +146,7 @@ unsigned int nf_iterate(struct list_head *head,
 		/* Optimization: we don't need to hold module
 		   reference here, since function can't sleep. --RR */
 repeat:
-		verdict = (*elemp)->hook(*elemp, skb, indev, outdev, okfn);
+		verdict = (*elemp)->hook(hook, skb, indev, outdev, okfn);
 		if (verdict != NF_ACCEPT) {
 #ifdef CONFIG_NETFILTER_DEBUG
 			if (unlikely((verdict & NF_VERDICT_MASK)
@@ -163,7 +163,6 @@ repeat:
 	}
 	return NF_ACCEPT;
 }
-
 
 /* Returns 1 if okfn() needs to be executed by the caller,
  * -EPERM for NF_DROP, 0 otherwise. */
@@ -208,7 +207,6 @@ next_hook:
 }
 EXPORT_SYMBOL(nf_hook_slow);
 
-
 int skb_make_writable(struct sk_buff *skb, unsigned int writable_len)
 {
 	if (writable_len > skb->len)
@@ -234,13 +232,12 @@ EXPORT_SYMBOL(skb_make_writable);
 /* This does not belong here, but locally generated errors need it if connection
    tracking in use: without this, connection may not be in hash table, and hence
    manufactured ICMP or RST packets will not be associated with it. */
-void (*ip_ct_attach)(struct sk_buff *, const struct sk_buff *)
-		__rcu __read_mostly;
+void (*ip_ct_attach)(struct sk_buff *, struct sk_buff *) __rcu __read_mostly;
 EXPORT_SYMBOL(ip_ct_attach);
 
-void nf_ct_attach(struct sk_buff *new, const struct sk_buff *skb)
+void nf_ct_attach(struct sk_buff *new, struct sk_buff *skb)
 {
-	void (*attach)(struct sk_buff *, const struct sk_buff *);
+	void (*attach)(struct sk_buff *, struct sk_buff *);
 
 	if (skb->nfct) {
 		rcu_read_lock();
@@ -305,26 +302,17 @@ static struct pernet_operations netfilter_net_ops = {
 	.exit = netfilter_net_exit,
 };
 
-int __init netfilter_init(void)
+void __init netfilter_init(void)
 {
-	int i, h, ret;
-
+	int i, h;
 	for (i = 0; i < ARRAY_SIZE(nf_hooks); i++) {
 		for (h = 0; h < NF_MAX_HOOKS; h++)
 			INIT_LIST_HEAD(&nf_hooks[i][h]);
 	}
 
-	ret = register_pernet_subsys(&netfilter_net_ops);
-	if (ret < 0)
-		goto err;
+	if (register_pernet_subsys(&netfilter_net_ops) < 0)
+		panic("cannot create netfilter proc entry");
 
-	ret = netfilter_log_init();
-	if (ret < 0)
-		goto err_pernet;
-
-	return 0;
-err_pernet:
-	unregister_pernet_subsys(&netfilter_net_ops);
-err:
-	return ret;
+	if (netfilter_log_init() < 0)
+		panic("cannot initialize nf_log");
 }

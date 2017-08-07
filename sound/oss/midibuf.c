@@ -20,7 +20,6 @@
 
 #include "sound_config.h"
 
-
 /*
  * Don't make MAX_QUEUE_SIZE larger than 4000
  */
@@ -48,7 +47,6 @@ static struct midi_buf *midi_in_buf[MAX_MIDI_DEV] = {NULL};
 static struct midi_parms parms[MAX_MIDI_DEV];
 
 static void midi_poll(unsigned long dummy);
-
 
 static DEFINE_TIMER(poll_timer, midi_poll, 0, 0);
 
@@ -86,8 +84,9 @@ static void drain_midi_queue(int dev)
 	 */
 
 	if (midi_devs[dev]->buffer_status != NULL)
-		wait_event_interruptible_timeout(midi_sleeper[dev],
-				!midi_devs[dev]->buffer_status(dev), HZ/10);
+		while (!signal_pending(current) && midi_devs[dev]->buffer_status(dev)) 
+			interruptible_sleep_on_timeout(&midi_sleeper[dev],
+						       HZ/10);
 }
 
 static void midi_input_intr(int dev, unsigned char data)
@@ -232,8 +231,8 @@ void MIDIbuf_release(int dev, struct file *file)
 							   * devices
 							 */
 
-		wait_event_interruptible(midi_sleeper[dev],
-					 !DATA_AVAIL(midi_out_buf[dev]));
+		while (!signal_pending(current) && DATA_AVAIL(midi_out_buf[dev]))
+			  interruptible_sleep_on(&midi_sleeper[dev]);
 		/*
 		 *	Sync
 		 */
@@ -281,8 +280,8 @@ int MIDIbuf_write(int dev, struct file *file, const char __user *buf, int count)
 				goto out;
 			}
 
-			if (wait_event_interruptible(midi_sleeper[dev],
-						SPACE_AVAIL(midi_out_buf[dev])))
+			interruptible_sleep_on(&midi_sleeper[dev]);
+			if (signal_pending(current)) 
 			{
 				c = -EINTR;
 				goto out;
@@ -309,7 +308,6 @@ out:
 	return c;
 }
 
-
 int MIDIbuf_read(int dev, struct file *file, char __user *buf, int count)
 {
 	int n, c = 0;
@@ -324,9 +322,8 @@ int MIDIbuf_read(int dev, struct file *file, char __user *buf, int count)
  			c = -EAGAIN;
 			goto out;
  		}
-		wait_event_interruptible_timeout(input_sleeper[dev],
-						 DATA_AVAIL(midi_in_buf[dev]),
-						 parms[dev].prech_timeout);
+		interruptible_sleep_on_timeout(&input_sleeper[dev],
+					       parms[dev].prech_timeout);
 
 		if (signal_pending(current))
 			c = -EINTR;	/* The user is getting restless */
@@ -414,7 +411,6 @@ unsigned int MIDIbuf_poll(int dev, struct file *file, poll_table * wait)
 	return mask;
 }
 
-
 int MIDIbuf_avail(int dev)
 {
 	if (midi_in_buf[dev])
@@ -422,4 +418,3 @@ int MIDIbuf_avail(int dev)
 	return 0;
 }
 EXPORT_SYMBOL(MIDIbuf_avail);
-

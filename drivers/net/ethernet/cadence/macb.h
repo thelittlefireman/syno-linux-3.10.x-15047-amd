@@ -186,7 +186,6 @@
 #define GEM_DDRP_OFFSET				24
 #define GEM_DDRP_SIZE				1
 
-
 /* Bitfields in NSR */
 #define MACB_NSR_LINK_OFFSET			0
 #define MACB_NSR_LINK_SIZE			1
@@ -545,24 +544,12 @@ struct gem_stats {
 	u32	rx_udp_checksum_errors;
 };
 
-struct macb;
-
-struct macb_or_gem_ops {
-	int	(*mog_alloc_rx_buffers)(struct macb *bp);
-	void	(*mog_free_rx_buffers)(struct macb *bp);
-	void	(*mog_init_rings)(struct macb *bp);
-	int	(*mog_rx)(struct macb *bp, int budget);
-};
-
 struct macb {
 	void __iomem		*regs;
 
 	unsigned int		rx_tail;
-	unsigned int		rx_prepared_head;
 	struct macb_dma_desc	*rx_ring;
-	struct sk_buff		**rx_skbuff;
 	void			*rx_buffers;
-	size_t			rx_buffer_size;
 
 	unsigned int		tx_head, tx_tail;
 	struct macb_dma_desc	*tx_ring;
@@ -572,7 +559,6 @@ struct macb {
 	struct platform_device	*pdev;
 	struct clk		*pclk;
 	struct clk		*hclk;
-	struct clk		*tx_clk;
 	struct net_device	*dev;
 	struct napi_struct	napi;
 	struct work_struct	tx_error_task;
@@ -585,8 +571,6 @@ struct macb {
 	dma_addr_t		rx_ring_dma;
 	dma_addr_t		tx_ring_dma;
 	dma_addr_t		rx_buffers_dma;
-
-	struct macb_or_gem_ops	macbgem_ops;
 
 	struct mii_bus		*mii_bus;
 	struct phy_device	*phy_dev;

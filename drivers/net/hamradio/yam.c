@@ -244,7 +244,6 @@ static DEFINE_TIMER(yam_timer, NULL, 0, 0);
 #define ENABLE_TXINT	IER_MSR			/* enable uart ms interrupt during tx */
 #define ENABLE_RTXINT	(IER_RX|IER_MSR)	/* full duplex operations */
 
-
 /*************************************************************************
 * CRC Tables
 ************************************************************************/
@@ -467,7 +466,6 @@ static int fpga_download(int iobase, int bitrate)
 	return (rc & MSR_DSR) ? 0 : -1;
 }
 
-
 /************************************************************************
 * Serial port init 
 ************************************************************************/
@@ -494,7 +492,6 @@ static void yam_set_uart(struct net_device *dev)
 
 	outb(ENABLE_RTXINT, IER(dev->base_addr));
 }
-
 
 /* --------------------------------------------------------------------- */
 
@@ -854,7 +851,6 @@ static const struct file_operations yam_info_fops = {
 
 #endif
 
-
 /* --------------------------------------------------------------------- */
 
 static int yam_open(struct net_device *dev)
@@ -888,7 +884,7 @@ static int yam_open(struct net_device *dev)
 		goto out_release_base;
 	}
 	outb(0, IER(dev->base_addr));
-	if (request_irq(dev->irq, yam_interrupt, IRQF_SHARED, dev->name, dev)) {
+	if (request_irq(dev->irq, yam_interrupt, IRQF_DISABLED | IRQF_SHARED, dev->name, dev)) {
 		printk(KERN_ERR "%s: irq %d busy\n", dev->name, dev->irq);
 		ret = -EBUSY;
 		goto out_release_base;
@@ -975,6 +971,7 @@ static int yam_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 			return -EINVAL;		/* Cannot change this parameter when up */
 		if ((ym = kmalloc(sizeof(struct yamdrv_ioctl_mcs), GFP_KERNEL)) == NULL)
 			return -ENOBUFS;
+		ym->bitrate = 9600;
 		if (copy_from_user(ym, ifr->ifr_data, sizeof(struct yamdrv_ioctl_mcs))) {
 			kfree(ym);
 			return -EFAULT;
@@ -1184,7 +1181,7 @@ static void __exit yam_cleanup_driver(void)
 	struct yam_mcs *p;
 	int i;
 
-	del_timer_sync(&yam_timer);
+	del_timer(&yam_timer);
 	for (i = 0; i < NR_PORTS; i++) {
 		struct net_device *dev = yam_devs[i];
 		if (dev) {
@@ -1214,4 +1211,3 @@ module_init(yam_init_driver);
 module_exit(yam_cleanup_driver);
 
 /* --------------------------------------------------------------------- */
-

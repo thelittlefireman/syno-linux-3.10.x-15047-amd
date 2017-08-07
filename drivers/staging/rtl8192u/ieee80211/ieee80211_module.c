@@ -94,7 +94,6 @@ static inline void ieee80211_networks_initialize(struct ieee80211_device *ieee)
 		list_add_tail(&ieee->networks[i].list, &ieee->network_free_list);
 }
 
-
 struct net_device *alloc_ieee80211(int sizeof_priv)
 {
 	struct ieee80211_device *ieee;
@@ -120,7 +119,6 @@ struct net_device *alloc_ieee80211(int sizeof_priv)
 		goto failed;
 	}
 	ieee80211_networks_initialize(ieee);
-
 
 	/* Default fragmentation threshold is maximum payload size */
 	ieee->fts = DEFAULT_FTS;
@@ -190,7 +188,6 @@ struct net_device *alloc_ieee80211(int sizeof_priv)
 	return NULL;
 }
 
-
 void free_ieee80211(struct net_device *dev)
 {
 	struct ieee80211_device *ieee = netdev_priv(dev);
@@ -241,7 +238,7 @@ static int debug = \
 			    //IEEE80211_DL_DATA	|
 			    IEEE80211_DL_ERR	  //awayls open this flags to show error out
 			    ;
-static struct proc_dir_entry *ieee80211_proc;
+struct proc_dir_entry *ieee80211_proc;
 
 static int show_debug_level(struct seq_file *m, void *v)
 {
@@ -268,8 +265,7 @@ static const struct file_operations fops = {
 	.open = open_debug_level,
 	.read = seq_read,
 	.llseek = seq_lseek,
-	.write = write_debug_level,
-	.release = single_release,
+	.write = write_debug_level
 };
 
 int __init ieee80211_debug_init(void)

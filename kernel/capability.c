@@ -7,8 +7,6 @@
  * 30 May 2002:	Cleanup, Robert M. Love <rml@tech9.net>
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/audit.h>
 #include <linux/capability.h>
 #include <linux/mm.h>
@@ -44,10 +42,15 @@ __setup("no_file_caps", file_caps_disable);
 
 static void warn_legacy_capability_use(void)
 {
-	char name[sizeof(current->comm)];
+	static int warned;
+	if (!warned) {
+		char name[sizeof(current->comm)];
 
-	pr_info_once("warning: `%s' uses 32-bit capabilities (legacy support in use)\n",
-		     get_task_comm(name, current));
+		printk(KERN_INFO "warning: `%s' uses 32-bit capabilities"
+		       " (legacy support in use)\n",
+		       get_task_comm(name, current));
+		warned = 1;
+	}
 }
 
 /*
@@ -68,10 +71,16 @@ static void warn_legacy_capability_use(void)
 
 static void warn_deprecated_v2(void)
 {
-	char name[sizeof(current->comm)];
+	static int warned;
 
-	pr_info_once("warning: `%s' uses deprecated v2 capabilities in a way that may be insecure\n",
-		     get_task_comm(name, current));
+	if (!warned) {
+		char name[sizeof(current->comm)];
+
+		printk(KERN_INFO "warning: `%s' uses deprecated v2"
+		       " capabilities in a way that may be insecure.\n",
+		       get_task_comm(name, current));
+		warned = 1;
+	}
 }
 
 /*
@@ -259,6 +268,10 @@ SYSCALL_DEFINE2(capset, cap_user_header_t, header, const cap_user_data_t, data)
 		i++;
 	}
 
+	effective.cap[CAP_LAST_U32] &= CAP_LAST_U32_VALID_MASK;
+	permitted.cap[CAP_LAST_U32] &= CAP_LAST_U32_VALID_MASK;
+	inheritable.cap[CAP_LAST_U32] &= CAP_LAST_U32_VALID_MASK;
+
 	new = prepare_creds();
 	if (!new)
 		return -ENOMEM;
@@ -268,7 +281,7 @@ SYSCALL_DEFINE2(capset, cap_user_header_t, header, const cap_user_data_t, data)
 	if (ret < 0)
 		goto error;
 
-	audit_log_capset(new, current_cred());
+	audit_log_capset(pid, new, current_cred());
 
 	return commit_creds(new);
 
@@ -371,7 +384,7 @@ bool has_capability_noaudit(struct task_struct *t, int cap)
 bool ns_capable(struct user_namespace *ns, int cap)
 {
 	if (unlikely(!cap_valid(cap))) {
-		pr_crit("capable() called with invalid cap=%u\n", cap);
+		printk(KERN_CRIT "capable() called with invalid cap=%u\n", cap);
 		BUG();
 	}
 
@@ -424,23 +437,30 @@ bool capable(int cap)
 EXPORT_SYMBOL(capable);
 
 /**
- * inode_capable - Check superior capability over inode
- * @inode: The inode in question
+ * nsown_capable - Check superior capability to one's own user_ns
  * @cap: The capability in question
  *
  * Return true if the current task has the given superior capability
- * targeted at it's own user namespace and that the given inode is owned
- * by the current user namespace or a child namespace.
- *
- * Currently we check to see if an inode is owned by the current
- * user namespace by seeing if the inode's owner maps into the
- * current user namespace.
- *
+ * targeted at its own user namespace.
  */
-bool inode_capable(const struct inode *inode, int cap)
+bool nsown_capable(int cap)
+{
+	return ns_capable(current_user_ns(), cap);
+}
+
+/**
+ * capable_wrt_inode_uidgid - Check nsown_capable and uid and gid mapped
+ * @inode: The inode in question
+ * @cap: The capability in question
+ *
+ * Return true if the current task has the given capability targeted at
+ * its own user namespace and that the given inode's uid and gid are
+ * mapped into the current user namespace.
+ */
+bool capable_wrt_inode_uidgid(const struct inode *inode, int cap)
 {
 	struct user_namespace *ns = current_user_ns();
 
-	return ns_capable(ns, cap) && kuid_has_mapping(ns, inode->i_uid);
+	return ns_capable(ns, cap) && kuid_has_mapping(ns, inode->i_uid) &&
+		kgid_has_mapping(ns, inode->i_gid);
 }
-EXPORT_SYMBOL(inode_capable);

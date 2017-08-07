@@ -53,7 +53,6 @@ scdrv_event_interrupt(int irq, void *subch_data)
 	return IRQ_HANDLED;
 }
 
-
 /*
  * scdrv_parse_event
  *
@@ -105,7 +104,6 @@ scdrv_parse_event(char *event, int *src, int *code, int *esp_code, char *desc)
 
 	return 0;
 }
-
 
 /*
  * scdrv_event_severity
@@ -173,7 +171,6 @@ scdrv_event_severity(int code)
 	return pk_severity;
 }
 
-
 /*
  * scdrv_dispatch_event
  *
@@ -222,7 +219,6 @@ scdrv_dispatch_event(char *event, int len)
 	}
 }
 
-
 /*
  * scdrv_event
  *
@@ -255,7 +251,6 @@ scdrv_event(unsigned long dummy)
 	}
 	spin_unlock_irqrestore(&sd->sd_rlock, flags);
 }
-
 
 /*
  * scdrv_event_init
@@ -292,7 +287,8 @@ scdrv_event_init(struct sysctl_data_s *scd)
 
 	/* hook event subchannel up to the system controller interrupt */
 	rv = request_irq(SGI_UART_VECTOR, scdrv_event_interrupt,
-			 IRQF_SHARED, "system controller events", event_sd);
+			 IRQF_SHARED | IRQF_DISABLED,
+			 "system controller events", event_sd);
 	if (rv) {
 		printk(KERN_WARNING "%s: irq request failed (%d)\n",
 		       __func__, rv);

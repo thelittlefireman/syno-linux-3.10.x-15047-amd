@@ -63,7 +63,6 @@ static void __init smsc_setup(char **cmdline_p)
 	outb_p(CONFIG_EXIT, CONFIG_PORT);
 }
 
-
 static struct resource cf_ide_resources[] = {
 	[0] = {
 		.start  = PA_MRSHPC_IO + 0x1f0,
@@ -128,8 +127,8 @@ static struct resource sh_eth0_resources[] = {
 };
 
 static struct platform_device sh_eth0_device = {
-	.name = "sh771x-ether",
-	.id = 0,
+	.name = "sh-eth",
+	.id	= 0,
 	.dev = {
 		.platform_data = PHY_ID,
 	},
@@ -151,8 +150,8 @@ static struct resource sh_eth1_resources[] = {
 };
 
 static struct platform_device sh_eth1_device = {
-	.name = "sh771x-ether",
-	.id = 1,
+	.name = "sh-eth",
+	.id	= 1,
 	.dev = {
 		.platform_data = PHY_ID,
 	},

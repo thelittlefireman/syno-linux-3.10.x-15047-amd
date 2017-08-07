@@ -20,10 +20,9 @@
 #include <linux/interrupt.h>
 
 #include "mei_dev.h"
-#include "hbm.h"
-
 #include "hw-me.h"
-#include "hw-me-regs.h"
+
+#include "hbm.h"
 
 /**
  * mei_me_reg_read - Reads 32bit data from the mei device
@@ -38,7 +37,6 @@ static inline u32 mei_me_reg_read(const struct mei_me_hw *hw,
 {
 	return ioread32(hw->mem_addr + offset);
 }
-
 
 /**
  * mei_me_reg_write - Writes 32bit data to the mei device
@@ -100,7 +98,6 @@ static inline void mei_hcsr_set(struct mei_me_hw *hw, u32 hcsr)
 	hcsr &= ~H_IS;
 	mei_me_reg_write(hw, H_CSR, hcsr);
 }
-
 
 /**
  * mei_me_hw_config - configure hw dependent settings
@@ -164,6 +161,9 @@ static void mei_me_hw_reset_release(struct mei_device *dev)
 	hcsr |= H_IG;
 	hcsr &= ~H_RST;
 	mei_hcsr_set(hw, hcsr);
+
+	/* complete this write before we set host ready on another CPU */
+	mmiowb();
 }
 /**
  * mei_me_hw_reset - resets fw via mei csr register.
@@ -171,7 +171,7 @@ static void mei_me_hw_reset_release(struct mei_device *dev)
  * @dev: the device structure
  * @intr_enable: if interrupt should be enabled after reset.
  */
-static int mei_me_hw_reset(struct mei_device *dev, bool intr_enable)
+static void mei_me_hw_reset(struct mei_device *dev, bool intr_enable)
 {
 	struct mei_me_hw *hw = to_me_hw(dev);
 	u32 hcsr = mei_hcsr_read(hw);
@@ -183,12 +183,25 @@ static int mei_me_hw_reset(struct mei_device *dev, bool intr_enable)
 	else
 		hcsr &= ~H_IE;
 
+	dev->recvd_hw_ready = false;
 	mei_me_reg_write(hw, H_CSR, hcsr);
+
+	/*
+	 * Host reads the H_CSR once to ensure that the
+	 * posted write to H_CSR completes.
+	 */
+	hcsr = mei_hcsr_read(hw);
+
+	if ((hcsr & H_RST) == 0)
+		dev_warn(&dev->pdev->dev, "H_RST is not set = 0x%08X", hcsr);
+
+	if ((hcsr & H_RDY) == H_RDY)
+		dev_warn(&dev->pdev->dev, "H_RDY is not cleared 0x%08X", hcsr);
 
 	if (intr_enable == false)
 		mei_me_hw_reset_release(dev);
 
-	return 0;
+	dev_dbg(&dev->pdev->dev, "current HCSR = 0x%08x.\n", mei_hcsr_read(hw));
 }
 
 /**
@@ -201,6 +214,7 @@ static int mei_me_hw_reset(struct mei_device *dev, bool intr_enable)
 static void mei_me_host_set_ready(struct mei_device *dev)
 {
 	struct mei_me_hw *hw = to_me_hw(dev);
+	hw->host_hw_state = mei_hcsr_read(hw);
 	hw->host_hw_state |= H_IE | H_IG | H_RDY;
 	mei_hcsr_set(hw, hw->host_hw_state);
 }
@@ -233,18 +247,15 @@ static bool mei_me_hw_is_ready(struct mei_device *dev)
 static int mei_me_hw_ready_wait(struct mei_device *dev)
 {
 	int err;
-	if (mei_me_hw_is_ready(dev))
-		return 0;
 
-	dev->recvd_hw_ready = false;
 	mutex_unlock(&dev->device_lock);
 	err = wait_event_interruptible_timeout(dev->wait_hw_ready,
 			dev->recvd_hw_ready,
-			mei_secs_to_jiffies(MEI_HW_READY_TIMEOUT));
+			mei_secs_to_jiffies(MEI_INTEROP_TIMEOUT));
 	mutex_lock(&dev->device_lock);
 	if (!err && !dev->recvd_hw_ready) {
 		if (!err)
-			err = -ETIME;
+			err = -ETIMEDOUT;
 		dev_err(&dev->pdev->dev,
 			"wait hw ready failed. status = %d\n", err);
 		return err;
@@ -264,7 +275,6 @@ static int mei_me_hw_start(struct mei_device *dev)
 	mei_me_host_set_ready(dev);
 	return ret;
 }
-
 
 /**
  * mei_hbuf_filled_slots - gets number of device filled buffer slots
@@ -303,7 +313,7 @@ static bool mei_me_hbuf_is_empty(struct mei_device *dev)
  *
  * @dev: the device structure
  *
- * returns -EOVERFLOW if overflow, otherwise empty slots count
+ * returns -1(ESLOTS_OVERFLOW) if overflow, otherwise empty slots count
  */
 static int mei_me_hbuf_empty_slots(struct mei_device *dev)
 {
@@ -324,9 +334,8 @@ static size_t mei_me_hbuf_max_len(const struct mei_device *dev)
 	return dev->hbuf_depth * sizeof(u32) - sizeof(struct mei_msg_hdr);
 }
 
-
 /**
- * mei_me_write_message - writes a message to mei device.
+ * mei_write_message - writes a message to mei device.
  *
  * @dev: the device structure
  * @header: mei HECI header of message
@@ -354,7 +363,7 @@ static int mei_me_write_message(struct mei_device *dev,
 
 	dw_cnt = mei_data2slots(length);
 	if (empty_slots < 0 || dw_cnt > empty_slots)
-		return -EMSGSIZE;
+		return -EIO;
 
 	mei_me_reg_write(hw, H_CB_WW, *((u32 *) header));
 
@@ -381,7 +390,7 @@ static int mei_me_write_message(struct mei_device *dev,
  *
  * @dev: the device structure
  *
- * returns -EOVERFLOW if overflow, otherwise filled slots count
+ * returns -1(ESLOTS_OVERFLOW) if overflow, otherwise filled slots count
  */
 static int mei_me_count_full_read_slots(struct mei_device *dev)
 {
@@ -469,7 +478,7 @@ irqreturn_t mei_me_irq_thread_handler(int irq, void *dev_id)
 	struct mei_device *dev = (struct mei_device *) dev_id;
 	struct mei_cl_cb complete_list;
 	s32 slots;
-	int rets = 0;
+	int rets;
 
 	dev_dbg(&dev->pdev->dev, "function called after ISR to handle the interrupt processing.\n");
 	/* initialize our complete list */
@@ -482,57 +491,51 @@ irqreturn_t mei_me_irq_thread_handler(int irq, void *dev_id)
 		mei_clear_interrupts(dev);
 
 	/* check if ME wants a reset */
-	if (!mei_hw_is_ready(dev) && dev->dev_state != MEI_DEV_RESETTING) {
-		dev_warn(&dev->pdev->dev, "FW not ready: resetting.\n");
-		schedule_work(&dev->reset_work);
-		goto end;
+	if (!mei_hw_is_ready(dev) &&
+	    dev->dev_state != MEI_DEV_RESETTING &&
+	    dev->dev_state != MEI_DEV_INITIALIZING &&
+	    dev->dev_state != MEI_DEV_POWER_DOWN &&
+	    dev->dev_state != MEI_DEV_POWER_UP) {
+		dev_dbg(&dev->pdev->dev, "FW not ready.\n");
+		mei_reset(dev, 1);
+		mutex_unlock(&dev->device_lock);
+		return IRQ_HANDLED;
 	}
 
 	/*  check if we need to start the dev */
 	if (!mei_host_is_ready(dev)) {
 		if (mei_hw_is_ready(dev)) {
+			mei_me_hw_reset_release(dev);
 			dev_dbg(&dev->pdev->dev, "we need to start the dev.\n");
 
 			dev->recvd_hw_ready = true;
 			wake_up_interruptible(&dev->wait_hw_ready);
 		} else {
-
-			dev_dbg(&dev->pdev->dev, "Reset Completed.\n");
-			mei_me_hw_reset_release(dev);
+			dev_dbg(&dev->pdev->dev, "Spurious Interrupt\n");
 		}
 		goto end;
 	}
 	/* check slots available for reading */
 	slots = mei_count_full_read_slots(dev);
 	while (slots > 0) {
-		dev_dbg(&dev->pdev->dev, "slots to read = %08x\n", slots);
-		rets = mei_irq_read_handler(dev, &complete_list, &slots);
-		/* There is a race between ME write and interrupt delivery:
-		 * Not all data is always available immediately after the
-		 * interrupt, so try to read again on the next interrupt.
-		 */
-		if (rets == -ENODATA)
+		/* we have urgent data to send so break the read */
+		if (dev->wr_ext_msg.hdr.length)
 			break;
-
-		if (rets && dev->dev_state != MEI_DEV_RESETTING) {
-			dev_err(&dev->pdev->dev, "mei_irq_read_handler ret = %d.\n",
-						rets);
-			schedule_work(&dev->reset_work);
+		dev_dbg(&dev->pdev->dev, "slots =%08x\n", slots);
+		dev_dbg(&dev->pdev->dev, "call mei_irq_read_handler.\n");
+		rets = mei_irq_read_handler(dev, &complete_list, &slots);
+		if (rets)
 			goto end;
-		}
 	}
-
-	dev->hbuf_is_ready = mei_hbuf_is_ready(dev);
-
 	rets = mei_irq_write_handler(dev, &complete_list);
-
+end:
+	dev_dbg(&dev->pdev->dev, "end of bottom half function.\n");
 	dev->hbuf_is_ready = mei_hbuf_is_ready(dev);
+
+	mutex_unlock(&dev->device_lock);
 
 	mei_irq_compl_handler(dev, &complete_list);
 
-end:
-	dev_dbg(&dev->pdev->dev, "interrupt thread end ret = %d\n", rets);
-	mutex_unlock(&dev->device_lock);
 	return IRQ_HANDLED;
 }
 static const struct mei_hw_ops mei_me_hw_ops = {
@@ -582,4 +585,3 @@ struct mei_device *mei_me_dev_init(struct pci_dev *pdev)
 	dev->pdev = pdev;
 	return dev;
 }
-

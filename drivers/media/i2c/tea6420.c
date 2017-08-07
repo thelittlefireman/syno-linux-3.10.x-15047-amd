@@ -27,12 +27,12 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   */
 
-
 #include <linux/module.h>
 #include <linux/ioctl.h>
 #include <linux/slab.h>
 #include <linux/i2c.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 #include "tea6420.h"
 
 MODULE_AUTHOR("Michael Hunold <michael@mihu.de>");
@@ -43,7 +43,6 @@ static int debug;
 module_param(debug, int, 0644);
 
 MODULE_PARM_DESC(debug, "Debug level (0-1)");
-
 
 /* make a connection between the input 'i' and the output 'o'
    with gain 'g' (note: i = 6 means 'mute') */
@@ -89,13 +88,25 @@ static int tea6420_s_routing(struct v4l2_subdev *sd,
 	return 0;
 }
 
+static int tea6420_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	return v4l2_chip_ident_i2c_client(client, chip, V4L2_IDENT_TEA6420, 0);
+}
+
 /* ----------------------------------------------------------------------- */
+
+static const struct v4l2_subdev_core_ops tea6420_core_ops = {
+	.g_chip_ident = tea6420_g_chip_ident,
+};
 
 static const struct v4l2_subdev_audio_ops tea6420_audio_ops = {
 	.s_routing = tea6420_s_routing,
 };
 
 static const struct v4l2_subdev_ops tea6420_ops = {
+	.core = &tea6420_core_ops,
 	.audio = &tea6420_audio_ops,
 };
 
@@ -112,7 +123,7 @@ static int tea6420_probe(struct i2c_client *client,
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 
-	sd = devm_kzalloc(&client->dev, sizeof(*sd), GFP_KERNEL);
+	sd = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (sd == NULL)
 		return -ENOMEM;
 	v4l2_i2c_subdev_init(sd, client, &tea6420_ops);
@@ -133,6 +144,7 @@ static int tea6420_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 
 	v4l2_device_unregister_subdev(sd);
+	kfree(sd);
 	return 0;
 }
 

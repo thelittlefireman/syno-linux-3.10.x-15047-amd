@@ -20,7 +20,6 @@
 #endif
 #define SHMSEG SHMMNI			 /* max shared segs per process */
 
-
 /* Obsolete, used only for backwards compatibility and libc5 compiles */
 struct shmid_ds {
 	struct ipc_perm		shm_perm;	/* operation perms */
@@ -68,12 +67,11 @@ struct	shminfo {
 
 struct shm_info {
 	int used_ids;
-	__kernel_ulong_t shm_tot;	/* total allocated shm */
-	__kernel_ulong_t shm_rss;	/* total resident shm */
-	__kernel_ulong_t shm_swp;	/* total swapped shm */
-	__kernel_ulong_t swap_attempts;
-	__kernel_ulong_t swap_successes;
+	unsigned long shm_tot;	/* total allocated shm */
+	unsigned long shm_rss;	/* total resident shm */
+	unsigned long shm_swp;	/* total swapped shm */
+	unsigned long swap_attempts;
+	unsigned long swap_successes;
 };
-
 
 #endif /* _UAPI_LINUX_SHM_H_ */

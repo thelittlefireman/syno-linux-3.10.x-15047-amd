@@ -62,7 +62,6 @@ typedef struct
 	long args[0];
 } debug_sprintf_entry_t;
 
-
 /* internal function prototyes */
 
 static int debug_init(void);
@@ -232,7 +231,6 @@ fail_malloc_areas:
 	return NULL;
 
 }
-
 
 /*
  * debug_info_alloc
@@ -867,7 +865,7 @@ static inline void
 debug_finish_entry(debug_info_t * id, debug_entry_t* active, int level,
 			int exception)
 {
-	active->id.stck = get_tod_clock_fast();
+	active->id.stck = get_tod_clock();
 	active->id.fields.cpuid = smp_processor_id();
 	active->caller = __builtin_return_address(0);
 	active->id.fields.exception = exception;
@@ -889,7 +887,7 @@ static int debug_active=1;
  * if debug_active is already off
  */
 static int
-s390dbf_procactive(struct ctl_table *table, int write,
+s390dbf_procactive(ctl_table *table, int write,
                      void __user *buffer, size_t *lenp, loff_t *ppos)
 {
 	if (!write || debug_stoppable || !debug_active)
@@ -897,7 +895,6 @@ s390dbf_procactive(struct ctl_table *table, int write,
 	else
 		return 0;
 }
-
 
 static struct ctl_table s390dbf_table[] = {
 	{
@@ -1324,7 +1321,6 @@ out:
 	*offset += user_len;
 	return rc;		/* number of input characters */
 }
-
 
 /*
  * flushes debug areas

@@ -14,7 +14,7 @@
  * Copyright (c) 2004, Intel Corporation
  *
  * Modified for Realtek's wi-fi cards by Andrea Merello
- * <andrea.merello@gmail.com>
+ * <andreamrl@tiscali.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -83,7 +83,6 @@
 #define skb_tail_pointer_rsl(skb) skb_tail_pointer(skb)
 
 #define EXPORT_SYMBOL_RSL(x) EXPORT_SYMBOL(x)
-
 
 #define queue_delayed_work_rsl(x, y, z) queue_delayed_work(x, y, z)
 #define INIT_DELAYED_WORK_RSL(x, y, z) INIT_DELAYED_WORK(x, y)
@@ -278,7 +277,6 @@ struct sw_chnl_cmd {
 #define	MGN_MCS14_SG		0x9e
 #define	MGN_MCS15_SG		0x9f
 
-
 enum	_ReasonCode {
 	unspec_reason	= 0x1,
 	auth_not_valid	= 0x2,
@@ -437,7 +435,6 @@ enum rt_op_mode {
 	RT_OP_MODE_NO_LINK,
 };
 
-
 #define aSifsTime						\
 	 (((priv->rtllib->current_network.mode == IEEE_A)	\
 	|| (priv->rtllib->current_network.mode == IEEE_N_24G)	\
@@ -471,7 +468,6 @@ enum rt_op_mode {
 
 #define IEEE_MLME_STA_DEAUTH			1
 #define IEEE_MLME_STA_DISASSOC			2
-
 
 #define IEEE_CRYPT_ERR_UNKNOWN_ALG		2
 #define IEEE_CRYPT_ERR_UNKNOWN_ADDR		3
@@ -514,7 +510,6 @@ struct ieee_param {
 		} crypt;
 	} u;
 };
-
 
 #if WIRELESS_EXT < 17
 #define IW_QUAL_QUAL_INVALID   0x10
@@ -936,7 +931,6 @@ enum _REG_PREAMBLE_MODE {
 #define RTLLIB_NUM_CCK_RATES		    4
 #define RTLLIB_OFDM_SHIFT_MASK_A	 4
 
-
 /* this is stolen and modified from the madwifi driver*/
 #define RTLLIB_FC0_TYPE_MASK		0x0c
 #define RTLLIB_FC0_TYPE_DATA		0x08
@@ -1098,7 +1092,6 @@ struct rtllib_security {
 	u8 level;
 	u16 flags;
 } __packed;
-
 
 /*
  802.11 data frame from AP
@@ -1479,7 +1472,6 @@ static inline u8 Frame_QoSTID(u8 *buf)
 		    (fc & RTLLIB_FCTL_FROMDS)) ? 30 : 24)))->field.tid;
 }
 
-
 struct eapol {
 	u8 snap[6];
 	u16 ethertype;
@@ -1591,7 +1583,6 @@ struct	ether_header {
 #ifndef ETHERTYPE_IP
 #define	ETHERTYPE_IP	0x0800		/* IP protocol */
 #endif
-
 
 enum erp_t {
 	ERP_NonERPpresent	= 0x01,
@@ -1752,8 +1743,6 @@ struct bandwidth_autoswitch {
 	bool bautoswitch_enable;
 };
 
-
-
 #define REORDER_WIN_SIZE	128
 #define REORDER_ENTRY_NUM	128
 struct rx_reorder_entry {
@@ -1867,7 +1856,6 @@ struct rt_pwr_save_ctrl {
 
 	bool				LinkReqInIPSRFOffPgs;
 	bool				BufConnectinfoBefore;
-
 
 	bool				bGpioRfSw;
 
@@ -2027,7 +2015,6 @@ struct rt_intel_promisc_mode {
 	bool bFilterSourceStationFrame;
 };
 
-
 /*************** DRIVER STATUS   *****/
 #define STATUS_SCANNING			0
 #define STATUS_SCAN_HW			1
@@ -2124,7 +2111,6 @@ struct rtllib_device {
 	struct rx_reorder_entry RxReorderEntry[128];
 	struct list_head		RxReorder_Unused_List;
 	u8				ForcedPriority;
-
 
 	/* Bookkeeping structures */
 	struct net_device_stats stats;
@@ -2480,7 +2466,6 @@ struct rtllib_device {
 				     struct rtllib_assoc_response_frame *resp,
 				     struct rtllib_network *network);
 
-
 	/* check whether Tx hw resource available */
 	short (*check_nic_enough_desc)(struct net_device *dev, int queue_index);
 	short (*get_nic_desc_num)(struct net_device *dev, int queue_index);
@@ -2560,7 +2545,6 @@ struct rtllib_device {
  * to the card
  */
 #define IEEE_SOFTMAC_BEACONS (1<<6)
-
 
 static inline void *rtllib_priv(struct net_device *dev)
 {
@@ -2679,7 +2663,6 @@ static inline int rtllib_is_cck_rate(u8 rate)
 	return 0;
 }
 
-
 /* rtllib.c */
 extern void free_rtllib(struct net_device *dev);
 extern struct net_device *alloc_rtllib(int sizeof_priv);
@@ -2761,7 +2744,6 @@ extern void rtllib_stop_scan(struct rtllib_device *ieee);
 extern bool rtllib_act_scanning(struct rtllib_device *ieee, bool sync_scan);
 extern void rtllib_stop_scan_syncro(struct rtllib_device *ieee);
 extern void rtllib_start_scan_syncro(struct rtllib_device *ieee, u8 is_mesh);
-extern inline struct sk_buff *rtllib_probe_req(struct rtllib_device *ieee);
 extern u8 MgntQuery_MgntFrameTxRate(struct rtllib_device *ieee);
 extern void rtllib_sta_ps_send_null_frame(struct rtllib_device *ieee,
 					  short pwr);
@@ -2896,7 +2878,7 @@ extern void HTConstructCapabilityElement(struct rtllib_device *ieee,
 extern void HTConstructInfoElement(struct rtllib_device *ieee,
 				   u8 *posHTInfo, u8 *len, u8 isEncrypt);
 extern void HTConstructRT2RTAggElement(struct rtllib_device *ieee,
-				       u8 *posRT2RTAgg, u8 *len);
+				       u8 *posRT2RTAgg, u8* len);
 extern void HTOnAssocRsp(struct rtllib_device *ieee);
 extern void HTInitializeHTInfo(struct rtllib_device *ieee);
 extern void HTInitializeBssDesc(struct bss_ht *pBssHT);
@@ -2943,12 +2925,12 @@ void rtllib_softmac_scan_syncro(struct rtllib_device *ieee, u8 is_mesh);
 
 extern const long rtllib_wlan_frequencies[];
 
-extern inline void rtllib_increment_scans(struct rtllib_device *ieee)
+static inline void rtllib_increment_scans(struct rtllib_device *ieee)
 {
 	ieee->scans++;
 }
 
-extern inline int rtllib_get_scans(struct rtllib_device *ieee)
+static inline int rtllib_get_scans(struct rtllib_device *ieee)
 {
 	return ieee->scans;
 }
@@ -2984,7 +2966,6 @@ static inline const char *escape_essid(const char *essid, u8 essid_len)
 
 /* fun with the built-in rtllib stack... */
 bool rtllib_MgntDisconnect(struct rtllib_device *rtllib, u8 asRsn);
-
 
 /* For the function is more related to hardware setting, it's better to use the
  * ieee handler to refer to it.

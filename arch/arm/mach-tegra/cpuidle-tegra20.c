@@ -177,6 +177,7 @@ static int tegra20_idle_lp2_coupled(struct cpuidle_device *dev,
 				    struct cpuidle_driver *drv,
 				    int index)
 {
+	u32 cpu = is_smp() ? cpu_logical_map(dev->cpu) : dev->cpu;
 	bool entered_lp2 = false;
 
 	if (tegra_pending_sgi())
@@ -192,16 +193,16 @@ static int tegra20_idle_lp2_coupled(struct cpuidle_device *dev,
 
 	local_fiq_disable();
 
-	tegra_set_cpu_in_lp2();
+	tegra_set_cpu_in_lp2(cpu);
 	cpu_pm_enter();
 
-	if (dev->cpu == 0)
+	if (cpu == 0)
 		entered_lp2 = tegra20_cpu_cluster_power_down(dev, drv, index);
 	else
 		entered_lp2 = tegra20_idle_enter_lp2_cpu_1(dev, drv, index);
 
 	cpu_pm_exit();
-	tegra_clear_cpu_in_lp2();
+	tegra_clear_cpu_in_lp2(cpu);
 
 	local_fiq_enable();
 
@@ -211,19 +212,10 @@ static int tegra20_idle_lp2_coupled(struct cpuidle_device *dev,
 }
 #endif
 
-/*
- * Tegra20 HW appears to have a bug such that PCIe device interrupts, whether
- * they are legacy IRQs or MSI, are lost when LP2 is enabled. To work around
- * this, simply disable LP2 if the PCI driver and DT node are both enabled.
- */
-void tegra20_cpuidle_pcie_irqs_in_use(void)
-{
-	pr_info_once(
-		"Disabling cpuidle LP2 state, since PCIe IRQs are in use\n");
-	tegra_idle_driver.states[1].disabled = true;
-}
-
 int __init tegra20_cpuidle_init(void)
 {
+#ifdef CONFIG_PM_SLEEP
+	tegra_tear_down_cpu = tegra20_tear_down_cpu;
+#endif
 	return cpuidle_register(&tegra_idle_driver, cpu_possible_mask);
 }

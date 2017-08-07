@@ -410,12 +410,6 @@ struct fc_seq {
  * @fh_type:      The frame type
  * @class:        The class of service
  * @seq:          The sequence in use on this exchange
- * @resp_active:  Number of tasks that are concurrently executing @resp().
- * @resp_task:    If @resp_active > 0, either the task executing @resp(), the
- *                task that has been interrupted to execute the soft-IRQ
- *                executing @resp() or NULL if more than one task is executing
- *                @resp concurrently.
- * @resp_wq:      Waitqueue for the tasks waiting on @resp_active.
  * @resp:         Callback for responses on this exchange
  * @destructor:   Called when destroying the exchange
  * @arg:          Passed as a void pointer to the resp() callback
@@ -447,16 +441,12 @@ struct fc_exch {
 	u32		    r_a_tov;
 	u32		    f_ctl;
 	struct fc_seq       seq;
-	int		    resp_active;
-	struct task_struct  *resp_task;
-	wait_queue_head_t   resp_wq;
 	void		    (*resp)(struct fc_seq *, struct fc_frame *, void *);
 	void		    *arg;
 	void		    (*destructor)(struct fc_seq *, void *);
 	struct delayed_work timeout_work;
 } ____cacheline_aligned_in_smp;
 #define	fc_seq_exch(sp) container_of(sp, struct fc_exch, seq)
-
 
 struct libfc_function_template {
 	/*
@@ -1125,7 +1115,6 @@ void fc_fill_reply_hdr(struct fc_frame *, const struct fc_frame *,
 		       enum fc_rctl, u32 parm_offset);
 void fc_fill_hdr(struct fc_frame *, const struct fc_frame *,
 		 enum fc_rctl, u32 f_ctl, u16 seq_cnt, u32 parm_offset);
-
 
 /*
  * EXCHANGE MANAGER LAYER

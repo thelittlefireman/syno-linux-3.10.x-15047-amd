@@ -135,7 +135,6 @@ EXPORT_SYMBOL(ia64_max_iommu_merge_mask);
 struct rsvd_region rsvd_region[IA64_MAX_RSVD_REGIONS + 1] __initdata;
 int num_rsvd_regions __initdata;
 
-
 /*
  * Filter incoming memory segments based on the primitive map created from the boot
  * parameters. Segments contained in the map are removed from the memory ranges. A
@@ -254,7 +253,6 @@ static int __init register_memory(void)
 }
 
 __initcall(register_memory);
-
 
 #ifdef CONFIG_KEXEC
 
@@ -392,7 +390,6 @@ reserve_memory (void)
 	sort_regions(rsvd_region, num_rsvd_regions);
 	num_rsvd_regions = merge_regions(rsvd_region, num_rsvd_regions);
 }
-
 
 /**
  * find_initrd - get initrd parameters from the boot parameter structure
@@ -748,7 +745,7 @@ const struct seq_operations cpuinfo_op = {
 #define MAX_BRANDS	8
 static char brandname[MAX_BRANDS][128];
 
-static char *
+static char * __cpuinit
 get_model_name(__u8 family, __u8 model)
 {
 	static int overflow;
@@ -778,7 +775,7 @@ get_model_name(__u8 family, __u8 model)
 	return "Unknown";
 }
 
-static void
+static void __cpuinit
 identify_cpu (struct cpuinfo_ia64 *c)
 {
 	union {
@@ -850,7 +847,7 @@ identify_cpu (struct cpuinfo_ia64 *c)
  * 2. the minimum of the i-cache stride sizes for "flush_icache_range()".
  * 3. the minimum of the cache stride sizes for "clflush_cache_range()".
  */
-static void
+static void __cpuinit
 get_cache_info(void)
 {
 	unsigned long line_size, max = 1;
@@ -915,10 +912,10 @@ get_cache_info(void)
  * cpu_init() initializes state that is per-CPU.  This function acts
  * as a 'CPU state barrier', nothing should get across.
  */
-void
+void __cpuinit
 cpu_init (void)
 {
-	extern void ia64_mmu_init(void *);
+	extern void __cpuinit ia64_mmu_init (void *);
 	static unsigned long max_num_phys_stacked = IA64_NUM_PHYS_STACK_REG;
 	unsigned long num_phys_stacked;
 	pal_vm_info_2_u_t vmi;
@@ -1063,7 +1060,6 @@ check_bugs (void)
 static int __init run_dmi_scan(void)
 {
 	dmi_scan_machine();
-	dmi_memdev_walk();
 	dmi_set_dump_stack_arch_desc();
 	return 0;
 }

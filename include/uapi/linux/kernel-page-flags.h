@@ -32,5 +32,4 @@
 #define KPF_KSM			21
 #define KPF_THP			22
 
-
 #endif /* _UAPILINUX_KERNEL_PAGE_FLAGS_H */

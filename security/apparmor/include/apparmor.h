@@ -30,8 +30,9 @@
 #define AA_CLASS_NET		4
 #define AA_CLASS_RLIMITS	5
 #define AA_CLASS_DOMAIN		6
+#define AA_CLASS_MOUNT		7
 
-#define AA_CLASS_LAST		AA_CLASS_DOMAIN
+#define AA_CLASS_LAST		AA_CLASS_MOUNT
 
 /* Control parameters settable through module/boot flags */
 extern enum audit_mode aa_g_audit;
@@ -66,7 +67,6 @@ extern int apparmor_initialized __initdata;
 char *aa_split_fqname(char *args, char **ns_name);
 void aa_info_message(const char *str);
 void *__aa_kvmalloc(size_t size, gfp_t flags);
-void kvfree(void *buffer);
 
 static inline void *kvmalloc(size_t size)
 {

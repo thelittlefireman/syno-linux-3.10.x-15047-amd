@@ -53,7 +53,7 @@
 #define MTIP_FTL_REBUILD_TIMEOUT_MS	2400000
 
 /* unaligned IO handling */
-#define MTIP_MAX_UNALIGNED_SLOTS	2
+#define MTIP_MAX_UNALIGNED_SLOTS	8
 
 /* Macro to extract the tag bit number from a tag value. */
 #define MTIP_TAG_BIT(tag)	(tag & 0x1F)
@@ -69,7 +69,7 @@
  * Maximum number of scatter gather entries
  * a single command may have.
  */
-#define MTIP_MAX_SG		504
+#define MTIP_MAX_SG		128
 
 /*
  * Maximum number of slot groups (Command Issue & s_active registers)
@@ -92,7 +92,7 @@
 
 /* Driver name and version strings */
 #define MTIP_DRV_NAME		"mtip32xx"
-#define MTIP_DRV_VERSION	"1.3.1"
+#define MTIP_DRV_VERSION	"1.2.6os3"
 
 /* Maximum number of minor device numbers per device. */
 #define MTIP_MAX_MINORS		16
@@ -140,7 +140,6 @@ enum {
 	MTIP_PF_SVC_THD_ACTIVE_BIT  = 4,
 	MTIP_PF_ISSUE_CMDS_BIT      = 5,
 	MTIP_PF_REBUILD_BIT         = 6,
-	MTIP_PF_SR_CLEANUP_BIT      = 7,
 	MTIP_PF_SVC_THD_STOP_BIT    = 8,
 
 	/* below are bit numbers in 'dd_flag' defined in driver_data */
@@ -148,18 +147,15 @@ enum {
 	MTIP_DDF_REMOVE_PENDING_BIT = 1,
 	MTIP_DDF_OVER_TEMP_BIT      = 2,
 	MTIP_DDF_WRITE_PROTECT_BIT  = 3,
-	MTIP_DDF_REMOVE_DONE_BIT    = 4,
+	MTIP_DDF_STOP_IO      = ((1 << MTIP_DDF_REMOVE_PENDING_BIT) |
+				(1 << MTIP_DDF_SEC_LOCK_BIT) |
+				(1 << MTIP_DDF_OVER_TEMP_BIT) |
+				(1 << MTIP_DDF_WRITE_PROTECT_BIT)),
+
 	MTIP_DDF_CLEANUP_BIT        = 5,
 	MTIP_DDF_RESUME_BIT         = 6,
 	MTIP_DDF_INIT_DONE_BIT      = 7,
 	MTIP_DDF_REBUILD_FAILED_BIT = 8,
-
-	MTIP_DDF_STOP_IO      = ((1 << MTIP_DDF_REMOVE_PENDING_BIT) |
-				(1 << MTIP_DDF_SEC_LOCK_BIT) |
-				(1 << MTIP_DDF_OVER_TEMP_BIT) |
-				(1 << MTIP_DDF_WRITE_PROTECT_BIT) |
-				(1 << MTIP_DDF_REBUILD_FAILED_BIT)),
-
 };
 
 struct smart_attr {
@@ -391,13 +387,15 @@ struct mtip_port {
 	 */
 	dma_addr_t rxfis_dma;
 	/*
-	 * Pointer to the DMA region for RX Fis, Identify, RLE10, and SMART
+	 * Pointer to the beginning of the command table memory as used
+	 * by the driver.
 	 */
-	void *block1;
+	void *command_table;
 	/*
-	 * DMA address of region for RX Fis, Identify, RLE10, and SMART
+	 * Pointer to the beginning of the command table memory as used
+	 * by the DMA.
 	 */
-	dma_addr_t block1_dma;
+	dma_addr_t command_tbl_dma;
 	/*
 	 * Pointer to the beginning of the identify data memory as used
 	 * by the driver.
@@ -501,8 +499,6 @@ struct driver_data {
 
 	bool trim_supp; /* flag indicating trim support */
 
-	bool sr;
-
 	int numa_node; /* NUMA support */
 
 	char workq_name[32];
@@ -514,8 +510,6 @@ struct driver_data {
 	atomic_t irq_workers_active;
 
 	int isr_binding;
-
-	struct block_device *bdev;
 
 	int unal_qdepth; /* qdepth of unaligned IO queue */
 

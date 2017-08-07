@@ -31,7 +31,6 @@
 #include <arch/interrupts.h>
 #include <arch/spr_def.h>
 
-
 /*
  * Implement a per-cpu "hardwall" resource class such as UDN or IPI.
  * We use "hardwall" nomenclature throughout for historical reasons.
@@ -66,7 +65,7 @@ static struct hardwall_type hardwall_types[] = {
 		0,
 		"udn",
 		LIST_HEAD_INIT(hardwall_types[HARDWALL_UDN].list),
-		__SPIN_LOCK_UNLOCKED(hardwall_types[HARDWALL_UDN].lock),
+		__SPIN_LOCK_INITIALIZER(hardwall_types[HARDWALL_UDN].lock),
 		NULL
 	},
 #ifndef __tilepro__
@@ -77,7 +76,7 @@ static struct hardwall_type hardwall_types[] = {
 		1,  /* disabled pending hypervisor support */
 		"idn",
 		LIST_HEAD_INIT(hardwall_types[HARDWALL_IDN].list),
-		__SPIN_LOCK_UNLOCKED(hardwall_types[HARDWALL_IDN].lock),
+		__SPIN_LOCK_INITIALIZER(hardwall_types[HARDWALL_IDN].lock),
 		NULL
 	},
 	{  /* access to user-space IPI */
@@ -87,7 +86,7 @@ static struct hardwall_type hardwall_types[] = {
 		0,
 		"ipi",
 		LIST_HEAD_INIT(hardwall_types[HARDWALL_IPI].list),
-		__SPIN_LOCK_UNLOCKED(hardwall_types[HARDWALL_IPI].lock),
+		__SPIN_LOCK_INITIALIZER(hardwall_types[HARDWALL_IPI].lock),
 		NULL
 	},
 #endif
@@ -115,7 +114,6 @@ struct hardwall_info {
 	atomic_t xdn_pending_count;        /* cores in phase 1 of drain */
 #endif
 };
-
 
 /* /proc/tile/hardwall */
 static struct proc_dir_entry *hardwall_proc_dir;
@@ -153,7 +151,6 @@ static int __init noipi(char *str)
 early_param("noipi", noipi);
 #endif
 
-
 /*
  * Low-level primitives for UDN/IDN
  */
@@ -189,7 +186,6 @@ early_param("noipi", noipi);
 	if (cpu_online(cpu))          \
 		cpumask_set_cpu(cpu, dst);    \
 } while (0)
-
 
 /* Does the given rectangle contain the given x,y coordinate? */
 static int contains(struct hardwall_info *r, int x, int y)
@@ -272,9 +268,9 @@ static void hardwall_setup_func(void *info)
 	struct hardwall_info *r = info;
 	struct hardwall_type *hwt = r->type;
 
-	int cpu = smp_processor_id();  /* on_each_cpu disables preemption */
-	int x = cpu_x(cpu);
-	int y = cpu_y(cpu);
+	int cpu = smp_processor_id();
+	int x = cpu % smp_width;
+	int y = cpu / smp_width;
 	int bits = 0;
 	if (x == r->ulhc_x)
 		bits |= W_PROTECT;
@@ -317,7 +313,6 @@ static void hardwall_protect_rectangle(struct hardwall_info *r)
 	on_each_cpu_mask(&rect_cpus, hardwall_setup_func, r, 1);
 }
 
-/* Entered from INT_xDN_FIREWALL interrupt vector with irqs disabled. */
 void __kprobes do_hardwall_trap(struct pt_regs* regs, int fault_num)
 {
 	struct hardwall_info *rect;
@@ -326,6 +321,7 @@ void __kprobes do_hardwall_trap(struct pt_regs* regs, int fault_num)
 	struct siginfo info;
 	int cpu = smp_processor_id();
 	int found_processes;
+	unsigned long flags;
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
 	irq_enter();
@@ -346,7 +342,7 @@ void __kprobes do_hardwall_trap(struct pt_regs* regs, int fault_num)
 	BUG_ON(hwt->disabled);
 
 	/* This tile trapped a network access; find the rectangle. */
-	spin_lock(&hwt->lock);
+	spin_lock_irqsave(&hwt->lock, flags);
 	list_for_each_entry(rect, &hwt->list, list) {
 		if (cpumask_test_cpu(cpu, &rect->cpumask))
 			break;
@@ -401,7 +397,7 @@ void __kprobes do_hardwall_trap(struct pt_regs* regs, int fault_num)
 		pr_notice("hardwall: no associated processes!\n");
 
  done:
-	spin_unlock(&hwt->lock);
+	spin_unlock_irqrestore(&hwt->lock, flags);
 
 	/*
 	 * We have to disable firewall interrupts now, or else when we
@@ -540,14 +536,6 @@ static struct hardwall_info *hardwall_create(struct hardwall_type *hwt,
 		}
 	}
 
-	/*
-	 * Eliminate cpus that are not part of this Linux client.
-	 * Note that this allows for configurations that we might not want to
-	 * support, such as one client on every even cpu, another client on
-	 * every odd cpu.
-	 */
-	cpumask_and(&info->cpumask, &info->cpumask, cpu_online_mask);
-
 	/* Confirm it doesn't overlap and add it to the list. */
 	spin_lock_irqsave(&hwt->lock, flags);
 	list_for_each_entry(iter, &hwt->list, list) {
@@ -620,7 +608,7 @@ static int hardwall_activate(struct hardwall_info *info)
 
 /*
  * Deactivate a task's hardwall.  Must hold lock for hardwall_type.
- * This method may be called from exit_thread(), so we don't want to
+ * This method may be called from free_task(), so we don't want to
  * rely on too many fields of struct task_struct still being valid.
  * We assume the cpus_allowed, pid, and comm fields are still valid.
  */
@@ -661,7 +649,7 @@ static int hardwall_deactivate(struct hardwall_type *hwt,
 		return -EINVAL;
 
 	printk(KERN_DEBUG "Pid %d (%s) deactivated for %s hardwall: cpu %d\n",
-	       task->pid, task->comm, hwt->name, raw_smp_processor_id());
+	       task->pid, task->comm, hwt->name, smp_processor_id());
 	return 0;
 }
 
@@ -803,8 +791,8 @@ static void reset_xdn_network_state(struct hardwall_type *hwt)
 	/* Reset UDN coordinates to their standard value */
 	{
 		unsigned int cpu = smp_processor_id();
-		unsigned int x = cpu_x(cpu);
-		unsigned int y = cpu_y(cpu);
+		unsigned int x = cpu % smp_width;
+		unsigned int y = cpu / smp_width;
 		__insn_mtspr(SPR_UDN_TILE_COORD, (x << 18) | (y << 7));
 	}
 
@@ -907,7 +895,6 @@ static void hardwall_destroy(struct hardwall_info *info)
 	kfree(info);
 }
 
-
 static int hardwall_proc_show(struct seq_file *sf, void *v)
 {
 	struct hardwall_info *info = sf->private;
@@ -972,7 +959,6 @@ void proc_tile_hardwall_init(struct proc_dir_entry *root)
 		hwt->proc_dir = proc_mkdir(hwt->name, hardwall_proc_dir);
 	}
 }
-
 
 /*
  * Character device support via ioctl/close.

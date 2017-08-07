@@ -49,6 +49,7 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/serio.h>
+#include <linux/init.h>
 
 #define DRIVER_DESC	"RC transmitter with 5-byte Zhen Hua protocol joystick driver"
 
@@ -71,7 +72,6 @@ struct zhenhua {
 	unsigned char data[ZHENHUA_MAX_LENGTH];
 	char phys[32];
 };
-
 
 /* bits in all incoming bytes needs to be "reversed" */
 static int zhenhua_bitreverse(int x)

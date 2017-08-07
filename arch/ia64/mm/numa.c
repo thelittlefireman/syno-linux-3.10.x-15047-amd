@@ -20,7 +20,6 @@
 #include <asm/mmzone.h>
 #include <asm/numa.h>
 
-
 /*
  * The following structures are usually initialized by ACPI or
  * similar mechanisms and describe the NUMA characteristics of the machine.
@@ -86,7 +85,7 @@ int __meminit __early_pfn_to_nid(unsigned long pfn)
 	return -1;
 }
 
-void numa_clear_node(int cpu)
+void __cpuinit numa_clear_node(int cpu)
 {
 	unmap_cpu_from_node(cpu, NUMA_NO_NODE);
 }

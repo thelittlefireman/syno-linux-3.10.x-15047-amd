@@ -16,7 +16,6 @@
 #include <linux/syscore_ops.h>
 #include <linux/vmalloc.h>
 
-#include <asm/dma-coherence.h>
 #include <asm/mach-au1x00/au1000.h>
 #include <asm/tlbmisc.h>
 
@@ -48,7 +47,6 @@ struct alchemy_pci_context {
  * should suffice for now.
  */
 static struct alchemy_pci_context *__alchemy_pci_ctx;
-
 
 /* IO/MEM resources for PCI. Keep the memres in sync with __fixup_bigphys_addr
  * in arch/mips/alchemy/common/setup.c
@@ -412,15 +410,17 @@ static int alchemy_pci_probe(struct platform_device *pdev)
 	}
 	ctx->alchemy_pci_ctrl.io_map_base = (unsigned long)virt_io;
 
+#ifdef CONFIG_DMA_NONCOHERENT
 	/* Au1500 revisions older than AD have borked coherent PCI */
 	if ((alchemy_get_cputype() == ALCHEMY_CPU_AU1500) &&
-	    (read_c0_prid() < 0x01030202) && !coherentio) {
+	    (read_c0_prid() < 0x01030202)) {
 		val = __raw_readl(ctx->regs + PCI_REG_CONFIG);
 		val |= PCI_CONFIG_NC;
 		__raw_writel(val, ctx->regs + PCI_REG_CONFIG);
 		wmb();
 		dev_info(&pdev->dev, "non-coherent PCI on Au1500 AA/AB/AC\n");
 	}
+#endif
 
 	if (pd->board_map_irq)
 		ctx->board_map_irq = pd->board_map_irq;
@@ -498,7 +498,6 @@ static int __init alchemy_pci_init(void)
 	return 0;
 }
 arch_initcall(alchemy_pci_init);
-
 
 int __init pcibios_map_irq(const struct pci_dev *dev, u8 slot, u8 pin)
 {

@@ -31,7 +31,6 @@ static const char *pvr2_buffer_state_decode(enum pvr2_buffer_state);
 
 // #define SANITY_CHECK_BUFFERS
 
-
 #ifdef SANITY_CHECK_BUFFERS
 #define BUFFER_CHECK(bp) do { \
 	if ((bp)->signature != BUFFER_SIG) { \
@@ -354,9 +353,9 @@ static int pvr2_stream_buffer_count(struct pvr2_stream *sp,unsigned int cnt)
 		if (scnt < sp->buffer_slot_count) {
 			struct pvr2_buffer **nb = NULL;
 			if (scnt) {
-				nb = kmemdup(sp->buffers, scnt * sizeof(*nb),
-					     GFP_KERNEL);
+				nb = kmalloc(scnt * sizeof(*nb),GFP_KERNEL);
 				if (!nb) return -ENOMEM;
+				memcpy(nb,sp->buffers,scnt * sizeof(*nb));
 			}
 			kfree(sp->buffers);
 			sp->buffers = nb;
@@ -682,7 +681,6 @@ int pvr2_buffer_get_id(struct pvr2_buffer *bp)
 {
 	return bp->id;
 }
-
 
 /*
   Stuff for Emacs to see, in order to encourage consistent editing style:

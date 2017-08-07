@@ -32,7 +32,6 @@
 #define WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(a, b, c) \
 	DEBUGFS_FWSTATS_FILE_ARRAY(a, b, c, wl18xx_acx_statistics)
 
-
 WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug1, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug2, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug3, "%u");
@@ -118,7 +117,6 @@ WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(pwr, cont_miss_bcns_spread,
 				  PWR_STAT_MAX_CONT_MISSED_BCNS_SPREAD);
 WL18XX_DEBUGFS_FWSTATS_FILE(pwr, rcvd_awake_bcns_cnt, "%u");
 
-
 WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, ps_poll_timeouts, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, upsd_timeouts, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, upsd_max_ap_turn, "%u");
@@ -136,7 +134,7 @@ WL18XX_DEBUGFS_FWSTATS_FILE(rx_filter, protection_filter, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx_filter, accum_arp_pend_requests, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx_filter, max_arp_queue_dep, "%u");
 
-WL18XX_DEBUGFS_FWSTATS_FILE(rx_rate, rx_frames_per_rates, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(rx_rate, rx_frames_per_rates, 50);
 
 WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(aggr_size, tx_agg_vs_rate,
 				  AGGR_STATS_TX_AGG*AGGR_STATS_TX_RATE);

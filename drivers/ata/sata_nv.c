@@ -40,6 +40,7 @@
 #include <linux/module.h>
 #include <linux/gfp.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -238,7 +239,6 @@ struct nv_adma_cpb {
 	__le64			reserved3;     /* 120-127 */
 };
 
-
 struct nv_adma_port_priv {
 	struct nv_adma_cpb	*cpb;
 	dma_addr_t		cpb_dma;
@@ -290,7 +290,6 @@ struct nv_swncq_port_priv {
 
 	unsigned int	ncq_flags;
 };
-
 
 #define NV_ADMA_CHECK_INTR(GCTL, PORT) ((GCTL) & (1 << (19 + (12 * (PORT)))))
 
@@ -2434,7 +2433,7 @@ static int nv_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 #ifdef CONFIG_PM
 static int nv_pci_device_resume(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	struct nv_host_priv *hpriv = host->private_data;
 	int rc;
 

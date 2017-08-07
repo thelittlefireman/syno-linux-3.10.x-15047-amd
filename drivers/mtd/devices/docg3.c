@@ -534,7 +534,6 @@ out:
 	return ret;
 }
 
-
 /**
  * doc_read_page_ecc_init - Initialize hardware ECC engine
  * @docg3: the device
@@ -655,7 +654,6 @@ out:
 	doc_dbg("doc_ecc_bch_fix_data: flipped %d bits\n", numerrs);
 	return numerrs;
 }
-
 
 /**
  * doc_read_page_prepare - Prepares reading data from a flash page
@@ -2047,21 +2045,21 @@ static int __init docg3_probe(struct platform_device *pdev)
 	ress = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!ress) {
 		dev_err(dev, "No I/O memory resource defined\n");
-		return ret;
+		goto noress;
 	}
-	base = devm_ioremap(dev, ress->start, DOC_IOSPACE_SIZE);
+	base = ioremap(ress->start, DOC_IOSPACE_SIZE);
 
 	ret = -ENOMEM;
-	cascade = devm_kzalloc(dev, sizeof(*cascade) * DOC_MAX_NBFLOORS,
-			       GFP_KERNEL);
+	cascade = kzalloc(sizeof(*cascade) * DOC_MAX_NBFLOORS,
+			  GFP_KERNEL);
 	if (!cascade)
-		return ret;
+		goto nomem1;
 	cascade->base = base;
 	mutex_init(&cascade->lock);
 	cascade->bch = init_bch(DOC_ECC_BCH_M, DOC_ECC_BCH_T,
 			     DOC_ECC_BCH_PRIMPOLY);
 	if (!cascade->bch)
-		return ret;
+		goto nomem2;
 
 	for (floor = 0; floor < DOC_MAX_NBFLOORS; floor++) {
 		mtd = doc_probe_device(cascade, floor, dev);
@@ -2097,10 +2095,15 @@ notfound:
 	ret = -ENODEV;
 	dev_info(dev, "No supported DiskOnChip found\n");
 err_probe:
-	free_bch(cascade->bch);
+	kfree(cascade->bch);
 	for (floor = 0; floor < DOC_MAX_NBFLOORS; floor++)
 		if (cascade->floors[floor])
 			doc_release_device(cascade->floors[floor]);
+nomem2:
+	kfree(cascade);
+nomem1:
+	iounmap(base);
+noress:
 	return ret;
 }
 
@@ -2114,6 +2117,7 @@ static int __exit docg3_release(struct platform_device *pdev)
 {
 	struct docg3_cascade *cascade = platform_get_drvdata(pdev);
 	struct docg3 *docg3 = cascade->floors[0]->priv;
+	void __iomem *base = cascade->base;
 	int floor;
 
 	doc_unregister_sysfs(pdev, cascade);
@@ -2123,6 +2127,8 @@ static int __exit docg3_release(struct platform_device *pdev)
 			doc_release_device(cascade->floors[floor]);
 
 	free_bch(docg3->cascade->bch);
+	kfree(cascade);
+	iounmap(base);
 	return 0;
 }
 

@@ -17,7 +17,6 @@
  * Modified for Sun3 OBIO i82586 by Sam Creasey (sammy@sammy.net)
  */
 
-
 /* defines for the obio chip (not vme) */
 #define IEOB_NORSET 0x80        /* don't reset the board */
 #define IEOB_ONAIR  0x40        /* put us on the air */
@@ -37,7 +36,6 @@
  */
 #define SCP_DEFAULT_ADDRESS 0xfffff4
 
-
 /*
  * System Configuration Pointer Struct
  */
@@ -51,7 +49,6 @@ struct scp_struct
   unsigned short zero_dum3;
   char          *iscp;		/* pointer to the iscp-block */
 };
-
 
 /*
  * Intermediate System Configuration Pointer (ISCP)
@@ -133,8 +130,8 @@ struct rfd_struct
   unsigned char  last;		/* Bit15,Last Frame on List / Bit14,suspend */
   unsigned short next;		/* linkoffset to next RFD */
   unsigned short rbd_offset;	/* pointeroffset to RBD-buffer */
-  unsigned char  dest[ETH_ALEN];	/* ethernet-address, destination */
-  unsigned char  source[ETH_ALEN];	/* ethernet-address, source */
+  unsigned char  dest[6];	/* ethernet-address, destination */
+  unsigned char  source[6];	/* ethernet-address, source */
   unsigned short length;	/* 802.3 frame-length */
   unsigned short zero_dummy;	/* dummy */
 };
@@ -312,7 +309,3 @@ struct tbd_struct
 };
 
 #define TBD_LAST 0x8000         /* EOF-Flag, indicates last buffer in list */
-
-
-
-

@@ -135,13 +135,12 @@ static bool sta529_readable(struct device *dev, unsigned int reg)
 	}
 }
 
-
 static const char *pwm_mode_text[] = { "Binary", "Headphone", "Ternary",
 	"Phase-shift"};
 
 static const DECLARE_TLV_DB_SCALE(out_gain_tlv, -9150, 50, 0);
 static const DECLARE_TLV_DB_SCALE(master_vol_tlv, -12750, 50, 0);
-static SOC_ENUM_SINGLE_DECL(pwm_src, STA529_FFXCFG1, 4, pwm_mode_text);
+static const SOC_ENUM_SINGLE_DECL(pwm_src, STA529_FFXCFG1, 4, pwm_mode_text);
 
 static const struct snd_kcontrol_new sta529_snd_controls[] = {
 	SOC_DOUBLE_R_TLV("Digital Playback Volume", STA529_LVOL, STA529_RVOL, 0,
@@ -193,7 +192,8 @@ static int sta529_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params,
 		struct snd_soc_dai *dai)
 {
-	struct snd_soc_codec *codec = dai->codec;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_codec *codec = rtd->codec;
 	int pdata, play_freq_val, record_freq_val;
 	int bclk_to_fs_ratio;
 
@@ -321,6 +321,16 @@ static struct snd_soc_dai_driver sta529_dai = {
 
 static int sta529_probe(struct snd_soc_codec *codec)
 {
+	struct sta529 *sta529 = snd_soc_codec_get_drvdata(codec);
+	int ret;
+
+	codec->control_data = sta529->regmap;
+	ret = snd_soc_codec_set_cache_io(codec, 8, 8, SND_SOC_REGMAP);
+
+	if (ret < 0) {
+		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
+		return ret;
+	}
 	sta529_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 
 	return 0;

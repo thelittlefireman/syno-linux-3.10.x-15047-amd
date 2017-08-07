@@ -1,30 +1,21 @@
-/*
- * usb port device code
- *
- * Copyright (C) 2012 Intel Corp
- *
- * Author: Lan Tianyu <tianyu.lan@intel.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
- *
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/slab.h>
 #include <linux/pm_qos.h>
+#include <linux/gpio.h>
 
 #include "hub.h"
 
 static const struct attribute_group *port_dev_group[];
+extern inline int hub_is_superspeed(struct usb_device *hdev);
 
-static ssize_t connect_type_show(struct device *dev,
-				 struct device_attribute *attr, char *buf)
+#ifdef MY_ABC_HERE
+extern u32 syno_pch_lpc_gpio_pin(int pin, int *pValue, int isWrite);
+#endif  
+static ssize_t show_port_connect_type(struct device *dev,
+	struct device_attribute *attr, char *buf)
 {
 	struct usb_port *port_dev = to_usb_port(dev);
 	char *result;
@@ -46,7 +37,8 @@ static ssize_t connect_type_show(struct device *dev,
 
 	return sprintf(buf, "%s\n", result);
 }
-static DEVICE_ATTR_RO(connect_type);
+static DEVICE_ATTR(connect_type, S_IRUGO, show_port_connect_type,
+		NULL);
 
 static struct attribute *port_dev_attrs[] = {
 	&dev_attr_connect_type.attr,
@@ -85,14 +77,9 @@ static int usb_port_runtime_resume(struct device *dev)
 	usb_autopm_get_interface(intf);
 	set_bit(port1, hub->busy_bits);
 
-	retval = usb_hub_set_port_power(hdev, hub, port1, true);
+	retval = usb_hub_set_port_power(hdev, port1, true);
 	if (port_dev->child && !retval) {
-		/*
-		 * Attempt to wait for usb hub port to be reconnected in order
-		 * to make the resume procedure successful.  The device may have
-		 * disconnected while the port was powered off, so ignore the
-		 * return status.
-		 */
+		 
 		retval = hub_port_debounce_be_connected(hub, port1);
 		if (retval < 0)
 			dev_dbg(&port_dev->dev, "can't get reconnection after setting port  power on, status %d\n",
@@ -124,7 +111,7 @@ static int usb_port_runtime_suspend(struct device *dev)
 
 	usb_autopm_get_interface(intf);
 	set_bit(port1, hub->busy_bits);
-	retval = usb_hub_set_port_power(hdev, hub, port1, false);
+	retval = usb_hub_set_port_power(hdev, port1, false);
 	usb_clear_port_feature(hdev, port1, USB_PORT_FEAT_C_CONNECTION);
 	usb_clear_port_feature(hdev, port1,	USB_PORT_FEAT_C_ENABLE);
 	clear_bit(port1, hub->busy_bits);
@@ -137,6 +124,7 @@ static const struct dev_pm_ops usb_port_pm_ops = {
 #ifdef CONFIG_PM_RUNTIME
 	.runtime_suspend =	usb_port_runtime_suspend,
 	.runtime_resume =	usb_port_runtime_resume,
+	.runtime_idle =		pm_generic_runtime_idle,
 #endif
 };
 
@@ -150,6 +138,21 @@ int usb_hub_create_port_device(struct usb_hub *hub, int port1)
 {
 	struct usb_port *port_dev = NULL;
 	int retval;
+#if defined(MY_DEF_HERE) ||\
+	defined(MY_ABC_HERE)
+	struct usb_device *hdev = hub->hdev;
+	int i = 0;
+#endif  
+#ifdef MY_DEF_HERE
+	extern char gSynoCastratedXhcAddr[CONFIG_SYNO_NUM_CASTRATED_XHC][13];
+	extern unsigned gSynoCastratedXhcPortBitmap[CONFIG_SYNO_NUM_CASTRATED_XHC];
+#endif  
+#ifdef MY_ABC_HERE
+	extern char gSynoUsbVbusHostAddr[CONFIG_SYNO_USB_VBUS_NUM_GPIO][13];
+	extern int gSynoUsbVbusPort[CONFIG_SYNO_USB_VBUS_NUM_GPIO];
+	extern unsigned gSynoUsbVbusGpp[CONFIG_SYNO_USB_VBUS_NUM_GPIO];
+	int value = 0;
+#endif  
 
 	port_dev = kzalloc(sizeof(*port_dev), GFP_KERNEL);
 	if (!port_dev) {
@@ -164,17 +167,58 @@ int usb_hub_create_port_device(struct usb_hub *hub, int port1)
 	port_dev->dev.groups = port_dev_group;
 	port_dev->dev.type = &usb_port_device_type;
 	dev_set_name(&port_dev->dev, "port%d", port1);
+#if defined (MY_DEF_HERE)
+	port_dev->power_cycle_counter = SYNO_POWER_CYCLE_TRIES;
+#endif  
 
+#ifdef MY_DEF_HERE
+	if (hdev && hdev->serial) {
+		for (i = 0; i < CONFIG_SYNO_NUM_CASTRATED_XHC; i++) {
+			if (0 == strcmp(gSynoCastratedXhcAddr[i], hdev->serial) &&
+				gSynoCastratedXhcPortBitmap[i] & (0x01 << (port1 - 1))) {
+				 
+				port_dev->flag |= SYNO_USB_PORT_CASTRATED_XHC;
+				if (hub_is_superspeed(hdev))
+					dev_info (&port_dev->dev, "is a castrated xHC-port\n");
+			}
+		}
+	}
+#endif  
+
+#ifdef MY_ABC_HERE
+	if (hdev && hdev->serial) {
+		for (i = 0; i < CONFIG_SYNO_USB_VBUS_NUM_GPIO; i++) {
+			if (0 == strcmp(gSynoUsbVbusHostAddr[i], hdev->serial)) {
+#ifdef MY_ABC_HERE
+				value = 0;
+				if (0 == syno_pch_lpc_gpio_pin(gSynoUsbVbusGpp[i], &value, 0) && 0 == value) {
+					value = 1;
+					if (0 == syno_pch_lpc_gpio_pin(gSynoUsbVbusGpp[i], &value, 1)) {
+						printk(KERN_INFO " port%d is going to power up Vbus by "
+								"GPIO#%d\n", port1, gSynoUsbVbusGpp[i]);
+						mdelay(100);
+					}
+				}
+#else  
+				if (0 == gpio_get_value(gSynoUsbVbusGpp[i])) {
+					gpio_set_value(gSynoUsbVbusGpp[i], 1);
+					printk(KERN_INFO " port%d is going to power up Vbus by "
+							"GPIO#%d\n", port1, gSynoUsbVbusGpp[i]);
+					mdelay(100);
+				}
+#endif  
+				if (port1 == gSynoUsbVbusPort[i])
+					port_dev->syno_vbus_gpp = gSynoUsbVbusGpp[i];
+			}
+		}
+	}
+#endif  
 	retval = device_register(&port_dev->dev);
 	if (retval)
 		goto error_register;
 
 	pm_runtime_set_active(&port_dev->dev);
 
-	/* It would be dangerous if user space couldn't
-	 * prevent usb device from being powered off. So don't
-	 * enable port runtime pm if failed to expose port's pm qos.
-	 */
 	if (!dev_pm_qos_expose_flags(&port_dev->dev,
 			PM_QOS_FLAG_NO_POWER_OFF))
 		pm_runtime_enable(&port_dev->dev);
@@ -193,4 +237,3 @@ void usb_hub_remove_port_device(struct usb_hub *hub,
 {
 	device_unregister(&hub->ports[port1 - 1]->dev);
 }
-

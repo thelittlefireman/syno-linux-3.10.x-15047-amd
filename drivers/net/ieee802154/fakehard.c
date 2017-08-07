@@ -63,11 +63,11 @@ static struct wpan_phy *fake_get_phy(const struct net_device *dev)
  *
  * Return the ID of the PAN from the PIB.
  */
-static __le16 fake_get_pan_id(const struct net_device *dev)
+static u16 fake_get_pan_id(const struct net_device *dev)
 {
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
 
-	return cpu_to_le16(0xeba1);
+	return 0xeba1;
 }
 
 /**
@@ -78,11 +78,11 @@ static __le16 fake_get_pan_id(const struct net_device *dev)
  * device. If the device has not yet had a short address assigned
  * then this should return 0xFFFF to indicate a lack of association.
  */
-static __le16 fake_get_short_addr(const struct net_device *dev)
+static u16 fake_get_short_addr(const struct net_device *dev)
 {
 	BUG_ON(dev->type != ARPHRD_IEEE802154);
 
-	return cpu_to_le16(0x1);
+	return 0x1;
 }
 
 /**
@@ -149,7 +149,7 @@ static int fake_assoc_req(struct net_device *dev,
  *       802.15.4-2006 document.
  */
 static int fake_assoc_resp(struct net_device *dev,
-		struct ieee802154_addr *addr, __le16 short_addr, u8 status)
+		struct ieee802154_addr *addr, u16 short_addr, u8 status)
 {
 	return 0;
 }
@@ -191,10 +191,10 @@ static int fake_disassoc_req(struct net_device *dev,
  * Note: This is in section 7.5.2.3 of the IEEE 802.15.4-2006
  * document, with 7.3.8 describing coordinator realignment.
  */
-static int fake_start_req(struct net_device *dev,
-			  struct ieee802154_addr *addr, u8 channel, u8 page,
-			  u8 bcn_ord, u8 sf_ord, u8 pan_coord, u8 blx,
-			  u8 coord_realign)
+static int fake_start_req(struct net_device *dev, struct ieee802154_addr *addr,
+				u8 channel, u8 page,
+				u8 bcn_ord, u8 sf_ord, u8 pan_coord, u8 blx,
+				u8 coord_realign)
 {
 	struct wpan_phy *phy = fake_to_phy(dev);
 
@@ -270,7 +270,6 @@ static netdev_tx_t ieee802154_fake_xmit(struct sk_buff *skb,
 	return NETDEV_TX_OK;
 }
 
-
 static int ieee802154_fake_ioctl(struct net_device *dev, struct ifreq *ifr,
 		int cmd)
 {
@@ -281,8 +280,8 @@ static int ieee802154_fake_ioctl(struct net_device *dev, struct ifreq *ifr,
 	switch (cmd) {
 	case SIOCGIFADDR:
 		/* FIXME: fixed here, get from device IRL */
-		pan_id = le16_to_cpu(fake_get_pan_id(dev));
-		short_addr = le16_to_cpu(fake_get_short_addr(dev));
+		pan_id = fake_get_pan_id(dev);
+		short_addr = fake_get_short_addr(dev);
 		if (pan_id == IEEE802154_PANID_BROADCAST ||
 		    short_addr == IEEE802154_ADDR_BROADCAST)
 			return -EADDRNOTAVAIL;
@@ -332,7 +331,6 @@ static void ieee802154_fake_setup(struct net_device *dev)
 	dev->destructor		= ieee802154_fake_destruct;
 }
 
-
 static int ieee802154fake_probe(struct platform_device *pdev)
 {
 	struct net_device *dev;
@@ -376,17 +374,20 @@ static int ieee802154fake_probe(struct platform_device *pdev)
 
 	err = wpan_phy_register(phy);
 	if (err)
-		goto out;
+		goto err_phy_reg;
 
 	err = register_netdev(dev);
-	if (err < 0)
-		goto out;
+	if (err)
+		goto err_netdev_reg;
 
 	dev_info(&pdev->dev, "Added ieee802154 HardMAC hardware\n");
 	return 0;
 
-out:
-	unregister_netdev(dev);
+err_netdev_reg:
+	wpan_phy_unregister(phy);
+err_phy_reg:
+	free_netdev(dev);
+	wpan_phy_free(phy);
 	return err;
 }
 

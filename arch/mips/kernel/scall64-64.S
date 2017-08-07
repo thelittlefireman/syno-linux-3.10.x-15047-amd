@@ -80,10 +80,7 @@ syscall_trace_entry:
 	SAVE_STATIC
 	move	s0, t2
 	move	a0, sp
-	daddiu	a1, v0, __NR_64_Linux
 	jal	syscall_trace_enter
-
-	bltz	v0, 2f			# seccomp failed? Skip syscall
 
 	move	t0, s0
 	RESTORE_STATIC
@@ -105,7 +102,7 @@ syscall_trace_entry:
 	sd	t1, PT_R0(sp)		# save it for syscall restarting
 1:	sd	v0, PT_R2(sp)		# result
 
-2:	j	syscall_exit
+	j	syscall_exit
 
 illegal_syscall:
 	/* This also isn't a 64-bit syscall, throw an error.  */
@@ -117,8 +114,7 @@ illegal_syscall:
 	END(handle_sys64)
 
 	.align	3
-	.type	sys_call_table, @object
-EXPORT(sys_call_table)
+sys_call_table:
 	PTR	sys_read			/* 5000 */
 	PTR	sys_write
 	PTR	sys_open
@@ -428,6 +424,4 @@ EXPORT(sys_call_table)
 	PTR	sys_kcmp
 	PTR	sys_finit_module
 	PTR	sys_getdents64
-	PTR	sys_sched_setattr
-	PTR	sys_sched_getattr		/* 5310 */
 	.size	sys_call_table,.-sys_call_table

@@ -335,7 +335,6 @@ static struct mfd_cell rtc_devs[] = {
 	{"88pm860x-rtc", -1,},
 };
 
-
 struct pm860x_irq_data {
 	int	reg;
 	int	mask_reg;
@@ -1130,7 +1129,7 @@ static int pm860x_dt_init(struct device_node *np,
 static int pm860x_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
-	struct pm860x_platform_data *pdata = dev_get_platdata(&client->dev);
+	struct pm860x_platform_data *pdata = client->dev.platform_data;
 	struct device_node *node = client->dev.of_node;
 	struct pm860x_chip *chip;
 	int ret;
@@ -1150,17 +1149,17 @@ static int pm860x_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	chip = devm_kzalloc(&client->dev,
-			    sizeof(struct pm860x_chip), GFP_KERNEL);
+	chip = kzalloc(sizeof(struct pm860x_chip), GFP_KERNEL);
 	if (chip == NULL)
 		return -ENOMEM;
 
 	chip->id = verify_addr(client);
-	chip->regmap = devm_regmap_init_i2c(client, &pm860x_regmap_config);
+	chip->regmap = regmap_init_i2c(client, &pm860x_regmap_config);
 	if (IS_ERR(chip->regmap)) {
 		ret = PTR_ERR(chip->regmap);
 		dev_err(&client->dev, "Failed to allocate register map: %d\n",
 				ret);
+		kfree(chip);
 		return ret;
 	}
 	chip->client = client;
@@ -1209,6 +1208,8 @@ static int pm860x_remove(struct i2c_client *client)
 		regmap_exit(chip->regmap_companion);
 		i2c_unregister_device(chip->companion);
 	}
+	regmap_exit(chip->regmap);
+	kfree(chip);
 	return 0;
 }
 
@@ -1253,7 +1254,7 @@ static struct i2c_driver pm860x_driver = {
 		.name	= "88PM860x",
 		.owner	= THIS_MODULE,
 		.pm     = &pm860x_pm_ops,
-		.of_match_table	= pm860x_dt_ids,
+		.of_match_table	= of_match_ptr(pm860x_dt_ids),
 	},
 	.probe		= pm860x_probe,
 	.remove		= pm860x_remove,

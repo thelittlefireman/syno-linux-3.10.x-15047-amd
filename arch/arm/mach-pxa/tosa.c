@@ -36,7 +36,6 @@
 #include <linux/input/matrix_keypad.h>
 #include <linux/i2c/pxa-i2c.h>
 #include <linux/usb/gpio_vbus.h>
-#include <linux/reboot.h>
 
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -189,7 +188,6 @@ static struct platform_device tosascoop_device = {
 	.num_resources	= ARRAY_SIZE(tosa_scoop_resources),
 	.resource	= tosa_scoop_resources,
 };
-
 
 /*
  * SCOOP Device Jacket
@@ -627,7 +625,6 @@ static struct resource tc6393xb_resources[] = {
 	},
 };
 
-
 static int tosa_tc6393xb_enable(struct platform_device *dev)
 {
 	int rc;
@@ -818,7 +815,6 @@ static struct tc6393xb_platform_data tosa_tc6393xb_data = {
 	.resume_restore = 1,
 };
 
-
 static struct platform_device tc6393xb_device = {
 	.name	= "tc6393xb",
 	.id	= -1,
@@ -912,10 +908,10 @@ static struct platform_device *devices[] __initdata = {
 
 static void tosa_poweroff(void)
 {
-	pxa_restart(REBOOT_GPIO, NULL);
+	pxa_restart('g', NULL);
 }
 
-static void tosa_restart(enum reboot_mode mode, const char *cmd)
+static void tosa_restart(char mode, const char *cmd)
 {
 	uint32_t msc0 = __raw_readl(MSC0);
 
@@ -970,6 +966,7 @@ static void __init fixup_tosa(struct tag *tags, char **cmdline,
 }
 
 MACHINE_START(TOSA, "SHARP Tosa")
+	.restart_mode	= 'g',
 	.fixup          = fixup_tosa,
 	.map_io         = pxa25x_map_io,
 	.nr_irqs	= TOSA_NR_IRQS,

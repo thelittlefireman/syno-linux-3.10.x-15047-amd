@@ -390,7 +390,6 @@ static void sa11x0_dma_tasklet(unsigned long arg)
 	dev_dbg(d->slave.dev, "tasklet exit\n");
 }
 
-
 static int sa11x0_dma_alloc_chan_resources(struct dma_chan *chan)
 {
 	return 0;
@@ -436,7 +435,7 @@ static enum dma_status sa11x0_dma_tx_status(struct dma_chan *chan,
 	enum dma_status ret;
 
 	ret = dma_cookie_status(&c->vc.chan, cookie, state);
-	if (ret == DMA_COMPLETE)
+	if (ret == DMA_SUCCESS)
 		return ret;
 
 	if (!state)

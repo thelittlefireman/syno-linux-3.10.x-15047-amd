@@ -3,7 +3,7 @@
  *                           Philip Edelbrock <phil@netroedge.com>
  * Copyright (C) 2003 Greg Kroah-Hartman <greg@kroah.com>
  * Copyright (C) 2003 IBM Corp.
- * Copyright (C) 2004 Jean Delvare <jdelvare@suse.de>
+ * Copyright (C) 2004 Jean Delvare <khali@linux-fr.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/jiffies.h>
@@ -26,7 +27,6 @@
 /* Addresses to scan */
 static const unsigned short normal_i2c[] = { 0x50, 0x51, 0x52, 0x53, 0x54,
 					0x55, 0x56, 0x57, I2C_CLIENT_END };
-
 
 /* Size of EEPROM in bytes */
 #define EEPROM_SIZE		256
@@ -45,7 +45,6 @@ struct eeprom_data {
 	u8 data[EEPROM_SIZE];		/* Register values */
 	enum eeprom_nature nature;
 };
-
 
 static void eeprom_update_client(struct i2c_client *client, u8 slice)
 {

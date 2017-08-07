@@ -67,7 +67,6 @@ static void cputime_to_compat_timeval(const cputime_t cputime,
 #undef cputime_to_timeval
 #define cputime_to_timeval cputime_to_compat_timeval
 
-
 /*
  * To use this file, asm/elf.h must define compat_elf_check_arch.
  * The other following macros can be defined if the compat versions
@@ -86,11 +85,6 @@ static void cputime_to_compat_timeval(const cputime_t cputime,
 #ifdef	COMPAT_ELF_HWCAP
 #undef	ELF_HWCAP
 #define	ELF_HWCAP		COMPAT_ELF_HWCAP
-#endif
-
-#ifdef	COMPAT_ELF_HWCAP2
-#undef	ELF_HWCAP2
-#define	ELF_HWCAP2		COMPAT_ELF_HWCAP2
 #endif
 
 #ifdef	COMPAT_ARCH_DLINFO

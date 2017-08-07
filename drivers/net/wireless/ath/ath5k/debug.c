@@ -73,7 +73,6 @@
 static unsigned int ath5k_debug;
 module_param_named(debug, ath5k_debug, uint, 0);
 
-
 /* debugfs: registers */
 
 struct reg {
@@ -187,7 +186,6 @@ static const struct file_operations fops_registers = {
 	.owner = THIS_MODULE,
 };
 
-
 /* debugfs: beacons */
 
 static ssize_t read_file_beacon(struct file *file, char __user *user_buf,
@@ -245,11 +243,9 @@ static ssize_t write_file_beacon(struct file *file,
 	struct ath5k_hw *ah = file->private_data;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	if (strncmp(buf, "disable", 7) == 0) {
 		AR5K_REG_DISABLE_BITS(ah, AR5K_BEACON, AR5K_BEACON_ENABLE);
 		pr_info("debugfs disable beacons\n");
@@ -267,7 +263,6 @@ static const struct file_operations fops_beacon = {
 	.owner = THIS_MODULE,
 	.llseek = default_llseek,
 };
-
 
 /* debugfs: reset */
 
@@ -287,7 +282,6 @@ static const struct file_operations fops_reset = {
 	.owner = THIS_MODULE,
 	.llseek = noop_llseek,
 };
-
 
 /* debugfs: debug level */
 
@@ -347,11 +341,9 @@ static ssize_t write_file_debug(struct file *file,
 	unsigned int i;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	for (i = 0; i < ARRAY_SIZE(dbg_info); i++) {
 		if (strncmp(buf, dbg_info[i].name,
 					strlen(dbg_info[i].name)) == 0) {
@@ -369,7 +361,6 @@ static const struct file_operations fops_debug = {
 	.owner = THIS_MODULE,
 	.llseek = default_llseek,
 };
-
 
 /* debugfs: antenna */
 
@@ -452,11 +443,9 @@ static ssize_t write_file_antenna(struct file *file,
 	unsigned int i;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	if (strncmp(buf, "diversity", 9) == 0) {
 		ath5k_hw_set_antenna_mode(ah, AR5K_ANTMODE_DEFAULT);
 		pr_info("debug: enable diversity\n");
@@ -537,7 +526,6 @@ static const struct file_operations fops_misc = {
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
-
 
 /* debugfs: frameerrors */
 
@@ -625,11 +613,9 @@ static ssize_t write_file_frameerrors(struct file *file,
 	struct ath5k_statistics *st = &ah->stats;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	if (strncmp(buf, "clear", 5) == 0) {
 		st->rxerr_crc = 0;
 		st->rxerr_phy = 0;
@@ -655,7 +641,6 @@ static const struct file_operations fops_frameerrors = {
 	.owner = THIS_MODULE,
 	.llseek = default_llseek,
 };
-
 
 /* debugfs: ani */
 
@@ -774,11 +759,9 @@ static ssize_t write_file_ani(struct file *file,
 	struct ath5k_hw *ah = file->private_data;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	if (strncmp(buf, "sens-low", 8) == 0) {
 		ath5k_ani_init(ah, ATH5K_ANI_MODE_MANUAL_HIGH);
 	} else if (strncmp(buf, "sens-high", 9) == 0) {
@@ -820,7 +803,6 @@ static const struct file_operations fops_ani = {
 	.owner = THIS_MODULE,
 	.llseek = default_llseek,
 };
-
 
 /* debugfs: queues etc */
 
@@ -872,11 +854,9 @@ static ssize_t write_file_queue(struct file *file,
 	struct ath5k_hw *ah = file->private_data;
 	char buf[20];
 
-	count = min_t(size_t, count, sizeof(buf) - 1);
-	if (copy_from_user(buf, userbuf, count))
+	if (copy_from_user(buf, userbuf, min(count, sizeof(buf))))
 		return -EFAULT;
 
-	buf[count] = '\0';
 	if (strncmp(buf, "start", 5) == 0)
 		ieee80211_wake_queues(ah->hw);
 	else if (strncmp(buf, "stop", 4) == 0)
@@ -885,7 +865,6 @@ static ssize_t write_file_queue(struct file *file,
 	return count;
 }
 
-
 static const struct file_operations fops_queue = {
 	.read = read_file_queue,
 	.write = write_file_queue,
@@ -893,7 +872,6 @@ static const struct file_operations fops_queue = {
 	.owner = THIS_MODULE,
 	.llseek = default_llseek,
 };
-
 
 void
 ath5k_debug_init_device(struct ath5k_hw *ah)

@@ -3,9 +3,6 @@
  *
  *   Author: Ryan Wilson <hap9@epoch.ncsc.mil>
  */
-
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/list.h>
@@ -141,7 +138,6 @@ static int xen_pcibk_attach(struct xen_pcibk_device *pdev)
 	int err = 0;
 	int gnt_ref, remote_evtchn;
 	char *magic = NULL;
-
 
 	mutex_lock(&pdev->dev_lock);
 	/* Make sure we only do this setup once */
@@ -361,7 +357,6 @@ static int xen_pcibk_reconfigure(struct xen_pcibk_device *pdev)
 	int i, len;
 	char state_str[64];
 	char dev_str[64];
-
 
 	dev_dbg(&pdev->xdev->dev, "Reconfiguring device ...\n");
 
@@ -726,13 +721,14 @@ int __init xen_pcibk_xenbus_register(void)
 {
 	xen_pcibk_wq = create_workqueue("xen_pciback_workqueue");
 	if (!xen_pcibk_wq) {
-		pr_err("%s: create xen_pciback_workqueue failed\n", __func__);
+		printk(KERN_ERR "%s: create"
+			"xen_pciback_workqueue failed\n", __func__);
 		return -EFAULT;
 	}
 	xen_pcibk_backend = &xen_pcibk_vpci_backend;
 	if (passthrough)
 		xen_pcibk_backend = &xen_pcibk_passthrough_backend;
-	pr_info("backend is %s\n", xen_pcibk_backend->name);
+	pr_info(DRV_NAME ": backend is %s\n", xen_pcibk_backend->name);
 	return xenbus_register_backend(&xen_pcibk_driver);
 }
 

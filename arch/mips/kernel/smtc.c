@@ -71,7 +71,6 @@ unsigned long irq_hwmask[NR_IRQS];
  * Data structures purely associated with SMTC parallelism
  */
 
-
 /*
  * Table for tracking ASIDs whose lifetime is prolonged.
  */
@@ -87,13 +86,11 @@ asiduse smtc_live_asid[MAX_SMTC_TLBS][MAX_SMTC_ASIDS];
 struct smtc_ipi_q IPIQ[NR_CPUS];
 static struct smtc_ipi_q freeIPIq;
 
-
 /*
  * Number of FPU contexts for each VPE
  */
 
 static int smtc_nconf1[MAX_SMTC_VPES];
-
 
 /* Forward declarations */
 
@@ -167,7 +164,6 @@ static int __init hangtrig_enable(char *s)
 	hang_trig = 1;
 	return 1;
 }
-
 
 __setup("hangtrig", hangtrig_enable);
 
@@ -284,7 +280,6 @@ static void smtc_configure_tlb(void)
 	    }
 	}
 }
-
 
 /*
  * Incrementally build the CPU map out of constituent MIPS MT cores,
@@ -636,7 +631,6 @@ void smtc_prepare_cpus(int cpus)
 	init_smtc_stats();
 }
 
-
 /*
  * Setup the PC, SP, and GP of a secondary processor and start it
  * running!
@@ -645,7 +639,7 @@ void smtc_prepare_cpus(int cpus)
  * (unsigned long)idle->thread_info the gp
  *
  */
-void smtc_boot_secondary(int cpu, struct task_struct *idle)
+void __cpuinit smtc_boot_secondary(int cpu, struct task_struct *idle)
 {
 	extern u32 kernelsp[NR_CPUS];
 	unsigned long flags;
@@ -1007,7 +1001,7 @@ static void __irq_entry smtc_clock_tick_interrupt(void)
 	int irq = MIPS_CPU_IRQ_BASE + 1;
 
 	irq_enter();
-	kstat_incr_irq_this_cpu(irq);
+	kstat_incr_irqs_this_cpu(irq, irq_to_desc(irq));
 	cd = &per_cpu(mips_clockevent_device, cpu);
 	cd->event_handler(cd);
 	irq_exit();
@@ -1361,7 +1355,6 @@ void smtc_soft_dump(void)
 	printk("%d Recoveries of \"stolen\" FPU\n",
 	       atomic_read(&smtc_fpu_recoveries));
 }
-
 
 /*
  * TLB management routines special to SMTC

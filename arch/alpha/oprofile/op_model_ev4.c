@@ -14,7 +14,6 @@
 
 #include "op_impl.h"
 
-
 /* Compute all of the registers in preparation for enabling profiling.  */
 
 static void
@@ -102,7 +101,6 @@ ev4_handle_interrupt(unsigned long which, struct pt_regs *regs,
 	/* Record the sample.  */
 	oprofile_add_sample(regs, which);
 }
-
 
 struct op_axp_model op_model_ev4 = {
 	.reg_setup		= ev4_reg_setup,

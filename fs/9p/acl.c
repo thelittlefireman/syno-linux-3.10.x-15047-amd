@@ -156,7 +156,7 @@ int v9fs_acl_chmod(struct inode *inode, struct p9_fid *fid)
 		return -EOPNOTSUPP;
 	acl = v9fs_get_cached_acl(inode, ACL_TYPE_ACCESS);
 	if (acl) {
-		retval = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
+		retval = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
 		if (retval)
 			return retval;
 		set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
@@ -200,7 +200,7 @@ int v9fs_acl_mode(struct inode *dir, umode_t *modep,
 	if (acl) {
 		if (S_ISDIR(mode))
 			*dpacl = posix_acl_dup(acl);
-		retval = __posix_acl_create(&acl, GFP_NOFS, &mode);
+		retval = posix_acl_create(&acl, GFP_NOFS, &mode);
 		if (retval < 0)
 			return retval;
 		if (retval > 0)
@@ -276,7 +276,6 @@ static int v9fs_remote_set_acl(struct dentry *dentry, const char *name,
 	}
 	return v9fs_xattr_set(dentry, full_name, value, size, flags);
 }
-
 
 static int v9fs_xattr_set_acl(struct dentry *dentry, const char *name,
 			      const void *value, size_t size,

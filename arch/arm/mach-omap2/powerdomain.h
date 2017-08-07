@@ -42,7 +42,6 @@
 #define PWRSTS_RET_ON		(PWRSTS_RET | PWRSTS_ON)
 #define PWRSTS_OFF_RET_ON	(PWRSTS_OFF_RET | PWRSTS_ON)
 
-
 /*
  * Powerdomain flags (struct powerdomain.flags)
  *
@@ -166,7 +165,6 @@ struct powerdomain {
  * @pwrdm_disable_hdwr_sar: Disable Hardware Save-Restore feature for a pd
  * @pwrdm_set_lowpwrstchange: Enable pd transitions from a shallow to deep sleep
  * @pwrdm_wait_transition: Wait for a pd state transition to complete
- * @pwrdm_has_voltdm: Check if a voltdm association is needed
  *
  * Regarding @pwrdm_set_lowpwrstchange: On the OMAP2 and 3-family
  * chips, a powerdomain's power state is not allowed to directly
@@ -197,7 +195,6 @@ struct pwrdm_ops {
 	int	(*pwrdm_disable_hdwr_sar)(struct powerdomain *pwrdm);
 	int	(*pwrdm_set_lowpwrstchange)(struct powerdomain *pwrdm);
 	int	(*pwrdm_wait_transition)(struct powerdomain *pwrdm);
-	int	(*pwrdm_has_voltdm)(void);
 };
 
 int pwrdm_register_platform_funcs(struct pwrdm_ops *custom_funcs);
@@ -255,9 +252,6 @@ extern void omap243x_powerdomains_init(void);
 extern void omap3xxx_powerdomains_init(void);
 extern void am33xx_powerdomains_init(void);
 extern void omap44xx_powerdomains_init(void);
-extern void omap54xx_powerdomains_init(void);
-extern void dra7xx_powerdomains_init(void);
-void am43xx_powerdomains_init(void);
 
 extern struct pwrdm_ops omap2_pwrdm_operations;
 extern struct pwrdm_ops omap3_pwrdm_operations;

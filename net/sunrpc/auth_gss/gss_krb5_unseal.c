@@ -66,7 +66,6 @@
 # define RPCDBG_FACILITY        RPCDBG_AUTH
 #endif
 
-
 /* read_token is a mic token, and message_buffer is the data that the mic was
  * supposedly taken over. */
 
@@ -150,6 +149,7 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
 	struct xdr_netobj cksumobj = {.len = sizeof(cksumdata),
 				      .data = cksumdata};
 	s32 now;
+	u64 seqnum;
 	u8 *ptr = read_token->data;
 	u8 *cksumkey;
 	u8 flags;
@@ -196,10 +196,9 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
 	if (now > ctx->endtime)
 		return GSS_S_CONTEXT_EXPIRED;
 
-	/*
-	 * NOTE: the sequence number at ptr + 8 is skipped, rpcsec_gss
-	 * doesn't want it checked; see page 6 of rfc 2203.
-	 */
+	/* do sequencing checks */
+
+	seqnum = be64_to_cpup((__be64 *)ptr + 8);
 
 	return GSS_S_COMPLETE;
 }
@@ -223,4 +222,3 @@ gss_verify_mic_kerberos(struct gss_ctx *gss_ctx,
 		return gss_verify_mic_v2(ctx, message_buffer, read_token);
 	}
 }
-

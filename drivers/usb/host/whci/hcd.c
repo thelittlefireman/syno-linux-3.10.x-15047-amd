@@ -77,7 +77,6 @@ out:
 	return ret;
 }
 
-
 /*
  * Stop the wireless host controller.
  *
@@ -110,7 +109,6 @@ static int whc_get_frame_number(struct usb_hcd *usb_hcd)
 	return -ENOSYS;
 }
 
-
 /*
  * Queue an URB to the ASL or PZL
  */
@@ -134,7 +132,7 @@ static int whc_urb_enqueue(struct usb_hcd *usb_hcd, struct urb *urb,
 	default:
 		ret = asl_urb_enqueue(whc, urb, mem_flags);
 		break;
-	}
+	};
 
 	return ret;
 }
@@ -160,7 +158,7 @@ static int whc_urb_dequeue(struct usb_hcd *usb_hcd, struct urb *urb, int status)
 	default:
 		ret = asl_urb_dequeue(whc, urb, status);
 		break;
-	}
+	};
 
 	return ret;
 }
@@ -212,7 +210,6 @@ static void whc_endpoint_reset(struct usb_hcd *usb_hcd,
 	spin_unlock_irqrestore(&whc->lock, flags);
 }
 
-
 static struct hc_driver whc_hc_driver = {
 	.description = "whci-hcd",
 	.product_desc = "Wireless host controller",
@@ -231,6 +228,8 @@ static struct hc_driver whc_hc_driver = {
 
 	.hub_status_data = wusbhc_rh_status_data,
 	.hub_control = wusbhc_rh_control,
+	.bus_suspend = wusbhc_rh_suspend,
+	.bus_resume = wusbhc_rh_resume,
 	.start_port_reset = wusbhc_rh_start_port_reset,
 };
 
@@ -293,7 +292,6 @@ static int whc_probe(struct umc_dev *umc)
 		dev_err(dev, "cannot add HCD: %d\n", ret);
 		goto error_usb_add_hcd;
 	}
-	device_wakeup_enable(usb_hcd->self.controller);
 
 	ret = wusbhc_b_create(wusbhc);
 	if (ret) {
@@ -317,7 +315,6 @@ error:
 		usb_put_hcd(usb_hcd);
 	return ret;
 }
-
 
 static void whc_remove(struct umc_dev *umc)
 {

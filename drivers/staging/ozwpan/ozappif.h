@@ -6,6 +6,8 @@
 #ifndef _OZAPPIF_H
 #define _OZAPPIF_H
 
+#include "ozeventdef.h"
+
 #define OZ_IOCTL_MAGIC	0xf4
 
 struct oz_mac_addr {
@@ -31,6 +33,5 @@ struct oz_binding_info {
 #define OZ_IOCTL_ADD_BINDING	_IOW(OZ_IOCTL_MAGIC, 3, struct oz_binding_info)
 #define OZ_IOCTL_REMOVE_BINDING	_IOW(OZ_IOCTL_MAGIC, 4, struct oz_binding_info)
 #define OZ_IOCTL_MAX		5
-
 
 #endif /* _OZAPPIF_H */

@@ -343,7 +343,7 @@ static int fd_motor_on(int nr)
 		unit[nr].motor = 1;
 		fd_select(nr);
 
-		reinit_completion(&motor_on_completion);
+		INIT_COMPLETION(motor_on_completion);
 		motor_on_timer.data = nr;
 		mod_timer(&motor_on_timer, jiffies + HZ/2);
 
@@ -652,7 +652,6 @@ static void post_write (unsigned long drive)
 	rel_fdc(); /* corresponds to get_fdc() in raw_write */
 }
 
-
 /*
  * The following functions are to convert the block contents into raw data
  * written to disk and vice versa.
@@ -861,7 +860,6 @@ static void amiga_write(int disk)
 	*(ushort *)ptr = (ptr[-1]&1) ? 0x2AA8 : 0xAAA8;
 }
 
-
 struct dos_header {
 	unsigned char track,   /* 0-80 */
 		side,    /* 0-1 */
@@ -923,7 +921,6 @@ struct dos_header {
 ;
 ; Anyway, the end result is the same as the remainder of the division of
 ; the data by $11021. I am afraid I need to study theory a bit more...
-
 
 my only works was to code this from manx to C....
 

@@ -80,7 +80,6 @@ static const u8 W83L786NG_PWM_ENABLE_SHIFT[] = {2, 4};
 /* FAN Duty Cycle, be used to control */
 static const u8 W83L786NG_REG_PWM[] = {0x81, 0x87};
 
-
 static inline u8
 FAN_TO_REG(long rpm, int div)
 {
@@ -367,7 +366,6 @@ static struct sensor_device_attribute sda_fan_div[] = {
 		    store_fan_div, 1),
 };
 
-
 /* read/write the temperature, includes measured value and limits */
 
 static ssize_t
@@ -584,7 +582,6 @@ static struct sensor_device_attribute sda_tolerance[] = {
 		    show_tolerance, store_tolerance, 1),
 };
 
-
 #define IN_UNIT_ATTRS(X)	\
 	&sda_in_input[X].dev_attr.attr,		\
 	&sda_in_min[X].dev_attr.attr,		\
@@ -783,7 +780,6 @@ static struct w83l786ng_data *w83l786ng_update_device(struct device *dev)
 			    (w83l786ng_read_value(client, W83L786NG_REG_PWM[i])
 			     & 0x0f) * 0x11;
 		}
-
 
 		/* Update the temperature sensors */
 		for (i = 0; i < 2; i++) {

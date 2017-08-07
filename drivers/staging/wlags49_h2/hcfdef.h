@@ -72,7 +72,6 @@
  *
  *************************************************************************************************/
 
-
 /************************************************************************************************/
 /*********************************  P R E F I X E S  ********************************************/
 /************************************************************************************************/
@@ -86,7 +85,6 @@
 /************************************************************************************************/
 /********************************* GENERAL EQUATES **********************************************/
 /************************************************************************************************/
-
 
 #define HCF_MAGIC               0x7D37  // "}7" Handle validation
 
@@ -151,7 +149,6 @@
 //#define BAP_0                 HREG_DATA_0     //Used by DMA controller to access NIC RAM
 #define BAP_1                   HREG_DATA_1     //Used by HCF to access NIC RAM
 
-
 //************************* Hermes Receive/Transmit Frame Structures
 //HFS_STAT
 //see MMD.H for HFS_STAT_ERR
@@ -166,7 +163,6 @@
 
 //************************* Hermes Register Offsets and Command bits
 #define HREG_IO_RANGE           0x80        //I/O Range used by Hermes
-
 
 //************************* Command/Status
 #define HREG_CMD                0x00        //
@@ -183,13 +179,11 @@
 #define HREG_RESP_1             0x0C        //
 #define HREG_RESP_2             0x0E        //
 
-
 //************************* FID Management
 #define HREG_INFO_FID           0x10        //
 #define HREG_RX_FID             0x20        //
 #define HREG_ALLOC_FID          0x22        //
 #define HREG_TX_COMPL_FID       0x24        //
-
 
 //************************* BAP
 //20031030 HWi Inserted this again because the dongle code uses this (GPIF.C)
@@ -204,7 +198,6 @@
 #define HREG_SELECT_1           0x1A        //
 #define HREG_OFFSET_1           0x1E        //
 #define HREG_DATA_1             0x38        //
-
 
 //************************* Event
 #define HREG_EV_STAT            0x30        //
@@ -351,7 +344,6 @@ err: these values should match;
 /**********************************  EQUATES  ***************************************************/
 /************************************************************************************************/
 
-
 // Hermes Command Codes and Qualifier bits
 #define     HCMD_BUSY           0x8000  // Busy bit, applicable for all commands
 #define HCMD_INI                0x0000  //
@@ -375,7 +367,6 @@ err: these values should match;
 #define HCMD_THESEUS            0x0038
 #define     HCMD_STARTPREAMBLE  0x0E00  // Start continuous preamble Tx
 #define     HCMD_STOP           0x0F00  // Stop Theseus test mode
-
 
 //Configuration Management
 //
@@ -447,7 +438,6 @@ err: ;
 err: ;
 #endif
 #endif // HCF_CFG_PRI_3_BOTTOM
-
 
 //---------------------------------------------------------------------------------------------------------------------
 #if defined HCF_CFG_HSI_0_TOP || defined HCF_CFG_HSI_0_BOTTOM
@@ -551,7 +541,6 @@ err: ;
 #endif
 #endif // HCF_CFG_STA_BOTTOM
 
-
 /************************************************************************************************/
 /**************************************  MACROS  ************************************************/
 /************************************************************************************************/
@@ -602,7 +591,6 @@ err: ;
 #define IF_TALLY(x) do { } while (0)
 #endif // HCF_TALLIES_HCF
 
-
 #if HCF_DMA
 #define IF_DMA(x)           do { x; } while(0)
 #define IF_NOT_DMA(x)       do { } while(0)
@@ -614,7 +602,6 @@ err: ;
 #define IF_USE_DMA(x)       do { } while(0)
 #define IF_NOT_USE_DMA(x)   do { x; } while(0)
 #endif // HCF_DMA
-
 
 #define IPW(x) ((hcf_16)IN_PORT_WORD( ifbp->IFB_IOBase + (x) ) )
 #define OPW(x, y) OUT_PORT_WORD( ifbp->IFB_IOBase + (x), y )
@@ -664,7 +651,6 @@ err: someone redefined these macros while the implementation assumes they are eq
 #endif
 #endif // 0 get compiler going
 
-
 /* The assert in HCFLOGENTRY checks against re-entrancy. Re-entrancy could be caused by MSF logic at
  * task-level calling hcf_functions without shielding with HCF_ACT_ON/_OFF. When an interrupt occurs,
  * the ISR could (either directly or indirectly) cause re-entering of the interrupted HCF-routine.
@@ -713,7 +699,6 @@ err: someone redefined these macros while the implementation assumes they are eq
 #define HCFASSERT_INT
 #endif // HCF_INT_ON
 
-
 #if defined HCF_TRACE
 #define HCFTRACE(ifbp, where )     do {OPW( HREG_SW_1, where );} while(0)
 //#define HCFTRACE(ifbp, where )       {HCFASSERT( DO_ASSERT, where );}
@@ -723,7 +708,6 @@ err: someone redefined these macros while the implementation assumes they are eq
 #define HCFTRACE(ifbp, where )     do { } while(0)
 #define HCFTRACEVALUE(ifbp, what ) do { } while(0)
 #endif // HCF_TRACE
-
 
 #if HCF_BIG_ENDIAN
 #define BE_PAR(x)               ,x
@@ -749,4 +733,3 @@ EXTERN_C void        mdd_assert         (IFBP ifbp, unsigned int line_number, hc
 #undef IN_PORT_STRING_32
 #endif // HCF_IO
 #endif  //HCFDEFC_H
-

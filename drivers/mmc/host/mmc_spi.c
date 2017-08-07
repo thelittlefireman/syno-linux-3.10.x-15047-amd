@@ -36,13 +36,11 @@
 
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>		/* for R1_SPI_* bit values */
-#include <linux/mmc/slot-gpio.h>
 
 #include <linux/spi/spi.h>
 #include <linux/spi/mmc_spi.h>
 
 #include <asm/unaligned.h>
-
 
 /* NOTES:
  *
@@ -71,7 +69,6 @@
  *   during that time ... at least on unshared bus segments.
  */
 
-
 /*
  * Local protocol constants, internal to data block protocols.
  */
@@ -90,7 +87,6 @@
 #define SPI_TOKEN_STOP_TRAN	0xfd	/* terminate multiblock write */
 
 #define MMC_SPI_BLOCKSIZE	512
-
 
 /* These fixed timeouts come from the latest SD specs, which say to ignore
  * the CSD values.  The R1B value is for card erase (e.g. the "I forgot the
@@ -153,7 +149,6 @@ struct mmc_spi_host {
 	void			*ones;
 	dma_addr_t		ones_dma;
 };
-
 
 /****************************************************************************/
 
@@ -236,7 +231,6 @@ static int mmc_spi_readtoken(struct mmc_spi_host *host, unsigned long timeout)
 {
 	return mmc_spi_skip(host, timeout, 1, 0xff);
 }
-
 
 /*
  * Note that for SPI, cmd->resp[0] is not the same data as "native" protocol
@@ -1273,13 +1267,34 @@ static void mmc_spi_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	}
 }
 
+static int mmc_spi_get_ro(struct mmc_host *mmc)
+{
+	struct mmc_spi_host *host = mmc_priv(mmc);
+
+	if (host->pdata && host->pdata->get_ro)
+		return !!host->pdata->get_ro(mmc->parent);
+	/*
+	 * Board doesn't support read only detection; let the mmc core
+	 * decide what to do.
+	 */
+	return -ENOSYS;
+}
+
+static int mmc_spi_get_cd(struct mmc_host *mmc)
+{
+	struct mmc_spi_host *host = mmc_priv(mmc);
+
+	if (host->pdata && host->pdata->get_cd)
+		return !!host->pdata->get_cd(mmc->parent);
+	return -ENOSYS;
+}
+
 static const struct mmc_host_ops mmc_spi_ops = {
 	.request	= mmc_spi_request,
 	.set_ios	= mmc_spi_set_ios,
-	.get_ro		= mmc_gpio_get_ro,
-	.get_cd		= mmc_gpio_get_cd,
+	.get_ro		= mmc_spi_get_ro,
+	.get_cd		= mmc_spi_get_cd,
 };
-
 
 /****************************************************************************/
 
@@ -1303,7 +1318,6 @@ static int mmc_spi_probe(struct spi_device *spi)
 	struct mmc_host		*mmc;
 	struct mmc_spi_host	*host;
 	int			status;
-	bool			has_ro = false;
 
 	/* We rely on full duplex transfers, mostly to reduce
 	 * per-transfer overheads (by making fewer transfers).
@@ -1428,33 +1442,18 @@ static int mmc_spi_probe(struct spi_device *spi)
 	}
 
 	/* pass platform capabilities, if any */
-	if (host->pdata) {
+	if (host->pdata)
 		mmc->caps |= host->pdata->caps;
-		mmc->caps2 |= host->pdata->caps2;
-	}
 
 	status = mmc_add_host(mmc);
 	if (status != 0)
 		goto fail_add_host;
 
-	if (host->pdata && host->pdata->flags & MMC_SPI_USE_CD_GPIO) {
-		status = mmc_gpio_request_cd(mmc, host->pdata->cd_gpio,
-					     host->pdata->cd_debounce);
-		if (status != 0)
-			goto fail_add_host;
-	}
-
-	if (host->pdata && host->pdata->flags & MMC_SPI_USE_RO_GPIO) {
-		has_ro = true;
-		status = mmc_gpio_request_ro(mmc, host->pdata->ro_gpio);
-		if (status != 0)
-			goto fail_add_host;
-	}
-
 	dev_info(&spi->dev, "SD/MMC host %s%s%s%s%s\n",
 			dev_name(&mmc->class_dev),
 			host->dma_dev ? "" : ", no DMA",
-			has_ro ? "" : ", no WP",
+			(host->pdata && host->pdata->get_ro)
+				? "" : ", no WP",
 			(host->pdata && host->pdata->setpower)
 				? "" : ", no poweroff",
 			(mmc->caps & MMC_CAP_NEEDS_POLL)
@@ -1478,7 +1477,6 @@ nomem:
 	kfree(ones);
 	return status;
 }
-
 
 static int mmc_spi_remove(struct spi_device *spi)
 {

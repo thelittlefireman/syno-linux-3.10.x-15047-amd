@@ -28,7 +28,6 @@
 #include <drm/drmP.h>
 #include "ast_drv.h"
 
-
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_crtc_helper.h>
 
@@ -61,7 +60,6 @@ uint8_t ast_get_index_reg_mask(struct ast_private *ast,
 	ret = ast_io_read8(ast, base + 1) & mask;
 	return ret;
 }
-
 
 static int ast_detect_chip(struct drm_device *dev)
 {
@@ -100,7 +98,7 @@ static int ast_detect_chip(struct drm_device *dev)
 			}
 			ast->vga2_clone = false;
 		} else {
-			ast->chip = 2000;
+			ast->chip = AST2000;
 			DRM_INFO("AST 2000 detected\n");
 		}
 	}
@@ -116,7 +114,6 @@ static int ast_get_dram_info(struct drm_device *dev)
 	ast_write32(ast, 0xf004, 0x1e6e0000);
 	ast_write32(ast, 0xf000, 0x1);
 
-
 	ast_write32(ast, 0x10000, 0xfc600309);
 
 	do {
@@ -124,7 +121,7 @@ static int ast_get_dram_info(struct drm_device *dev)
 	} while (ast_read32(ast, 0x10000) != 0x01);
 	data = ast_read32(ast, 0x10004);
 
-	if (data & 0x400)
+	if (data & 0x40)
 		ast->dram_bus_width = 16;
 	else
 		ast->dram_bus_width = 32;
@@ -189,6 +186,53 @@ static int ast_get_dram_info(struct drm_device *dev)
 	return 0;
 }
 
+uint32_t ast_get_max_dclk(struct drm_device *dev, int bpp)
+{
+	struct ast_private *ast = dev->dev_private;
+	uint32_t dclk, jreg;
+	uint32_t dram_bus_width, mclk, dram_bandwidth, actual_dram_bandwidth, dram_efficency = 500;
+
+	dram_bus_width = ast->dram_bus_width;
+	mclk = ast->mclk;
+
+	if (ast->chip == AST2100 ||
+	    ast->chip == AST1100 ||
+	    ast->chip == AST2200 ||
+	    ast->chip == AST2150 ||
+	    ast->dram_bus_width == 16)
+		dram_efficency = 600;
+	else if (ast->chip == AST2300)
+		dram_efficency = 400;
+
+	dram_bandwidth = mclk * dram_bus_width * 2 / 8;
+	actual_dram_bandwidth = dram_bandwidth * dram_efficency / 1000;
+
+	if (ast->chip == AST1180)
+		dclk = actual_dram_bandwidth / ((bpp + 1) / 8);
+	else {
+		jreg = ast_get_index_reg_mask(ast, AST_IO_CRTC_PORT, 0xd0, 0xff);
+		if ((jreg & 0x08) && (ast->chip == AST2000))
+			dclk = actual_dram_bandwidth / ((bpp + 1 + 16) / 8);
+		else if ((jreg & 0x08) && (bpp == 8))
+			dclk = actual_dram_bandwidth / ((bpp + 1 + 24) / 8);
+		else
+			dclk = actual_dram_bandwidth / ((bpp + 1) / 8);
+	}
+
+	if (ast->chip == AST2100 ||
+	    ast->chip == AST2200 ||
+	    ast->chip == AST2300 ||
+	    ast->chip == AST1180) {
+		if (dclk > 200)
+			dclk = 200;
+	} else {
+		if (dclk > 165)
+			dclk = 165;
+	}
+
+	return dclk;
+}
+
 static void ast_user_framebuffer_destroy(struct drm_framebuffer *fb)
 {
 	struct ast_framebuffer *ast_fb = to_ast_framebuffer(fb);
@@ -202,7 +246,6 @@ static void ast_user_framebuffer_destroy(struct drm_framebuffer *fb)
 static const struct drm_framebuffer_funcs ast_fb_funcs = {
 	.destroy = ast_user_framebuffer_destroy,
 };
-
 
 int ast_framebuffer_init(struct drm_device *dev,
 			 struct ast_framebuffer *ast_fb,
@@ -312,6 +355,7 @@ int ast_driver_load(struct drm_device *dev, unsigned long flags)
 	dev->mode_config.min_height = 0;
 	dev->mode_config.preferred_depth = 24;
 	dev->mode_config.prefer_shadow = 1;
+	dev->mode_config.fb_base = pci_resource_start(ast->dev->pdev, 0);
 
 	if (ast->chip == AST2100 ||
 	    ast->chip == AST2200 ||
@@ -402,7 +446,20 @@ int ast_dumb_create(struct drm_file *file,
 	return 0;
 }
 
-static void ast_bo_unref(struct ast_bo **bo)
+int ast_dumb_destroy(struct drm_file *file,
+		     struct drm_device *dev,
+		     uint32_t handle)
+{
+	return drm_gem_handle_delete(file, handle);
+}
+
+int ast_gem_init_object(struct drm_gem_object *obj)
+{
+	BUG();
+	return 0;
+}
+
+void ast_bo_unref(struct ast_bo **bo)
 {
 	struct ttm_buffer_object *tbo;
 
@@ -424,10 +481,9 @@ void ast_gem_free_object(struct drm_gem_object *obj)
 	ast_bo_unref(&ast_bo);
 }
 
-
 static inline u64 ast_bo_mmap_offset(struct ast_bo *bo)
 {
-	return drm_vma_node_offset_addr(&bo->bo.vma_node);
+	return bo->bo.addr_space_offset;
 }
 int
 ast_dumb_mmap_offset(struct drm_file *file,
@@ -456,4 +512,3 @@ out_unlock:
 	return ret;
 
 }
-

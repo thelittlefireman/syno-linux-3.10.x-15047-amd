@@ -59,6 +59,11 @@ struct route4_filter {
 
 #define ROUTE4_FAILURE ((struct route4_filter *)(-1L))
 
+static const struct tcf_ext_map route_ext_map = {
+	.police = TCA_ROUTE4_POLICE,
+	.action = TCA_ROUTE4_ACT
+};
+
 static inline int route4_fastmap_hash(u32 id, int iif)
 {
 	return id & 0xF;
@@ -123,7 +128,7 @@ static inline int route4_hash_wild(void)
 static int route4_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 			   struct tcf_result *res)
 {
-	struct route4_head *head = tp->root;
+	struct route4_head *head = (struct route4_head *)tp->root;
 	struct dst_entry *dst;
 	struct route4_bucket *b;
 	struct route4_filter *f;
@@ -213,7 +218,7 @@ static inline u32 from_hash(u32 id)
 
 static unsigned long route4_get(struct tcf_proto *tp, u32 handle)
 {
-	struct route4_head *head = tp->root;
+	struct route4_head *head = (struct route4_head *)tp->root;
 	struct route4_bucket *b;
 	struct route4_filter *f;
 	unsigned int h1, h2;
@@ -284,7 +289,7 @@ static void route4_destroy(struct tcf_proto *tp)
 
 static int route4_delete(struct tcf_proto *tp, unsigned long arg)
 {
-	struct route4_head *head = tp->root;
+	struct route4_head *head = (struct route4_head *)tp->root;
 	struct route4_filter **fp, *f = (struct route4_filter *)arg;
 	unsigned int h = 0;
 	struct route4_bucket *b;
@@ -342,8 +347,7 @@ static int route4_set_parms(struct net *net, struct tcf_proto *tp,
 	struct route4_bucket *b;
 	struct tcf_exts e;
 
-	tcf_exts_init(&e, TCA_ROUTE4_ACT, TCA_ROUTE4_POLICE);
-	err = tcf_exts_validate(net, tp, tb, est, &e);
+	err = tcf_exts_validate(net, tp, tb, est, &e, &route_ext_map);
 	if (err < 0)
 		return err;
 
@@ -477,7 +481,6 @@ static int route4_change(struct net *net, struct sk_buff *in_skb,
 	if (f == NULL)
 		goto errout;
 
-	tcf_exts_init(&f->exts, TCA_ROUTE4_ACT, TCA_ROUTE4_POLICE);
 	err = route4_set_parms(net, tp, base, f, handle, head, tb,
 		tca[TCA_RATE], 1);
 	if (err < 0)
@@ -551,7 +554,7 @@ static void route4_walk(struct tcf_proto *tp, struct tcf_walker *arg)
 	}
 }
 
-static int route4_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
+static int route4_dump(struct tcf_proto *tp, unsigned long fh,
 		       struct sk_buff *skb, struct tcmsg *t)
 {
 	struct route4_filter *f = (struct route4_filter *)fh;
@@ -586,12 +589,12 @@ static int route4_dump(struct net *net, struct tcf_proto *tp, unsigned long fh,
 	    nla_put_u32(skb, TCA_ROUTE4_CLASSID, f->res.classid))
 		goto nla_put_failure;
 
-	if (tcf_exts_dump(skb, &f->exts) < 0)
+	if (tcf_exts_dump(skb, &f->exts, &route_ext_map) < 0)
 		goto nla_put_failure;
 
 	nla_nest_end(skb, nest);
 
-	if (tcf_exts_dump_stats(skb, &f->exts) < 0)
+	if (tcf_exts_dump_stats(skb, &f->exts, &route_ext_map) < 0)
 		goto nla_put_failure;
 
 	return skb->len;

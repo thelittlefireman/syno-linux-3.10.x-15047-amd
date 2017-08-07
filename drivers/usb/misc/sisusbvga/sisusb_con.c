@@ -208,7 +208,7 @@ sisusbcon_init(struct vc_data *c, int init)
 	struct sisusb_usb_data *sisusb;
 	int cols, rows;
 
-	/* This is called by do_take_over_console(),
+	/* This is called by take_over_console(),
 	 * ie by us/under our control. It is
 	 * only called after text mode and fonts
 	 * are set up/restored.
@@ -273,7 +273,7 @@ sisusbcon_deinit(struct vc_data *c)
 	struct sisusb_usb_data *sisusb;
 	int i;
 
-	/* This is called by do_take_over_console()
+	/* This is called by take_over_console()
 	 * and others, ie not under our control.
 	 */
 
@@ -378,7 +378,6 @@ sisusbcon_putc(struct vc_data *c, int ch, int y, int x)
 		return;
 	}
 
-
 	sisusb_copy_memory(sisusb, (char *)SISUSB_VADDR(x, y),
 				(long)SISUSB_HADDR(x, y), 2, &written);
 
@@ -467,7 +466,6 @@ sisusbcon_clear(struct vc_data *c, int y, int x, int height, int width)
 
 	length = ((height * cols) - x - (cols - width - x)) * 2;
 
-
 	sisusb_copy_memory(sisusb, (unsigned char *)SISUSB_VADDR(x, y),
 				(long)SISUSB_HADDR(x, y), length, &written);
 
@@ -499,7 +497,6 @@ sisusbcon_bmove(struct vc_data *c, int sy, int sx,
 	}
 
 	length = ((height * cols) - dx - (cols - width - dx)) * 2;
-
 
 	sisusb_copy_memory(sisusb, (unsigned char *)SISUSB_VADDR(dx, dy),
 				(long)SISUSB_HADDR(dx, dy), length, &written);
@@ -1490,9 +1487,8 @@ sisusb_console_init(struct sisusb_usb_data *sisusb, int first, int last)
 	mutex_unlock(&sisusb->lock);
 
 	/* Now grab the desired console(s) */
-	console_lock();
-	ret = do_take_over_console(&sisusb_con, first - 1, last - 1, 0);
-	console_unlock();
+	ret = take_over_console(&sisusb_con, first - 1, last - 1, 0);
+
 	if (!ret)
 		sisusb->haveconsole = 1;
 	else {
@@ -1536,14 +1532,11 @@ sisusb_console_exit(struct sisusb_usb_data *sisusb)
 
 	if (sisusb->haveconsole) {
 		for (i = 0; i < MAX_NR_CONSOLES; i++)
-			if (sisusb->havethisconsole[i]) {
-				console_lock();
-				do_take_over_console(&sisusb_dummy_con, i, i, 0);
-				console_unlock();
+			if (sisusb->havethisconsole[i])
+				take_over_console(&sisusb_dummy_con, i, i, 0);
 				/* At this point, con_deinit for all our
-				 * consoles is executed by do_take_over_console().
+				 * consoles is executed by take_over_console().
 				 */
-			}
 		sisusb->haveconsole = 0;
 	}
 
@@ -1563,6 +1556,3 @@ void __init sisusb_init_concode(void)
 }
 
 #endif /* INCL_CON */
-
-
-

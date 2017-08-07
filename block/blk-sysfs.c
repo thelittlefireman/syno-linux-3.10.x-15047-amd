@@ -7,11 +7,9 @@
 #include <linux/bio.h>
 #include <linux/blkdev.h>
 #include <linux/blktrace_api.h>
-#include <linux/blk-mq.h>
 
 #include "blk.h"
 #include "blk-cgroup.h"
-#include "blk-mq.h"
 
 struct queue_sysfs_entry {
 	struct attribute attr;
@@ -31,7 +29,7 @@ queue_var_store(unsigned long *var, const char *page, size_t count)
 	int err;
 	unsigned long v;
 
-	err = kstrtoul(page, 10, &v);
+	err = strict_strtoul(page, 10, &v);
 	if (err || v > UINT_MAX)
 		return -EINVAL;
 
@@ -188,7 +186,6 @@ static ssize_t queue_write_same_max_show(struct request_queue *q, char *page)
 		(unsigned long long)q->limits.max_write_same_sectors << 9);
 }
 
-
 static ssize_t
 queue_max_sectors_store(struct request_queue *q, const char *page, size_t count)
 {
@@ -289,7 +286,7 @@ static ssize_t
 queue_rq_affinity_store(struct request_queue *q, const char *page, size_t count)
 {
 	ssize_t ret = -EINVAL;
-#ifdef CONFIG_SMP
+#if defined(CONFIG_USE_GENERIC_SMP_HELPERS)
 	unsigned long val;
 
 	ret = queue_var_store(&val, page, count);
@@ -544,13 +541,6 @@ static void blk_release_queue(struct kobject *kobj)
 	if (q->queue_tags)
 		__blk_queue_free_tags(q);
 
-	percpu_counter_destroy(&q->mq_usage_counter);
-
-	if (q->mq_ops)
-		blk_mq_free_queue(q);
-
-	kfree(q->flush_rq);
-
 	blk_trace_shutdown(q);
 
 	bdi_destroy(&q->backing_dev_info);
@@ -584,7 +574,6 @@ int blk_register_queue(struct gendisk *disk)
 	 * bypass from queue allocation.
 	 */
 	blk_queue_bypass_end(q);
-	queue_flag_set_unlocked(QUEUE_FLAG_INIT_DONE, q);
 
 	ret = blk_trace_init_sysfs(dev);
 	if (ret)
@@ -597,9 +586,6 @@ int blk_register_queue(struct gendisk *disk)
 	}
 
 	kobject_uevent(&q->kobj, KOBJ_ADD);
-
-	if (q->mq_ops)
-		blk_mq_register_disk(disk);
 
 	if (!q->request_fn)
 		return 0;
@@ -622,9 +608,6 @@ void blk_unregister_queue(struct gendisk *disk)
 
 	if (WARN_ON(!q))
 		return;
-
-	if (q->mq_ops)
-		blk_mq_unregister_disk(disk);
 
 	if (q->request_fn)
 		elv_unregister_queue(q);

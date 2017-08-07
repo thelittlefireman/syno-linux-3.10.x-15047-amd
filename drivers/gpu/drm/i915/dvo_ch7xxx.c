@@ -160,7 +160,7 @@ static bool ch7xxx_readb(struct intel_dvo_device *dvo, int addr, uint8_t *ch)
 	if (i2c_transfer(adapter, msgs, 2) == 2) {
 		*ch = in_buf[0];
 		return true;
-	};
+	}
 
 	if (!ch7xxx->quiet) {
 		DRM_DEBUG_KMS("Unable to read register 0x%02x from %s:%02x.\n",
@@ -222,7 +222,6 @@ static bool ch7xxx_init(struct intel_dvo_device *dvo,
 			  vendor, adapter->name, dvo->slave_addr);
 		goto out;
 	}
-
 
 	if (!ch7xxx_readb(dvo, CH7xxx_REG_DID, &device))
 		goto out;

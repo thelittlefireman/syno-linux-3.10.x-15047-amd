@@ -28,7 +28,6 @@
 #include <sound/rawmidi.h>
 #include "hid-ids.h"
 
-
 #define pk_debug(format, arg...) \
 	pr_debug("hid-prodikeys: " format "\n" , ## arg)
 #define pk_error(format, arg...) \
@@ -97,7 +96,6 @@ module_param_array(enable, bool, NULL, 0444);
 MODULE_PARM_DESC(index, "Index value for the PC-MIDI virtual audio driver");
 MODULE_PARM_DESC(id, "ID string for the PC-MIDI virtual audio driver");
 MODULE_PARM_DESC(enable, "Enable for the PC-MIDI virtual audio driver");
-
 
 /* Output routine for the sysfs channel file */
 static ssize_t show_channel(struct device *dev,
@@ -212,7 +210,6 @@ static DEVICE_ATTR(octave, S_IRUGO | S_IWUSR | S_IWGRP, show_octave,
 static struct device_attribute *sysfs_device_attr_octave = {
 		&dev_attr_octave,
 		};
-
 
 static void pcmidi_send_note(struct pcmidi_snd *pm,
 	unsigned char status, unsigned char note, unsigned char velocity)
@@ -624,8 +621,7 @@ static int pcmidi_snd_initialise(struct pcmidi_snd *pm)
 
 	/* Setup sound card */
 
-	err = snd_card_new(&pm->pk->hdev->dev, index[dev], id[dev],
-			   THIS_MODULE, 0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0) {
 		pk_error("failed to create pc-midi sound card\n");
 		err = -ENOMEM;
@@ -660,6 +656,8 @@ static int pcmidi_snd_initialise(struct pcmidi_snd *pm)
 
 	snd_rawmidi_set_ops(rwmidi, SNDRV_RAWMIDI_STREAM_INPUT,
 		&pcmidi_in_ops);
+
+	snd_card_set_dev(card, &pm->pk->hdev->dev);
 
 	/* create sysfs variables */
 	err = device_create_file(&pm->pk->hdev->dev,
@@ -770,7 +768,6 @@ static int pk_input_mapping(struct hid_device *hdev, struct hid_input *hi,
 
 	return 0;
 }
-
 
 static int pk_raw_event(struct hid_device *hdev, struct hid_report *report,
 	u8 *data, int size)

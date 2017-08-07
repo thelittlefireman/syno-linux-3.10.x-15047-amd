@@ -22,7 +22,6 @@
 #include <linux/io.h>
 #include <linux/smp.h>
 #include <asm/smp_plat.h>
-#include "pmsu.h"
 
 static void __iomem *pmsu_mp_base;
 static void __iomem *pmsu_reset_base;
@@ -59,7 +58,7 @@ int armada_xp_boot_cpu(unsigned int cpu_id, void *boot_addr)
 }
 #endif
 
-static int __init armada_370_xp_pmsu_init(void)
+int __init armada_370_xp_pmsu_init(void)
 {
 	struct device_node *np;
 
@@ -68,7 +67,6 @@ static int __init armada_370_xp_pmsu_init(void)
 		pr_info("Initializing Power Management Service Unit\n");
 		pmsu_mp_base = of_iomap(np, 0);
 		pmsu_reset_base = of_iomap(np, 1);
-		of_node_put(np);
 	}
 
 	return 0;

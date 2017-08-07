@@ -61,7 +61,6 @@ struct rds_cong_map {
 	unsigned long		m_page_addrs[RDS_CONG_MAP_PAGES];
 };
 
-
 /*
  * This is how we will track the connection state:
  * A connection is always in one of the following
@@ -588,7 +587,6 @@ static inline void __rds_wake_sk_sleep(struct sock *sk)
 }
 extern wait_queue_head_t rds_poll_waitq;
 
-
 /* bind.c */
 int rds_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len);
 void rds_remove_bound(struct rds_sock *rs);
@@ -686,7 +684,6 @@ static inline int rds_message_verify_checksum(const struct rds_header *hdr)
 	return !hdr->h_csum || ip_fast_csum((void *) hdr, sizeof(*hdr) >> 2) == 0;
 }
 
-
 /* page.c */
 int rds_page_remainder_alloc(struct scatterlist *scat, unsigned long bytes,
 			     gfp_t gfp);
@@ -749,7 +746,7 @@ void rds_atomic_send_complete(struct rds_message *rm, int wc_status);
 int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
 		    struct cmsghdr *cmsg);
 
-void __rds_put_mr_final(struct rds_mr *mr);
+extern void __rds_put_mr_final(struct rds_mr *mr);
 static inline void rds_mr_put(struct rds_mr *mr)
 {
 	if (atomic_dec_and_test(&mr->r_refcount))

@@ -112,11 +112,8 @@ static struct dentry *proc_mount(struct file_system_type *fs_type,
 		ns = task_active_pid_ns(current);
 		options = data;
 
-		if (!capable(CAP_SYS_ADMIN) && !fs_fully_visible(fs_type))
-			return ERR_PTR(-EPERM);
-
-		/* Does the mounter have privilege over the pid namespace? */
-		if (!ns_capable(ns->user_ns, CAP_SYS_ADMIN))
+		if (!current_user_ns()->may_mount_proc ||
+		    !ns_capable(ns->user_ns, CAP_SYS_ADMIN))
 			return ERR_PTR(-EPERM);
 	}
 
@@ -185,6 +182,9 @@ void __init proc_root_init(void)
 	proc_mkdir("openprom", NULL);
 #endif
 	proc_tty_init();
+#ifdef CONFIG_PROC_DEVICETREE
+	proc_device_tree_init();
+#endif
 	proc_mkdir("bus", NULL);
 	proc_sys_init();
 }
@@ -205,16 +205,21 @@ static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentr
 	return proc_pid_lookup(dir, dentry, flags);
 }
 
-static int proc_root_readdir(struct file *file, struct dir_context *ctx)
+static int proc_root_readdir(struct file * filp,
+	void * dirent, filldir_t filldir)
 {
-	if (ctx->pos < FIRST_PROCESS_ENTRY) {
-		int error = proc_readdir(file, ctx);
-		if (unlikely(error <= 0))
+	unsigned int nr = filp->f_pos;
+	int ret;
+
+	if (nr < FIRST_PROCESS_ENTRY) {
+		int error = proc_readdir(filp, dirent, filldir);
+		if (error <= 0)
 			return error;
-		ctx->pos = FIRST_PROCESS_ENTRY;
+		filp->f_pos = FIRST_PROCESS_ENTRY;
 	}
 
-	return proc_pid_readdir(file, ctx);
+	ret = proc_pid_readdir(filp, dirent, filldir);
+	return ret;
 }
 
 /*
@@ -224,7 +229,7 @@ static int proc_root_readdir(struct file *file, struct dir_context *ctx)
  */
 static const struct file_operations proc_root_operations = {
 	.read		 = generic_read_dir,
-	.iterate	 = proc_root_readdir,
+	.readdir	 = proc_root_readdir,
 	.llseek		= default_llseek,
 };
 

@@ -35,8 +35,7 @@ int wl1251_cmd_interrogate(struct wl1251 *wl, u16 id, void *buf, size_t len);
 int wl1251_cmd_configure(struct wl1251 *wl, u16 id, void *buf, size_t len);
 int wl1251_cmd_vbm(struct wl1251 *wl, u8 identity,
 		   void *bitmap, u16 bitmap_len, u8 bitmap_control);
-int wl1251_cmd_data_path_rx(struct wl1251 *wl, u8 channel, bool enable);
-int wl1251_cmd_data_path_tx(struct wl1251 *wl, u8 channel, bool enable);
+int wl1251_cmd_data_path(struct wl1251 *wl, u8 channel, bool enable);
 int wl1251_cmd_join(struct wl1251 *wl, u8 bss_type, u8 channel,
 		    u16 beacon_interval, u8 dtim_interval);
 int wl1251_cmd_ps_mode(struct wl1251 *wl, u8 ps_mode);
@@ -130,7 +129,6 @@ enum {
 	MAX_COMMAND_STATUS            		= 0xff
 };
 
-
 /*
  * CMD_READ_MEMORY
  *
@@ -167,11 +165,6 @@ struct cmd_read_write_memory {
 
 #define CMDMBOX_HEADER_LEN 4
 #define CMDMBOX_INFO_ELEM_HEADER_LEN 4
-
-#define WL1251_SCAN_OPT_PASSIVE		1
-#define WL1251_SCAN_OPT_5GHZ_BAND	2
-#define WL1251_SCAN_OPT_TRIGGERD_SCAN	4
-#define WL1251_SCAN_OPT_PRIORITY_HIGH	8
 
 #define WL1251_SCAN_MIN_DURATION 30000
 #define WL1251_SCAN_MAX_DURATION 60000
@@ -243,7 +236,6 @@ enum {
 
 #define JOIN_CMD_CTRL_TX_FLUSH             0x80 /* Firmware flushes all Tx */
 #define JOIN_CMD_CTRL_EARLY_WAKEUP_ENABLE  0x01 /* Early wakeup time */
-
 
 struct cmd_join {
 	struct wl1251_cmd_header header;
@@ -416,6 +408,5 @@ struct wl1251_cmd_set_keys {
 	u16 ac_seq_num16[NUM_ACCESS_CATEGORIES_COPY];
 	u32 ac_seq_num32[NUM_ACCESS_CATEGORIES_COPY];
 } __packed;
-
 
 #endif /* __WL1251_CMD_H__ */

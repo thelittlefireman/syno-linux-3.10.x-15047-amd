@@ -1,5 +1,5 @@
 /*
- * include/uapi/linux/tipc_config.h: Header for TIPC configuration interface
+ * include/linux/tipc_config.h: Include file for TIPC configuration interface
  *
  * Copyright (c) 2003-2006, Ericsson AB
  * Copyright (c) 2005-2007, 2010-2011, Wind River Systems
@@ -191,7 +191,6 @@
 #define TIPC_MIN_LINK_WIN 16
 #define TIPC_DEF_LINK_WIN 50
 #define TIPC_MAX_LINK_WIN 150
-
 
 struct tipc_node_info {
 	__be32 addr;			/* network address of node */

@@ -68,7 +68,6 @@
 
 #define SKGE_EEPROM_MAGIC	0x9933aabb
 
-
 MODULE_DESCRIPTION("SysKonnect Gigabit Ethernet driver");
 MODULE_AUTHOR("Stephen Hemminger <shemminger@linux-foundation.org>");
 MODULE_LICENSE("GPL");
@@ -211,7 +210,6 @@ static void skge_wol_init(struct skge_port *skge)
 	gm_phy_write(hw, port, PHY_MARV_CTRL,
 		     PHY_CT_RESET | PHY_CT_SPS_LSB | PHY_CT_ANE |
 		     PHY_CT_RE_CFG | PHY_CT_DUP_MD);
-
 
 	/* Set GMAC to no flow control and auto update for speed/duplex */
 	gma_write16(hw, port, GM_GP_CTRL,
@@ -931,20 +929,17 @@ static int skge_ring_alloc(struct skge_ring *ring, void *vaddr, u32 base)
 }
 
 /* Allocate and setup a new buffer for receiving */
-static int skge_rx_setup(struct skge_port *skge, struct skge_element *e,
-			 struct sk_buff *skb, unsigned int bufsize)
+static void skge_rx_setup(struct skge_port *skge, struct skge_element *e,
+			  struct sk_buff *skb, unsigned int bufsize)
 {
 	struct skge_rx_desc *rd = e->desc;
-	dma_addr_t map;
+	u64 map;
 
 	map = pci_map_single(skge->hw->pdev, skb->data, bufsize,
 			     PCI_DMA_FROMDEVICE);
 
-	if (pci_dma_mapping_error(skge->hw->pdev, map))
-		return -1;
-
-	rd->dma_lo = lower_32_bits(map);
-	rd->dma_hi = upper_32_bits(map);
+	rd->dma_lo = map;
+	rd->dma_hi = map >> 32;
 	e->skb = skb;
 	rd->csum1_start = ETH_HLEN;
 	rd->csum2_start = ETH_HLEN;
@@ -956,7 +951,6 @@ static int skge_rx_setup(struct skge_port *skge, struct skge_element *e,
 	rd->control = BMU_OWN | BMU_STF | BMU_IRQ_EOF | BMU_TCP_CHECK | bufsize;
 	dma_unmap_addr_set(e, mapaddr, map);
 	dma_unmap_len_set(e, maplen, bufsize);
-	return 0;
 }
 
 /* Resume receiving using existing skb,
@@ -974,7 +968,6 @@ static inline void skge_rx_reuse(struct skge_element *e, unsigned int size)
 
 	rd->control = BMU_OWN | BMU_STF | BMU_IRQ_EOF | BMU_TCP_CHECK | size;
 }
-
 
 /* Free all  buffers in receive ring, assumes receiver stopped */
 static void skge_rx_clean(struct skge_port *skge)
@@ -998,7 +991,6 @@ static void skge_rx_clean(struct skge_port *skge)
 	} while ((e = e->next) != ring->start);
 }
 
-
 /* Allocate buffers for receive ring
  * For receive:  to_clean is next received frame.
  */
@@ -1018,10 +1010,7 @@ static int skge_rx_fill(struct net_device *dev)
 			return -ENOMEM;
 
 		skb_reserve(skb, NET_IP_ALIGN);
-		if (skge_rx_setup(skge, e, skb, skge->rx_buf_size) < 0) {
-			dev_kfree_skb(skb);
-			return -EIO;
-		}
+		skge_rx_setup(skge, e, skb, skge->rx_buf_size);
 	} while ((e = e->next) != ring->start);
 
 	ring->to_clean = ring->start;
@@ -1043,7 +1032,6 @@ static const char *skge_pause(enum pause_status status)
 		return "indeterminated";
 	}
 }
-
 
 static void skge_link_up(struct skge_port *skge)
 {
@@ -1202,7 +1190,6 @@ static const u16 fiber_pause_map[] = {
 	[FLOW_MODE_SYMMETRIC]	= PHY_X_P_SYM_MD,
 	[FLOW_MODE_SYM_OR_REM]	= PHY_X_P_BOTH_MD,
 };
-
 
 /* Check status of Broadcom phy link */
 static void bcom_check_link(struct skge_hw *hw, int port)
@@ -1563,7 +1550,6 @@ static void genesis_mac_init(struct skge_hw *hw, int port)
 		xm_write16(hw, port, XM_HW_CFG, XM_HW_GMII_MD);
 	}
 
-
 	switch (hw->phy_type) {
 	case SK_PHY_XMAC:
 		xm_phy_init(skge);
@@ -1629,7 +1615,6 @@ static void genesis_mac_init(struct skge_hw *hw, int port)
 	 * RX FIFO as soon as the FIFO threshold is reached.
 	 */
 	xm_write32(hw, port, XM_MODE, XM_DEF_MODE);
-
 
 	/*
 	 * Initialize the Receive Counter Event Mask (XM_RX_EV_MSK)
@@ -1725,7 +1710,6 @@ static void genesis_stop(struct skge_port *skge)
 
 	xm_read16(hw, port, XM_MMU_CMD);
 }
-
 
 static void genesis_get_stats(struct skge_port *skge, u64 *data)
 {
@@ -1857,7 +1841,6 @@ static void genesis_link_up(struct skge_port *skge)
 			cmd | XM_MMU_ENA_RX | XM_MMU_ENA_TX);
 	skge_link_up(skge);
 }
-
 
 static inline void bcom_phy_intr(struct skge_port *skge)
 {
@@ -2541,7 +2524,6 @@ static int skge_up(struct net_device *dev)
 	else
 		skge->rx_buf_size = RX_BUF_SIZE;
 
-
 	rx_size = skge->rx_ring.count * sizeof(struct skge_rx_desc);
 	tx_size = skge->tx_ring.count * sizeof(struct skge_tx_desc);
 	skge->mem_size = tx_size + rx_size;
@@ -2551,7 +2533,7 @@ static int skge_up(struct net_device *dev)
 
 	BUG_ON(skge->dma & 7);
 
-	if (upper_32_bits(skge->dma) != upper_32_bits(skge->dma + skge->mem_size)) {
+	if ((u64)skge->dma >> 32 != ((u64) skge->dma + skge->mem_size) >> 32) {
 		dev_err(&hw->pdev->dev, "pci_alloc_consistent region crosses 4G boundary\n");
 		err = -EINVAL;
 		goto free_pci_mem;
@@ -2679,7 +2661,6 @@ static int skge_down(struct net_device *dev)
 	skge_write32(hw, RB_ADDR(txqaddr[port], RB_CTRL),
 		     RB_RST_SET|RB_DIS_OP_MD);
 
-
 	/* Disable Force Sync bit and Enable Alloc bit */
 	skge_write8(hw, SK_REG(port, TXA_CTRL),
 		    TXA_DIS_FSYNC | TXA_DIS_ALLOC | TXA_STOP_RC);
@@ -2736,7 +2717,7 @@ static netdev_tx_t skge_xmit_frame(struct sk_buff *skb,
 	struct skge_tx_desc *td;
 	int i;
 	u32 control, len;
-	dma_addr_t map;
+	u64 map;
 
 	if (skb_padto(skb, ETH_ZLEN))
 		return NETDEV_TX_OK;
@@ -2750,14 +2731,11 @@ static netdev_tx_t skge_xmit_frame(struct sk_buff *skb,
 	e->skb = skb;
 	len = skb_headlen(skb);
 	map = pci_map_single(hw->pdev, skb->data, len, PCI_DMA_TODEVICE);
-	if (pci_dma_mapping_error(hw->pdev, map))
-		goto mapping_error;
-
 	dma_unmap_addr_set(e, mapaddr, map);
 	dma_unmap_len_set(e, maplen, len);
 
-	td->dma_lo = lower_32_bits(map);
-	td->dma_hi = upper_32_bits(map);
+	td->dma_lo = map;
+	td->dma_hi = map >> 32;
 
 	if (skb->ip_summed == CHECKSUM_PARTIAL) {
 		const int offset = skb_checksum_start_offset(skb);
@@ -2788,16 +2766,14 @@ static netdev_tx_t skge_xmit_frame(struct sk_buff *skb,
 
 			map = skb_frag_dma_map(&hw->pdev->dev, frag, 0,
 					       skb_frag_size(frag), DMA_TO_DEVICE);
-			if (dma_mapping_error(&hw->pdev->dev, map))
-				goto mapping_unwind;
 
 			e = e->next;
 			e->skb = skb;
 			tf = e->desc;
 			BUG_ON(tf->control & BMU_OWN);
 
-			tf->dma_lo = lower_32_bits(map);
-			tf->dma_hi = upper_32_bits(map);
+			tf->dma_lo = map;
+			tf->dma_hi = (u64) map >> 32;
 			dma_unmap_addr_set(e, mapaddr, map);
 			dma_unmap_len_set(e, maplen, skb_frag_size(frag));
 
@@ -2827,28 +2803,7 @@ static netdev_tx_t skge_xmit_frame(struct sk_buff *skb,
 	}
 
 	return NETDEV_TX_OK;
-
-mapping_unwind:
-	e = skge->tx_ring.to_use;
-	pci_unmap_single(hw->pdev,
-			 dma_unmap_addr(e, mapaddr),
-			 dma_unmap_len(e, maplen),
-			 PCI_DMA_TODEVICE);
-	while (i-- > 0) {
-		e = e->next;
-		pci_unmap_page(hw->pdev,
-			       dma_unmap_addr(e, mapaddr),
-			       dma_unmap_len(e, maplen),
-			       PCI_DMA_TODEVICE);
-	}
-
-mapping_error:
-	if (net_ratelimit())
-		dev_warn(&hw->pdev->dev, "%s: tx mapping error\n", dev->name);
-	dev_kfree_skb_any(skb);
-	return NETDEV_TX_OK;
 }
-
 
 /* Free resources associated with this reing element */
 static inline void skge_tx_unmap(struct pci_dev *pdev, struct skge_element *e,
@@ -3001,7 +2956,6 @@ static void yukon_set_multicast(struct net_device *dev)
 			yukon_add_filter(filter, ha->addr);
 	}
 
-
 	gma_write16(hw, port, GM_MC_ADDR_H1,
 			 (u16)filter[0] | ((u16)filter[1] << 8));
 	gma_write16(hw, port, GM_MC_ADDR_H2,
@@ -3042,7 +2996,6 @@ static void skge_set_multicast(struct net_device *dev)
 
 }
 
-
 /* Get receive buffer from descriptor.
  * Handles copy of small buffers and reallocation failures
  */
@@ -3077,36 +3030,26 @@ static struct sk_buff *skge_rx_get(struct net_device *dev,
 
 		pci_dma_sync_single_for_cpu(skge->hw->pdev,
 					    dma_unmap_addr(e, mapaddr),
-					    dma_unmap_len(e, maplen),
-					    PCI_DMA_FROMDEVICE);
+					    len, PCI_DMA_FROMDEVICE);
 		skb_copy_from_linear_data(e->skb, skb->data, len);
 		pci_dma_sync_single_for_device(skge->hw->pdev,
 					       dma_unmap_addr(e, mapaddr),
-					       dma_unmap_len(e, maplen),
-					       PCI_DMA_FROMDEVICE);
+					       len, PCI_DMA_FROMDEVICE);
 		skge_rx_reuse(e, skge->rx_buf_size);
 	} else {
-		struct skge_element ee;
 		struct sk_buff *nskb;
 
 		nskb = netdev_alloc_skb_ip_align(dev, skge->rx_buf_size);
 		if (!nskb)
 			goto resubmit;
 
-		ee = *e;
-
-		skb = ee.skb;
-		prefetch(skb->data);
-
-		if (skge_rx_setup(skge, e, nskb, skge->rx_buf_size) < 0) {
-			dev_kfree_skb(nskb);
-			goto resubmit;
-		}
-
 		pci_unmap_single(skge->hw->pdev,
-				 dma_unmap_addr(&ee, mapaddr),
-				 dma_unmap_len(&ee, maplen),
+				 dma_unmap_addr(e, mapaddr),
+				 dma_unmap_len(e, maplen),
 				 PCI_DMA_FROMDEVICE);
+		skb = e->skb;
+		prefetch(skb->data);
+		skge_rx_setup(skge, e, nskb, skge->rx_buf_size);
 	}
 
 	skb_put(skb, len);
@@ -3172,7 +3115,7 @@ static void skge_tx_done(struct net_device *dev)
 			pkts_compl++;
 			bytes_compl += e->skb->len;
 
-			dev_consume_skb_any(e->skb);
+			dev_kfree_skb(e->skb);
 		}
 	}
 	netdev_completed_queue(dev, pkts_compl, bytes_compl);
@@ -3407,7 +3350,6 @@ static irqreturn_t skge_intr(int irq, void *dev_id)
 		skge_write16(hw, B3_PA_CTRL, PA_CLR_TO_RX1);
 	}
 
-
 	if (status & IS_MAC1)
 		skge_mac_intr(hw, 0);
 
@@ -3514,7 +3456,6 @@ static const char *skge_board_name(const struct skge_hw *hw)
 	snprintf(buf, sizeof buf, "chipid 0x%x", hw->chip_id);
 	return buf;
 }
-
 
 /*
  * Setup the board data structure, but don't bring up
@@ -3633,7 +3574,6 @@ static int skge_reset(struct skge_hw *hw)
 		pci_write_config_dword(hw->pdev, PCI_DEV_REG1, reg);
 		skge_write8(hw, B2_TST_CTRL1, TST_CFG_WRITE_OFF);
 
-
 		for (i = 0; i < hw->ports; i++) {
 			skge_write16(hw, SK_REG(i, GMAC_LINK_CTRL), GMLC_RST_SET);
 			skge_write16(hw, SK_REG(i, GMAC_LINK_CTRL), GMLC_RST_CLR);
@@ -3686,7 +3626,6 @@ static int skge_reset(struct skge_hw *hw)
 
 	return 0;
 }
-
 
 #ifdef CONFIG_SKGE_DEBUG
 
@@ -3748,7 +3687,7 @@ static const struct file_operations skge_debug_fops = {
 static int skge_device_event(struct notifier_block *unused,
 			     unsigned long event, void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = ptr;
 	struct skge_port *skge;
 	struct dentry *d;
 
@@ -3796,7 +3735,6 @@ static struct notifier_block skge_notifier = {
 	.notifier_call = skge_device_event,
 };
 
-
 static __init void skge_debug_init(void)
 {
 	struct dentry *ent;
@@ -3840,7 +3778,6 @@ static const struct net_device_ops skge_netdev_ops = {
 	.ndo_poll_controller	= skge_netpoll,
 #endif
 };
-
 
 /* Initialize network device */
 static struct net_device *skge_devinit(struct skge_hw *hw, int port,
@@ -4046,6 +3983,7 @@ err_out_free_regions:
 	pci_release_regions(pdev);
 err_out_disable_pdev:
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 err_out:
 	return err;
 }
@@ -4089,6 +4027,7 @@ static void skge_remove(struct pci_dev *pdev)
 
 	iounmap(hw->regs);
 	kfree(hw);
+	pci_set_drvdata(pdev, NULL);
 }
 
 #ifdef CONFIG_PM_SLEEP

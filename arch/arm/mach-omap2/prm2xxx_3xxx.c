@@ -99,7 +99,6 @@ int omap2_prm_deassert_hardreset(s16 prm_mod, u8 rst_shift, u8 st_shift)
 	return (c == MAX_MODULE_HARDRESET_WAIT) ? -EBUSY : 0;
 }
 
-
 /* Powerdomain low-level functions */
 
 /* Common functions across OMAP2 and OMAP3 */
@@ -229,4 +228,3 @@ int omap2_clkdm_clear_all_wkdeps(struct clockdomain *clkdm)
 				     PM_WKDEP);
 	return 0;
 }
-

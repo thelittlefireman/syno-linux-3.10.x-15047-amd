@@ -156,7 +156,6 @@
 #define	DM_REG_SLEEP_11N				0xEE0
 #define	DM_REG_PMPD_ANAEN_11N				0xEEC
 
-
 /*MAC REG LIST*/
 #define	DM_REG_BB_RST_11N				0x02
 #define	DM_REG_ANTSEL_PIN_11N				0x4C

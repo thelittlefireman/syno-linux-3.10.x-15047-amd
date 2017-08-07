@@ -1,39 +1,32 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 #ifndef _ASM_X86_IA32_H
 #define _ASM_X86_IA32_H
-
 
 #ifdef CONFIG_IA32_EMULATION
 
 #include <linux/compat.h>
 
-/*
- * 32 bit structures for IA32 support.
- */
-
 #include <asm/sigcontext32.h>
-
-/* signal.h */
 
 struct ucontext_ia32 {
 	unsigned int	  uc_flags;
 	unsigned int 	  uc_link;
 	compat_stack_t	  uc_stack;
 	struct sigcontext_ia32 uc_mcontext;
-	compat_sigset_t	  uc_sigmask;	/* mask last for extensibility */
+	compat_sigset_t	  uc_sigmask;	 
 };
 
 struct ucontext_x32 {
 	unsigned int	  uc_flags;
 	unsigned int 	  uc_link;
 	compat_stack_t	  uc_stack;
-	unsigned int	  uc__pad0;     /* needed for alignment */
-	struct sigcontext uc_mcontext;  /* the 64-bit sigcontext type */
-	compat_sigset_t	  uc_sigmask;	/* mask last for extensibility */
+	unsigned int	  uc__pad0;      
+	struct sigcontext uc_mcontext;   
+	compat_sigset_t	  uc_sigmask;	 
 };
 
-/* This matches struct stat64 in glibc2.2, hence the absolutely
- * insane amounts of padding around dev_t's.
- */
 struct stat64 {
 	unsigned long long	st_dev;
 	unsigned char		__pad0[4];
@@ -53,7 +46,7 @@ struct stat64 {
 	long long		st_size;
 	unsigned int		st_blksize;
 
-	long long		st_blocks;/* Number 512-byte blocks allocated */
+	long long		st_blocks; 
 
 	unsigned 		st_atime;
 	unsigned 		st_atime_nsec;
@@ -64,6 +57,20 @@ struct stat64 {
 
 	unsigned long long	st_ino;
 } __attribute__((packed));
+
+#ifdef MY_ABC_HERE
+ 
+struct SYNOSTAT64_EXTRA {
+	struct compat_timespec create_time;
+	unsigned int archive_version;
+	unsigned int archive_bit;
+};
+
+struct SYNOSTAT64 {
+	struct stat64 st;
+	struct SYNOSTAT64_EXTRA ext;
+};
+#endif  
 
 #define IA32_STACK_TOP IA32_PAGE_OFFSET
 
@@ -76,6 +83,6 @@ extern void ia32_pick_mmap_layout(struct mm_struct *mm);
 
 #endif
 
-#endif /* !CONFIG_IA32_SUPPORT */
+#endif  
 
-#endif /* _ASM_X86_IA32_H */
+#endif  

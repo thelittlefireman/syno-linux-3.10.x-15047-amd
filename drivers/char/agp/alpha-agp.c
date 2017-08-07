@@ -44,7 +44,6 @@ static const struct vm_operations_struct alpha_core_agp_vm_ops = {
 	.fault = alpha_core_agp_vm_fault,
 };
 
-
 static int alpha_core_agp_fetch_size(void)
 {
 	return alpha_core_agp_sizes[0].size;
@@ -174,7 +173,7 @@ alpha_core_agp_setup(void)
 	/*
 	 * Build a fake pci_dev struct
 	 */
-	pdev = pci_alloc_dev(NULL);
+	pdev = alloc_pci_dev();
 	if (!pdev)
 		return -ENOMEM;
 	pdev->vendor = 0xffff;

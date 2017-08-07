@@ -9,6 +9,7 @@
  * 2 of the License, or (at your option) any later version.
  */
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/input/sparse-keymap.h>
@@ -17,7 +18,6 @@
 
 #include <linux/i2c/dm355evm_msp.h>
 #include <linux/module.h>
-
 
 /*
  * The MSP430 firmware on the DM355 EVM monitors on-board pushbuttons

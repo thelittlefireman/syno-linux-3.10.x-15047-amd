@@ -137,8 +137,6 @@ struct aha1542_hostdata {
 
 static DEFINE_SPINLOCK(aha1542_lock);
 
-
-
 #define WAITnexttimeout 3000000
 
 static void setup_mailboxes(int base_io, struct Scsi_Host *shpnt);
@@ -346,7 +344,6 @@ static int __init aha1542_test_port(int bse, struct Scsi_Host *shpnt)
 	if (inb(INTRFLAGS(bse)) & INTRMASK)
 		goto fail;
 
-
 	/* Perform a host adapter inquiry instead so we do not need to set
 	   up the mailboxes ahead of time */
 
@@ -512,7 +509,6 @@ static void aha1542_intr_handle(struct Scsi_Host *shost)
 		if (ccb[mbo].tarstat == 2)
 			memcpy(SCtmp->sense_buffer, &ccb[mbo].cdb[ccb[mbo].cdblen],
 			       SCSI_SENSE_BUFFERSIZE);
-
 
 		/* is there mail :-) */
 
@@ -1281,7 +1277,6 @@ static int aha1542_dev_reset(Scsi_Cmnd * SCpnt)
 
 	return SUCCESS;
 
-
 #ifdef ERIC_neverdef
 	/* 
 	 * With the 1542 we apparently never get an interrupt to
@@ -1353,7 +1348,6 @@ static int aha1542_bus_reset(Scsi_Cmnd * SCpnt)
 		if (HOSTDATA(SCpnt->device->host)->SCint[i] != NULL) {
 			Scsi_Cmnd *SCtmp;
 			SCtmp = HOSTDATA(SCpnt->device->host)->SCint[i];
-
 
 			if (SCtmp->device->soft_reset) {
 				/*
@@ -1595,7 +1589,6 @@ fail:
 		printk(KERN_CRIT "Power cycle machine to reset\n");
 		return (SCSI_RESET_ERROR | SCSI_RESET_BUS_RESET);
 
-
 	} else {
 		/* This does a selective reset of just the one device */
 		/* First locate the ccb for this command */
@@ -1660,7 +1653,6 @@ static int aha1542_biosparam(struct scsi_device *sdev,
 	return 0;
 }
 MODULE_LICENSE("GPL");
-
 
 static struct scsi_host_template driver_template = {
 	.proc_name		= "aha1542",

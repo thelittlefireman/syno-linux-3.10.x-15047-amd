@@ -35,7 +35,6 @@
 #include "reg.h"
 #include "debug.h"
 
-
 /*********\
 * Receive *
 \*********/
@@ -106,7 +105,6 @@ ath5k_hw_set_rxdp(struct ath5k_hw *ah, u32 phys_addr)
 	ath5k_hw_reg_write(ah, phys_addr, AR5K_RXDP);
 	return 0;
 }
-
 
 /**********\
 * Transmit *
@@ -490,7 +488,6 @@ done:
 	return ret;
 }
 
-
 /*******************\
 * Interrupt masking *
 \*******************/
@@ -616,16 +613,7 @@ ath5k_hw_get_isr(struct ath5k_hw *ah, enum ath5k_int *interrupt_mask)
 		 * SISRs will also clear PISR so no need to worry here.
 		 */
 
-		/* XXX: There seems to be  an issue on some cards
-		 *	with tx interrupt flags not being updated
-		 *	on PISR despite that all Tx interrupt bits
-		 * 	are cleared on SISRs. Since we handle all
-		 *	Tx queues all together it shouldn't be an
-		 *	issue if we clear Tx interrupt flags also
-		 * 	on PISR to avoid that.
-		 */
-		pisr_clear = (pisr & ~AR5K_ISR_BITS_FROM_SISRS) |
-					(pisr & AR5K_INT_TX_ALL);
+		pisr_clear = pisr & ~AR5K_ISR_BITS_FROM_SISRS;
 
 		/*
 		 * Write to clear them...
@@ -650,7 +638,6 @@ ath5k_hw_get_isr(struct ath5k_hw *ah, enum ath5k_int *interrupt_mask)
 		 */
 		*interrupt_mask = (pisr & AR5K_INT_COMMON) & ah->ah_imr;
 
-
 		/* We treat TXOK,TXDESC, TXERR and TXEOL
 		 * the same way (schedule the tx tasklet)
 		 * so we track them all together per queue */
@@ -670,7 +657,7 @@ ath5k_hw_get_isr(struct ath5k_hw *ah, enum ath5k_int *interrupt_mask)
 			ah->ah_txq_isr_txok_all |= AR5K_REG_MS(sisr1,
 						AR5K_SISR1_QCU_TXEOL);
 
-		/* Currently this is not much useful since we treat
+		/* Currently this is not much usefull since we treat
 		 * all queues the same way if we get a TXURN (update
 		 * tx trigger level) but we might need it later on*/
 		if (pisr & AR5K_ISR_TXURN)
@@ -836,7 +823,6 @@ ath5k_hw_set_imr(struct ath5k_hw *ah, enum ath5k_int new_mask)
 
 	return old_mask;
 }
-
 
 /********************\
  Init/Stop functions

@@ -30,6 +30,7 @@
 
 #include <linux/kernel.h>
 #include <linux/input.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/usb/input.h>
@@ -57,7 +58,6 @@ struct usb_onetouch {
 	dma_addr_t data_dma;
 	unsigned int is_open:1;
 };
-
 
 /*
  * The table of devices
@@ -96,7 +96,6 @@ static struct us_unusual_dev onetouch_unusual_dev_list[] = {
 };
 
 #undef UNUSUAL_DEV
-
 
 static void usb_onetouch_irq(struct urb *urb)
 {

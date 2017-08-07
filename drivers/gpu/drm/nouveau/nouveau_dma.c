@@ -100,7 +100,7 @@ nv50_dma_push(struct nouveau_channel *chan, struct nouveau_bo *bo,
 
 	chan->dma.ib_put = (chan->dma.ib_put + 1) & chan->dma.ib_max;
 
-	mb();
+	DRM_MEMORYBARRIER();
 	/* Flush writes. */
 	nouveau_bo_rd32(pb, 0);
 
@@ -259,4 +259,3 @@ nouveau_dma_wait(struct nouveau_channel *chan, int slots, int size)
 
 	return 0;
 }
-

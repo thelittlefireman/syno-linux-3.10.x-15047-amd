@@ -33,6 +33,10 @@
  *      driver will use this memory instead of kernel memory for pools. This
  *      allows 32bit userspace application to access the buffers, but also
  *      requires all received packets to be copied.
+ *  CONFIG_CAVIUM_OCTEON_NUM_PACKET_BUFFERS
+ *      This kernel config option allows the user to control the number of
+ *      packet and work queue buffers allocated by the driver. If this is zero,
+ *      the driver uses the default from below.
  *  USE_SKBUFFS_IN_HW
  *      Tells the driver to populate the packet buffers with kernel skbuffs.
  *      This allows the driver to receive packets without copying them. It also
@@ -56,7 +60,6 @@
 #define __ETHERNET_DEFINES_H__
 
 #include <asm/octeon/cvmx-config.h>
-
 
 #define OCTEON_ETHERNET_VERSION "1.9"
 
@@ -97,6 +100,5 @@
 #define FAU_NUM_PACKET_BUFFERS_TO_FREE (FAU_TOTAL_TX_TO_CLEAN - sizeof(uint32_t))
 
 #define TOTAL_NUMBER_OF_PORTS       (CVMX_PIP_NUM_INPUT_PORTS+1)
-
 
 #endif /* __ETHERNET_DEFINES_H__ */

@@ -377,12 +377,15 @@ static void ir_set_termios(struct tty_struct *tty,
 	 * send the baud change out on an "empty" data packet
 	 */
 	urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!urb)
+	if (!urb) {
+		dev_err(&port->dev, "%s - no more urbs\n", __func__);
 		return;
-
+	}
 	transfer_buffer = kmalloc(1, GFP_KERNEL);
-	if (!transfer_buffer)
+	if (!transfer_buffer) {
+		dev_err(&port->dev, "%s - out of memory\n", __func__);
 		goto err_buf;
+	}
 
 	*transfer_buffer = ir_xbof | ir_baud;
 
@@ -429,7 +432,6 @@ static void __exit ir_exit(void)
 	usb_serial_deregister_drivers(serial_drivers);
 }
 
-
 module_init(ir_init);
 module_exit(ir_exit);
 
@@ -441,4 +443,3 @@ module_param(xbof, int, 0);
 MODULE_PARM_DESC(xbof, "Force specific number of XBOFs");
 module_param(buffer_size, int, 0);
 MODULE_PARM_DESC(buffer_size, "Size of the transfer buffers");
-

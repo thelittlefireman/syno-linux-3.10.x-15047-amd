@@ -19,10 +19,8 @@
 #include <linux/gpio.h>
 #include <linux/rfkill.h>
 
-#include <plat/gpio-cfg.h>
 #include <mach/hardware.h>
 #include <mach/regs-gpio.h>
-#include <mach/gpio-samsung.h>
 
 #include "h1940.h"
 
@@ -130,7 +128,6 @@ static int h1940bt_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 
 static struct platform_driver h1940bt_driver = {
 	.driver		= {

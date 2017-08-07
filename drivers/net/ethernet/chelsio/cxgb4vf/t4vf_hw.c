@@ -363,8 +363,8 @@ int t4vf_fw_reset(struct adapter *adapter)
  *	Reads the values of firmware or device parameters.  Up to 7 parameters
  *	can be queried at once.
  */
-static int t4vf_query_params(struct adapter *adapter, unsigned int nparams,
-			     const u32 *params, u32 *vals)
+int t4vf_query_params(struct adapter *adapter, unsigned int nparams,
+		      const u32 *params, u32 *vals)
 {
 	int i, ret;
 	struct fw_params_cmd cmd, rpl;
@@ -1027,7 +1027,7 @@ int t4vf_alloc_mac_filt(struct adapter *adapter, unsigned int viid, bool free,
 	unsigned nfilters = 0;
 	unsigned int rem = naddr;
 	struct fw_vi_mac_cmd cmd, rpl;
-	unsigned int max_naddr = is_t4(adapter->params.chip) ?
+	unsigned int max_naddr = is_t4(adapter->chip) ?
 				 NUM_MPS_CLS_SRAM_L_INSTANCES :
 				 NUM_MPS_T5_CLS_SRAM_L_INSTANCES;
 
@@ -1059,7 +1059,6 @@ int t4vf_alloc_mac_filt(struct adapter *adapter, unsigned int viid, bool free,
 				FW_VI_MAC_CMD_IDX(FW_VI_MAC_ADD_MAC));
 			memcpy(p->macaddr, addr[offset+i], sizeof(p->macaddr));
 		}
-
 
 		ret = t4vf_wr_mbox_core(adapter, &cmd, sizeof(cmd), &rpl,
 					sleep_ok);
@@ -1121,7 +1120,7 @@ int t4vf_change_mac(struct adapter *adapter, unsigned int viid,
 	struct fw_vi_mac_exact *p = &cmd.u.exact[0];
 	size_t len16 = DIV_ROUND_UP(offsetof(struct fw_vi_mac_cmd,
 					     u.exact[1]), 16);
-	unsigned int max_naddr = is_t4(adapter->params.chip) ?
+	unsigned int max_naddr = is_t4(adapter->chip) ?
 				 NUM_MPS_CLS_SRAM_L_INSTANCES :
 				 NUM_MPS_T5_CLS_SRAM_L_INSTANCES;
 

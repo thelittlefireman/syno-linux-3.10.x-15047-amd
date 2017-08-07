@@ -429,7 +429,7 @@ found:
 		} else {
 			e->state = neigh->nud_state & NUD_CONNECTED ?
 			    L2T_STATE_VALID : L2T_STATE_STALE;
-			if (!ether_addr_equal(e->dmac, neigh->ha))
+			if (memcmp(e->dmac, neigh->ha, 6))
 				setup_l2e_send_pending(dev, NULL, e);
 		}
 	}
@@ -467,4 +467,3 @@ void t3_free_l2t(struct l2t_data *d)
 {
 	cxgb_free_mem(d);
 }
-

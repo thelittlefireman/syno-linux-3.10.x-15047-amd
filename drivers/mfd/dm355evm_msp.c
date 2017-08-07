@@ -20,7 +20,6 @@
 #include <linux/i2c.h>
 #include <linux/i2c/dm355evm_msp.h>
 
-
 /*
  * The DM355 is a DaVinci chip with video support but no C64+ DSP.  Its
  * EVM board has an MSP430 programmed with firmware for various board
@@ -56,7 +55,6 @@
 #else
 #define msp_has_tvp()		false
 #endif
-
 
 /*----------------------------------------------------------------------*/
 
@@ -315,8 +313,8 @@ static int add_children(struct i2c_client *client)
 	}
 
 	/* MMC/SD inputs -- right after the last config input */
-	if (dev_get_platdata(&client->dev)) {
-		void (*mmcsd_setup)(unsigned) = dev_get_platdata(&client->dev);
+	if (client->dev.platform_data) {
+		void (*mmcsd_setup)(unsigned) = client->dev.platform_data;
 
 		mmcsd_setup(dm355evm_msp_gpio.base + 8 + 5);
 	}

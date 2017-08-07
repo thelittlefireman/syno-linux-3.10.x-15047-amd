@@ -16,9 +16,7 @@
 #include <linux/ctype.h>
 #include <linux/slab.h>
 
-
 static int(*get_fallback_sprom)(struct ssb_bus *dev, struct ssb_sprom *out);
-
 
 static int sprom2hex(const u16 *sprom, char *buf, size_t buf_len,
 		     size_t sprom_size_words)
@@ -54,7 +52,7 @@ static int hex2sprom(u16 *sprom, const char *dump, size_t len,
 	while (cnt < sprom_size_words) {
 		memcpy(tmp, dump, 4);
 		dump += 4;
-		err = kstrtoul(tmp, 16, &parsed);
+		err = strict_strtoul(tmp, 16, &parsed);
 		if (err)
 			return err;
 		sprom[cnt++] = swab16((u16)parsed);

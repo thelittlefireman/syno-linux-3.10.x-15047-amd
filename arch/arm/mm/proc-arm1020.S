@@ -443,6 +443,8 @@ ENTRY(cpu_arm1020_set_pte_ext)
 #endif /* CONFIG_MMU */
 	mov	pc, lr
 
+	__CPUINIT
+
 	.type	__arm1020_setup, #function
 __arm1020_setup:
 	mov	r0, #0
@@ -475,7 +477,6 @@ arm1020_crval:
 	__INITDATA
 	@ define struct processor (see <asm/proc-fns.h> and proc-macros.S)
 	define_processor_functions arm1020, dabort=v4t_early_abort, pabort=legacy_pabort
-
 
 	.section ".rodata"
 

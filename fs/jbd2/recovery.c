@@ -53,7 +53,6 @@ static void journal_brelse_array(struct buffer_head *b[], int n)
 		brelse (b[n]);
 }
 
-
 /*
  * When reading from the journal, we are going through the block device
  * layer directly and so there is no readahead being done for us.  We
@@ -124,7 +123,6 @@ failed:
 
 #endif /* __KERNEL__ */
 
-
 /*
  * Read a block from the journal
  */
@@ -178,8 +176,7 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
 					void *buf)
 {
 	struct jbd2_journal_block_tail *tail;
-	__be32 provided;
-	__u32 calculated;
+	__u32 provided, calculated;
 
 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 		return 1;
@@ -191,7 +188,8 @@ static int jbd2_descr_block_csum_verify(journal_t *j,
 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
 	tail->t_checksum = provided;
 
-	return provided == cpu_to_be32(calculated);
+	provided = be32_to_cpu(provided);
+	return provided == calculated;
 }
 
 /*
@@ -224,7 +222,6 @@ static int count_tags(journal_t *journal, struct buffer_head *bh)
 
 	return nr;
 }
-
 
 /* Make sure we wrap around the log correctly! */
 #define wrap(journal, var)						\
@@ -381,8 +378,7 @@ static int calc_chksums(journal_t *journal, struct buffer_head *bh,
 static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
 {
 	struct commit_header *h;
-	__be32 provided;
-	__u32 calculated;
+	__u32 provided, calculated;
 
 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 		return 1;
@@ -393,23 +389,25 @@ static int jbd2_commit_block_csum_verify(journal_t *j, void *buf)
 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
 	h->h_chksum[0] = provided;
 
-	return provided == cpu_to_be32(calculated);
+	provided = be32_to_cpu(provided);
+	return provided == calculated;
 }
 
 static int jbd2_block_tag_csum_verify(journal_t *j, journal_block_tag_t *tag,
 				      void *buf, __u32 sequence)
 {
-	__u32 csum32;
-	__be32 seq;
+	__u32 provided, calculated;
 
 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 		return 1;
 
-	seq = cpu_to_be32(sequence);
-	csum32 = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&seq, sizeof(seq));
-	csum32 = jbd2_chksum(j, csum32, buf, j->j_blocksize);
+	sequence = cpu_to_be32(sequence);
+	calculated = jbd2_chksum(j, j->j_csum_seed, (__u8 *)&sequence,
+				 sizeof(sequence));
+	calculated = jbd2_chksum(j, calculated, buf, j->j_blocksize);
+	provided = be32_to_cpu(tag->t_checksum);
 
-	return tag->t_checksum == cpu_to_be16(csum32);
+	return provided == cpu_to_be32(calculated);
 }
 
 static int do_one_pass(journal_t *journal,
@@ -426,6 +424,7 @@ static int do_one_pass(journal_t *journal,
 	int			tag_bytes = journal_tag_bytes(journal);
 	__u32			crc32_sum = ~0; /* Transactional Checksums */
 	int			descr_csum_size = 0;
+	int			block_error = 0;
 
 	/*
 	 * First thing is to establish what we expect to find in the log
@@ -520,6 +519,7 @@ static int do_one_pass(journal_t *journal,
 			    !jbd2_descr_block_csum_verify(journal,
 							  bh->b_data)) {
 				err = -EIO;
+				brelse(bh);
 				goto failed;
 			}
 
@@ -594,11 +594,12 @@ static int do_one_pass(journal_t *journal,
 						be32_to_cpu(tmp->h_sequence))) {
 						brelse(obh);
 						success = -EIO;
-						printk(KERN_ERR "JBD2: Invalid "
+						printk(KERN_ERR "JBD: Invalid "
 						       "checksum recovering "
 						       "block %llu in log\n",
 						       blocknr);
-						continue;
+						block_error = 1;
+						goto skip_write;
 					}
 
 					/* Find a buffer for the new
@@ -797,7 +798,8 @@ static int do_one_pass(journal_t *journal,
 				success = -EIO;
 		}
 	}
-
+	if (block_error && success == 0)
+		success = -EIO;
 	return success;
 
  failed:
@@ -808,8 +810,7 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
 					 void *buf)
 {
 	struct jbd2_journal_revoke_tail *tail;
-	__be32 provided;
-	__u32 calculated;
+	__u32 provided, calculated;
 
 	if (!JBD2_HAS_INCOMPAT_FEATURE(j, JBD2_FEATURE_INCOMPAT_CSUM_V2))
 		return 1;
@@ -821,7 +822,8 @@ static int jbd2_revoke_block_csum_verify(journal_t *j,
 	calculated = jbd2_chksum(j, j->j_csum_seed, buf, j->j_blocksize);
 	tail->r_checksum = provided;
 
-	return provided == cpu_to_be32(calculated);
+	provided = be32_to_cpu(provided);
+	return provided == calculated;
 }
 
 /* Scan a revoke record, marking all blocks mentioned as revoked. */

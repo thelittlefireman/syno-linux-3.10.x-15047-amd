@@ -36,7 +36,6 @@ static void crystalhd_enable_uarts(struct crystalhd_adp *adp)
 	bc_dec_reg_wr(adp, UartSelectB, BSVS_UART_DEC_OUTER);
 }
 
-
 static void crystalhd_start_dram(struct crystalhd_adp *adp)
 {
 	bc_dec_reg_wr(adp, SDRAM_PARAM, ((40 / 5 - 1) <<  0) |
@@ -58,7 +57,6 @@ static void crystalhd_start_dram(struct crystalhd_adp *adp)
 	/* setting the refresh rate here */
 	bc_dec_reg_wr(adp, SDRAM_REF_PARAM, ((1 << 12) | 96));
 }
-
 
 static bool crystalhd_bring_out_of_rst(struct crystalhd_adp *adp)
 {
@@ -94,19 +92,15 @@ static bool crystalhd_bring_out_of_rst(struct crystalhd_adp *adp)
 	 * Enable clocks while 7412 reset is asserted, delay
 	 * De-assert 7412 reset
 	 */
-	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp,
-					 MISC_PERST_DECODER_CTRL);
+	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp, MISC_PERST_DECODER_CTRL);
 	rst_deco_cntrl.stop_bcm_7412_clk = 0;
 	rst_deco_cntrl.bcm7412_rst = 1;
-	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL,
-					 rst_deco_cntrl.whole_reg);
+	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL, rst_deco_cntrl.whole_reg);
 	msleep_interruptible(10);
 
-	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp,
-					 MISC_PERST_DECODER_CTRL);
+	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp, MISC_PERST_DECODER_CTRL);
 	rst_deco_cntrl.bcm7412_rst = 0;
-	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL,
-					 rst_deco_cntrl.whole_reg);
+	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL, rst_deco_cntrl.whole_reg);
 	msleep_interruptible(50);
 
 	/* Disable OTP_CONTENT_MISC to 0 to disable all secure modes */
@@ -136,11 +130,9 @@ static bool crystalhd_put_in_reset(struct crystalhd_adp *adp)
 	 * Assert 7412 reset, delay
 	 * Assert 7412 stop clock
 	 */
-	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp,
-					 MISC_PERST_DECODER_CTRL);
+	rst_deco_cntrl.whole_reg = crystalhd_reg_rd(adp, MISC_PERST_DECODER_CTRL);
 	rst_deco_cntrl.stop_bcm_7412_clk = 1;
-	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL,
-					 rst_deco_cntrl.whole_reg);
+	crystalhd_reg_wr(adp, MISC_PERST_DECODER_CTRL, rst_deco_cntrl.whole_reg);
 	msleep_interruptible(50);
 
 	/* Bus Arbiter Timeout: GISB_ARBITER_TIMER
@@ -219,8 +211,7 @@ static void crystalhd_clear_errors(struct crystalhd_adp *adp)
 {
 	uint32_t reg;
 
-	/* FIXME: jarod: wouldn't we want to write a 0 to the reg?
-	 Or does the write clear the bits specified? */
+	/* FIXME: jarod: wouldn't we want to write a 0 to the reg? Or does the write clear the bits specified? */
 	reg = crystalhd_reg_rd(adp, MISC1_Y_RX_ERROR_STATUS);
 	if (reg)
 		crystalhd_reg_wr(adp, MISC1_Y_RX_ERROR_STATUS, reg);
@@ -270,12 +261,10 @@ static bool crystalhd_load_firmware_config(struct crystalhd_adp *adp)
 	crystalhd_reg_wr(adp, DCI_DRAM_BASE_ADDR, (BC_DRAM_FW_CFG_ADDR >> 19));
 
 	crystalhd_reg_wr(adp, AES_CMD, 0);
-	crystalhd_reg_wr(adp, AES_CONFIG_INFO,
-		 (BC_DRAM_FW_CFG_ADDR & 0x7FFFF));
+	crystalhd_reg_wr(adp, AES_CONFIG_INFO, (BC_DRAM_FW_CFG_ADDR & 0x7FFFF));
 	crystalhd_reg_wr(adp, AES_CMD, 0x1);
 
-	/* FIXME: jarod: I've seen this fail,
-	 and introducing extra delays helps... */
+	/* FIXME: jarod: I've seen this fail, and introducing extra delays helps... */
 	for (i = 0; i < 100; ++i) {
 		reg = crystalhd_reg_rd(adp, AES_STATUS);
 		if (reg & 0x1)
@@ -285,7 +274,6 @@ static bool crystalhd_load_firmware_config(struct crystalhd_adp *adp)
 
 	return false;
 }
-
 
 static bool crystalhd_start_device(struct crystalhd_adp *adp)
 {
@@ -358,8 +346,7 @@ static bool crystalhd_stop_device(struct crystalhd_adp *adp)
 	return true;
 }
 
-static struct crystalhd_rx_dma_pkt *crystalhd_hw_alloc_rx_pkt(
-					struct crystalhd_hw *hw)
+static struct crystalhd_rx_dma_pkt *crystalhd_hw_alloc_rx_pkt(struct crystalhd_hw *hw)
 {
 	unsigned long flags = 0;
 	struct crystalhd_rx_dma_pkt *temp = NULL;
@@ -398,7 +385,7 @@ static void crystalhd_hw_free_rx_pkt(struct crystalhd_hw *hw,
  * Call back from TX - IOQ deletion.
  *
  * This routine will release the TX DMA rings allocated
- * during setup_dma rings interface.
+ * druing setup_dma rings interface.
  *
  * Memory is allocated per DMA ring basis. This is just
  * a place holder to be able to create the dio queues.
@@ -433,12 +420,10 @@ static void crystalhd_rx_pkt_rel_call_back(void *context, void *data)
 }
 
 #define crystalhd_hw_delete_ioq(adp, q)		\
-do {						\
 	if (q) {				\
 		crystalhd_delete_dioq(adp, q);	\
 		q = NULL;			\
-	}					\
-} while (0)
+	}
 
 static void crystalhd_hw_delete_ioqs(struct crystalhd_hw *hw)
 {
@@ -495,9 +480,8 @@ hw_create_ioq_err:
 	return sts;
 }
 
-
-static bool crystalhd_code_in_full(struct crystalhd_adp *adp,
-		 uint32_t needed_sz, bool b_188_byte_pkts,  uint8_t flags)
+static bool crystalhd_code_in_full(struct crystalhd_adp *adp, uint32_t needed_sz,
+				 bool b_188_byte_pkts,  uint8_t flags)
 {
 	uint32_t base, end, writep, readp;
 	uint32_t cpbSize, cpbFullness, fifoSize;
@@ -537,7 +521,7 @@ static bool crystalhd_code_in_full(struct crystalhd_adp *adp,
 }
 
 static enum BC_STATUS crystalhd_hw_tx_req_complete(struct crystalhd_hw *hw,
-					 uint32_t list_id, enum BC_STATUS cs)
+					    uint32_t list_id, enum BC_STATUS cs)
 {
 	struct tx_dma_pkt *tx_req;
 
@@ -548,8 +532,7 @@ static enum BC_STATUS crystalhd_hw_tx_req_complete(struct crystalhd_hw *hw,
 
 	hw->pwr_lock--;
 
-	tx_req = (struct tx_dma_pkt *)crystalhd_dioq_find_and_fetch(
-					hw->tx_actq, list_id);
+	tx_req = (struct tx_dma_pkt *)crystalhd_dioq_find_and_fetch(hw->tx_actq, list_id);
 	if (!tx_req) {
 		if (cs != BC_STS_IO_USER_ABORT)
 			BCMLOG_ERR("Find and Fetch Did not find req\n");
@@ -572,8 +555,7 @@ static enum BC_STATUS crystalhd_hw_tx_req_complete(struct crystalhd_hw *hw,
 	return crystalhd_dioq_add(hw->tx_freeq, tx_req, false, 0);
 }
 
-static bool crystalhd_tx_list0_handler(struct crystalhd_hw *hw,
-					 uint32_t err_sts)
+static bool crystalhd_tx_list0_handler(struct crystalhd_hw *hw, uint32_t err_sts)
 {
 	uint32_t err_mask, tmp;
 	unsigned long flags = 0;
@@ -605,8 +587,7 @@ static bool crystalhd_tx_list0_handler(struct crystalhd_hw *hw,
 	return true;
 }
 
-static bool crystalhd_tx_list1_handler(struct crystalhd_hw *hw,
-					 uint32_t err_sts)
+static bool crystalhd_tx_list1_handler(struct crystalhd_hw *hw, uint32_t err_sts)
 {
 	uint32_t err_mask, tmp;
 	unsigned long flags = 0;
@@ -678,15 +659,14 @@ static void crystalhd_hw_dump_desc(struct dma_descriptor *p_dma_desc,
 	if (!p_dma_desc || !cnt)
 		return;
 
-	/* FIXME: jarod: perhaps a modparam desc_debug to enable this,
-	 rather than setting ll (log level, I presume) to non-zero? */
+	/* FIXME: jarod: perhaps a modparam desc_debug to enable this, rather than
+	 * setting ll (log level, I presume) to non-zero? */
 	if (!ll)
 		return;
 
 	for (ix = ul_desc_index; ix < (ul_desc_index + cnt); ix++) {
-		BCMLOG(ll,
-		 "%s[%d] Buff[%x:%x] Next:[%x:%x] XferSz:%x Intr:%x,Last:%x\n",
-		 ((p_dma_desc[ul_desc_index].dma_dir) ? "TDesc" : "RDesc"),
+		BCMLOG(ll, "%s[%d] Buff[%x:%x] Next:[%x:%x] XferSz:%x Intr:%x,Last:%x\n",
+		       ((p_dma_desc[ul_desc_index].dma_dir) ? "TDesc" : "RDesc"),
 		       ul_desc_index,
 		       p_dma_desc[ul_desc_index].buff_addr_high,
 		       p_dma_desc[ul_desc_index].buff_addr_low,
@@ -723,8 +703,7 @@ static enum BC_STATUS crystalhd_hw_fill_desc(struct crystalhd_dio_req *ioreq,
 		/* Get SGLE length */
 		len = crystalhd_get_sgle_len(ioreq, sg_ix);
 		if (len % 4) {
-			BCMLOG_ERR(" len in sg %d %d %d\n", len, sg_ix,
-				 sg_cnt);
+			BCMLOG_ERR(" len in sg %d %d %d\n", len, sg_ix, sg_cnt);
 			return BC_STS_NOT_IMPL;
 		}
 		/* Setup DMA desc with Phy addr & Length at current index. */
@@ -739,8 +718,7 @@ static enum BC_STATUS crystalhd_hw_fill_desc(struct crystalhd_dio_req *ioreq,
 		desc[ix].dma_dir        = ioreq->uinfo.dir_tx;
 
 		/* Chain DMA descriptor.  */
-		addr_temp.full_addr = desc_phy_addr +
-					 sizeof(struct dma_descriptor);
+		addr_temp.full_addr = desc_phy_addr + sizeof(struct dma_descriptor);
 		desc[ix].next_desc_addr_low = addr_temp.low_part;
 		desc[ix].next_desc_addr_high = addr_temp.high_part;
 
@@ -749,9 +727,8 @@ static enum BC_STATUS crystalhd_hw_fill_desc(struct crystalhd_dio_req *ioreq,
 
 		/* Debug.. */
 		if ((!len) || (len > crystalhd_get_sgle_len(ioreq, sg_ix))) {
-			BCMLOG_ERR(
-			 "inv-len(%x) Ix(%d) count:%x xfr_sz:%x sg_cnt:%d\n",
-			 len, ix, count, xfr_sz, sg_cnt);
+			BCMLOG_ERR("inv-len(%x) Ix(%d) count:%x xfr_sz:%x sg_cnt:%d\n",
+				   len, ix, count, xfr_sz, sg_cnt);
 			return BC_STS_ERROR;
 		}
 		/* Length expects Multiple of 4 */
@@ -793,8 +770,7 @@ static enum BC_STATUS crystalhd_hw_fill_desc(struct crystalhd_dio_req *ioreq,
 	return BC_STS_SUCCESS;
 }
 
-static enum BC_STATUS crystalhd_xlat_sgl_to_dma_desc(
-					      struct crystalhd_dio_req *ioreq,
+static enum BC_STATUS crystalhd_xlat_sgl_to_dma_desc(struct crystalhd_dio_req *ioreq,
 					      struct dma_desc_mem *pdesc_mem,
 					      uint32_t *uv_desc_index)
 {
@@ -907,14 +883,12 @@ static enum BC_STATUS crystalhd_stop_tx_dma_engine(struct crystalhd_hw *hw)
 	while ((l1 || l2) && cnt) {
 
 		if (l1) {
-			l1 = crystalhd_reg_rd(hw->adp,
-				 MISC1_TX_FIRST_DESC_L_ADDR_LIST0);
+			l1 = crystalhd_reg_rd(hw->adp, MISC1_TX_FIRST_DESC_L_ADDR_LIST0);
 			l1 &= DMA_START_BIT;
 		}
 
 		if (l2) {
-			l2 = crystalhd_reg_rd(hw->adp,
-				 MISC1_TX_FIRST_DESC_L_ADDR_LIST1);
+			l2 = crystalhd_reg_rd(hw->adp, MISC1_TX_FIRST_DESC_L_ADDR_LIST1);
 			l2 &= DMA_START_BIT;
 		}
 
@@ -1008,8 +982,7 @@ static uint32_t crystalhd_get_addr_from_pib_Q(struct crystalhd_hw *hw)
 	return addr_entry;
 }
 
-static bool crystalhd_rel_addr_to_pib_Q(struct crystalhd_hw *hw,
-					 uint32_t addr_to_rel)
+static bool crystalhd_rel_addr_to_pib_Q(struct crystalhd_hw *hw, uint32_t addr_to_rel)
 {
 	uint32_t Q_addr;
 	uint32_t r_offset, w_offset, n_offset;
@@ -1044,8 +1017,7 @@ static bool crystalhd_rel_addr_to_pib_Q(struct crystalhd_hw *hw,
 	return true;
 }
 
-static void cpy_pib_to_app(struct c011_pib *src_pib,
-					 struct BC_PIC_INFO_BLOCK *dst_pib)
+static void cpy_pib_to_app(struct c011_pib *src_pib, struct BC_PIC_INFO_BLOCK *dst_pib)
 {
 	if (!src_pib || !dst_pib) {
 		BCMLOG_ERR("Invalid Arguments\n");
@@ -1063,7 +1035,7 @@ static void cpy_pib_to_app(struct c011_pib *src_pib,
 	dst_pib->aspect_ratio        = src_pib->ppb.aspect_ratio;
 	dst_pib->colour_primaries     = src_pib->ppb.colour_primaries;
 	dst_pib->picture_meta_payload = src_pib->ppb.picture_meta_payload;
-	dst_pib->frame_rate		= src_pib->resolution;
+	dst_pib->frame_rate		= src_pib->resolution ;
 	return;
 }
 
@@ -1087,13 +1059,11 @@ static void crystalhd_hw_proc_pib(struct crystalhd_hw *hw)
 			       (uint32_t *)&src_pib);
 
 		if (src_pib.bFormatChange) {
-			rx_pkt = (struct crystalhd_rx_dma_pkt *)
-					crystalhd_dioq_fetch(hw->rx_freeq);
+			rx_pkt = (struct crystalhd_rx_dma_pkt *)crystalhd_dioq_fetch(hw->rx_freeq);
 			if (!rx_pkt)
 				return;
 			rx_pkt->flags = 0;
-			rx_pkt->flags |= COMP_FLAG_PIB_VALID |
-					 COMP_FLAG_FMT_CHANGE;
+			rx_pkt->flags |= COMP_FLAG_PIB_VALID | COMP_FLAG_FMT_CHANGE;
 			AppPib = &rx_pkt->pib;
 			cpy_pib_to_app(&src_pib, AppPib);
 
@@ -1110,8 +1080,7 @@ static void crystalhd_hw_proc_pib(struct crystalhd_hw *hw)
 			       rx_pkt->pib.pulldown,
 			       rx_pkt->pib.ycom);
 
-			crystalhd_dioq_add(hw->rx_rdyq, (void *)rx_pkt, true,
-					 rx_pkt->pkt_tag);
+			crystalhd_dioq_add(hw->rx_rdyq, (void *)rx_pkt, true, rx_pkt->pkt_tag);
 
 		}
 
@@ -1123,20 +1092,16 @@ static void crystalhd_start_rx_dma_engine(struct crystalhd_hw *hw)
 {
 	uint32_t        dma_cntrl;
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
 	if (!(dma_cntrl & DMA_START_BIT)) {
 		dma_cntrl |= DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
 	if (!(dma_cntrl & DMA_START_BIT)) {
 		dma_cntrl |= DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 
 	return;
@@ -1147,52 +1112,44 @@ static void crystalhd_stop_rx_dma_engine(struct crystalhd_hw *hw)
 	uint32_t dma_cntrl = 0, count = 30;
 	uint32_t l0y = 1, l0uv = 1, l1y = 1, l1uv = 1;
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
 	if ((dma_cntrl & DMA_START_BIT)) {
 		dma_cntrl &= ~DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
 	if ((dma_cntrl & DMA_START_BIT)) {
 		dma_cntrl &= ~DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 
 	/* Poll for 3seconds (30 * 100ms) on both the lists..*/
 	while ((l0y || l0uv || l1y || l1uv) && count) {
 
 		if (l0y) {
-			l0y = crystalhd_reg_rd(hw->adp,
-				 MISC1_Y_RX_FIRST_DESC_L_ADDR_LIST0);
+			l0y = crystalhd_reg_rd(hw->adp, MISC1_Y_RX_FIRST_DESC_L_ADDR_LIST0);
 			l0y &= DMA_START_BIT;
 			if (!l0y)
 				hw->rx_list_sts[0] &= ~rx_waiting_y_intr;
 		}
 
 		if (l1y) {
-			l1y = crystalhd_reg_rd(hw->adp,
-				 MISC1_Y_RX_FIRST_DESC_L_ADDR_LIST1);
+			l1y = crystalhd_reg_rd(hw->adp, MISC1_Y_RX_FIRST_DESC_L_ADDR_LIST1);
 			l1y &= DMA_START_BIT;
 			if (!l1y)
 				hw->rx_list_sts[1] &= ~rx_waiting_y_intr;
 		}
 
 		if (l0uv) {
-			l0uv = crystalhd_reg_rd(hw->adp,
-				 MISC1_UV_RX_FIRST_DESC_L_ADDR_LIST0);
+			l0uv = crystalhd_reg_rd(hw->adp, MISC1_UV_RX_FIRST_DESC_L_ADDR_LIST0);
 			l0uv &= DMA_START_BIT;
 			if (!l0uv)
 				hw->rx_list_sts[0] &= ~rx_waiting_uv_intr;
 		}
 
 		if (l1uv) {
-			l1uv = crystalhd_reg_rd(hw->adp,
-				 MISC1_UV_RX_FIRST_DESC_L_ADDR_LIST1);
+			l1uv = crystalhd_reg_rd(hw->adp, MISC1_UV_RX_FIRST_DESC_L_ADDR_LIST1);
 			l1uv &= DMA_START_BIT;
 			if (!l1uv)
 				hw->rx_list_sts[1] &= ~rx_waiting_uv_intr;
@@ -1207,8 +1164,7 @@ static void crystalhd_stop_rx_dma_engine(struct crystalhd_hw *hw)
 	       count, hw->rx_list_sts[0], hw->rx_list_sts[1]);
 }
 
-static enum BC_STATUS crystalhd_hw_prog_rxdma(struct crystalhd_hw *hw,
-					 struct crystalhd_rx_dma_pkt *rx_pkt)
+static enum BC_STATUS crystalhd_hw_prog_rxdma(struct crystalhd_hw *hw, struct crystalhd_rx_dma_pkt *rx_pkt)
 {
 	uint32_t y_low_addr_reg, y_high_addr_reg;
 	uint32_t uv_low_addr_reg, uv_high_addr_reg;
@@ -1226,8 +1182,7 @@ static enum BC_STATUS crystalhd_hw_prog_rxdma(struct crystalhd_hw *hw,
 	}
 
 	spin_lock_irqsave(&hw->rx_lock, flags);
-	/* FIXME: jarod: sts_free is an enum for 0,
-	 in crystalhd_hw.h... yuk... */
+	/* FIXME: jarod: sts_free is an enum for 0, in crystalhd_hw.h... yuk... */
 	if (sts_free != hw->rx_list_sts[hw->rx_list_post_index]) {
 		spin_unlock_irqrestore(&hw->rx_lock, flags);
 		return BC_STS_BUSY;
@@ -1251,8 +1206,7 @@ static enum BC_STATUS crystalhd_hw_prog_rxdma(struct crystalhd_hw *hw,
 	hw->rx_list_post_index = (hw->rx_list_post_index + 1) % DMA_ENGINE_CNT;
 	spin_unlock_irqrestore(&hw->rx_lock, flags);
 
-	crystalhd_dioq_add(hw->rx_actq, (void *)rx_pkt, false,
-			 rx_pkt->pkt_tag);
+	crystalhd_dioq_add(hw->rx_actq, (void *)rx_pkt, false, rx_pkt->pkt_tag);
 
 	crystalhd_start_rx_dma_engine(hw);
 	/* Program the Y descriptor */
@@ -1263,10 +1217,8 @@ static enum BC_STATUS crystalhd_hw_prog_rxdma(struct crystalhd_hw *hw,
 	if (rx_pkt->uv_phy_addr) {
 		/* Program the UV descriptor */
 		desc_addr.full_addr = rx_pkt->uv_phy_addr;
-		crystalhd_reg_wr(hw->adp, uv_high_addr_reg,
-			 desc_addr.high_part);
-		crystalhd_reg_wr(hw->adp, uv_low_addr_reg,
-			 desc_addr.low_part | 0x01);
+		crystalhd_reg_wr(hw->adp, uv_high_addr_reg, desc_addr.high_part);
+		crystalhd_reg_wr(hw->adp, uv_low_addr_reg, desc_addr.low_part | 0x01);
 	}
 
 	return BC_STS_SUCCESS;
@@ -1312,20 +1264,16 @@ static void crystalhd_hw_finalize_pause(struct crystalhd_hw *hw)
 
 	hw->stop_pending = 0;
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS);
 	if (dma_cntrl & DMA_START_BIT) {
 		dma_cntrl &= ~DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_Y_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 
-	dma_cntrl = crystalhd_reg_rd(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
+	dma_cntrl = crystalhd_reg_rd(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS);
 	if (dma_cntrl & DMA_START_BIT) {
 		dma_cntrl &= ~DMA_START_BIT;
-		crystalhd_reg_wr(hw->adp,
-			 MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
+		crystalhd_reg_wr(hw->adp, MISC1_UV_RX_SW_DESC_LIST_CTRL_STS, dma_cntrl);
 	}
 	hw->rx_list_post_index = 0;
 
@@ -1335,8 +1283,8 @@ static void crystalhd_hw_finalize_pause(struct crystalhd_hw *hw)
 	crystalhd_reg_wr(hw->adp, PCIE_DLL_DATA_LINK_CONTROL, aspm);
 }
 
-static enum BC_STATUS crystalhd_rx_pkt_done(struct crystalhd_hw *hw,
-			 uint32_t list_index, enum BC_STATUS comp_sts)
+static enum BC_STATUS crystalhd_rx_pkt_done(struct crystalhd_hw *hw, uint32_t list_index,
+				     enum BC_STATUS comp_sts)
 {
 	struct crystalhd_rx_dma_pkt *rx_pkt = NULL;
 	uint32_t y_dw_dnsz, uv_dw_dnsz;
@@ -1350,8 +1298,7 @@ static enum BC_STATUS crystalhd_rx_pkt_done(struct crystalhd_hw *hw,
 	rx_pkt = crystalhd_dioq_find_and_fetch(hw->rx_actq,
 					     hw->rx_pkt_tag_seed + list_index);
 	if (!rx_pkt) {
-		BCMLOG_ERR(
-		"Act-Q:PostIx:%x L0Sts:%x L1Sts:%x current L:%x tag:%x comp:%x\n",
+		BCMLOG_ERR("Act-Q:PostIx:%x L0Sts:%x L1Sts:%x current L:%x tag:%x comp:%x\n",
 			   hw->rx_list_post_index, hw->rx_list_sts[0],
 			   hw->rx_list_sts[1], list_index,
 			   hw->rx_pkt_tag_seed + list_index, comp_sts);
@@ -1373,8 +1320,8 @@ static enum BC_STATUS crystalhd_rx_pkt_done(struct crystalhd_hw *hw,
 	return crystalhd_hw_post_cap_buff(hw, rx_pkt);
 }
 
-static bool crystalhd_rx_list0_handler(struct crystalhd_hw *hw,
-		 uint32_t int_sts, uint32_t y_err_sts, uint32_t uv_err_sts)
+static bool crystalhd_rx_list0_handler(struct crystalhd_hw *hw, uint32_t int_sts,
+				     uint32_t y_err_sts, uint32_t uv_err_sts)
 {
 	uint32_t tmp;
 	enum list_sts tmp_lsts;
@@ -1416,8 +1363,7 @@ static bool crystalhd_rx_list0_handler(struct crystalhd_hw *hw,
 		tmp &= ~MISC1_UV_RX_ERROR_STATUS_RX_L0_UNDERRUN_ERROR_MASK;
 	}
 
-	if (uv_err_sts &
-	 MISC1_UV_RX_ERROR_STATUS_RX_L0_FIFO_FULL_ERRORS_MASK) {
+	if (uv_err_sts & MISC1_UV_RX_ERROR_STATUS_RX_L0_FIFO_FULL_ERRORS_MASK) {
 		hw->rx_list_sts[0] &= ~rx_uv_mask;
 		hw->rx_list_sts[0] |= rx_uv_error;
 		tmp &= ~MISC1_UV_RX_ERROR_STATUS_RX_L0_FIFO_FULL_ERRORS_MASK;
@@ -1439,11 +1385,11 @@ static bool crystalhd_rx_list0_handler(struct crystalhd_hw *hw,
 		crystalhd_reg_wr(hw->adp, MISC1_UV_RX_ERROR_STATUS, tmp);
 	}
 
-	return tmp_lsts != hw->rx_list_sts[0];
+	return (tmp_lsts != hw->rx_list_sts[0]);
 }
 
-static bool crystalhd_rx_list1_handler(struct crystalhd_hw *hw,
-		 uint32_t int_sts, uint32_t y_err_sts, uint32_t uv_err_sts)
+static bool crystalhd_rx_list1_handler(struct crystalhd_hw *hw, uint32_t int_sts,
+				     uint32_t y_err_sts, uint32_t uv_err_sts)
 {
 	uint32_t tmp;
 	enum list_sts tmp_lsts;
@@ -1509,9 +1455,8 @@ static bool crystalhd_rx_list1_handler(struct crystalhd_hw *hw,
 		crystalhd_reg_wr(hw->adp, MISC1_UV_RX_ERROR_STATUS, tmp);
 	}
 
-	return tmp_lsts != hw->rx_list_sts[1];
+	return (tmp_lsts != hw->rx_list_sts[1]);
 }
-
 
 static void crystalhd_rx_isr(struct crystalhd_hw *hw, uint32_t intr_sts)
 {
@@ -1519,7 +1464,7 @@ static void crystalhd_rx_isr(struct crystalhd_hw *hw, uint32_t intr_sts)
 	uint32_t i, list_avail = 0;
 	enum BC_STATUS comp_sts = BC_STS_NO_DATA;
 	uint32_t y_err_sts, uv_err_sts, y_dn_sz = 0, uv_dn_sz = 0;
-	bool ret = false;
+	bool ret = 0;
 
 	if (!hw) {
 		BCMLOG_ERR("Invalid Arguments\n");
@@ -1536,11 +1481,9 @@ static void crystalhd_rx_isr(struct crystalhd_hw *hw, uint32_t intr_sts)
 		/* Update States..*/
 		spin_lock_irqsave(&hw->rx_lock, flags);
 		if (i == 0)
-			ret = crystalhd_rx_list0_handler(hw, intr_sts,
-					 y_err_sts, uv_err_sts);
+			ret = crystalhd_rx_list0_handler(hw, intr_sts, y_err_sts, uv_err_sts);
 		else
-			ret = crystalhd_rx_list1_handler(hw, intr_sts,
-					 y_err_sts, uv_err_sts);
+			ret = crystalhd_rx_list1_handler(hw, intr_sts, y_err_sts, uv_err_sts);
 		if (ret) {
 			switch (hw->rx_list_sts[i]) {
 			case sts_free:
@@ -1553,12 +1496,11 @@ static void crystalhd_rx_isr(struct crystalhd_hw *hw, uint32_t intr_sts)
 				/* We got error on both or Y or uv. */
 				hw->stats.rx_errors++;
 				crystalhd_get_dnsz(hw, i, &y_dn_sz, &uv_dn_sz);
-				/* FIXME: jarod: this is where
-				 my mini pci-e card is tripping up */
-				BCMLOG(BCMLOG_DBG, "list_index:%x rx[%d] Y:%x UV:%x Int:%x YDnSz:%x UVDnSz:%x\n",
+				/* FIXME: jarod: this is where my mini pci-e card is tripping up */
+				BCMLOG(BCMLOG_DBG, "list_index:%x rx[%d] Y:%x "
+				       "UV:%x Int:%x YDnSz:%x UVDnSz:%x\n",
 				       i, hw->stats.rx_errors, y_err_sts,
-				       uv_err_sts, intr_sts, y_dn_sz,
-				       uv_dn_sz);
+				       uv_err_sts, intr_sts, y_dn_sz, uv_dn_sz);
 				hw->rx_list_sts[i] = sts_free;
 				comp_sts = BC_STS_ERROR;
 				break;
@@ -1620,17 +1562,14 @@ static enum BC_STATUS crystalhd_put_ddr2sleep(struct crystalhd_hw *hw)
 	union link_misc_perst_decoder_ctrl rst_cntrl_reg;
 
 	/* Pulse reset pin of 7412 (MISC_PERST_DECODER_CTRL) */
-	rst_cntrl_reg.whole_reg = crystalhd_reg_rd(hw->adp,
-					 MISC_PERST_DECODER_CTRL);
+	rst_cntrl_reg.whole_reg = crystalhd_reg_rd(hw->adp, MISC_PERST_DECODER_CTRL);
 
 	rst_cntrl_reg.bcm_7412_rst = 1;
-	crystalhd_reg_wr(hw->adp, MISC_PERST_DECODER_CTRL,
-					 rst_cntrl_reg.whole_reg);
+	crystalhd_reg_wr(hw->adp, MISC_PERST_DECODER_CTRL, rst_cntrl_reg.whole_reg);
 	msleep_interruptible(50);
 
 	rst_cntrl_reg.bcm_7412_rst = 0;
-	crystalhd_reg_wr(hw->adp, MISC_PERST_DECODER_CTRL,
-					 rst_cntrl_reg.whole_reg);
+	crystalhd_reg_wr(hw->adp, MISC_PERST_DECODER_CTRL, rst_cntrl_reg.whole_reg);
 
 	/* Close all banks, put DDR in idle */
 	bc_dec_reg_wr(hw->adp, SDRAM_PRECHARGE, 0);
@@ -1678,13 +1617,11 @@ static enum BC_STATUS crystalhd_put_ddr2sleep(struct crystalhd_hw *hw)
 **
 *************************************************/
 
-enum BC_STATUS crystalhd_download_fw(struct crystalhd_adp *adp, void *buffer,
-					 uint32_t sz)
+enum BC_STATUS crystalhd_download_fw(struct crystalhd_adp *adp, void *buffer, uint32_t sz)
 {
 	uint32_t reg_data, cnt, *temp_buff;
 	uint32_t fw_sig_len = 36;
 	uint32_t dram_offset = BC_FWIMG_ST_ADDR, sig_reg;
-
 
 	if (!adp || !buffer || !sz) {
 		BCMLOG_ERR("Invalid Params.\n");
@@ -1854,7 +1791,7 @@ bool crystalhd_hw_interrupt(struct crystalhd_adp *adp, struct crystalhd_hw *hw)
 {
 	uint32_t intr_sts = 0;
 	uint32_t deco_intr = 0;
-	bool rc = false;
+	bool rc = 0;
 
 	if (!adp || !hw->dev_started)
 		return rc;
@@ -1867,7 +1804,7 @@ bool crystalhd_hw_interrupt(struct crystalhd_adp *adp, struct crystalhd_hw *hw)
 
 	if (intr_sts) {
 		/* let system know we processed interrupt..*/
-		rc = true;
+		rc = 1;
 		hw->stats.dev_interrupts++;
 	}
 
@@ -1885,10 +1822,9 @@ bool crystalhd_hw_interrupt(struct crystalhd_adp *adp, struct crystalhd_hw *hw)
 			crystalhd_hw_proc_pib(hw);
 
 		bc_dec_reg_wr(adp, Stream2Host_Intr_Sts, deco_intr);
-		/* FIXME: jarod: No udelay? might this be
-		 the real reason mini pci-e cards were stalling out? */
+		/* FIXME: jarod: No udelay? might this be the real reason mini pci-e cards were stalling out? */
 		bc_dec_reg_wr(adp, Stream2Host_Intr_Sts, 0);
-		rc = true;
+		rc = 1;
 	}
 
 	/* Rx interrupts */
@@ -1910,8 +1846,7 @@ bool crystalhd_hw_interrupt(struct crystalhd_adp *adp, struct crystalhd_hw *hw)
 	return rc;
 }
 
-enum BC_STATUS crystalhd_hw_open(struct crystalhd_hw *hw,
-			 struct crystalhd_adp *adp)
+enum BC_STATUS crystalhd_hw_open(struct crystalhd_hw *hw, struct crystalhd_adp *adp)
 {
 	if (!hw || !adp) {
 		BCMLOG_ERR("Invalid Arguments\n");
@@ -2026,8 +1961,7 @@ enum BC_STATUS crystalhd_hw_setup_dma_rings(struct crystalhd_hw *hw)
 		}
 		rpkt->desc_mem.pdma_desc_start = mem;
 		rpkt->desc_mem.phy_addr = phy_addr;
-		rpkt->desc_mem.sz  = BC_LINK_MAX_SGLS *
-					 sizeof(struct dma_descriptor);
+		rpkt->desc_mem.sz  = BC_LINK_MAX_SGLS * sizeof(struct dma_descriptor);
 		rpkt->pkt_tag = hw->rx_pkt_tag_seed + i;
 		crystalhd_hw_free_rx_pkt(hw, rpkt);
 	}
@@ -2073,8 +2007,7 @@ enum BC_STATUS crystalhd_hw_free_dma_rings(struct crystalhd_hw *hw)
 	return BC_STS_SUCCESS;
 }
 
-enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw,
-			     struct crystalhd_dio_req *ioreq,
+enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw, struct crystalhd_dio_req *ioreq,
 			     hw_comp_callback call_back,
 			     wait_queue_head_t *cb_event, uint32_t *list_id,
 			     uint8_t data_flags)
@@ -2108,8 +2041,7 @@ enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw,
 	}
 
 	/* Get a list from TxFreeQ */
-	tx_dma_packet = (struct tx_dma_pkt *)crystalhd_dioq_fetch(
-						hw->tx_freeq);
+	tx_dma_packet = (struct tx_dma_pkt *)crystalhd_dioq_fetch(hw->tx_freeq);
 	if (!tx_dma_packet) {
 		BCMLOG_ERR("No empty elements..\n");
 		return BC_STS_ERR_USAGE;
@@ -2154,7 +2086,6 @@ enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw,
 
 	spin_unlock_irqrestore(&hw->lock, flags);
 
-
 	/* Insert in Active Q..*/
 	crystalhd_dioq_add(hw->tx_actq, tx_dma_packet, false,
 			 tx_dma_packet->list_tag);
@@ -2167,8 +2098,7 @@ enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw,
 	crystalhd_start_tx_dma_engine(hw);
 	crystalhd_reg_wr(hw->adp, first_desc_u_addr, desc_addr.high_part);
 
-	crystalhd_reg_wr(hw->adp, first_desc_l_addr, desc_addr.low_part |
-					 0x01);
+	crystalhd_reg_wr(hw->adp, first_desc_l_addr, desc_addr.low_part | 0x01);
 					/* Be sure we set the valid bit ^^^^ */
 
 	return BC_STS_SUCCESS;
@@ -2183,8 +2113,7 @@ enum BC_STATUS crystalhd_hw_post_tx(struct crystalhd_hw *hw,
  *
  * FIX_ME: Not Tested the actual condition..
  */
-enum BC_STATUS crystalhd_hw_cancel_tx(struct crystalhd_hw *hw,
-					 uint32_t list_id)
+enum BC_STATUS crystalhd_hw_cancel_tx(struct crystalhd_hw *hw, uint32_t list_id)
 {
 	if (!hw || !list_id) {
 		BCMLOG_ERR("Invalid Arguments\n");
@@ -2198,7 +2127,7 @@ enum BC_STATUS crystalhd_hw_cancel_tx(struct crystalhd_hw *hw,
 }
 
 enum BC_STATUS crystalhd_hw_add_cap_buffer(struct crystalhd_hw *hw,
-				 struct crystalhd_dio_req *ioreq, bool en_post)
+				    struct crystalhd_dio_req *ioreq, bool en_post)
 {
 	struct crystalhd_rx_dma_pkt *rpkt;
 	uint32_t tag, uv_desc_ix = 0;
@@ -2218,8 +2147,7 @@ enum BC_STATUS crystalhd_hw_add_cap_buffer(struct crystalhd_hw *hw,
 	rpkt->dio_req = ioreq;
 	tag = rpkt->pkt_tag;
 
-	sts = crystalhd_xlat_sgl_to_dma_desc(ioreq, &rpkt->desc_mem,
-					 &uv_desc_ix);
+	sts = crystalhd_xlat_sgl_to_dma_desc(ioreq, &rpkt->desc_mem, &uv_desc_ix);
 	if (sts != BC_STS_SUCCESS)
 		return sts;
 
@@ -2228,7 +2156,7 @@ enum BC_STATUS crystalhd_hw_add_cap_buffer(struct crystalhd_hw *hw,
 	/* Store the address of UV in the rx packet for post*/
 	if (uv_desc_ix)
 		rpkt->uv_phy_addr = rpkt->desc_mem.phy_addr +
-			 (sizeof(struct dma_descriptor) * (uv_desc_ix + 1));
+				    (sizeof(struct dma_descriptor) * (uv_desc_ix + 1));
 
 	if (en_post)
 		sts = crystalhd_hw_post_cap_buff(hw, rpkt);
@@ -2246,7 +2174,6 @@ enum BC_STATUS crystalhd_hw_get_cap_buffer(struct crystalhd_hw *hw,
 	uint32_t timeout = BC_PROC_OUTPUT_TIMEOUT / 1000;
 	uint32_t sig_pending = 0;
 
-
 	if (!hw || !ioreq || !pib) {
 		BCMLOG_ERR("Invalid Arguments\n");
 		return BC_STS_INV_ARG;
@@ -2255,8 +2182,7 @@ enum BC_STATUS crystalhd_hw_get_cap_buffer(struct crystalhd_hw *hw,
 	rpkt = crystalhd_dioq_fetch_wait(hw->rx_rdyq, timeout, &sig_pending);
 	if (!rpkt) {
 		if (sig_pending) {
-			BCMLOG(BCMLOG_INFO, "wait on frame time out %d\n",
-					 sig_pending);
+			BCMLOG(BCMLOG_INFO, "wait on frame time out %d\n", sig_pending);
 			return BC_STS_IO_USER_ABORT;
 		} else {
 			return BC_STS_TIMEOUT;
@@ -2371,8 +2297,7 @@ enum BC_STATUS crystalhd_hw_suspend(struct crystalhd_hw *hw)
 	return BC_STS_SUCCESS;
 }
 
-void crystalhd_hw_stats(struct crystalhd_hw *hw,
-		 struct crystalhd_hw_stats *stats)
+void crystalhd_hw_stats(struct crystalhd_hw *hw, struct crystalhd_hw_stats *stats)
 {
 	if (!hw) {
 		BCMLOG_ERR("Invalid Arguments\n");
@@ -2445,8 +2370,7 @@ enum BC_STATUS crystalhd_hw_set_core_clock(struct crystalhd_hw *hw)
 
 		if (reg & 0x00020000) {
 			hw->prev_n = n;
-			/* FIXME: jarod: outputting
-			 a random "C" is... confusing... */
+			/* FIXME: jarod: outputting a random "C" is... confusing... */
 			BCMLOG(BCMLOG_INFO, "C");
 			return BC_STS_SUCCESS;
 		} else {

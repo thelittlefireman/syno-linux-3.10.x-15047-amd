@@ -1403,7 +1403,7 @@ static void amb_free_rx_skb (struct atm_vcc * atm_vcc, struct sk_buff * skb) {
   rx.host_address = cpu_to_be32 (virt_to_bus (skb->data));
   
   skb->data = skb->head;
-  skb_reset_tail_pointer(skb);
+  skb->tail = skb->head;
   skb->len = 0;
   
   if (!rx_give (dev, &rx, pool)) {
@@ -1651,7 +1651,6 @@ static unsigned int command_timeouts [] = {
 	[adap_run_in_iram]     = 1,
 	[adap_end_download]    = 1
 };
-
 
 static unsigned int command_successes [] = {
 	[host_memory_test]     = COMMAND_PASSED_TEST,
@@ -1925,7 +1924,7 @@ static int ucode_init(loader_block *lb, amb_dev *dev)
   const struct firmware *fw;
   unsigned long start_address;
   const struct ihex_binrec *rec;
-  const char *errmsg = NULL;
+  const char *errmsg = 0;
   int res;
 
   res = request_ihex_firmware(&fw, "atmsar11.fw", &dev->pci_dev->dev);
@@ -2290,7 +2289,6 @@ out_disable:
 	pci_disable_device(pci_dev);
 	goto out;
 }
-
 
 static void amb_remove_one(struct pci_dev *pci_dev)
 {

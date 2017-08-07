@@ -28,7 +28,6 @@ typedef void (*sms_prt_isdb_stats_ex_t)
 			(struct smsdvb_debugfs *debug_data,
 			 struct sms_isdbt_stats_ex *p);
 
-
 struct smsdvb_client_t {
 	struct list_head entry;
 
@@ -95,7 +94,7 @@ struct RECEPTION_STATISTICS_PER_SLICES_S {
 	u32 is_demod_locked;	/* 0 - not locked, 1 - locked */
 
 	u32 ber_bit_count;	/* Total number of SYNC bits. */
-	u32 ber_error_count;	/* Number of erroneous SYNC bits. */
+	u32 ber_error_count;	/* Number of erronous SYNC bits. */
 
 	s32 MRC_SNR;		/* dB */
 	s32 mrc_in_band_pwr;	/* In band power in dBM */
@@ -127,4 +126,3 @@ static inline int smsdvb_debugfs_register(void)
 static inline void smsdvb_debugfs_unregister(void) {};
 
 #endif
-

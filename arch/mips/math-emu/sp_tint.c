@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include <linux/kernel.h>
 #include "ieee754sp.h"
 
@@ -111,7 +110,6 @@ int ieee754sp_tint(ieee754sp x)
 	else
 		return xm;
 }
-
 
 unsigned int ieee754sp_tuns(ieee754sp x)
 {

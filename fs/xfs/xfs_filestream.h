@@ -18,6 +18,8 @@
 #ifndef __XFS_FILESTREAM_H__
 #define __XFS_FILESTREAM_H__
 
+#ifdef __KERNEL__
+
 struct xfs_mount;
 struct xfs_inode;
 struct xfs_perag;
@@ -56,7 +58,6 @@ int xfs_filestream_associate(struct xfs_inode *dip, struct xfs_inode *ip);
 void xfs_filestream_deassociate(struct xfs_inode *ip);
 int xfs_filestream_new_ag(struct xfs_bmalloca *ap, xfs_agnumber_t *agp);
 
-
 /* filestreams for the inode? */
 static inline int
 xfs_inode_is_filestream(
@@ -66,5 +67,7 @@ xfs_inode_is_filestream(
 		xfs_iflags_test(ip, XFS_IFILESTREAM) ||
 		(ip->i_d.di_flags & XFS_DIFLAG_FILESTREAM);
 }
+
+#endif /* __KERNEL__ */
 
 #endif /* __XFS_FILESTREAM_H__ */

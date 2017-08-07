@@ -36,7 +36,6 @@
 /* Disable for nested KVM */
 #define USE_QUICK_LAST_INST
 
-
 /* Get helper functions for subarch specific functionality */
 
 #if defined(CONFIG_PPC_BOOK3S_64)
@@ -150,8 +149,6 @@ no_dcbz32_on:
 	RFI
 kvmppc_handler_trampoline_enter_end:
 
-
-
 /******************************************************************************
  *                                                                            *
  *                               Exit code                                    *
@@ -161,8 +158,8 @@ kvmppc_handler_trampoline_enter_end:
 .global kvmppc_handler_trampoline_exit
 kvmppc_handler_trampoline_exit:
 
-.global kvmppc_interrupt_pr
-kvmppc_interrupt_pr:
+.global kvmppc_interrupt
+kvmppc_interrupt:
 
 	/* Register usage at this point:
 	 *
@@ -361,8 +358,6 @@ END_FTR_SECTION_IFSET(CPU_FTR_HVMODE)
 	beqa	BOOK3S_INTERRUPT_DECREMENTER
 	cmpwi	r12, BOOK3S_INTERRUPT_PERFMON
 	beqa	BOOK3S_INTERRUPT_PERFMON
-	cmpwi	r12, BOOK3S_INTERRUPT_DOORBELL
-	beqa	BOOK3S_INTERRUPT_DOORBELL
 
 	RFI
 kvmppc_handler_trampoline_exit_end:

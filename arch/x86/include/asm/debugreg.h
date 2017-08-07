@@ -1,7 +1,6 @@
 #ifndef _ASM_X86_DEBUGREG_H
 #define _ASM_X86_DEBUGREG_H
 
-
 #include <linux/bug.h>
 #include <uapi/asm/debugreg.h>
 
@@ -113,6 +112,5 @@ static inline void debug_stack_reset(void) { }
 static inline void debug_stack_usage_inc(void) { }
 static inline void debug_stack_usage_dec(void) { }
 #endif /* X86_64 */
-
 
 #endif /* _ASM_X86_DEBUGREG_H */

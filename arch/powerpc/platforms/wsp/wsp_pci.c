@@ -33,7 +33,6 @@
 #include "wsp_pci.h"
 #include "msi.h"
 
-
 /* Max number of TVTs for one table. Only 32-bit tables can use
  * multiple TVTs and so the max currently supported is thus 8
  * since only 2G of DMA space is supported
@@ -103,7 +102,6 @@ static LIST_HEAD(wsp_phbs);
 
 //#define cfg_debug(fmt...)	pr_debug(fmt)
 #define cfg_debug(fmt...)
-
 
 static int wsp_pcie_read_config(struct pci_bus *bus, unsigned int devfn,
 				  int offset, int len, u32 *val)
@@ -260,7 +258,7 @@ static int tce_build_wsp(struct iommu_table *tbl, long index, long npages,
 		*tcep = proto_tce | (rpn & TCE_RPN_MASK) << TCE_RPN_SHIFT;
 
 		dma_debug("[DMA] TCE %p set to 0x%016llx (dma addr: 0x%lx)\n",
-			  tcep, *tcep, (tbl->it_offset + index) << IOMMU_PAGE_SHIFT_4K);
+			  tcep, *tcep, (tbl->it_offset + index) << IOMMU_PAGE_SHIFT);
 
 		uaddr += TCE_PAGE_SIZE;
 		index++;
@@ -381,9 +379,8 @@ static struct wsp_dma_table *wsp_pci_create_dma32_table(struct wsp_phb *phb,
 
 	/* Init bits and pieces */
 	tbl->table.it_blocksize = 16;
-	tbl->table.it_page_shift = IOMMU_PAGE_SHIFT_4K;
-	tbl->table.it_offset = addr >> tbl->table.it_page_shift;
-	tbl->table.it_size = size >> tbl->table.it_page_shift;
+	tbl->table.it_offset = addr >> IOMMU_PAGE_SHIFT;
+	tbl->table.it_size = size >> IOMMU_PAGE_SHIFT;
 
 	/*
 	 * It's already blank but we clear it anyway.
@@ -450,8 +447,8 @@ static void wsp_pci_dma_dev_setup(struct pci_dev *pdev)
 	if (table) {
 		pr_info("%s: Setup iommu: 32-bit DMA region 0x%08lx..0x%08lx\n",
 			pci_name(pdev),
-			table->table.it_offset << IOMMU_PAGE_SHIFT_4K,
-			(table->table.it_offset << IOMMU_PAGE_SHIFT_4K)
+			table->table.it_offset << IOMMU_PAGE_SHIFT,
+			(table->table.it_offset << IOMMU_PAGE_SHIFT)
 			+ phb->dma32_region_size - 1);
 		archdata->dma_data.iommu_table_base = &table->table;
 		return;
@@ -625,7 +622,6 @@ static void wsp_pci_##name at					\
 
 #define DEF_PCI_AC_NORET(name, at, al, space, aa)		\
 	DEF_PCI_AC_NORET_##space(name, at, al, aa)		\
-
 
 #include <asm/io-defs.h>
 

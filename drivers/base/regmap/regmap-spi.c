@@ -12,6 +12,7 @@
 
 #include <linux/regmap.h>
 #include <linux/spi/spi.h>
+#include <linux/init.h>
 #include <linux/module.h>
 
 #include "internal.h"
@@ -72,8 +73,7 @@ static int regmap_spi_async_write(void *context,
 
 	spi_message_init(&async->m);
 	spi_message_add_tail(&async->t[0], &async->m);
-	if (val)
-		spi_message_add_tail(&async->t[1], &async->m);
+	spi_message_add_tail(&async->t[1], &async->m);
 
 	async->m.complete = regmap_spi_complete;
 	async->m.context = async;

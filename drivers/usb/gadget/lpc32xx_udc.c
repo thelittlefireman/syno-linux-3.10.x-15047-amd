@@ -55,6 +55,7 @@
 #include <mach/hardware.h>
 #include <linux/io.h>
 #include <asm/irq.h>
+#include <asm/system.h>
 
 #include <mach/platform.h>
 #include <mach/irqs.h>
@@ -1448,7 +1449,7 @@ static void udc_reinit(struct lpc32xx_udc *udc)
 
 		if (i != 0)
 			list_add_tail(&ep->ep.ep_list, &udc->gadget.ep_list);
-		usb_ep_set_maxpacket_limit(&ep->ep, ep->maxpacket);
+		ep->ep.maxpacket = ep->maxpacket;
 		INIT_LIST_HEAD(&ep->queue);
 		ep->req_pending = 0;
 	}
@@ -1816,7 +1817,6 @@ static int lpc32xx_ep_queue(struct usb_ep *_ep,
 		return -EINVAL;
 	}
 
-
 	if ((!udc) || (!udc->driver) ||
 	    (udc->gadget.speed == USB_SPEED_UNKNOWN)) {
 		dev_dbg(udc->dev, "invalid device\n");
@@ -2044,7 +2044,6 @@ void udc_handle_eps(struct lpc32xx_udc *udc, struct lpc32xx_ep *ep)
 			ep->req_pending = 0;
 	}
 }
-
 
 /* DMA end of transfer completion */
 static void udc_handle_dma_ep(struct lpc32xx_udc *udc, struct lpc32xx_ep *ep)
@@ -2323,7 +2322,6 @@ static void udc_handle_ep0_setup(struct lpc32xx_udc *udc)
 			break;
 		}
 
-
 	case USB_REQ_SET_ADDRESS:
 		if (reqtype == (USB_TYPE_STANDARD | USB_RECIP_DEVICE)) {
 			udc_set_address(udc, wValue);
@@ -2431,7 +2429,6 @@ static void udc_handle_ep0_out(struct lpc32xx_udc *udc)
 
 	/* Clear EP interrupt */
 	epstatus = udc_clearep_getsts(udc, EP_OUT);
-
 
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
 	ep0->totalints++;
@@ -3033,7 +3030,6 @@ struct lpc32xx_usbd_cfg lpc32xx_usbddata = {
 	.rmwk_chgb = &lpc32xx_rmwkup_chg,
 };
 
-
 static u64 lpc32xx_usbd_dmamask = ~(u32) 0x7F;
 
 static int __init lpc32xx_udc_probe(struct platform_device *pdev)
@@ -3077,9 +3073,7 @@ static int __init lpc32xx_udc_probe(struct platform_device *pdev)
 		 udc->isp1301_i2c_client->addr);
 
 	pdev->dev.dma_mask = &lpc32xx_usbd_dmamask;
-	retval = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
-	if (retval)
-		goto resource_fail;
+	pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
 
 	udc->board = &lpc32xx_usbddata;
 
@@ -3294,9 +3288,9 @@ usb_clk_enable_fail:
 pll_set_fail:
 	clk_disable(udc->usb_pll_clk);
 pll_enable_fail:
-	clk_put(udc->usb_otg_clk);
-usb_otg_clk_get_fail:
 	clk_put(udc->usb_slv_clk);
+usb_otg_clk_get_fail:
+	clk_put(udc->usb_otg_clk);
 usb_clk_get_fail:
 	clk_put(udc->usb_pll_clk);
 pll_get_fail:

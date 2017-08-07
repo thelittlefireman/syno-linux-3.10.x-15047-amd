@@ -21,6 +21,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/irq.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
@@ -305,7 +306,7 @@ create_netxbig_led(struct platform_device *pdev,
 		   struct netxbig_led_data *led_dat,
 		   const struct netxbig_led *template)
 {
-	struct netxbig_led_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct netxbig_led_platform_data *pdata = pdev->dev.platform_data;
 	int ret;
 
 	spin_lock_init(&led_dat->lock);
@@ -353,7 +354,7 @@ create_netxbig_led(struct platform_device *pdev,
 
 static int netxbig_led_probe(struct platform_device *pdev)
 {
-	struct netxbig_led_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct netxbig_led_platform_data *pdata = pdev->dev.platform_data;
 	struct netxbig_led_data *leds_data;
 	int i;
 	int ret;
@@ -390,7 +391,7 @@ err_free_leds:
 
 static int netxbig_led_remove(struct platform_device *pdev)
 {
-	struct netxbig_led_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct netxbig_led_platform_data *pdata = pdev->dev.platform_data;
 	struct netxbig_led_data *leds_data;
 	int i;
 

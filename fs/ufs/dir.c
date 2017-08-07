@@ -84,7 +84,6 @@ ino_t ufs_inode_by_name(struct inode *dir, const struct qstr *qstr)
 	return res;
 }
 
-
 /* Releases the page */
 void ufs_set_link(struct inode *dir, struct ufs_dir_entry *de,
 		  struct page *page, struct inode *inode)
@@ -106,7 +105,6 @@ void ufs_set_link(struct inode *dir, struct ufs_dir_entry *de,
 	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
 	mark_inode_dirty(dir);
 }
-
 
 static void ufs_check_page(struct page *page)
 {
@@ -425,21 +423,20 @@ ufs_validate_entry(struct super_block *sb, char *base,
 	return (char *)p - base;
 }
 
-
 /*
  * This is blatantly stolen from ext2fs
  */
 static int
-ufs_readdir(struct file *file, struct dir_context *ctx)
+ufs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
-	loff_t pos = ctx->pos;
-	struct inode *inode = file_inode(file);
+	loff_t pos = filp->f_pos;
+	struct inode *inode = file_inode(filp);
 	struct super_block *sb = inode->i_sb;
 	unsigned int offset = pos & ~PAGE_CACHE_MASK;
 	unsigned long n = pos >> PAGE_CACHE_SHIFT;
 	unsigned long npages = ufs_dir_pages(inode);
 	unsigned chunk_mask = ~(UFS_SB(sb)->s_uspi->s_dirblksize - 1);
-	int need_revalidate = file->f_version != inode->i_version;
+	int need_revalidate = filp->f_version != inode->i_version;
 	unsigned flags = UFS_SB(sb)->s_flags;
 
 	UFSD("BEGIN\n");
@@ -457,16 +454,16 @@ ufs_readdir(struct file *file, struct dir_context *ctx)
 			ufs_error(sb, __func__,
 				  "bad page in #%lu",
 				  inode->i_ino);
-			ctx->pos += PAGE_CACHE_SIZE - offset;
+			filp->f_pos += PAGE_CACHE_SIZE - offset;
 			return -EIO;
 		}
 		kaddr = page_address(page);
 		if (unlikely(need_revalidate)) {
 			if (offset) {
 				offset = ufs_validate_entry(sb, kaddr, offset, chunk_mask);
-				ctx->pos = (n<<PAGE_CACHE_SHIFT) + offset;
+				filp->f_pos = (n<<PAGE_CACHE_SHIFT) + offset;
 			}
-			file->f_version = inode->i_version;
+			filp->f_version = inode->i_version;
 			need_revalidate = 0;
 		}
 		de = (struct ufs_dir_entry *)(kaddr+offset);
@@ -479,7 +476,10 @@ ufs_readdir(struct file *file, struct dir_context *ctx)
 				return -EIO;
 			}
 			if (de->d_ino) {
+				int over;
 				unsigned char d_type = DT_UNKNOWN;
+
+				offset = (char *)de - kaddr;
 
 				UFSD("filldir(%s,%u)\n", de->d_name,
 				      fs32_to_cpu(sb, de->d_ino));
@@ -488,21 +488,21 @@ ufs_readdir(struct file *file, struct dir_context *ctx)
 				if ((flags & UFS_DE_MASK) == UFS_DE_44BSD)
 					d_type = de->d_u.d_44.d_type;
 
-				if (!dir_emit(ctx, de->d_name,
+				over = filldir(dirent, de->d_name,
 					       ufs_get_de_namlen(sb, de),
-					       fs32_to_cpu(sb, de->d_ino),
-					       d_type)) {
+						(n<<PAGE_CACHE_SHIFT) | offset,
+					       fs32_to_cpu(sb, de->d_ino), d_type);
+				if (over) {
 					ufs_put_page(page);
 					return 0;
 				}
 			}
-			ctx->pos += fs16_to_cpu(sb, de->d_reclen);
+			filp->f_pos += fs16_to_cpu(sb, de->d_reclen);
 		}
 		ufs_put_page(page);
 	}
 	return 0;
 }
-
 
 /*
  * ufs_delete_entry deletes a directory entry by merging it with the
@@ -656,7 +656,7 @@ not_empty:
 
 const struct file_operations ufs_dir_operations = {
 	.read		= generic_read_dir,
-	.iterate	= ufs_readdir,
+	.readdir	= ufs_readdir,
 	.fsync		= generic_file_fsync,
 	.llseek		= generic_file_llseek,
 };

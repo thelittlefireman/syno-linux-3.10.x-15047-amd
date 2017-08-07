@@ -25,10 +25,6 @@
 #include <linux/slab.h>
 #include <linux/i2c/twl4030-madc.h>
 
-/* RX51 specific channels */
-#define TWL4030_MADC_BTEMP_RX51	TWL4030_MADC_ADCIN0
-#define TWL4030_MADC_BCI_RX51	TWL4030_MADC_ADCIN4
-
 struct rx51_device_info {
 	struct device *dev;
 	struct power_supply bat;
@@ -41,7 +37,7 @@ static int rx51_battery_read_adc(int channel)
 {
 	struct twl4030_madc_request req;
 
-	req.channels = channel;
+	req.channels = 1 << channel;
 	req.do_avg = 1;
 	req.method = TWL4030_MADC_SW1;
 	req.func_cb = NULL;
@@ -51,7 +47,7 @@ static int rx51_battery_read_adc(int channel)
 	if (twl4030_madc_conversion(&req) <= 0)
 		return -ENODATA;
 
-	return req.rbuf[ffs(channel) - 1];
+	return req.rbuf[channel];
 }
 
 /*
@@ -60,7 +56,7 @@ static int rx51_battery_read_adc(int channel)
  */
 static int rx51_battery_read_voltage(struct rx51_device_info *di)
 {
-	int voltage = rx51_battery_read_adc(TWL4030_MADC_VBAT);
+	int voltage = rx51_battery_read_adc(12);
 
 	if (voltage < 0)
 		return voltage;
@@ -112,7 +108,7 @@ static int rx51_battery_read_temperature(struct rx51_device_info *di)
 {
 	int min = 0;
 	int max = ARRAY_SIZE(rx51_temp_table2) - 1;
-	int raw = rx51_battery_read_adc(TWL4030_MADC_BTEMP_RX51);
+	int raw = rx51_battery_read_adc(0);
 
 	/* Zero and negative values are undefined */
 	if (raw <= 0)
@@ -146,7 +142,7 @@ static int rx51_battery_read_temperature(struct rx51_device_info *di)
  */
 static int rx51_battery_read_capacity(struct rx51_device_info *di)
 {
-	int capacity = rx51_battery_read_adc(TWL4030_MADC_BCI_RX51);
+	int capacity = rx51_battery_read_adc(4);
 
 	if (capacity < 0)
 		return capacity;
@@ -220,8 +216,10 @@ static int rx51_battery_probe(struct platform_device *pdev)
 	di->bat.get_property = rx51_battery_get_property;
 
 	ret = power_supply_register(di->dev, &di->bat);
-	if (ret)
+	if (ret) {
+		platform_set_drvdata(pdev, NULL);
 		return ret;
+	}
 
 	return 0;
 }
@@ -231,6 +229,7 @@ static int rx51_battery_remove(struct platform_device *pdev)
 	struct rx51_device_info *di = platform_get_drvdata(pdev);
 
 	power_supply_unregister(&di->bat);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

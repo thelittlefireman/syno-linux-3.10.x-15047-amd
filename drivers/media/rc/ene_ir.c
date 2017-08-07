@@ -246,7 +246,6 @@ error:
 	ene_clear_reg_mask(dev, ENE_FW1, ENE_FW1_EXTRA_BUF_HND);
 }
 
-
 /* Restore the pointers to extra buffers - to make module reload work*/
 static void ene_rx_restore_hw_buffer(struct ene_device *dev)
 {
@@ -399,7 +398,6 @@ static void ene_rx_setup(struct ene_device *dev)
 
 	dbg("RX: setup receiver, learning mode = %d", learning_mode);
 
-
 	/* This selects RLC input and clears CFG2 settings */
 	ene_write_reg(dev, ENE_CIRCFG2, 0x00);
 
@@ -476,7 +474,7 @@ select_timeout:
 }
 
 /* Enable the device for receive */
-static void ene_rx_enable_hw(struct ene_device *dev)
+static void ene_rx_enable(struct ene_device *dev)
 {
 	u8 reg_value;
 
@@ -504,17 +502,11 @@ static void ene_rx_enable_hw(struct ene_device *dev)
 
 	/* enter idle mode */
 	ir_raw_event_set_idle(dev->rdev, true);
-}
-
-/* Enable the device for receive - wrapper to track the state*/
-static void ene_rx_enable(struct ene_device *dev)
-{
-	ene_rx_enable_hw(dev);
 	dev->rx_enabled = true;
 }
 
 /* Disable the device receiver */
-static void ene_rx_disable_hw(struct ene_device *dev)
+static void ene_rx_disable(struct ene_device *dev)
 {
 	/* disable inputs */
 	ene_rx_enable_cir_engine(dev, false);
@@ -522,13 +514,8 @@ static void ene_rx_disable_hw(struct ene_device *dev)
 
 	/* disable hardware IRQ and firmware flag */
 	ene_clear_reg_mask(dev, ENE_FW1, ENE_FW1_ENABLE | ENE_FW1_IRQ);
-	ir_raw_event_set_idle(dev->rdev, true);
-}
 
-/* Disable the device receiver - wrapper to track the state */
-static void ene_rx_disable(struct ene_device *dev)
-{
-	ene_rx_disable_hw(dev);
+	ir_raw_event_set_idle(dev->rdev, true);
 	dev->rx_enabled = false;
 }
 
@@ -618,7 +605,6 @@ static void ene_tx_disable(struct ene_device *dev)
 	dev->tx_buffer = NULL;
 }
 
-
 /* TX one sample - must be called with dev->hw_lock*/
 static void ene_tx_sample(struct ene_device *dev)
 {
@@ -684,7 +670,6 @@ static void ene_tx_irqsim(unsigned long data)
 	ene_tx_sample(dev);
 	spin_unlock_irqrestore(&dev->hw_lock, flags);
 }
-
 
 /* read irq status and ack it */
 static int ene_irq_status(struct ene_device *dev)
@@ -1033,8 +1018,6 @@ static int ene_probe(struct pnp_dev *pnp_dev, const struct pnp_device_id *id)
 	spin_lock_init(&dev->hw_lock);
 
 	dev->hw_io = pnp_port_start(pnp_dev, 0);
-	dev->irq = pnp_irq(pnp_dev, 0);
-
 
 	pnp_set_drvdata(pnp_dev, dev);
 	dev->pnp_dev = pnp_dev;
@@ -1059,7 +1042,7 @@ static int ene_probe(struct pnp_dev *pnp_dev, const struct pnp_device_id *id)
 		learning_mode_force = false;
 
 	rdev->driver_type = RC_DRIVER_IR_RAW;
-	rc_set_allowed_protocols(rdev, RC_BIT_ALL);
+	rdev->allowed_protos = RC_BIT_ALL;
 	rdev->priv = dev;
 	rdev->open = ene_open;
 	rdev->close = ene_close;
@@ -1098,6 +1081,7 @@ static int ene_probe(struct pnp_dev *pnp_dev, const struct pnp_device_id *id)
 		goto exit_unregister_device;
 	}
 
+	dev->irq = pnp_irq(pnp_dev, 0);
 	if (request_irq(dev->irq, ene_isr,
 			IRQF_SHARED, ENE_DRIVER_NAME, (void *)dev)) {
 		goto exit_release_hw_io;
@@ -1135,8 +1119,9 @@ static void ene_remove(struct pnp_dev *pnp_dev)
 }
 
 /* enable wake on IR (wakes on specific button on original remote) */
-static void ene_enable_wake(struct ene_device *dev, bool enable)
+static void ene_enable_wake(struct ene_device *dev, int enable)
 {
+	enable = enable && device_may_wakeup(&dev->pnp_dev->dev);
 	dbg("wake on IR %s", enable ? "enabled" : "disabled");
 	ene_set_clear_reg_mask(dev, ENE_FW1, ENE_FW1_WAKE, enable);
 }
@@ -1145,12 +1130,9 @@ static void ene_enable_wake(struct ene_device *dev, bool enable)
 static int ene_suspend(struct pnp_dev *pnp_dev, pm_message_t state)
 {
 	struct ene_device *dev = pnp_get_drvdata(pnp_dev);
-	bool wake = device_may_wakeup(&dev->pnp_dev->dev);
+	ene_enable_wake(dev, true);
 
-	if (!wake && dev->rx_enabled)
-		ene_rx_disable_hw(dev);
-
-	ene_enable_wake(dev, wake);
+	/* TODO: add support for wake pattern */
 	return 0;
 }
 

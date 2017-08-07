@@ -17,22 +17,23 @@
  */
 #include "xfs.h"
 #include "xfs_fs.h"
-#include "xfs_shared.h"
-#include "xfs_format.h"
-#include "xfs_log_format.h"
-#include "xfs_trans_resv.h"
+#include "xfs_types.h"
+#include "xfs_log.h"
+#include "xfs_trans.h"
 #include "xfs_sb.h"
 #include "xfs_ag.h"
 #include "xfs_mount.h"
-#include "xfs_btree.h"
+#include "xfs_bmap_btree.h"
 #include "xfs_alloc_btree.h"
+#include "xfs_ialloc_btree.h"
+#include "xfs_dinode.h"
+#include "xfs_inode.h"
+#include "xfs_btree.h"
 #include "xfs_alloc.h"
 #include "xfs_extent_busy.h"
 #include "xfs_error.h"
 #include "xfs_trace.h"
 #include "xfs_cksum.h"
-#include "xfs_trans.h"
-
 
 STATIC struct xfs_btree_cur *
 xfs_allocbt_dup_cursor(
@@ -355,14 +356,12 @@ static void
 xfs_allocbt_read_verify(
 	struct xfs_buf	*bp)
 {
-	if (!xfs_btree_sblock_verify_crc(bp))
-		xfs_buf_ioerror(bp, EFSBADCRC);
-	else if (!xfs_allocbt_verify(bp))
-		xfs_buf_ioerror(bp, EFSCORRUPTED);
-
-	if (bp->b_error) {
+	if (!(xfs_btree_sblock_verify_crc(bp) &&
+	      xfs_allocbt_verify(bp))) {
 		trace_xfs_btree_corrupt(bp, _RET_IP_);
-		xfs_verifier_error(bp);
+		XFS_CORRUPTION_ERROR(__func__, XFS_ERRLEVEL_LOW,
+				     bp->b_target->bt_mount, bp->b_addr);
+		xfs_buf_ioerror(bp, EFSCORRUPTED);
 	}
 }
 
@@ -372,9 +371,9 @@ xfs_allocbt_write_verify(
 {
 	if (!xfs_allocbt_verify(bp)) {
 		trace_xfs_btree_corrupt(bp, _RET_IP_);
+		XFS_CORRUPTION_ERROR(__func__, XFS_ERRLEVEL_LOW,
+				     bp->b_target->bt_mount, bp->b_addr);
 		xfs_buf_ioerror(bp, EFSCORRUPTED);
-		xfs_verifier_error(bp);
-		return;
 	}
 	xfs_btree_sblock_calc_crc(bp);
 
@@ -384,7 +383,6 @@ const struct xfs_buf_ops xfs_allocbt_buf_ops = {
 	.verify_read = xfs_allocbt_read_verify,
 	.verify_write = xfs_allocbt_write_verify,
 };
-
 
 #if defined(DEBUG) || defined(XFS_WARN)
 STATIC int

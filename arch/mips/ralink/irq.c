@@ -73,7 +73,7 @@ static struct irq_chip ralink_intc_irq_chip = {
 	.irq_mask_ack	= ralink_intc_irq_mask,
 };
 
-unsigned int get_c0_compare_int(void)
+unsigned int __cpuinit get_c0_compare_int(void)
 {
 	return CP0_LEGACY_COMPARE_IRQ;
 }
@@ -182,4 +182,3 @@ void __init arch_init_irq(void)
 {
 	of_irq_init(of_irq_ids);
 }
-

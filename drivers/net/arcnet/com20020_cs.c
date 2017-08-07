@@ -32,6 +32,7 @@
  * **********************
  */
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/ptrace.h>
 #include <linux/slab.h>
 #include <linux/string.h>
@@ -48,7 +49,6 @@
 #include <asm/io.h>
 
 #define VERSION "arcnet: COM20020 PCMCIA support loaded.\n"
-
 
 static void regdump(struct net_device *dev)
 {
@@ -82,8 +82,6 @@ static void regdump(struct net_device *dev)
     pr_cont("\n");
 #endif
 }
-
-
 
 /*====================================================================*/
 

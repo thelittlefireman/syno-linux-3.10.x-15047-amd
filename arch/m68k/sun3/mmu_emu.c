@@ -6,7 +6,6 @@
 ** Started 1/16/98 @ 2:22 am
 */
 
-#include <linux/init.h>
 #include <linux/mman.h>
 #include <linux/mm.h>
 #include <linux/kernel.h>
@@ -26,7 +25,6 @@
 #include <asm/oplib.h>
 #include <asm/mmu_context.h>
 #include <asm/dvma.h>
-
 
 #undef DEBUG_MMU_EMU
 #define DEBUG_PROM_MAPS
@@ -123,7 +121,7 @@ void print_pte_vaddr (unsigned long vaddr)
 /*
  * Initialise the MMU emulator.
  */
-void __init mmu_emu_init(unsigned long bootmem_end)
+void mmu_emu_init(unsigned long bootmem_end)
 {
 	unsigned long seg, num;
 	int i,j;
@@ -140,7 +138,6 @@ void __init mmu_emu_init(unsigned long bootmem_end)
 	/* mark all of the pmegs used thus far as reserved */
 	for (i=0; i < __pa(bootmem_end) / SUN3_PMEG_SIZE ; ++i)
 		pmeg_alloc[i] = 2;
-
 
 	/* I'm thinking that most of the top pmeg's are going to be
 	   used for something, and we probably shouldn't risk it */
@@ -183,7 +180,6 @@ void __init mmu_emu_init(unsigned long bootmem_end)
 	}
 
 	dvma_init();
-
 
 	/* blank everything below the kernel, and we've got the base
 	   mapping to start all the contexts off with... */
@@ -290,7 +286,6 @@ inline void mmu_emu_map_pmeg (int context, int vaddr)
 	/* Find a spare one. */
 	while (pmeg_alloc[curr_pmeg] == 2)
 		++curr_pmeg;
-
 
 #ifdef DEBUG_MMU_EMU
 printk("mmu_emu_map_pmeg: pmeg %x to context %d vaddr %x\n",

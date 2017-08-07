@@ -744,7 +744,6 @@ static void igbvf_set_itr(struct igbvf_adapter *adapter)
 
 	new_itr = igbvf_range_to_itr(adapter->tx_ring->itr_range);
 
-
 	if (new_itr != adapter->tx_ring->itr_val) {
 		u32 current_itr = adapter->tx_ring->itr_val;
 		/*
@@ -1043,11 +1042,11 @@ static void igbvf_set_interrupt_capability(struct igbvf_adapter *adapter)
 		for (i = 0; i < 3; i++)
 			adapter->msix_entries[i].entry = i;
 
-		err = pci_enable_msix_range(adapter->pdev,
-		                            adapter->msix_entries, 3, 3);
+		err = pci_enable_msix(adapter->pdev,
+		                      adapter->msix_entries, 3);
 	}
 
-	if (err < 0) {
+	if (err) {
 		/* MSI-X failed */
 		dev_err(&adapter->pdev->dev,
 		        "Failed to initialize MSI-X interrupts.\n");
@@ -1494,7 +1493,6 @@ int igbvf_up(struct igbvf_adapter *adapter)
 	hw->mac.get_link_status = 1;
 	mod_timer(&adapter->watchdog_timer, jiffies + 1);
 
-
 	return 0;
 }
 
@@ -1745,7 +1743,7 @@ static int igbvf_set_mac(struct net_device *netdev, void *p)
 
 	hw->mac.ops.rar_set(hw, hw->mac.addr, 0);
 
-	if (!ether_addr_equal(addr->sa_data, hw->mac.addr))
+	if (memcmp(addr->sa_data, hw->mac.addr, 6))
 		return -EADDRNOTAVAIL;
 
 	memcpy(netdev->dev_addr, addr->sa_data, netdev->addr_len);
@@ -1910,18 +1908,20 @@ static int igbvf_tso(struct igbvf_adapter *adapter,
                      struct sk_buff *skb, u32 tx_flags, u8 *hdr_len)
 {
 	struct e1000_adv_tx_context_desc *context_desc;
+	unsigned int i;
+	int err;
 	struct igbvf_buffer *buffer_info;
 	u32 info = 0, tu_cmd = 0;
 	u32 mss_l4len_idx, l4len;
-	unsigned int i;
-	int err;
-
 	*hdr_len = 0;
 
-	err = skb_cow_head(skb, 0);
-	if (err < 0) {
-		dev_err(&adapter->pdev->dev, "igbvf_tso returning an error\n");
-		return err;
+	if (skb_header_cloned(skb)) {
+		err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+		if (err) {
+			dev_err(&adapter->pdev->dev,
+			        "igbvf_tso returning an error\n");
+			return err;
+		}
 	}
 
 	l4len = tcp_hdrlen(skb);
@@ -2005,19 +2005,18 @@ static inline bool igbvf_tx_csum(struct igbvf_adapter *adapter,
 			info |= (skb_transport_header(skb) -
 			         skb_network_header(skb));
 
-
 		context_desc->vlan_macip_lens = cpu_to_le32(info);
 
 		tu_cmd |= (E1000_TXD_CMD_DEXT | E1000_ADVTXD_DTYP_CTXT);
 
 		if (skb->ip_summed == CHECKSUM_PARTIAL) {
 			switch (skb->protocol) {
-			case htons(ETH_P_IP):
+			case __constant_htons(ETH_P_IP):
 				tu_cmd |= E1000_ADVTXD_TUCMD_IPV4;
 				if (ip_hdr(skb)->protocol == IPPROTO_TCP)
 					tu_cmd |= E1000_ADVTXD_TUCMD_L4T_TCP;
 				break;
-			case htons(ETH_P_IPV6):
+			case __constant_htons(ETH_P_IPV6):
 				if (ipv6_hdr(skb)->nexthdr == IPPROTO_TCP)
 					tu_cmd |= E1000_ADVTXD_TUCMD_L4T_TCP;
 				break;
@@ -2090,7 +2089,6 @@ static inline int igbvf_tx_map_adv(struct igbvf_adapter *adapter,
 					  DMA_TO_DEVICE);
 	if (dma_mapping_error(&pdev->dev, buffer_info->dma))
 		goto dma_error;
-
 
 	for (f = 0; f < skb_shinfo(skb)->nr_frags; f++) {
 		const struct skb_frag_struct *frag;
@@ -2341,9 +2339,10 @@ static int igbvf_change_mtu(struct net_device *netdev, int new_mtu)
 	struct igbvf_adapter *adapter = netdev_priv(netdev);
 	int max_frame = new_mtu + ETH_HLEN + ETH_FCS_LEN;
 
-	if (new_mtu < 68 || new_mtu > INT_MAX - ETH_HLEN - ETH_FCS_LEN ||
-	    max_frame > MAX_JUMBO_FRAME_SIZE)
+	if ((new_mtu < 68) || (max_frame > MAX_JUMBO_FRAME_SIZE)) {
+		dev_err(&adapter->pdev->dev, "Invalid MTU setting\n");
 		return -EINVAL;
+	}
 
 #define MAX_STD_JUMBO_FRAME_SIZE 9234
 	if (max_frame > MAX_STD_JUMBO_FRAME_SIZE) {
@@ -2377,7 +2376,6 @@ static int igbvf_change_mtu(struct net_device *netdev, int new_mtu)
 #else
 		adapter->rx_buffer_len = PAGE_SIZE / 2;
 #endif
-
 
 	/* adjust allocation if LPE protects us, and we aren't using SBP */
 	if ((max_frame == ETH_FRAME_LEN + ETH_FCS_LEN) ||
@@ -2635,15 +2633,21 @@ static int igbvf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 		return err;
 
 	pci_using_dac = 0;
-	err = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(64));
+	err = dma_set_mask(&pdev->dev, DMA_BIT_MASK(64));
 	if (!err) {
-		pci_using_dac = 1;
+		err = dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(64));
+		if (!err)
+			pci_using_dac = 1;
 	} else {
-		err = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+		err = dma_set_mask(&pdev->dev, DMA_BIT_MASK(32));
 		if (err) {
-			dev_err(&pdev->dev, "No usable DMA "
-			        "configuration, aborting\n");
-			goto err_dma;
+			err = dma_set_coherent_mask(&pdev->dev,
+						    DMA_BIT_MASK(32));
+			if (err) {
+				dev_err(&pdev->dev, "No usable DMA "
+				        "configuration, aborting\n");
+				goto err_dma;
+			}
 		}
 	}
 
@@ -2690,7 +2694,7 @@ static int igbvf_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (ei->get_variants) {
 		err = ei->get_variants(adapter);
 		if (err)
-			goto err_get_variants;
+			goto err_ioremap;
 	}
 
 	/* setup adapter struct */
@@ -2787,7 +2791,6 @@ err_hw_init:
 	kfree(adapter->rx_ring);
 err_sw_init:
 	igbvf_reset_interrupt_capability(adapter);
-err_get_variants:
 	iounmap(adapter->hw.hw_addr);
 err_ioremap:
 	free_netdev(netdev);
@@ -2904,7 +2907,6 @@ static void __exit igbvf_exit_module(void)
 	pci_unregister_driver(&igbvf_driver);
 }
 module_exit(igbvf_exit_module);
-
 
 MODULE_AUTHOR("Intel Corporation, <e1000-devel@lists.sourceforge.net>");
 MODULE_DESCRIPTION("Intel(R) Gigabit Virtual Function Network Driver");

@@ -65,6 +65,7 @@
 #include <linux/ioport.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
+#include <linux/init.h>
 #include <linux/acpi.h>
 #include <linux/io.h>
 
@@ -118,7 +119,6 @@
 #define ALI15X3_STS_COLL	0x40	/* collision or no response */
 #define ALI15X3_STS_TERM	0x80	/* terminated by abort */
 #define ALI15X3_STS_ERR		0xE0	/* all the bad error bits */
-
 
 /* If force_addr is set to anything different from 0, we forcibly enable
    the device at the given address. */
@@ -430,7 +430,6 @@ static s32 ali15x3_access(struct i2c_adapter * adap, u16 addr,
 	if ((read_write == I2C_SMBUS_WRITE) || (size == ALI15X3_QUICK))
 		return 0;
 
-
 	switch (size) {
 	case ALI15X3_BYTE:	/* Result put in SMBHSTDAT0 */
 		data->byte = inb_p(SMBHSTDAT0);
@@ -476,7 +475,7 @@ static struct i2c_adapter ali15x3_adapter = {
 	.algo		= &smbus_algorithm,
 };
 
-static const struct pci_device_id ali15x3_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(ali15x3_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AL, PCI_DEVICE_ID_AL_M7101) },
 	{ 0, }
 };

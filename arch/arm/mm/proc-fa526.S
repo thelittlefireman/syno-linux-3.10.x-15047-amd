@@ -83,7 +83,6 @@ ENDPROC(cpu_fa526_reset)
 ENTRY(cpu_fa526_do_idle)
 	mov	pc, lr
 
-
 ENTRY(cpu_fa526_dcache_clean_area)
 1:	mcr	p15, 0, r0, c7, c10, 1		@ clean D entry
 	add	r0, r0, #CACHE_DLINESIZE
@@ -134,6 +133,8 @@ ENTRY(cpu_fa526_set_pte_ext)
 	mcr	p15, 0, r0, c7, c10, 4		@ drain WB
 #endif
 	mov	pc, lr
+
+	__CPUINIT
 
 	.type	__fa526_setup, #function
 __fa526_setup:

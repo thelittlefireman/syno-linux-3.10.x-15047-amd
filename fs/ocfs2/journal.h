@@ -48,7 +48,6 @@ struct ocfs2_recovery_map {
 	unsigned int *rm_entries;
 };
 
-
 struct ocfs2_journal {
 	enum ocfs2_journal_state   j_state;    /* Journals current state   */
 
@@ -200,6 +199,7 @@ void ocfs2_complete_quota_recovery(struct ocfs2_super *osb);
 
 static inline void ocfs2_start_checkpoint(struct ocfs2_super *osb)
 {
+	atomic_set(&osb->needs_checkpoint, 1);
 	wake_up(&osb->checkpoint_event);
 }
 
@@ -258,17 +258,6 @@ handle_t		    *ocfs2_start_trans(struct ocfs2_super *osb,
 int			     ocfs2_commit_trans(struct ocfs2_super *osb,
 						handle_t *handle);
 int			     ocfs2_extend_trans(handle_t *handle, int nblocks);
-int			     ocfs2_allocate_extend_trans(handle_t *handle,
-						int thresh);
-
-/*
- * Define an arbitrary limit for the amount of data we will anticipate
- * writing to any given transaction.  For unbounded transactions such as
- * fallocate(2) we can write more than this, but we always
- * start off at the maximum transaction size and grow the transaction
- * optimistically as we go.
- */
-#define OCFS2_MAX_TRANS_DATA	64U
 
 /*
  * Create access is for when we get a newly created buffer and we're
@@ -284,7 +273,6 @@ int			     ocfs2_allocate_extend_trans(handle_t *handle,
 #define OCFS2_JOURNAL_ACCESS_CREATE 0
 #define OCFS2_JOURNAL_ACCESS_WRITE  1
 #define OCFS2_JOURNAL_ACCESS_UNDO   2
-
 
 /* ocfs2_inode */
 int ocfs2_journal_access_di(handle_t *handle, struct ocfs2_caching_info *ci,
@@ -524,7 +512,8 @@ static inline int ocfs2_calc_dxi_expand_credits(struct super_block *sb)
  * the result may be wrong.
  */
 static inline int ocfs2_calc_extend_credits(struct super_block *sb,
-					    struct ocfs2_extent_list *root_el)
+					    struct ocfs2_extent_list *root_el,
+					    u32 bits_wanted)
 {
 	int bitmap_blocks, sysfile_bitmap_blocks, extent_blocks;
 
@@ -624,17 +613,6 @@ static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
 				OCFS2_SB(inode->i_sb)->journal->j_journal,
 				&OCFS2_I(inode)->ip_jinode,
 				new_size);
-}
-
-static inline void ocfs2_update_inode_fsync_trans(handle_t *handle,
-						  struct inode *inode,
-						  int datasync)
-{
-	struct ocfs2_inode_info *oi = OCFS2_I(inode);
-
-	oi->i_sync_tid = handle->h_transaction->t_tid;
-	if (datasync)
-		oi->i_datasync_tid = handle->h_transaction->t_tid;
 }
 
 #endif /* OCFS2_JOURNAL_H */

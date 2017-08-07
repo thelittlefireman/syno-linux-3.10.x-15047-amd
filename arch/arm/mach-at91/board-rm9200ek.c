@@ -46,7 +46,6 @@
 #include "board.h"
 #include "generic.h"
 
-
 static void __init ek_init_early(void)
 {
 	/* Initialize processor: 18.432 MHz crystal */

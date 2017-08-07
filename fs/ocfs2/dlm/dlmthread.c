@@ -24,7 +24,6 @@
  *
  */
 
-
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/types.h>
@@ -38,7 +37,6 @@
 #include <linux/timer.h>
 #include <linux/kthread.h>
 #include <linux/delay.h>
-
 
 #include "cluster/heartbeat.h"
 #include "cluster/nodemanager.h"
@@ -116,7 +114,6 @@ int __dlm_lockres_unused(struct dlm_lock_resource *res)
 
 	return 1;
 }
-
 
 /* Call whenever you may have added or deleted something from one of
  * the lockres queue's. This will figure out whether it belongs on the
@@ -286,6 +283,8 @@ static void dlm_shuffle_lists(struct dlm_ctxt *dlm,
 			      struct dlm_lock_resource *res)
 {
 	struct dlm_lock *lock, *target;
+	struct list_head *iter;
+	struct list_head *head;
 	int can_grant = 1;
 
 	/*
@@ -312,7 +311,9 @@ converting:
 		     dlm->name, res->lockname.len, res->lockname.name);
 		BUG();
 	}
-	list_for_each_entry(lock, &res->granted, list) {
+	head = &res->granted;
+	list_for_each(iter, head) {
+		lock = list_entry(iter, struct dlm_lock, list);
 		if (lock==target)
 			continue;
 		if (!dlm_lock_compatible(lock->ml.type,
@@ -329,8 +330,9 @@ converting:
 					target->ml.convert_type;
 		}
 	}
-
-	list_for_each_entry(lock, &res->converting, list) {
+	head = &res->converting;
+	list_for_each(iter, head) {
+		lock = list_entry(iter, struct dlm_lock, list);
 		if (lock==target)
 			continue;
 		if (!dlm_lock_compatible(lock->ml.type,
@@ -379,7 +381,9 @@ blocked:
 		goto leave;
 	target = list_entry(res->blocked.next, struct dlm_lock, list);
 
-	list_for_each_entry(lock, &res->granted, list) {
+	head = &res->granted;
+	list_for_each(iter, head) {
+		lock = list_entry(iter, struct dlm_lock, list);
 		if (lock==target)
 			continue;
 		if (!dlm_lock_compatible(lock->ml.type, target->ml.type)) {
@@ -393,7 +397,9 @@ blocked:
 		}
 	}
 
-	list_for_each_entry(lock, &res->converting, list) {
+	head = &res->converting;
+	list_for_each(iter, head) {
+		lock = list_entry(iter, struct dlm_lock, list);
 		if (lock==target)
 			continue;
 		if (!dlm_lock_compatible(lock->ml.type, target->ml.type)) {
@@ -473,7 +479,6 @@ void __dlm_dirty_lockres(struct dlm_ctxt *dlm, struct dlm_lock_resource *res)
 	mlog(0, "%s: res %.*s\n", dlm->name, res->lockname.len,
 	     res->lockname.name);
 }
-
 
 /* Launch the NM thread for the mounted volume */
 int dlm_launch_thread(struct dlm_ctxt *dlm)
@@ -616,7 +621,6 @@ static void dlm_flush_asts(struct dlm_ctxt *dlm)
 	wake_up(&dlm->ast_wq);
 	spin_unlock(&dlm->ast_lock);
 }
-
 
 #define DLM_THREAD_TIMEOUT_MS (4 * 1000)
 #define DLM_THREAD_MAX_DIRTY  100

@@ -33,5 +33,4 @@ struct rdma_cm_id_stats {
 	__u8	qp_type;
 };
 
-
 #endif /* _UAPI_RDMA_NETLINK_H */

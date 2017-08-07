@@ -9,7 +9,8 @@
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, see <http://www.gnu.org/licenses/>.
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
  *
  * Copyright (C) Hans Alblas PE1AYX <hans@esrac.ele.tue.nl>
  * Copyright (C) 2004, 05 Ralf Baechle DL5RB <ralf@linux-mips.org>
@@ -587,7 +588,6 @@ static int ax_header(struct sk_buff *skb, struct net_device *dev,
 	return 0;
 }
 
-
 static int ax_rebuild_header(struct sk_buff *skb)
 {
 #ifdef CONFIG_INET
@@ -648,7 +648,6 @@ norbuff:
 	return -ENOMEM;
 }
 
-
 /* Close the low-level part of the AX25 channel. Easy! */
 static int ax_close(struct net_device *dev)
 {
@@ -684,7 +683,6 @@ static void ax_setup(struct net_device *dev)
 	dev->tx_queue_len    = 10;
 	dev->header_ops      = &ax_header_ops;
 	dev->netdev_ops	     = &ax_netdev_ops;
-
 
 	memcpy(dev->broadcast, &ax25_bcast, AX25_ADDR_LEN);
 	memcpy(dev->dev_addr,  &ax25_defaddr,  AX25_ADDR_LEN);

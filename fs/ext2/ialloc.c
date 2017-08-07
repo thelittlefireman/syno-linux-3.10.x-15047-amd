@@ -35,7 +35,6 @@
  * the free blocks count in the block.
  */
 
-
 /*
  * Read the inode allocation bitmap for a given block_group, reading
  * into the specified slot in the superblock's bitmap cache.
@@ -284,7 +283,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent)
 		int best_ndir = inodes_per_group;
 		int best_group = -1;
 
-		group = prandom_u32();
+		get_random_bytes(&group, sizeof(group));
 		parent_group = (unsigned)group % ngroups;
 		for (i = 0; i < ngroups; i++) {
 			group = (parent_group + i) % ngroups;
@@ -672,4 +671,3 @@ unsigned long ext2_count_dirs (struct super_block * sb)
 	}
 	return count;
 }
-

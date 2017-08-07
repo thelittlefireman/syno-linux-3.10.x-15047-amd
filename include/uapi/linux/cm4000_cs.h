@@ -2,7 +2,6 @@
 #define _UAPI_CM4000_H_
 
 #include <linux/types.h>
-#include <linux/ioctl.h>
 
 #define	MAX_ATR			33
 
@@ -19,7 +18,6 @@ typedef struct atreq {
 	unsigned char bIFSD;
 	unsigned char bIFSC;
 } atreq_t;
-
 
 /* what is particularly stupid in the original driver is the arch-dependent
  * member sizes. This leads to CONFIG_COMPAT breakage, since 32bit userspace
@@ -58,6 +56,5 @@ typedef struct ptsreq {
 /* extra info only from CM4000 */
 #define	CM_NO_READER			0x10
 #define	CM_BAD_CARD			0x20
-
 
 #endif /* _UAPI_CM4000_H_ */

@@ -19,6 +19,7 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
@@ -55,7 +56,7 @@ static struct resource rdc321x_gpio_resources[] = {
 	}
 };
 
-static const struct mfd_cell rdc321x_sb_cells[] = {
+static struct mfd_cell rdc321x_sb_cells[] = {
 	{
 		.name		= "rdc321x-wdt",
 		.resources	= rdc321x_wdt_resource,
@@ -95,7 +96,7 @@ static void rdc321x_sb_remove(struct pci_dev *pdev)
 	mfd_remove_devices(&pdev->dev);
 }
 
-static const struct pci_device_id rdc321x_sb_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(rdc321x_sb_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_RDC, PCI_DEVICE_ID_RDC_R6030) },
 	{}
 };

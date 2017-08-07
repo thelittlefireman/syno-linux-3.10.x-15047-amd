@@ -36,7 +36,6 @@ struct hw_data;
 #define BB48_DEFAULT_AL2230_11G		0x00332C1B
 #define BB4C_DEFAULT_AL2230_11G		0x0A00FEFF
 
-
 #define BB48_DEFAULT_WB242_11B		0x00292315	/* backoff  2dB */
 #define BB4C_DEFAULT_WB242_11B		0x0800FEFF	/* backoff  2dB */
 #define BB48_DEFAULT_WB242_11G		0x00453B24
@@ -68,7 +67,6 @@ struct hw_data;
 #define DEFAULT_PROTOCOL_VERSION	0	/* (M4C) */
 #define DEFAULT_MAC_POWER_STATE		2	/* (M4C) 2: MAC at power active */
 #define DEFAULT_DTIM_ALERT_TIME		0
-
 
 struct wb35_reg_queue {
 	struct urb	*urb;

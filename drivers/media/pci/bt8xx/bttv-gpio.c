@@ -5,7 +5,6 @@
     sysfs-based sub driver interface for bttv
     mainly intended for gpio access
 
-
     Copyright (C) 1996,97,98 Ralph  Metzler (rjkm@thp.uni-koeln.de)
 			   & Marcus Metzler (mocm@thp.uni-koeln.de)
     (c) 1999-2003 Gerd Knorr <kraxel@bytesex.org>
@@ -98,7 +97,7 @@ int bttv_sub_add_device(struct bttv_core *core, char *name)
 
 	err = device_register(&sub->dev);
 	if (0 != err) {
-		put_device(&sub->dev);
+		kfree(sub);
 		return err;
 	}
 	pr_info("%d: add subdevice \"%s\"\n", core->nr, dev_name(&sub->dev));

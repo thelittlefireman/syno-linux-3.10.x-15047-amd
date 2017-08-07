@@ -55,7 +55,6 @@ MODULE_LICENSE("GPL");
 	BUG_ON(i >= lc_->nr_elements);	\
 	BUG_ON(lc_->lc_element[i] != e_); } while (0)
 
-
 /* We need to atomically
  *  - try to grab the lock (set LC_LOCKED)
  *  - only if there is no pending transaction
@@ -257,7 +256,6 @@ static struct hlist_head *lc_hash_slot(struct lru_cache *lc, unsigned int enr)
 {
 	return  lc->lc_slot + (enr % lc->nr_elements);
 }
-
 
 static struct lc_element *__lc_find(struct lru_cache *lc, unsigned int enr,
 		bool include_changing)
@@ -558,7 +556,6 @@ void lc_committed(struct lru_cache *lc)
 	lc->pending_changes = 0;
 	RETURN();
 }
-
 
 /**
  * lc_put - give up refcnt of @e

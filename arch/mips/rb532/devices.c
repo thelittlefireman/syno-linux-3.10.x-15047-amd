@@ -271,7 +271,6 @@ static void __init parse_mac_addr(char *macstr)
 	}
 }
 
-
 /* NAND definitions */
 #define NAND_CHIP_DELAY 25
 
@@ -294,7 +293,6 @@ static void __init rb532_nand_setup(void)
 	rb532_nand_data.chip.partitions = rb532_partition_info;
 	rb532_nand_data.chip.chip_delay = NAND_CHIP_DELAY;
 }
-
 
 static int __init plat_setup_devices(void)
 {

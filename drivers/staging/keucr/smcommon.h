@@ -2,9 +2,8 @@
 #ifndef SMCOMMON_INCD
 #define SMCOMMON_INCD
 
-
 /***************************************************************************
-Define Definition
+Define Difinetion
 ***************************************************************************/
 #define SMSUCCESS           0x0000 /* SUCCESS */
 #define ERROR               0xFFFF /* ERROR */

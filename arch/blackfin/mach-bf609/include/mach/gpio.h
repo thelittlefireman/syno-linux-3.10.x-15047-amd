@@ -121,11 +121,9 @@
 #define GPIO_PG14	110
 #define GPIO_PG15	111
 
-
 #define BFIN_GPIO_PINT 1
 #define NR_PINT_SYS_IRQS        6
 #define NR_PINTS                112
-
 
 #ifndef __ASSEMBLY__
 
@@ -150,6 +148,14 @@ struct gpio_port_t {
 	unsigned long lock;
 	unsigned long spare;
 	unsigned long revid;
+};
+
+struct gpio_port_s {
+	unsigned short fer;
+	unsigned short data;
+	unsigned short dir;
+	unsigned short inen;
+	unsigned int mux;
 };
 
 #endif

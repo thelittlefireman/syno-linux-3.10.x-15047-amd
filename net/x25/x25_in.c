@@ -23,8 +23,6 @@
  *					  i-frames.
  */
 
-#define pr_fmt(fmt) "X25: " fmt
-
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/kernel.h>
@@ -319,7 +317,7 @@ static int x25_state3_machine(struct sock *sk, struct sk_buff *skb, int frametyp
 			break;
 
 		default:
-			pr_warn("unknown %02X in state 3\n", frametype);
+			printk(KERN_WARNING "x25: unknown %02X in state 3\n", frametype);
 			break;
 	}
 

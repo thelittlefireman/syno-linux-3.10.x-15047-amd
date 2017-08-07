@@ -114,7 +114,6 @@ enum {
 
 #define INET_DIAG_MAX INET_DIAG_SHUTDOWN
 
-
 /* INET_DIAG_MEM */
 
 struct inet_diag_meminfo {
@@ -132,6 +131,5 @@ struct tcpvegas_info {
 	__u32	tcpv_rtt;
 	__u32	tcpv_minrtt;
 };
-
 
 #endif /* _UAPI_INET_DIAG_H_ */

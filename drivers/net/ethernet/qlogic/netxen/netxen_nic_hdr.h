@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -662,7 +664,6 @@ enum {
 #define NETXEN_NIU_AP_STATION_ADDR_0(I)    (NETXEN_CRB_NIU+0xa0040+(I)*0x10000)
 #define NETXEN_NIU_AP_STATION_ADDR_1(I)    (NETXEN_CRB_NIU+0xa0044+(I)*0x10000)
 
-
 #define TEST_AGT_CTRL	(0x00)
 
 #define TA_CTL_START	1
@@ -732,9 +733,6 @@ enum {
 #define NIC_CRB_BASE_2		(NETXEN_CAM_RAM(0x700))
 #define NETXEN_NIC_REG(X)	(NIC_CRB_BASE+(X))
 #define NETXEN_NIC_REG_2(X)	(NIC_CRB_BASE_2+(X))
-#define NETXEN_INTR_MODE_REG	NETXEN_NIC_REG(0x44)
-#define NETXEN_MSI_MODE		0x1
-#define NETXEN_INTX_MODE	0x2
 
 #define NX_CDRP_CRB_OFFSET		(NETXEN_NIC_REG(0x18))
 #define NX_ARG1_CRB_OFFSET		(NETXEN_NIC_REG(0x1c))
@@ -956,7 +954,6 @@ enum {
 #define NETXEN_PEG_HALT_STATUS2 	(NETXEN_CAM_RAM(0xac))
 #define NX_CRB_DEV_REF_COUNT		(NETXEN_CAM_RAM(0x138))
 #define NX_CRB_DEV_STATE		(NETXEN_CAM_RAM(0x140))
-#define NETXEN_ULA_KEY			(NETXEN_CAM_RAM(0x178))
 
 /* MiniDIMM related macros */
 #define NETXEN_DIMM_CAPABILITY		(NETXEN_CAM_RAM(0x258))

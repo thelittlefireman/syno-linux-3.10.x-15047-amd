@@ -13,11 +13,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include <linux/module.h>
 #include <linux/kmod.h>
+#include <linux/init.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -25,7 +27,6 @@
 #include <linux/mii.h>
 #include <linux/usb.h>
 #include <linux/usb/usbnet.h>
-
 
 /*
  * This supports simple USB network links that don't require any special
@@ -92,7 +93,6 @@ static const struct driver_info	ali_m5632_info = {
 
 #endif
 
-
 #ifdef	CONFIG_USB_AN2720
 #define	HAVE_HARDWARE
 
@@ -118,7 +118,6 @@ static const struct driver_info	an2720_info = {
 
 #endif	/* CONFIG_USB_AN2720 */
 
-
 #ifdef	CONFIG_USB_BELKIN
 #define	HAVE_HARDWARE
 
@@ -137,8 +136,6 @@ static const struct driver_info	belkin_info = {
 
 #endif	/* CONFIG_USB_BELKIN */
 
-
-
 #ifdef	CONFIG_USB_EPSON2888
 #define	HAVE_HARDWARE
 
@@ -165,7 +162,6 @@ static const struct driver_info	epson2888_info = {
 
 #endif	/* CONFIG_USB_EPSON2888 */
 
-
 /*-------------------------------------------------------------------------
  *
  * info from Jonathan McDowell <noodles@earth.li>
@@ -179,7 +175,6 @@ static const struct driver_info kc2190_info = {
 };
 #endif /* CONFIG_USB_KC2190 */
 
-
 #ifdef	CONFIG_USB_ARMLINUX
 #define	HAVE_HARDWARE
 
@@ -220,7 +215,6 @@ static const struct driver_info	blob_info = {
 
 #endif	/* CONFIG_USB_ARMLINUX */
 
-
 /*-------------------------------------------------------------------------*/
 
 #ifndef	HAVE_HARDWARE

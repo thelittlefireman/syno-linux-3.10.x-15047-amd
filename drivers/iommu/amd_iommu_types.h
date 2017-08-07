@@ -25,7 +25,6 @@
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/pci.h>
-#include <linux/irqreturn.h>
 
 /*
  * Maximum number of IOMMUs supported
@@ -38,6 +37,9 @@
 #define DEV_TABLE_ENTRY_SIZE		32
 #define ALIAS_TABLE_ENTRY_SIZE		2
 #define RLOOKUP_TABLE_ENTRY_SIZE	(sizeof(void *))
+
+/* Length of the MMIO region for the AMD IOMMU */
+#define MMIO_REGION_LENGTH       0x4000
 
 /* Capability offsets used by the driver */
 #define MMIO_CAP_HDR_OFFSET	0x00
@@ -76,11 +78,6 @@
 #define MMIO_STATUS_OFFSET	0x2020
 #define MMIO_PPR_HEAD_OFFSET	0x2030
 #define MMIO_PPR_TAIL_OFFSET	0x2038
-#define MMIO_CNTR_CONF_OFFSET	0x4000
-#define MMIO_CNTR_REG_OFFSET	0x40000
-#define MMIO_REG_END_OFFSET	0x80000
-
-
 
 /* Extended Feature Bits */
 #define FEATURE_PREFETCH	(1ULL<<0)
@@ -99,12 +96,7 @@
 #define FEATURE_GLXVAL_SHIFT	14
 #define FEATURE_GLXVAL_MASK	(0x03ULL << FEATURE_GLXVAL_SHIFT)
 
-/* Note:
- * The current driver only support 16-bit PASID.
- * Currently, hardware only implement upto 16-bit PASID
- * even though the spec says it could have upto 20 bits.
- */
-#define PASID_MASK		0x0000ffff
+#define PASID_MASK		0x000fffff
 
 /* MMIO status bits */
 #define MMIO_STATUS_EVT_INT_MASK	(1 << 1)
@@ -289,6 +281,7 @@
 #define IOMMU_PTE_IR (1ULL << 61)
 #define IOMMU_PTE_IW (1ULL << 62)
 
+#define DTE_FLAG_MASK	(0x3ffULL << 32)
 #define DTE_FLAG_IOTLB	(0x01UL << 32)
 #define DTE_FLAG_GV	(0x01ULL << 55)
 #define DTE_GLX_SHIFT	(56)
@@ -375,7 +368,6 @@ extern struct kmem_cache *amd_iommu_irq_cache;
 #define APERTURE_MAX_RANGES	32	/* allows 4GB of DMA address space */
 #define APERTURE_RANGE_INDEX(a)	((a) >> APERTURE_RANGE_SHIFT)
 #define APERTURE_PAGE_INDEX(a)	(((a) >> 21) & 0x3fULL)
-
 
 /*
  * This struct is used to pass information about
@@ -514,10 +506,6 @@ struct amd_iommu {
 
 	/* physical address of MMIO space */
 	u64 mmio_phys;
-
-	/* physical end address of MMIO space */
-	u64 mmio_phys_end;
-
 	/* virtual address of MMIO space */
 	u8 __iomem *mmio_base;
 
@@ -595,10 +583,6 @@ struct amd_iommu {
 
 	/* The l2 indirect registers */
 	u32 stored_l2[0x83];
-
-	/* The maximum PC banks and counters/bank (PCSup=1) */
-	u8 max_banks;
-	u8 max_counters;
 };
 
 struct devid_map {
@@ -702,8 +686,8 @@ extern unsigned long *amd_iommu_pd_alloc_bitmap;
  */
 extern u32 amd_iommu_unmap_flush;
 
-/* Smallest max PASID supported by any IOMMU in the system */
-extern u32 amd_iommu_max_pasid;
+/* Smallest number of PASIDs supported by any IOMMU in the system */
+extern u32 amd_iommu_max_pasids;
 
 extern bool amd_iommu_v2_present;
 

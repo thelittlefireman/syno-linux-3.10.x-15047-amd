@@ -35,12 +35,12 @@
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 #include <media/v4l2-ctrls.h>
 
 MODULE_DESCRIPTION("Philips SAA7110 video decoder driver");
 MODULE_AUTHOR("Pauline Middelink");
 MODULE_LICENSE("GPL");
-
 
 static int debug;
 module_param(debug, int, 0);
@@ -129,7 +129,6 @@ static inline int saa7110_read(struct v4l2_subdev *sd)
 #define FRESP_06H_COMPST 0x03	/*0x13*/
 #define FRESP_06H_SVIDEO 0x83	/*0xC0*/
 
-
 static int saa7110_selmux(struct v4l2_subdev *sd, int chan)
 {
 	static const unsigned char modes[9][8] = {
@@ -202,7 +201,7 @@ static v4l2_std_id determine_norm(struct v4l2_subdev *sd)
 	status = saa7110_read(sd);
 	if (status & 0x40) {
 		v4l2_dbg(1, debug, sd, "status=0x%02x (no signal)\n", status);
-		return V4L2_STD_UNKNOWN;
+		return decoder->norm;	/* no change*/
 	}
 	if ((status & 3) == 0) {
 		saa7110_write(sd, 0x06, 0x83);
@@ -264,7 +263,7 @@ static int saa7110_g_input_status(struct v4l2_subdev *sd, u32 *pstatus)
 
 static int saa7110_querystd(struct v4l2_subdev *sd, v4l2_std_id *std)
 {
-	*std &= determine_norm(sd);
+	*(v4l2_std_id *)std = determine_norm(sd);
 	return 0;
 }
 
@@ -351,6 +350,13 @@ static int saa7110_s_ctrl(struct v4l2_ctrl *ctrl)
 	return 0;
 }
 
+static int saa7110_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	return v4l2_chip_ident_i2c_client(client, chip, V4L2_IDENT_SAA7110, 0);
+}
+
 /* ----------------------------------------------------------------------- */
 
 static const struct v4l2_ctrl_ops saa7110_ctrl_ops = {
@@ -358,6 +364,7 @@ static const struct v4l2_ctrl_ops saa7110_ctrl_ops = {
 };
 
 static const struct v4l2_subdev_core_ops saa7110_core_ops = {
+	.g_chip_ident = saa7110_g_chip_ident,
 	.g_ext_ctrls = v4l2_subdev_g_ext_ctrls,
 	.try_ext_ctrls = v4l2_subdev_try_ext_ctrls,
 	.s_ext_ctrls = v4l2_subdev_s_ext_ctrls,
@@ -397,7 +404,7 @@ static int saa7110_probe(struct i2c_client *client,
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 
-	decoder = devm_kzalloc(&client->dev, sizeof(*decoder), GFP_KERNEL);
+	decoder = kzalloc(sizeof(struct saa7110), GFP_KERNEL);
 	if (!decoder)
 		return -ENOMEM;
 	sd = &decoder->sd;
@@ -419,6 +426,7 @@ static int saa7110_probe(struct i2c_client *client,
 		int err = decoder->hdl.error;
 
 		v4l2_ctrl_handler_free(&decoder->hdl);
+		kfree(decoder);
 		return err;
 	}
 	v4l2_ctrl_handler_setup(&decoder->hdl);
@@ -459,6 +467,7 @@ static int saa7110_remove(struct i2c_client *client)
 
 	v4l2_device_unregister_subdev(sd);
 	v4l2_ctrl_handler_free(&decoder->hdl);
+	kfree(decoder);
 	return 0;
 }
 

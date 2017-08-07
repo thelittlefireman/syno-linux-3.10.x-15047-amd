@@ -24,7 +24,6 @@
 #include "include/apparmor.h"
 #include "include/audit.h"
 #include "include/context.h"
-#include "include/crypto.h"
 #include "include/match.h"
 #include "include/policy.h"
 #include "include/policy_unpack.h"
@@ -193,6 +192,19 @@ fail:
 	return 0;
 }
 
+static bool unpack_u16(struct aa_ext *e, u16 *data, const char *name)
+{
+	if (unpack_nameX(e, AA_U16, name)) {
+		if (!inbounds(e, sizeof(u16)))
+			return 0;
+		if (data)
+			*data = le16_to_cpu(get_unaligned((u16 *) e->pos));
+		e->pos += sizeof(u16);
+		return 1;
+	}
+	return 0;
+}
+
 static bool unpack_u32(struct aa_ext *e, u32 *data, const char *name)
 {
 	if (unpack_nameX(e, AA_U32, name)) {
@@ -342,7 +354,6 @@ static struct aa_dfa *unpack_dfa(struct aa_ext *e)
 		int flags = TO_ACCEPT1_FLAG(YYTD_DATA32) |
 			TO_ACCEPT2_FLAG(YYTD_DATA32);
 
-
 		if (aa_g_paranoid_load)
 			flags |= DFA_FLAG_VERIFY_STATES;
 
@@ -476,6 +487,7 @@ static struct aa_profile *unpack_profile(struct aa_ext *e)
 {
 	struct aa_profile *profile = NULL;
 	const char *name = NULL;
+	size_t size = 0;
 	int i, error = -EPROTO;
 	kernel_cap_t tmpcap;
 	u32 tmp;
@@ -576,6 +588,38 @@ static struct aa_profile *unpack_profile(struct aa_ext *e)
 	if (!unpack_rlimits(e, profile))
 		goto fail;
 
+	size = unpack_array(e, "net_allowed_af");
+	if (size) {
+
+		for (i = 0; i < size; i++) {
+			/* discard extraneous rules that this kernel will
+			 * never request
+			 */
+			if (i >= AF_MAX) {
+				u16 tmp;
+				if (!unpack_u16(e, &tmp, NULL) ||
+				    !unpack_u16(e, &tmp, NULL) ||
+				    !unpack_u16(e, &tmp, NULL))
+					goto fail;
+				continue;
+			}
+			if (!unpack_u16(e, &profile->net.allow[i], NULL))
+				goto fail;
+			if (!unpack_u16(e, &profile->net.audit[i], NULL))
+				goto fail;
+			if (!unpack_u16(e, &profile->net.quiet[i], NULL))
+				goto fail;
+		}
+		if (!unpack_nameX(e, AA_ARRAYEND, NULL))
+			goto fail;
+	}
+	/*
+	 * allow unix domain and netlink sockets they are handled
+	 * by IPC
+	 */
+	profile->net.allow[AF_UNIX] = 0xffff;
+	profile->net.allow[AF_NETLINK] = 0xffff;
+
 	if (unpack_nameX(e, AA_STRUCT, "policydb")) {
 		/* generic policy dfa - optional and may be NULL */
 		profile->policy.dfa = unpack_dfa(e);
@@ -658,7 +702,6 @@ static int verify_header(struct aa_ext *e, int required, const char **ns)
 			return error;
 		}
 	}
-
 
 	/* read the namespace if present */
 	if (unpack_str(e, &name, "namespace")) {
@@ -759,12 +802,10 @@ int aa_unpack(void *udata, size_t size, struct list_head *lh, const char **ns)
 
 	*ns = NULL;
 	while (e.pos < e.end) {
-		void *start;
 		error = verify_header(&e, e.pos == e.start, ns);
 		if (error)
 			goto fail;
 
-		start = e.pos;
 		profile = unpack_profile(&e);
 		if (IS_ERR(profile)) {
 			error = PTR_ERR(profile);
@@ -772,18 +813,16 @@ int aa_unpack(void *udata, size_t size, struct list_head *lh, const char **ns)
 		}
 
 		error = verify_profile(profile);
-		if (error)
-			goto fail_profile;
-
-		error = aa_calc_profile_hash(profile, e.version, start,
-					     e.pos - start);
-		if (error)
-			goto fail_profile;
+		if (error) {
+			aa_free_profile(profile);
+			goto fail;
+		}
 
 		ent = aa_load_ent_alloc();
 		if (!ent) {
 			error = -ENOMEM;
-			goto fail_profile;
+			aa_put_profile(profile);
+			goto fail;
 		}
 
 		ent->new = profile;
@@ -791,9 +830,6 @@ int aa_unpack(void *udata, size_t size, struct list_head *lh, const char **ns)
 	}
 
 	return 0;
-
-fail_profile:
-	aa_put_profile(profile);
 
 fail:
 	list_for_each_entry_safe(ent, tmp, lh, list) {

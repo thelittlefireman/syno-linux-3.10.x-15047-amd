@@ -6,7 +6,6 @@
 
    Modularised 12/94 Mark Evans
 
-
    Modified to support the 82596 ethernet chips on 680x0 VME boards.
    by Richard Hirst <richard@sleepie.demon.co.uk>
    Renamed to be 82596.c
@@ -85,9 +84,7 @@ static char version[] __initdata =
 #define DEB_STRUCT	0x8000
 #define DEB_ANY		0xffff
 
-
 #define DEB(x,y)	if (i596_debug & (x)) y
-
 
 #if defined(CONFIG_MVME16x_NET) || defined(CONFIG_MVME16x_NET_MODULE)
 #define ENABLE_MVME16x_NET
@@ -156,7 +153,6 @@ MODULE_LICENSE("GPL");
 module_param(i596_debug, int, 0);
 MODULE_PARM_DESC(i596_debug, "i82596 debug mask");
 
-
 /* Copy frames shorter than rx_copybreak, otherwise pass on up in
  * a full sized sk_buff.  Value of 100 stolen from tulip.c (!alpha).
  */
@@ -195,7 +191,6 @@ enum commands {
 #define	 RX_ABORT	0x0040
 
 #define TX_TIMEOUT	(HZ/20)
-
 
 struct i596_reg {
 	unsigned short porthi;
@@ -371,7 +366,6 @@ static int rx_ring_size = RX_RING_SIZE;
 static int ticks_limit = 25;
 static int max_cmd_backlog = TX_RING_SIZE-1;
 
-
 static inline void CA(struct net_device *dev)
 {
 #ifdef ENABLE_MVME16x_NET
@@ -387,7 +381,6 @@ static inline void CA(struct net_device *dev)
 	}
 #endif
 }
-
 
 static inline void MPU_PORT(struct net_device *dev, int c, volatile void *x)
 {
@@ -409,7 +402,6 @@ static inline void MPU_PORT(struct net_device *dev, int c, volatile void *x)
 #endif
 }
 
-
 static inline int wait_istat(struct net_device *dev, struct i596_private *lp, int delcnt, char *str)
 {
 	while (--delcnt && lp->iscp.stat)
@@ -422,7 +414,6 @@ static inline int wait_istat(struct net_device *dev, struct i596_private *lp, in
 	else
 		return 0;
 }
-
 
 static inline int wait_cmd(struct net_device *dev, struct i596_private *lp, int delcnt, char *str)
 {
@@ -437,7 +428,6 @@ static inline int wait_cmd(struct net_device *dev, struct i596_private *lp, int 
 		return 0;
 }
 
-
 static inline int wait_cfg(struct net_device *dev, struct i596_cmd *cmd, int delcnt, char *str)
 {
 	volatile struct i596_cmd *c = cmd;
@@ -451,7 +441,6 @@ static inline int wait_cfg(struct net_device *dev, struct i596_cmd *cmd, int del
 	else
 		return 0;
 }
-
 
 static void i596_display_data(struct net_device *dev)
 {
@@ -495,7 +484,6 @@ static void i596_display_data(struct net_device *dev)
 		rbd = rbd->v_next;
 	} while (rbd != lp->rbd_head);
 }
-
 
 #if defined(ENABLE_MVME16x_NET) || defined(ENABLE_BVME6000_NET)
 static irqreturn_t i596_error(int irq, void *dev_id)
@@ -592,7 +580,6 @@ static inline int init_rx_bufs(struct net_device *dev)
 	return 0;
 }
 
-
 static void rebuild_rx_bufs(struct net_device *dev)
 {
 	struct i596_private *lp = dev->ml_priv;
@@ -610,7 +597,6 @@ static void rebuild_rx_bufs(struct net_device *dev)
 	lp->rbd_head = lp->rbds;
 	lp->rfds[0].rbd = WSWAPrbd(virt_to_bus(lp->rbds));
 }
-
 
 static int init_i596_mem(struct net_device *dev)
 {
@@ -704,14 +690,13 @@ static int init_i596_mem(struct net_device *dev)
 	}
 #endif
 
-
 	DEB(DEB_INIT,printk(KERN_DEBUG "%s: queuing CmdConfigure\n", dev->name));
 	memcpy(lp->cf_cmd.i596_config, init_setup, 14);
 	lp->cf_cmd.cmd.command = CmdConfigure;
 	i596_add_cmd(dev, &lp->cf_cmd.cmd);
 
 	DEB(DEB_INIT,printk(KERN_DEBUG "%s: queuing CmdSASetup\n", dev->name));
-	memcpy(lp->sa_cmd.eth_addr, dev->dev_addr, ETH_ALEN);
+	memcpy(lp->sa_cmd.eth_addr, dev->dev_addr, 6);
 	lp->sa_cmd.cmd.command = CmdSASetup;
 	i596_add_cmd(dev, &lp->sa_cmd.cmd);
 
@@ -871,7 +856,6 @@ memory_squeeze:
 
 	return 0;
 }
-
 
 static void i596_cleanup_cmd(struct net_device *dev, struct i596_private *lp)
 {
@@ -1155,7 +1139,7 @@ struct net_device * __init i82596_probe(int unit)
 			err = -ENODEV;
 			goto out;
 		}
-		memcpy(eth_addr, (void *) 0xfffc1f2c, ETH_ALEN);	/* YUCK! Get addr from NOVRAM */
+		memcpy(eth_addr, (void *) 0xfffc1f2c, 6);	/* YUCK! Get addr from NOVRAM */
 		dev->base_addr = MVME_I596_BASE;
 		dev->irq = (unsigned) MVME16x_IRQ_I596;
 		goto found;
@@ -1527,7 +1511,9 @@ int __init init_module(void)
 	if (debug >= 0)
 		i596_debug = debug;
 	dev_82596 = i82596_probe(-1);
-	return PTR_ERR_OR_ZERO(dev_82596);
+	if (IS_ERR(dev_82596))
+		return PTR_ERR(dev_82596);
+	return 0;
 }
 
 void __exit cleanup_module(void)

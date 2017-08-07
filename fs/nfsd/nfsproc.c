@@ -1,9 +1,4 @@
-/*
- * Process version 2 NFS requests.
- *
- * Copyright (C) 1995-1997 Olaf Kirch <okir@monad.swb.de>
- */
-
+ 
 #include <linux/namei.h>
 
 #include "cache.h"
@@ -14,7 +9,6 @@ typedef struct svc_rqst	svc_rqst;
 typedef struct svc_buf	svc_buf;
 
 #define NFSDDBG_FACILITY		NFSDDBG_PROC
-
 
 static __be32
 nfsd_proc_null(struct svc_rqst *rqstp, void *argp, void *resp)
@@ -34,10 +28,7 @@ nfsd_return_dirop(__be32 err, struct nfsd_diropres *resp)
 	if (err) return err;
 	return fh_getattr(&resp->fh, &resp->stat);
 }
-/*
- * Get a file's attributes
- * N.B. After this call resp->fh needs an fh_put
- */
+ 
 static __be32
 nfsd_proc_getattr(struct svc_rqst *rqstp, struct nfsd_fhandle  *argp,
 					  struct nfsd_attrstat *resp)
@@ -51,10 +42,6 @@ nfsd_proc_getattr(struct svc_rqst *rqstp, struct nfsd_fhandle  *argp,
 	return nfsd_return_attrs(nfserr, resp);
 }
 
-/*
- * Set a file's attributes
- * N.B. After this call resp->fh needs an fh_put
- */
 static __be32
 nfsd_proc_setattr(struct svc_rqst *rqstp, struct nfsd_sattrargs *argp,
 					  struct nfsd_attrstat  *resp)
@@ -69,12 +56,6 @@ nfsd_proc_setattr(struct svc_rqst *rqstp, struct nfsd_sattrargs *argp,
 	return nfsd_return_attrs(nfserr, resp);
 }
 
-/*
- * Look up a path name component
- * Note: the dentry in the resp->fh may be negative if the file
- * doesn't exist yet.
- * N.B. After this call resp->fh needs an fh_put
- */
 static __be32
 nfsd_proc_lookup(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
 					 struct nfsd_diropres  *resp)
@@ -92,9 +73,6 @@ nfsd_proc_lookup(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
 	return nfsd_return_dirop(nfserr, resp);
 }
 
-/*
- * Read a symlink.
- */
 static __be32
 nfsd_proc_readlink(struct svc_rqst *rqstp, struct nfsd_readlinkargs *argp,
 					   struct nfsd_readlinkres *resp)
@@ -103,7 +81,6 @@ nfsd_proc_readlink(struct svc_rqst *rqstp, struct nfsd_readlinkargs *argp,
 
 	dprintk("nfsd: READLINK %s\n", SVCFH_fmt(&argp->fh));
 
-	/* Read the symlink. */
 	resp->len = NFS_MAXPATHLEN;
 	nfserr = nfsd_readlink(rqstp, &argp->fh, argp->buffer, &resp->len);
 
@@ -111,23 +88,15 @@ nfsd_proc_readlink(struct svc_rqst *rqstp, struct nfsd_readlinkargs *argp,
 	return nfserr;
 }
 
-/*
- * Read a portion of a file.
- * N.B. After this call resp->fh needs an fh_put
- */
 static __be32
 nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
-				       struct nfsd_readres  *resp)
+					   struct nfsd_readres  *resp)
 {
 	__be32	nfserr;
 
 	dprintk("nfsd: READ    %s %d bytes at %d\n",
 		SVCFH_fmt(&argp->fh),
 		argp->count, argp->offset);
-
-	/* Obtain buffer pointer for payload. 19 is 1 word for
-	 * status, 17 words for fattr, and 1 word for the byte count.
-	 */
 
 	if (NFSSVC_MAXBLKSIZE_V2 < argp->count) {
 		char buf[RPC_MAX_ADDRBUFLEN];
@@ -142,17 +111,13 @@ nfsd_proc_read(struct svc_rqst *rqstp, struct nfsd_readargs *argp,
 	resp->count = argp->count;
 	nfserr = nfsd_read(rqstp, fh_copy(&resp->fh, &argp->fh),
 				  argp->offset,
-			   	  rqstp->rq_vec, argp->vlen,
+				  rqstp->rq_vec, argp->vlen,
 				  &resp->count);
 
 	if (nfserr) return nfserr;
 	return fh_getattr(&resp->fh, &resp->stat);
 }
 
-/*
- * Write data to a file
- * N.B. After this call resp->fh needs an fh_put
- */
 static __be32
 nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
 					struct nfsd_attrstat  *resp)
@@ -168,17 +133,11 @@ nfsd_proc_write(struct svc_rqst *rqstp, struct nfsd_writeargs *argp,
 	nfserr = nfsd_write(rqstp, fh_copy(&resp->fh, &argp->fh), NULL,
 				   argp->offset,
 				   rqstp->rq_vec, argp->vlen,
-			           &cnt,
+					   &cnt,
 				   &stable);
 	return nfsd_return_attrs(nfserr, resp);
 }
 
-/*
- * CREATE processing is complicated. The keyword here is `overloaded.'
- * The parent directory is kept locked between the check for existence
- * and the actual create() call in compliance with VFS protocols.
- * N.B. After this call _both_ argp->fh and resp->fh need an fh_put
- */
 static __be32
 nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 					 struct nfsd_diropres   *resp)
@@ -196,12 +155,9 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 	dprintk("nfsd: CREATE   %s %.*s\n",
 		SVCFH_fmt(dirfhp), argp->len, argp->name);
 
-	/* First verify the parent file handle */
 	nfserr = fh_verify(rqstp, dirfhp, S_IFDIR, NFSD_MAY_EXEC);
 	if (nfserr)
-		goto done; /* must fh_put dirfhp even on error */
-
-	/* Check for NFSD_MAY_WRITE in nfsd_create if necessary */
+		goto done;  
 
 	nfserr = nfserr_acces;
 	if (!argp->len)
@@ -229,13 +185,10 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 	if (nfserr) {
 		if (nfserr != nfserr_noent)
 			goto out_unlock;
-		/*
-		 * If the new file handle wasn't verified, we can't tell
-		 * whether the file exists or not. Time to bail ...
-		 */
+		 
 		nfserr = nfserr_acces;
 		if (!newfhp->fh_dentry) {
-			printk(KERN_WARNING 
+			printk(KERN_WARNING
 				"nfsd_proc_create: file handle not verified\n");
 			goto out_unlock;
 		}
@@ -243,29 +196,22 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 
 	inode = newfhp->fh_dentry->d_inode;
 
-	/* Unfudge the mode bits */
 	if (attr->ia_valid & ATTR_MODE) {
 		type = attr->ia_mode & S_IFMT;
 		mode = attr->ia_mode & ~S_IFMT;
 		if (!type) {
-			/* no type, so if target exists, assume same as that,
-			 * else assume a file */
+			 
 			if (inode) {
 				type = inode->i_mode & S_IFMT;
 				switch(type) {
 				case S_IFCHR:
 				case S_IFBLK:
-					/* reserve rdev for later checking */
+					 
 					rdev = inode->i_rdev;
 					attr->ia_valid |= ATTR_SIZE;
 
-					/* FALLTHROUGH */
 				case S_IFIFO:
-					/* this is probably a permission check..
-					 * at least IRIX implements perm checking on
-					 *   echo thing > device-special-file-or-pipe
-					 * by doing a CREATE with type==0
-					 */
+					 
 					nfserr = nfsd_permission(rqstp,
 								 newfhp->fh_export,
 								 newfhp->fh_dentry,
@@ -281,31 +227,26 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 		mode = inode->i_mode & ~S_IFMT;
 	} else {
 		type = S_IFREG;
-		mode = 0;	/* ??? */
+		mode = 0;	 
 	}
 
 	attr->ia_valid |= ATTR_MODE;
 	attr->ia_mode = mode;
 
-	/* Special treatment for non-regular files according to the
-	 * gospel of sun micro
-	 */
 	if (type != S_IFREG) {
 		if (type != S_IFBLK && type != S_IFCHR) {
 			rdev = 0;
 		} else if (type == S_IFCHR && !(attr->ia_valid & ATTR_SIZE)) {
-			/* If you think you've seen the worst, grok this. */
+			 
 			type = S_IFIFO;
 		} else {
-			/* Okay, char or block special */
+			 
 			if (!rdev)
 				rdev = wanted;
 		}
 
-		/* we've used the SIZE information, so discard it */
 		attr->ia_valid &= ~ATTR_SIZE;
 
-		/* Make sure the type and device matches */
 		nfserr = nfserr_exist;
 		if (inode && type != (inode->i_mode & S_IFMT))
 			goto out_unlock;
@@ -313,23 +254,20 @@ nfsd_proc_create(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 
 	nfserr = 0;
 	if (!inode) {
-		/* File doesn't exist. Create it and set attrs */
+		 
 		nfserr = nfsd_create(rqstp, dirfhp, argp->name, argp->len,
 					attr, type, rdev, newfhp);
 	} else if (type == S_IFREG) {
 		dprintk("nfsd:   existing %s, valid=%x, size=%ld\n",
 			argp->name, attr->ia_valid, (long) attr->ia_size);
-		/* File already exists. We ignore all attributes except
-		 * size, so that creat() behaves exactly like
-		 * open(..., O_CREAT|O_TRUNC|O_WRONLY).
-		 */
+		 
 		attr->ia_valid &= ATTR_SIZE;
 		if (attr->ia_valid)
 			nfserr = nfsd_setattr(rqstp, newfhp, attr, 0, (time_t)0);
 	}
 
 out_unlock:
-	/* We don't really need to unlock, as fh_put does it. */
+	 
 	fh_unlock(dirfhp);
 	fh_drop_write(dirfhp);
 done:
@@ -346,7 +284,6 @@ nfsd_proc_remove(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
 	dprintk("nfsd: REMOVE   %s %.*s\n", SVCFH_fmt(&argp->fh),
 		argp->len, argp->name);
 
-	/* Unlink. -SIFDIR means file must not be a directory */
 	nfserr = nfsd_unlink(rqstp, &argp->fh, -S_IFDIR, argp->name, argp->len);
 	fh_put(&argp->fh);
 	return nfserr;
@@ -354,7 +291,7 @@ nfsd_proc_remove(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
 
 static __be32
 nfsd_proc_rename(struct svc_rqst *rqstp, struct nfsd_renameargs *argp,
-				  	 void		        *resp)
+					 void		        *resp)
 {
 	__be32	nfserr;
 
@@ -364,7 +301,7 @@ nfsd_proc_rename(struct svc_rqst *rqstp, struct nfsd_renameargs *argp,
 		SVCFH_fmt(&argp->tfh), argp->tlen, argp->tname);
 
 	nfserr = nfsd_rename(rqstp, &argp->ffh, argp->fname, argp->flen,
-				    &argp->tfh, argp->tname, argp->tlen);
+					&argp->tfh, argp->tname, argp->tlen);
 	fh_put(&argp->ffh);
 	fh_put(&argp->tfh);
 	return nfserr;
@@ -392,7 +329,7 @@ nfsd_proc_link(struct svc_rqst *rqstp, struct nfsd_linkargs *argp,
 
 static __be32
 nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
-				          void			  *resp)
+						  void			  *resp)
 {
 	struct svc_fh	newfh;
 	__be32		nfserr;
@@ -402,23 +339,16 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
 		argp->tlen, argp->tname);
 
 	fh_init(&newfh, NFS_FHSIZE);
-	/*
-	 * Create the link, look up new file and set attrs.
-	 */
+	 
 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
 						 argp->tname, argp->tlen,
-				 		 &newfh, &argp->attrs);
-
+						 &newfh, &argp->attrs);
 
 	fh_put(&argp->ffh);
 	fh_put(&newfh);
 	return nfserr;
 }
 
-/*
- * Make directory. This operation is not idempotent.
- * N.B. After this call resp->fh needs an fh_put
- */
 static __be32
 nfsd_proc_mkdir(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 					struct nfsd_diropres   *resp)
@@ -435,17 +365,14 @@ nfsd_proc_mkdir(struct svc_rqst *rqstp, struct nfsd_createargs *argp,
 	argp->attrs.ia_valid &= ~ATTR_SIZE;
 	fh_init(&resp->fh, NFS_FHSIZE);
 	nfserr = nfsd_create(rqstp, &argp->fh, argp->name, argp->len,
-				    &argp->attrs, S_IFDIR, 0, &resp->fh);
+					&argp->attrs, S_IFDIR, 0, &resp->fh);
 	fh_put(&argp->fh);
 	return nfsd_return_dirop(nfserr, resp);
 }
 
-/*
- * Remove a directory
- */
 static __be32
 nfsd_proc_rmdir(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
-				 	void		      *resp)
+					void		      *resp)
 {
 	__be32	nfserr;
 
@@ -456,9 +383,6 @@ nfsd_proc_rmdir(struct svc_rqst *rqstp, struct nfsd_diropargs *argp,
 	return nfserr;
 }
 
-/*
- * Read a portion of a directory.
- */
 static __be32
 nfsd_proc_readdir(struct svc_rqst *rqstp, struct nfsd_readdirargs *argp,
 					  struct nfsd_readdirres  *resp)
@@ -468,13 +392,11 @@ nfsd_proc_readdir(struct svc_rqst *rqstp, struct nfsd_readdirargs *argp,
 	loff_t		offset;
 
 	dprintk("nfsd: READDIR  %s %d bytes at %d\n",
-		SVCFH_fmt(&argp->fh),		
+		SVCFH_fmt(&argp->fh),
 		argp->count, argp->cookie);
 
-	/* Shrink to the client read size */
 	count = (argp->count >> 2) - 2;
 
-	/* Make sure we've room for the NULL ptr & eof flag */
 	count -= 2;
 	if (count < 0)
 		count = 0;
@@ -483,10 +405,10 @@ nfsd_proc_readdir(struct svc_rqst *rqstp, struct nfsd_readdirargs *argp,
 	resp->offset = NULL;
 	resp->buflen = count;
 	resp->common.err = nfs_ok;
-	/* Read directory and encode entries on the fly */
+	 
 	offset = argp->cookie;
-	nfserr = nfsd_readdir(rqstp, &argp->fh, &offset, 
-			      &resp->common, nfssvc_encode_entry);
+	nfserr = nfsd_readdir(rqstp, &argp->fh, &offset,
+				  &resp->common, nfssvc_encode_entry);
 
 	resp->count = resp->buffer - argp->buffer;
 	if (resp->offset)
@@ -496,9 +418,6 @@ nfsd_proc_readdir(struct svc_rqst *rqstp, struct nfsd_readdirargs *argp,
 	return nfserr;
 }
 
-/*
- * Get file system info
- */
 static __be32
 nfsd_proc_statfs(struct svc_rqst * rqstp, struct nfsd_fhandle   *argp,
 					  struct nfsd_statfsres *resp)
@@ -513,17 +432,13 @@ nfsd_proc_statfs(struct svc_rqst * rqstp, struct nfsd_fhandle   *argp,
 	return nfserr;
 }
 
-/*
- * NFSv2 Server procedures.
- * Only the results of non-idempotent operations are cached.
- */
 struct nfsd_void { int dummy; };
 
-#define ST 1		/* status */
-#define FH 8		/* filehandle */
-#define	AT 18		/* attributes */
+#define ST 1		 
+#define FH 8		 
+#define	AT 18		 
 
-static struct svc_procedure		nfsd_procedures2[18] = {
+static struct svc_procedure             nfsd_procedures2[32] = {
 	[NFSPROC_NULL] = {
 		.pc_func = (svc_procfunc) nfsd_proc_null,
 		.pc_decode = (kxdrproc_t) nfssvc_decode_void,
@@ -692,18 +607,14 @@ static struct svc_procedure		nfsd_procedures2[18] = {
 	},
 };
 
-
 struct svc_version	nfsd_version2 = {
 		.vs_vers	= 2,
-		.vs_nproc	= 18,
+		.vs_nproc       = 32,
 		.vs_proc	= nfsd_procedures2,
 		.vs_dispatch	= nfsd_dispatch,
 		.vs_xdrsize	= NFS2_SVC_XDRSIZE,
 };
 
-/*
- * Map errnos to NFS errnos.
- */
 __be32
 nfserrno (int errno)
 {
@@ -753,4 +664,3 @@ nfserrno (int errno)
 	printk (KERN_INFO "nfsd: non-standard errno: %d\n", errno);
 	return nfserr_io;
 }
-

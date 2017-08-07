@@ -491,7 +491,7 @@ static int ab8500_handle_hierarchical_line(struct ab8500 *ab8500,
 		if (line == AB8540_INT_GPIO43F || line == AB8540_INT_GPIO44F)
 			line += 1;
 
-		handle_nested_irq(irq_create_mapping(ab8500->domain, line));
+		handle_nested_irq(ab8500->irq_base + line);
 	}
 
 	return 0;
@@ -592,7 +592,7 @@ static int ab8500_irq_init(struct ab8500 *ab8500, struct device_node *np)
 
 	/* If ->irq_base is zero this will give a linear mapping */
 	ab8500->domain = irq_domain_add_simple(NULL,
-			num_irqs, 0,
+			num_irqs, ab8500->irq_base,
 			&ab8500_irq_ops, ab8500);
 
 	if (!ab8500->domain) {
@@ -640,21 +640,6 @@ static struct resource ab8500_rtc_resources[] = {
 		.name	= "60S",
 		.start	= AB8500_INT_RTC_60S,
 		.end	= AB8500_INT_RTC_60S,
-		.flags	= IORESOURCE_IRQ,
-	},
-	{
-		.name	= "ALARM",
-		.start	= AB8500_INT_RTC_ALARM,
-		.end	= AB8500_INT_RTC_ALARM,
-		.flags	= IORESOURCE_IRQ,
-	},
-};
-
-static struct resource ab8540_rtc_resources[] = {
-	{
-		.name	= "1S",
-		.start	= AB8540_INT_RTC_1S,
-		.end	= AB8540_INT_RTC_1S,
 		.flags	= IORESOURCE_IRQ,
 	},
 	{
@@ -1017,7 +1002,7 @@ static struct resource ab8500_temp_resources[] = {
 	},
 };
 
-static const struct mfd_cell ab8500_bm_devs[] = {
+static struct mfd_cell ab8500_bm_devs[] = {
 	{
 		.name = "ab8500-charger",
 		.of_compatible = "stericsson,ab8500-charger",
@@ -1052,7 +1037,7 @@ static const struct mfd_cell ab8500_bm_devs[] = {
 	},
 };
 
-static const struct mfd_cell ab8500_devs[] = {
+static struct mfd_cell ab8500_devs[] = {
 #ifdef CONFIG_DEBUG_FS
 	{
 		.name = "ab8500-debug",
@@ -1064,10 +1049,6 @@ static const struct mfd_cell ab8500_devs[] = {
 	{
 		.name = "ab8500-sysctrl",
 		.of_compatible = "stericsson,ab8500-sysctrl",
-	},
-	{
-		.name = "ab8500-ext-regulator",
-		.of_compatible = "stericsson,ab8500-ext-regulator",
 	},
 	{
 		.name = "ab8500-regulator",
@@ -1118,6 +1099,10 @@ static const struct mfd_cell ab8500_devs[] = {
 		.id = 3,
 	},
 	{
+		.name = "ab8500-leds",
+		.of_compatible = "stericsson,ab8500-leds",
+	},
+	{
 		.name = "ab8500-denc",
 		.of_compatible = "stericsson,ab8500-denc",
 	},
@@ -1139,11 +1124,10 @@ static const struct mfd_cell ab8500_devs[] = {
 	},
 	{
 		.name = "ab8500-codec",
-		.of_compatible = "stericsson,ab8500-codec",
 	},
 };
 
-static const struct mfd_cell ab9540_devs[] = {
+static struct mfd_cell ab9540_devs[] = {
 #ifdef CONFIG_DEBUG_FS
 	{
 		.name = "ab8500-debug",
@@ -1153,9 +1137,6 @@ static const struct mfd_cell ab9540_devs[] = {
 #endif
 	{
 		.name = "ab8500-sysctrl",
-	},
-	{
-		.name = "ab8500-ext-regulator",
 	},
 	{
 		.name = "ab8500-regulator",
@@ -1190,6 +1171,9 @@ static const struct mfd_cell ab9540_devs[] = {
 		.id = 1,
 	},
 	{
+		.name = "ab8500-leds",
+	},
+	{
 		.name = "abx500-temp",
 		.num_resources = ARRAY_SIZE(ab8500_temp_resources),
 		.resources = ab8500_temp_resources,
@@ -1214,7 +1198,7 @@ static const struct mfd_cell ab9540_devs[] = {
 };
 
 /* Device list for ab8505  */
-static const struct mfd_cell ab8505_devs[] = {
+static struct mfd_cell ab8505_devs[] = {
 #ifdef CONFIG_DEBUG_FS
 	{
 		.name = "ab8500-debug",
@@ -1258,6 +1242,9 @@ static const struct mfd_cell ab8505_devs[] = {
 		.id = 1,
 	},
 	{
+		.name = "ab8500-leds",
+	},
+	{
 		.name = "pinctrl-ab8505",
 	},
 	{
@@ -1275,7 +1262,7 @@ static const struct mfd_cell ab8505_devs[] = {
 	},
 };
 
-static const struct mfd_cell ab8540_devs[] = {
+static struct mfd_cell ab8540_devs[] = {
 #ifdef CONFIG_DEBUG_FS
 	{
 		.name = "ab8500-debug",
@@ -1285,9 +1272,6 @@ static const struct mfd_cell ab8540_devs[] = {
 #endif
 	{
 		.name = "ab8500-sysctrl",
-	},
-	{
-		.name = "ab8500-ext-regulator",
 	},
 	{
 		.name = "ab8500-regulator",
@@ -1303,6 +1287,11 @@ static const struct mfd_cell ab8540_devs[] = {
 		.resources = ab8505_gpadc_resources,
 	},
 	{
+		.name = "ab8500-rtc",
+		.num_resources = ARRAY_SIZE(ab8500_rtc_resources),
+		.resources = ab8500_rtc_resources,
+	},
+	{
 		.name = "ab8500-acc-det",
 		.num_resources = ARRAY_SIZE(ab8500_av_acc_detect_resources),
 		.resources = ab8500_av_acc_detect_resources,
@@ -1315,6 +1304,9 @@ static const struct mfd_cell ab8540_devs[] = {
 	{
 		.name = "ab8500-pwm",
 		.id = 1,
+	},
+	{
+		.name = "ab8500-leds",
 	},
 	{
 		.name = "abx500-temp",
@@ -1336,24 +1328,6 @@ static const struct mfd_cell ab8540_devs[] = {
 		.name = "ab-iddet",
 		.num_resources = ARRAY_SIZE(ab8505_iddet_resources),
 		.resources = ab8505_iddet_resources,
-	},
-};
-
-static const struct mfd_cell ab8540_cut1_devs[] = {
-	{
-		.name = "ab8500-rtc",
-		.of_compatible = "stericsson,ab8500-rtc",
-		.num_resources = ARRAY_SIZE(ab8500_rtc_resources),
-		.resources = ab8500_rtc_resources,
-	},
-};
-
-static const struct mfd_cell ab8540_cut2_devs[] = {
-	{
-		.name = "ab8540-rtc",
-		.of_compatible = "stericsson,ab8540-rtc",
-		.num_resources = ARRAY_SIZE(ab8540_rtc_resources),
-		.resources = ab8540_rtc_resources,
 	},
 };
 
@@ -1583,13 +1557,14 @@ static int ab8500_probe(struct platform_device *pdev)
 	if (!ab8500)
 		return -ENOMEM;
 
+	if (plat)
+		ab8500->irq_base = plat->irq_base;
+
 	ab8500->dev = &pdev->dev;
 
 	resource = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!resource) {
-		dev_err(&pdev->dev, "no IRQ resource\n");
+	if (!resource)
 		return -ENODEV;
-	}
 
 	ab8500->irq = resource->start;
 
@@ -1611,10 +1586,8 @@ static int ab8500_probe(struct platform_device *pdev)
 	else {
 		ret = get_register_interruptible(ab8500, AB8500_MISC,
 			AB8500_IC_NAME_REG, &value);
-		if (ret < 0) {
-			dev_err(&pdev->dev, "could not probe HW\n");
+		if (ret < 0)
 			return ret;
-		}
 
 		ab8500->version = value;
 	}
@@ -1760,30 +1733,19 @@ static int ab8500_probe(struct platform_device *pdev)
 	if (is_ab9540(ab8500))
 		ret = mfd_add_devices(ab8500->dev, 0, ab9540_devs,
 				ARRAY_SIZE(ab9540_devs), NULL,
-				0, ab8500->domain);
-	else if (is_ab8540(ab8500)) {
+				ab8500->irq_base, ab8500->domain);
+	else if (is_ab8540(ab8500))
 		ret = mfd_add_devices(ab8500->dev, 0, ab8540_devs,
 			      ARRAY_SIZE(ab8540_devs), NULL,
-			      0, ab8500->domain);
-		if (ret)
-			return ret;
-
-		if (is_ab8540_1p2_or_earlier(ab8500))
-			ret = mfd_add_devices(ab8500->dev, 0, ab8540_cut1_devs,
-			      ARRAY_SIZE(ab8540_cut1_devs), NULL,
-			      0, ab8500->domain);
-		else /* ab8540 >= cut2 */
-			ret = mfd_add_devices(ab8500->dev, 0, ab8540_cut2_devs,
-			      ARRAY_SIZE(ab8540_cut2_devs), NULL,
-			      0, ab8500->domain);
-	} else if (is_ab8505(ab8500))
+			      ab8500->irq_base, ab8500->domain);
+	else if (is_ab8505(ab8500))
 		ret = mfd_add_devices(ab8500->dev, 0, ab8505_devs,
 			      ARRAY_SIZE(ab8505_devs), NULL,
-			      0, ab8500->domain);
+			      ab8500->irq_base, ab8500->domain);
 	else
 		ret = mfd_add_devices(ab8500->dev, 0, ab8500_devs,
 				ARRAY_SIZE(ab8500_devs), NULL,
-				0, ab8500->domain);
+				ab8500->irq_base, ab8500->domain);
 	if (ret)
 		return ret;
 
@@ -1791,7 +1753,7 @@ static int ab8500_probe(struct platform_device *pdev)
 		/* Add battery management devices */
 		ret = mfd_add_devices(ab8500->dev, 0, ab8500_bm_devs,
 				      ARRAY_SIZE(ab8500_bm_devs), NULL,
-				      0, ab8500->domain);
+				      ab8500->irq_base, ab8500->domain);
 		if (ret)
 			dev_err(ab8500->dev, "error adding bm devices\n");
 	}

@@ -85,5 +85,4 @@ int s5p_mfc_alloc_priv_buf(struct device *dev,
 void s5p_mfc_release_priv_buf(struct device *dev,
 					struct s5p_mfc_priv_buf *b);
 
-
 #endif /* S5P_MFC_OPR_H_ */

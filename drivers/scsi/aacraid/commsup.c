@@ -83,9 +83,12 @@ static int fib_map_alloc(struct aac_dev *dev)
 
 void aac_fib_map_free(struct aac_dev *dev)
 {
-	pci_free_consistent(dev->pdev,
-	  dev->max_fib_size * (dev->scsi_host_ptr->can_queue + AAC_NUM_MGT_FIB),
-	  dev->hw_fib_va, dev->hw_fib_pa);
+	if (dev->hw_fib_va && dev->max_fib_size) {
+		pci_free_consistent(dev->pdev,
+		(dev->max_fib_size *
+		(dev->scsi_host_ptr->can_queue + AAC_NUM_MGT_FIB)),
+		dev->hw_fib_va, dev->hw_fib_pa);
+	}
 	dev->hw_fib_va = NULL;
 	dev->hw_fib_pa = 0;
 }
@@ -418,7 +421,6 @@ int aac_fib_send(u16 command, struct fib *fibptr, unsigned long size,
 	unsigned long mflags = 0;
 	unsigned long sflags = 0;
 
-
 	if (!(hw_fib->header.XferState & cpu_to_le32(HostOwned)))
 		return -EBUSY;
 	/*
@@ -547,7 +549,6 @@ int aac_fib_send(u16 command, struct fib *fibptr, unsigned long size,
 		}
 		return -EBUSY;
 	}
-
 
 	/*
 	 *	If the caller wanted us to wait for response wait now.
@@ -857,7 +858,6 @@ void aac_printf(struct aac_dev *dev, u32 val)
 	}
 	memset(cp, 0, 256);
 }
-
 
 /**
  *	aac_handle_aif		-	Handle a message from the firmware
@@ -1336,8 +1336,7 @@ static int _aac_reset_adapter(struct aac_dev *aac, int forced)
 		if ((retval = pci_set_dma_mask(aac->pdev, DMA_BIT_MASK(32))))
 			goto out;
 	if (jafo) {
-		aac->thread = kthread_run(aac_command_thread, aac, "%s",
-					  aac->name);
+		aac->thread = kthread_run(aac_command_thread, aac, aac->name);
 		if (IS_ERR(aac->thread)) {
 			retval = PTR_ERR(aac->thread);
 			goto out;
@@ -1614,7 +1613,6 @@ out:
 	aac->in_reset = 0;
 	return BlinkLED;
 }
-
 
 /**
  *	aac_command_thread	-	command processing thread

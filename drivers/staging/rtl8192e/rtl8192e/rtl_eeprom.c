@@ -2,7 +2,7 @@
  * Copyright(c) 2008 - 2010 Realtek Corporation. All rights reserved.
  *
  * Based on the r8180 driver, which is:
- * Copyright 2004-2005 Andrea Merello <andrea.merello@gmail.com>, et al.
+ * Copyright 2004-2005 Andrea Merello <andreamrl@tiscali.it>, et al.
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
  * published by the Free Software Foundation.
@@ -38,7 +38,6 @@ static void eprom_cs(struct net_device *dev, short bit)
 	udelay(EPROM_DELAY);
 }
 
-
 static void eprom_ck_cycle(struct net_device *dev)
 {
 	write_nic_byte(dev, EPROM_CMD,
@@ -48,7 +47,6 @@ static void eprom_ck_cycle(struct net_device *dev)
 		       read_nic_byte(dev, EPROM_CMD) & ~(1<<EPROM_CK_SHIFT));
 	udelay(EPROM_DELAY);
 }
-
 
 static void eprom_w(struct net_device *dev, short bit)
 {
@@ -61,7 +59,6 @@ static void eprom_w(struct net_device *dev, short bit)
 
 	udelay(EPROM_DELAY);
 }
-
 
 static short eprom_r(struct net_device *dev)
 {

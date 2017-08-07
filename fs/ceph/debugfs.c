@@ -93,8 +93,6 @@ static int mdsc_show(struct seq_file *s, void *p)
 		} else if (req->r_path1) {
 			seq_printf(s, " #%llx/%s", req->r_ino1.ino,
 				   req->r_path1);
-		} else {
-			seq_printf(s, " #%llx", req->r_ino1.ino);
 		}
 
 		if (req->r_old_dentry) {
@@ -104,8 +102,7 @@ static int mdsc_show(struct seq_file *s, void *p)
 				path = NULL;
 			spin_lock(&req->r_old_dentry->d_lock);
 			seq_printf(s, " #%llx/%.*s (%s)",
-				   req->r_old_dentry_dir ?
-				   ceph_ino(req->r_old_dentry_dir) : 0,
+			   ceph_ino(req->r_old_dentry_dir),
 				   req->r_old_dentry->d_name.len,
 				   req->r_old_dentry->d_name.name,
 				   path ? path : "");
@@ -163,7 +160,6 @@ CEPH_DEFINE_SHOW_FUNC(mdsc_show)
 CEPH_DEFINE_SHOW_FUNC(caps_show)
 CEPH_DEFINE_SHOW_FUNC(dentry_lru_show)
 
-
 /*
  * debugfs
  */
@@ -185,7 +181,6 @@ static int congestion_kb_get(void *data, u64 *val)
 
 DEFINE_SIMPLE_ATTRIBUTE(congestion_kb_fops, congestion_kb_get,
 			congestion_kb_set, "%llu\n");
-
 
 void ceph_fs_debugfs_cleanup(struct ceph_fs_client *fsc)
 {
@@ -261,7 +256,6 @@ out:
 	ceph_fs_debugfs_cleanup(fsc);
 	return err;
 }
-
 
 #else  /* CONFIG_DEBUG_FS */
 

@@ -135,8 +135,8 @@ extern char initial_stab[];
 #ifndef __ASSEMBLY__
 
 struct hash_pte {
-	__be64 v;
-	__be64 r;
+	unsigned long v;
+	unsigned long r;
 };
 
 extern struct hash_pte *htab_address;
@@ -340,20 +340,6 @@ extern int hash_page(unsigned long ea, unsigned long access, unsigned long trap)
 int __hash_page_huge(unsigned long ea, unsigned long access, unsigned long vsid,
 		     pte_t *ptep, unsigned long trap, int local, int ssize,
 		     unsigned int shift, unsigned int mmu_psize);
-#ifdef CONFIG_TRANSPARENT_HUGEPAGE
-extern int __hash_page_thp(unsigned long ea, unsigned long access,
-			   unsigned long vsid, pmd_t *pmdp, unsigned long trap,
-			   int local, int ssize, unsigned int psize);
-#else
-static inline int __hash_page_thp(unsigned long ea, unsigned long access,
-				  unsigned long vsid, pmd_t *pmdp,
-				  unsigned long trap, int local,
-				  int ssize, unsigned int psize)
-{
-	BUG();
-	return -1;
-}
-#endif
 extern void hash_failure_debug(unsigned long ea, unsigned long access,
 			       unsigned long vsid, unsigned long trap,
 			       int ssize, int psize, int lpsize,
@@ -440,7 +426,6 @@ extern void slb_set_size(u16 size);
 #define VSID_MULTIPLIER_1T	ASM_CONST(12538073)	/* 24-bit prime */
 #define VSID_BITS_1T		(CONTEXT_BITS + ESID_BITS_1T)
 #define VSID_MODULUS_1T		((1UL<<VSID_BITS_1T)-1)
-
 
 #define USER_VSID_RANGE	(1UL << (ESID_BITS + SID_SHIFT))
 
@@ -541,7 +526,6 @@ typedef struct {
 	void *pte_frag;
 #endif
 } mm_context_t;
-
 
 #if 0
 /*

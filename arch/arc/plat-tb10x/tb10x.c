@@ -19,14 +19,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
  */
 
-
 #include <linux/init.h>
 #include <linux/of_platform.h>
 #include <linux/clk-provider.h>
 #include <linux/pinctrl/consumer.h>
 
 #include <asm/mach_desc.h>
-
 
 static void __init tb10x_platform_init(void)
 {

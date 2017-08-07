@@ -110,7 +110,6 @@ static struct sync_timeline_ops sw_sync_timeline_ops = {
 	.pt_value_str = sw_sync_pt_value_str,
 };
 
-
 struct sw_sync_timeline *sw_sync_timeline_create(const char *name)
 {
 	struct sw_sync_timeline *obj = (struct sw_sync_timeline *)
@@ -160,10 +159,9 @@ static int sw_sync_release(struct inode *inode, struct file *file)
 	return 0;
 }
 
-static long sw_sync_ioctl_create_fence(struct sw_sync_timeline *obj,
-				       unsigned long arg)
+static long sw_sync_ioctl_create_fence(struct sw_sync_timeline *obj, unsigned long arg)
 {
-	int fd = get_unused_fd_flags(O_CLOEXEC);
+	int fd = get_unused_fd();
 	int err;
 	struct sync_pt *pt;
 	struct sync_fence *fence;
@@ -219,8 +217,7 @@ static long sw_sync_ioctl_inc(struct sw_sync_timeline *obj, unsigned long arg)
 	return 0;
 }
 
-static long sw_sync_ioctl(struct file *file, unsigned int cmd,
-			  unsigned long arg)
+static long sw_sync_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct sw_sync_timeline *obj = file->private_data;
 

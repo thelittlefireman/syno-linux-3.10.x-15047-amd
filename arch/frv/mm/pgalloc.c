@@ -37,15 +37,11 @@ pgtable_t pte_alloc_one(struct mm_struct *mm, unsigned long address)
 #else
 	page = alloc_pages(GFP_KERNEL|__GFP_REPEAT, 0);
 #endif
-	if (!page)
-		return NULL;
-
-	clear_highpage(page);
-	if (!pgtable_page_ctor(page)) {
-		__free_page(page);
-		return NULL;
+	if (page) {
+		clear_highpage(page);
+		pgtable_page_ctor(page);
+		flush_dcache_page(page);
 	}
-	flush_dcache_page(page);
 	return page;
 }
 
@@ -154,4 +150,3 @@ void check_pgt_cache(void)
 {
 	quicklist_trim(0, pgd_dtor, 25, 16);
 }
-

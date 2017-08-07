@@ -1,6 +1,6 @@
 /* bnx2i.c: Broadcom NetXtreme II iSCSI driver.
  *
- * Copyright (c) 2006 - 2013 Broadcom Corporation
+ * Copyright (c) 2006 - 2012 Broadcom Corporation
  * Copyright (c) 2007, 2008 Red Hat, Inc.  All rights reserved.
  * Copyright (c) 2007, 2008 Mike Christie
  *
@@ -18,13 +18,12 @@ static struct list_head adapter_list = LIST_HEAD_INIT(adapter_list);
 static u32 adapter_count;
 
 #define DRV_MODULE_NAME		"bnx2i"
-#define DRV_MODULE_VERSION	"2.7.6.2"
-#define DRV_MODULE_RELDATE	"Jun 06, 2013"
+#define DRV_MODULE_VERSION	"2.7.2.2"
+#define DRV_MODULE_RELDATE	"Apr 25, 2012"
 
 static char version[] =
 		"Broadcom NetXtreme II iSCSI Driver " DRV_MODULE_NAME \
 		" v" DRV_MODULE_VERSION " (" DRV_MODULE_RELDATE ")\n";
-
 
 MODULE_AUTHOR("Anil Veerabhadrappa <anilgv@broadcom.com> and "
 	      "Eddie Wai <eddie.wai@broadcom.com>");
@@ -75,7 +74,6 @@ static struct notifier_block bnx2i_cpu_notifier = {
 	.notifier_call = bnx2i_cpu_callback,
 };
 
-
 /**
  * bnx2i_identify_device - identifies NetXtreme II device type
  * @hba: 		Adapter structure pointer
@@ -108,7 +106,6 @@ void bnx2i_identify_device(struct bnx2i_hba *hba, struct cnic_dev *dev)
 	}
 }
 
-
 /**
  * get_adapter_list_head - returns head of adapter list
  */
@@ -132,7 +129,6 @@ hba_not_found:
 	return hba;
 }
 
-
 /**
  * bnx2i_find_hba_for_cnic - maps cnic device instance to bnx2i adapter instance
  * @cnic:	pointer to cnic device instance
@@ -153,7 +149,6 @@ struct bnx2i_hba *bnx2i_find_hba_for_cnic(struct cnic_dev *cnic)
 	return NULL;
 }
 
-
 /**
  * bnx2i_start - cnic callback to initialize & start adapter instance
  * @handle:	transparent handle pointing to adapter structure
@@ -172,17 +167,18 @@ void bnx2i_start(void *handle)
 	struct bnx2i_hba *hba = handle;
 	int i = HZ;
 
-	/* On some bnx2x devices, it is possible that iSCSI is no
-	 * longer supported after firmware is downloaded.  In that
-	 * case, the iscsi_init_msg will return failure.
+	/*
+	 * We should never register devices that don't support iSCSI
+	 * (see bnx2i_init_one), so something is wrong if we try to
+	 * start a iSCSI adapter on hardware with 0 supported iSCSI
+	 * connections
 	 */
+	BUG_ON(!hba->cnic->max_iscsi_conn);
 
 	bnx2i_send_fw_iscsi_init_msg(hba);
-	while (!test_bit(ADAPTER_STATE_UP, &hba->adapter_state) &&
-	       !test_bit(ADAPTER_STATE_INIT_FAILED, &hba->adapter_state) && i--)
+	while (!test_bit(ADAPTER_STATE_UP, &hba->adapter_state) && i--)
 		msleep(BNX2I_INIT_POLL_TIME);
 }
-
 
 /**
  * bnx2i_chip_cleanup - local routine to handle chip cleanup
@@ -214,7 +210,6 @@ static void bnx2i_chip_cleanup(struct bnx2i_hba *hba)
 		mutex_unlock(&hba->net_dev_lock);
 	}
 }
-
 
 /**
  * bnx2i_stop - cnic callback to shutdown adapter instance
@@ -266,7 +261,6 @@ void bnx2i_stop(void *handle)
 	clear_bit(ADAPTER_STATE_UP, &hba->adapter_state);
 }
 
-
 /**
  * bnx2i_init_one - initialize an adapter instance and allocate memory resources
  * @hba:	bnx2i adapter instance
@@ -311,7 +305,6 @@ out:
 	return rc;
 }
 
-
 /**
  * bnx2i_ulp_init - initialize an adapter instance
  * @dev:	cnic device handle
@@ -338,7 +331,6 @@ void bnx2i_ulp_init(struct cnic_dev *dev)
 		bnx2i_free_hba(hba);
 	}
 }
-
 
 /**
  * bnx2i_ulp_exit - shuts down adapter instance and frees all resources
@@ -367,7 +359,6 @@ void bnx2i_ulp_exit(struct cnic_dev *dev)
 
 	bnx2i_free_hba(hba);
 }
-
 
 /**
  * bnx2i_get_stats - Retrieve various statistic from iSCSI offload
@@ -408,7 +399,6 @@ int bnx2i_get_stats(void *handle)
 	return 0;
 }
 
-
 /**
  * bnx2i_percpu_thread_create - Create a receive thread for an
  *				online CPU
@@ -432,7 +422,6 @@ static void bnx2i_percpu_thread_create(unsigned int cpu)
 		wake_up_process(thread);
 	}
 }
-
 
 static void bnx2i_percpu_thread_destroy(unsigned int cpu)
 {
@@ -458,7 +447,6 @@ static void bnx2i_percpu_thread_destroy(unsigned int cpu)
 	if (thread)
 		kthread_stop(thread);
 }
-
 
 /**
  * bnx2i_cpu_callback - Handler for CPU hotplug events
@@ -493,7 +481,6 @@ static int bnx2i_cpu_callback(struct notifier_block *nfb,
 	}
 	return NOTIFY_OK;
 }
-
 
 /**
  * bnx2i_mod_init - module init entry point
@@ -537,15 +524,11 @@ static int __init bnx2i_mod_init(void)
 		p->iothread = NULL;
 	}
 
-	cpu_notifier_register_begin();
-
 	for_each_online_cpu(cpu)
 		bnx2i_percpu_thread_create(cpu);
 
 	/* Initialize per CPU interrupt thread */
-	__register_hotcpu_notifier(&bnx2i_cpu_notifier);
-
-	cpu_notifier_register_done();
+	register_hotcpu_notifier(&bnx2i_cpu_notifier);
 
 	return 0;
 
@@ -554,7 +537,6 @@ unreg_xport:
 out:
 	return err;
 }
-
 
 /**
  * bnx2i_mod_exit - module cleanup/exit entry point
@@ -585,14 +567,10 @@ static void __exit bnx2i_mod_exit(void)
 	}
 	mutex_unlock(&bnx2i_dev_lock);
 
-	cpu_notifier_register_begin();
+	unregister_hotcpu_notifier(&bnx2i_cpu_notifier);
 
 	for_each_online_cpu(cpu)
 		bnx2i_percpu_thread_destroy(cpu);
-
-	__unregister_hotcpu_notifier(&bnx2i_cpu_notifier);
-
-	cpu_notifier_register_done();
 
 	iscsi_unregister_transport(&bnx2i_iscsi_transport);
 	cnic_unregister_driver(CNIC_ULP_ISCSI);

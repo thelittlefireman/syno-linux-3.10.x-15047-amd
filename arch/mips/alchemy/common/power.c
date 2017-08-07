@@ -29,6 +29,7 @@
  *  675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
+#include <linux/init.h>
 #include <linux/pm.h>
 #include <linux/sysctl.h>
 #include <linux/jiffies.h>
@@ -49,7 +50,6 @@
 static unsigned int sleep_sys_clocks[5];
 static unsigned int sleep_sys_pinfunc;
 static unsigned int sleep_static_memctlr[4][3];
-
 
 static void save_core_regs(void)
 {

@@ -127,7 +127,6 @@ static void dgrp_read_data_block(struct ch_struct *ch, u8 *flipbuf,
 	ch->ch_rout += n;
 }
 
-
 /**
  * dgrp_input() -- send data to the line disipline
  * @ch: pointer to channel struct
@@ -171,7 +170,6 @@ static void dgrp_input(struct ch_struct *ch)
 	}
 
 	tty = (ch->ch_tun).un_tty;
-
 
 	if (!tty || tty->magic != TTY_MAGIC) {
 		ch->ch_rout = ch->ch_rin;
@@ -234,7 +232,6 @@ out:
 	spin_unlock_irqrestore(&nd->nd_lock, lock_flags);
 }
 
-
 /*
  *  parity_scan
  *
@@ -278,7 +275,7 @@ static void parity_scan(struct ch_struct *ch, unsigned char *cbuf,
 		switch (ch->ch_pscan_state) {
 		default:
 			/* reset to sanity and fall through */
-			ch->ch_pscan_state = 0;
+			ch->ch_pscan_state = 0 ;
 
 		case 0:
 			/* No FF seen yet */
@@ -343,7 +340,6 @@ static void parity_scan(struct ch_struct *ch, unsigned char *cbuf,
 	}
 	*len = count;
 }
-
 
 /**
  * dgrp_net_idle() -- Idle the network connection
@@ -667,8 +663,6 @@ static void dgrp_encode_time(struct nd_struct *nd, u8 *buf)
 	put_unaligned_be32((uint)(t & 0xffffffff), buf);
 }
 
-
-
 /**
  * dgrp_monitor_message() -- Builds a rpdump style message.
  * @nd: pointer to a node structure
@@ -690,8 +684,6 @@ static void dgrp_monitor_message(struct nd_struct *nd, char *message)
 	dgrp_monitor(nd, header, sizeof(header));
 	dgrp_monitor(nd, (u8 *) message, n);
 }
-
-
 
 /**
  * dgrp_monitor_reset() -- Note a reset in the monitoring buffer.
@@ -837,7 +829,6 @@ static int dgrp_net_open(struct inode *inode, struct file *file)
 
 	nd->nd_link.lk_header_size = 46;
 
-
 	rtn = alloc_nd_buffers(nd);
 	if (rtn)
 		goto unlock;
@@ -896,7 +887,6 @@ static int dgrp_net_release(struct inode *inode, struct file *file)
  */
 /*	spinlock(&nd->nd_lock); */
 
-
 	/*
 	 *  Grab the NET lock.
 	 */
@@ -933,7 +923,6 @@ static int dgrp_net_release(struct inode *inode, struct file *file)
  *  to review the locking under Linux.
  */
 /*	spinunlock( &nd->nd_lock ); */
-
 
 	kfree(nd->nd_writebuf);
 	nd->nd_writebuf = NULL;
@@ -1045,7 +1034,6 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 
 	memset(tdata, 0, sizeof(tdata));
 
-
 	/*
 	 * If there are any outstanding requests to be serviced,
 	 * service them here.
@@ -1063,7 +1051,6 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 		b += strlen(nd->password);
 		nd->nd_send &= ~(NR_PASSWORD);
 	}
-
 
 	/*
 	 *  Loop over all modules to generate commands, and determine
@@ -1461,7 +1448,6 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 					wake_up_interruptible(&ch->ch_flag_wait);
 				}
 
-
 				/*
 				 *  Handle action commands.
 				 */
@@ -1549,7 +1535,6 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 					}
 				}
 
-
 				/*
 				 *  Send a window sequence to acknowledge received data.
 				 */
@@ -1607,7 +1592,7 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 					if ((ch->ch_pun.un_flag & UN_LOW) != 0 ?
 					    (n <= TBUF_LOW) :
 					    (ch->ch_pun.un_flag & UN_TIME) != 0 ?
-					    time_is_before_jiffies(ch->ch_waketime) :
+					    ((jiffies - ch->ch_waketime) >= 0) :
 					    (n == 0 && ch->ch_s_tpos == ch->ch_s_tin) &&
 					    ((ch->ch_pun.un_flag & UN_EMPTY) != 0 ||
 					    ((ch->ch_tun.un_open_count &&
@@ -1627,7 +1612,6 @@ static int dgrp_send(struct nd_struct *nd, long tmax)
 						work = 1;
 					}
 				}
-
 
 				/*
 				 *  Determine the max number of bytes
@@ -2438,7 +2422,6 @@ data:
 
 				ch->ch_rin += dlen;
 
-
 				/*
 				 *  If we are not in fastcook mode, or
 				 *  if there is a fastcook thread
@@ -2542,7 +2525,6 @@ data:
 			 */
 			if (remain < 2)
 				goto done;
-
 
 			switch (b[1]) {
 
@@ -2658,7 +2640,6 @@ data:
 						}
 						goto open_error;
 
-
 					case CS_WAIT_FAIL:
 
 						/*
@@ -2671,7 +2652,6 @@ data:
 							break;
 						}
 						goto open_error;
-
 
 					case CS_WAIT_CANCEL:
 						/*
@@ -2695,7 +2675,6 @@ data:
 							break;
 						}
 						goto open_error;
-
 
 					case CS_WAIT_CLOSE:
 						/*
@@ -2923,7 +2902,6 @@ check_query:
 			if (((mstat ^ mlast) & DM_CD) != 0)
 				dgrp_carrier(ch);
 
-
 			/*
 			 *  Handle received break.
 			 */
@@ -3083,7 +3061,7 @@ check_query:
 						nd->nd_hw_ver = (b[8] << 8) | b[9];
 						nd->nd_sw_ver = (b[10] << 8) | b[11];
 						nd->nd_hw_id = b[6];
-						desclen = (plen - 12 > MAX_DESC_LEN - 1) ? MAX_DESC_LEN - 1 :
+						desclen = ((plen - 12) > MAX_DESC_LEN) ? MAX_DESC_LEN :
 							plen - 12;
 
 						if (desclen <= 0) {
@@ -3328,7 +3306,6 @@ unlock:
 
 	return rtn;
 }
-
 
 /*
  * dgrp_net_select()
@@ -3623,7 +3600,6 @@ void dgrp_poll_handler(unsigned long arg)
 				continue;
 		}
 
-
 		/*
 		 * Enable the READ select to wake the daemon if there
 		 * is useful work for the drp_read routine to perform.
@@ -3640,7 +3616,6 @@ void dgrp_poll_handler(unsigned long arg)
 			/* nd->nd_flag &= ~ND_SELECT; */
 		}
 	}
-
 
 	/*
 	 * Schedule ourself back at the nominal wakeup interval.

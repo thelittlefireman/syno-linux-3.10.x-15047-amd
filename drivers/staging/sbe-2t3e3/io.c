@@ -79,7 +79,6 @@ void bootrom_write(struct channel *channel, u32 reg, u32 val)
 	dc_write(addr, SBE_2T3E3_21143_REG_BOOT_ROM_SERIAL_ROM_AND_MII_MANAGEMENT, 0);
 }
 
-
 /****************************************
  * Access via Serial I/O port
  ****************************************/
@@ -189,7 +188,6 @@ u32 t3e3_eeprom_read_word(struct channel *channel, u32 address)
 	return ntohs(val);
 }
 
-
 /****************************************
  * Access to Framer
  ****************************************/
@@ -223,7 +221,6 @@ void exar7250_write(struct channel *channel, u32 reg, u32 val)
 
 	spin_unlock_irqrestore(&channel->card->bootrom_lock, flags);
 }
-
 
 /****************************************
  * Access to LIU

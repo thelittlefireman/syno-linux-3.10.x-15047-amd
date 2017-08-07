@@ -15,7 +15,6 @@
 
 #define	AT_DMA_MAX_NR_CHANNELS	8
 
-
 #define	AT_DMA_GCFG	0x00	/* Global Configuration Register */
 #define		AT_DMA_IF_BIGEND(i)	(0x1 << (i))	/* AHB-Lite Interface i in Big-endian mode */
 #define		AT_DMA_ARB_CFG	(0x1 << 4)	/* Arbiter mode. */
@@ -64,7 +63,6 @@
 #define		AT_DMA_EMPT(x)	(0x1 << (16 + (x)))
 #define		AT_DMA_STAL(x)	(0x1 << (24 + (x)))
 
-
 #define	AT_DMA_CH_REGS_BASE	0x3C	/* Channel registers base address */
 #define	ch_regs(x)	(AT_DMA_CH_REGS_BASE + (x) * 0x28) /* Channel x base addr */
 
@@ -77,7 +75,6 @@
 #define	ATC_CFG_OFFSET		0x14	/* Configuration Register */
 #define	ATC_SPIP_OFFSET		0x18	/* Src PIP Configuration Register */
 #define	ATC_DPIP_OFFSET		0x1C	/* Dst PIP Configuration Register */
-
 
 /* Bitfield definitions */
 
@@ -161,7 +158,6 @@
 #define	ATC_DPIP_HOLE(x)	(0xFFFFU & (x))
 #define	ATC_DPIP_BOUNDARY(x)	((0x3FF & (x)) << 16)
 
-
 /*--  descriptors  -----------------------------------------------------*/
 
 /* LLI == Linked List Item; aka DMA buffer descriptor */
@@ -182,7 +178,6 @@ struct at_lli {
  * @txd: support for the async_tx api
  * @desc_node: node on the channed descriptors list
  * @len: total transaction bytecount
- * @tx_width: transfer width
  */
 struct at_desc {
 	/* FIRST values the hardware uses */
@@ -193,7 +188,6 @@ struct at_desc {
 	struct dma_async_tx_descriptor	txd;
 	struct list_head		desc_node;
 	size_t				len;
-	u32				tx_width;
 };
 
 static inline struct at_desc *
@@ -201,7 +195,6 @@ txd_to_at_desc(struct dma_async_tx_descriptor *txd)
 {
 	return container_of(txd, struct at_desc, txd);
 }
-
 
 /*--  Channels  --------------------------------------------------------*/
 
@@ -213,7 +206,6 @@ txd_to_at_desc(struct dma_async_tx_descriptor *txd)
 enum atc_status {
 	ATC_IS_ERROR = 0,
 	ATC_IS_PAUSED = 1,
-	ATC_IS_BTC = 2,
 	ATC_IS_CYCLIC = 24,
 };
 
@@ -231,7 +223,6 @@ enum atc_status {
  * @save_cfg: configuration register that is saved on suspend/resume cycle
  * @save_dscr: for cyclic operations, preserve next descriptor address in
  *             the cyclic list on suspend/resume cycle
- * @remain_desc: to save remain desc length
  * @dma_sconfig: configuration for slave transfers, passed via DMA_SLAVE_CONFIG
  * @lock: serializes enqueue/dequeue operations to descriptors lists
  * @active_list: list of descriptors dmaengine is being running on
@@ -250,7 +241,6 @@ struct at_dma_chan {
 	struct tasklet_struct	tasklet;
 	u32			save_cfg;
 	u32			save_dscr;
-	u32			remain_desc;
 	struct dma_slave_config dma_sconfig;
 
 	spinlock_t		lock;
@@ -340,12 +330,15 @@ static inline struct at_dma *to_at_dma(struct dma_device *ddev)
 	return container_of(ddev, struct at_dma, dma_common);
 }
 
-
 /*--  Helper functions  ------------------------------------------------*/
 
 static struct device *chan2dev(struct dma_chan *chan)
 {
 	return &chan->dev->device;
+}
+static struct device *chan2parent(struct dma_chan *chan)
+{
+	return chan->dev->device.parent;
 }
 
 #if defined(VERBOSE_DEBUG)
@@ -380,7 +373,6 @@ static void atc_dump_lli(struct at_dma_chan *atchan, struct at_lli *lli)
 		 lli->ctrla, lli->ctrlb, lli->dscr);
 }
 
-
 static void atc_setup_irq(struct at_dma *atdma, int chan_id, int on)
 {
 	u32 ebci;
@@ -403,7 +395,6 @@ static void atc_disable_chan_irq(struct at_dma *atdma, int chan_id)
 {
 	atc_setup_irq(atdma, chan_id, 0);
 }
-
 
 /**
  * atc_chan_is_enabled - test if given channel is enabled

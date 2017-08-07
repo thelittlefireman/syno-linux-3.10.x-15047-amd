@@ -40,8 +40,9 @@
 
 #include <mach/usb.h>
 
-#undef VERBOSE
-
+#ifndef	DEBUG
+#undef	VERBOSE
+#endif
 
 #define	DRIVER_VERSION	"24 August 2004"
 #define	DRIVER_NAME	(isp1301_driver.driver.name)
@@ -72,7 +73,6 @@ struct isp1301 {
 #		define WORK_STOP	7	/* don't resubmit */
 };
 
-
 /* bits in OTG_CTRL */
 
 #define	OTG_XCEIV_OUTPUTS \
@@ -86,7 +86,6 @@ struct isp1301 {
 #define	OTG_CTRL_MASK	(OTG_DRIVER_SEL| \
 	OTG_XCEIV_OUTPUTS|OTG_XCEIV_INPUTS| \
 	OTG_CTRL_BITS)
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -134,13 +133,11 @@ static void enable_vbus_source(struct isp1301 *isp)
 	 */
 }
 
-
 /* products will deliver OTG messages with LEDs, GUI, etc */
 static inline void notresponding(struct isp1301 *isp)
 {
 	printk(KERN_NOTICE "OTG device not responding.\n");
 }
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -385,6 +382,7 @@ static void b_idle(struct isp1301 *isp, const char *tag)
 static void
 dump_regs(struct isp1301 *isp, const char *label)
 {
+#ifdef	DEBUG
 	u8	ctrl = isp1301_get_u8(isp, ISP1301_OTG_CONTROL_1);
 	u8	status = isp1301_get_u8(isp, ISP1301_OTG_STATUS);
 	u8	src = isp1301_get_u8(isp, ISP1301_INTERRUPT_SOURCE);
@@ -393,6 +391,7 @@ dump_regs(struct isp1301 *isp, const char *label)
 		omap_readl(OTG_CTRL), label, state_name(isp),
 		ctrl, status, src);
 	/* mode control and irq enables don't change much */
+#endif
 }
 
 /*-------------------------------------------------------------------------*/
@@ -1277,7 +1276,7 @@ isp1301_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
 	struct isp1301	*isp = container_of(otg->phy, struct isp1301, phy);
 
-	if (isp != the_transceiver)
+	if (!otg || isp != the_transceiver)
 		return -ENODEV;
 
 	if (!host) {
@@ -1295,7 +1294,7 @@ isp1301_set_host(struct usb_otg *otg, struct usb_bus *host)
 		return isp1301_otg_enable(isp);
 	return 0;
 
-#elif	!defined(CONFIG_USB_GADGET_OMAP)
+#elif !IS_ENABLED(CONFIG_USB_OMAP)
 	// FIXME update its refcount
 	otg->host = host;
 
@@ -1333,7 +1332,7 @@ isp1301_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
 	struct isp1301	*isp = container_of(otg->phy, struct isp1301, phy);
 
-	if (isp != the_transceiver)
+	if (!otg || isp != the_transceiver)
 		return -ENODEV;
 
 	if (!gadget) {
@@ -1395,7 +1394,6 @@ isp1301_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 #endif
 }
 
-
 /*-------------------------------------------------------------------------*/
 
 static int
@@ -1414,7 +1412,8 @@ isp1301_start_srp(struct usb_otg *otg)
 	struct isp1301	*isp = container_of(otg->phy, struct isp1301, phy);
 	u32		otg_ctrl;
 
-	if (isp != the_transceiver || isp->phy.state != OTG_STATE_B_IDLE)
+	if (!otg || isp != the_transceiver
+			|| isp->phy.state != OTG_STATE_B_IDLE)
 		return -ENODEV;
 
 	otg_ctrl = omap_readl(OTG_CTRL);
@@ -1441,7 +1440,7 @@ isp1301_start_hnp(struct usb_otg *otg)
 	struct isp1301	*isp = container_of(otg->phy, struct isp1301, phy);
 	u32 l;
 
-	if (isp != the_transceiver)
+	if (!otg || isp != the_transceiver)
 		return -ENODEV;
 	if (otg->default_a && (otg->host == NULL || !otg->host->b_hnp_enable))
 		return -ENOTCONN;
@@ -1648,4 +1647,3 @@ static void __exit isp_exit(void)
 	i2c_del_driver(&isp1301_driver);
 }
 module_exit(isp_exit);
-

@@ -40,9 +40,6 @@
 #define FRAME_R32	32
 #define FRAME_SIZE	40
 
-
-
-
 /*
  * On entry:
  *
@@ -123,7 +120,7 @@ STD_ENTRY(flush_and_install_context)
 	}
 	{
 	 move r8, zero  /* asidcount */
-	 jal _hv_flush_remote
+	 jal hv_flush_remote
 	}
 	bnez r0, 1f
 
@@ -136,7 +133,7 @@ STD_ENTRY(flush_and_install_context)
 	 move r2, r_asid
 	 moveli r3, HV_CTX_DIRECTIO | CTX_PAGE_FLAG
 	}
-	jal _hv_install_context
+	jal hv_install_context
 	bnez r0, 1f
 
 	/* Finally, flush the TLB. */

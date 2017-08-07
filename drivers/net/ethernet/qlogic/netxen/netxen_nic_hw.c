@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -534,10 +536,10 @@ static void netxen_p2_nic_set_multi(struct net_device *netdev)
 {
 	struct netxen_adapter *adapter = netdev_priv(netdev);
 	struct netdev_hw_addr *ha;
-	u8 null_addr[ETH_ALEN];
+	u8 null_addr[6];
 	int i;
 
-	memset(null_addr, 0, ETH_ALEN);
+	memset(null_addr, 0, 6);
 
 	if (netdev->flags & IFF_PROMISC) {
 
@@ -646,7 +648,7 @@ nx_p3_sre_macaddr_change(struct netxen_adapter *adapter, u8 *addr, unsigned op)
 
 	mac_req = (nx_mac_req_t *)&req.words[0];
 	mac_req->op = op;
-	memcpy(mac_req->mac_addr, addr, ETH_ALEN);
+	memcpy(mac_req->mac_addr, addr, 6);
 
 	return netxen_send_cmd_descs(adapter, (struct cmd_desc_type0 *)&req, 1);
 }
@@ -661,7 +663,7 @@ static int nx_p3_nic_add_mac(struct netxen_adapter *adapter,
 	list_for_each(head, del_list) {
 		cur = list_entry(head, nx_mac_list_t, list);
 
-		if (ether_addr_equal(addr, cur->mac_addr)) {
+		if (memcmp(addr, cur->mac_addr, ETH_ALEN) == 0) {
 			list_move_tail(head, &adapter->mac_list);
 			return 0;
 		}
@@ -855,7 +857,6 @@ int netxen_config_bridged_mode(struct netxen_adapter *adapter, int enable)
 	return rv;
 }
 
-
 #define RSS_HASHTYPE_IP_TCP	0x3
 
 int netxen_config_rss(struct netxen_adapter *adapter, int enable)
@@ -869,7 +870,6 @@ int netxen_config_rss(struct netxen_adapter *adapter, int enable)
 		0xae7b30b4d0ca2bcbULL, 0x43a38fb04167253dULL,
 		0x255b0ec26d5a56daULL
 	};
-
 
 	memset(&req, 0, sizeof(nx_nic_req_t));
 	req.qhdr = cpu_to_le64(NX_HOST_REQUEST << 23);
@@ -894,7 +894,6 @@ int netxen_config_rss(struct netxen_adapter *adapter, int enable)
 	req.words[0] = cpu_to_le64(word);
 	for (i = 0; i < ARRAY_SIZE(key); i++)
 		req.words[i+1] = cpu_to_le64(key[i]);
-
 
 	rv = netxen_send_cmd_descs(adapter, (struct cmd_desc_type0 *)&req, 1);
 	if (rv != 0) {
@@ -1126,7 +1125,6 @@ netxen_nic_pci_get_crb_addr_2M(struct netxen_adapter *adapter,
 		ulong off, void __iomem **addr)
 {
 	crb_128M_2M_sub_block_map_t *m;
-
 
 	if ((off >= NETXEN_CRB_MAX) || (off < NETXEN_PCI_CRBSPACE))
 		return -EINVAL;
@@ -2237,7 +2235,6 @@ netxen_md_L2Cache(struct netxen_adapter *adapter,
 	return read_cnt * loop_cnt * sizeof(read_value);
 }
 
-
 /* Handle L1 Cache */
 static u32 netxen_md_L1Cache(struct netxen_adapter *adapter,
 				struct netxen_minidump_entry_cache
@@ -2342,7 +2339,6 @@ netxen_md_rdqueue(struct netxen_adapter *adapter,
 	}
 	return loop_cnt * (read_cnt * sizeof(read_value));
 }
-
 
 /*
 * We catch an error where driver does not read
@@ -2537,7 +2533,6 @@ netxen_collect_minidump(struct netxen_adapter *adapter)
 
 	return ret;
 }
-
 
 void
 netxen_dump_fw(struct netxen_adapter *adapter)

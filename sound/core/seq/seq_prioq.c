@@ -25,7 +25,6 @@
 #include "seq_timer.h"
 #include "seq_prioq.h"
 
-
 /* Implementation is a simple linked list for now...
 
    This priority queue orders the events on timestamp. For events with an
@@ -51,8 +50,6 @@
 
  */
 
-
-
 /* create new prioq (constructor) */
 struct snd_seq_prioq *snd_seq_prioq_new(void)
 {
@@ -60,7 +57,7 @@ struct snd_seq_prioq *snd_seq_prioq_new(void)
 
 	f = kzalloc(sizeof(*f), GFP_KERNEL);
 	if (f == NULL) {
-		pr_debug("ALSA: seq: malloc failed for snd_seq_prioq_new()\n");
+		snd_printd("oops: malloc failed for snd_seq_prioq_new()\n");
 		return NULL;
 	}
 	
@@ -79,7 +76,7 @@ void snd_seq_prioq_delete(struct snd_seq_prioq **fifo)
 	*fifo = NULL;
 
 	if (f == NULL) {
-		pr_debug("ALSA: seq: snd_seq_prioq_delete() called with NULL prioq\n");
+		snd_printd("oops: snd_seq_prioq_delete() called with NULL prioq\n");
 		return;
 	}
 
@@ -94,9 +91,6 @@ void snd_seq_prioq_delete(struct snd_seq_prioq **fifo)
 	
 	kfree(f);
 }
-
-
-
 
 /* compare timestamp between events */
 /* return 1 if a >= b; 0 */
@@ -197,7 +191,7 @@ int snd_seq_prioq_cell_in(struct snd_seq_prioq * f,
 		cur = cur->next;
 		if (! --count) {
 			spin_unlock_irqrestore(&f->lock, flags);
-			pr_err("ALSA: seq: cannot find a pointer.. infinite loop?\n");
+			snd_printk(KERN_ERR "cannot find a pointer.. infinite loop?\n");
 			return -EINVAL;
 		}
 	}
@@ -223,7 +217,7 @@ struct snd_seq_event_cell *snd_seq_prioq_cell_out(struct snd_seq_prioq *f)
 	unsigned long flags;
 
 	if (f == NULL) {
-		pr_debug("ALSA: seq: snd_seq_prioq_cell_in() called with NULL prioq\n");
+		snd_printd("oops: snd_seq_prioq_cell_in() called with NULL prioq\n");
 		return NULL;
 	}
 	spin_lock_irqsave(&f->lock, flags);
@@ -248,23 +242,21 @@ struct snd_seq_event_cell *snd_seq_prioq_cell_out(struct snd_seq_prioq *f)
 int snd_seq_prioq_avail(struct snd_seq_prioq * f)
 {
 	if (f == NULL) {
-		pr_debug("ALSA: seq: snd_seq_prioq_cell_in() called with NULL prioq\n");
+		snd_printd("oops: snd_seq_prioq_cell_in() called with NULL prioq\n");
 		return 0;
 	}
 	return f->cells;
 }
 
-
 /* peek at cell at the head of the prioq */
 struct snd_seq_event_cell *snd_seq_prioq_cell_peek(struct snd_seq_prioq * f)
 {
 	if (f == NULL) {
-		pr_debug("ALSA: seq: snd_seq_prioq_cell_in() called with NULL prioq\n");
+		snd_printd("oops: snd_seq_prioq_cell_in() called with NULL prioq\n");
 		return NULL;
 	}
 	return f->head;
 }
-
 
 static inline int prioq_match(struct snd_seq_event_cell *cell,
 			      int client, int timestamp)
@@ -321,7 +313,7 @@ void snd_seq_prioq_leave(struct snd_seq_prioq * f, int client, int timestamp)
 			freeprev = cell;
 		} else {
 #if 0
-			pr_debug("ALSA: seq: type = %i, source = %i, dest = %i, "
+			printk(KERN_DEBUG "type = %i, source = %i, dest = %i, "
 			       "client = %i\n",
 				cell->event.type,
 				cell->event.source.client,
@@ -449,5 +441,3 @@ void snd_seq_prioq_remove_events(struct snd_seq_prioq * f, int client,
 		freefirst = freenext;
 	}
 }
-
-

@@ -32,6 +32,7 @@
 
 #include <media/v4l2-common.h>
 #include <media/v4l2-ioctl.h>
+#include <media/v4l2-chip-ident.h>
 #include <media/msp3400.h>
 #include <media/tuner.h>
 
@@ -281,7 +282,6 @@ static void vbi_buffer_release(struct videobuf_queue *vq,
 {
 	struct cx231xx_buffer *buf =
 	    container_of(vb, struct cx231xx_buffer, vb);
-
 
 	free_buffer(vq, buf);
 }

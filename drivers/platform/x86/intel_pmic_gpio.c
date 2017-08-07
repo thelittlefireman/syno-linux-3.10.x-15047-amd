@@ -288,7 +288,7 @@ static int platform_pmic_gpio_probe(struct platform_device *pdev)
 	retval = request_irq(pg->irq, pmic_irq_handler, 0, "pmic", pg);
 	if (retval) {
 		pr_warn("Interrupt request failed\n");
-		goto fail_request_irq;
+		goto err;
 	}
 
 	for (i = 0; i < 8; i++) {
@@ -299,10 +299,6 @@ static int platform_pmic_gpio_probe(struct platform_device *pdev)
 		irq_set_chip_data(i + pg->irq_base, pg);
 	}
 	return 0;
-
-fail_request_irq:
-	if (gpiochip_remove(&pg->chip))
-		pr_err("gpiochip_remove failed\n");
 err:
 	iounmap(pg->gpiointr);
 err2:

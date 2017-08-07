@@ -24,7 +24,6 @@
 #include <linux/serial_core.h>
 #include <linux/io.h>
 #include <linux/uaccess.h>
-#include <linux/platform_device.h>
 #include <asm/coldfire.h>
 #include <asm/mcfsim.h>
 #include <asm/mcfuart.h>
@@ -325,9 +324,7 @@ static void mcf_rx_chars(struct mcf_uart *pp)
 		uart_insert_char(port, status, MCFUART_USR_RXOVERRUN, ch, flag);
 	}
 
-	spin_unlock(&port->lock);
 	tty_flip_buffer_push(&port->state->port);
-	spin_lock(&port->lock);
 }
 
 /****************************************************************************/
@@ -647,7 +644,7 @@ static struct uart_driver mcf_driver = {
 
 static int mcf_probe(struct platform_device *pdev)
 {
-	struct mcf_platform_uart *platp = dev_get_platdata(&pdev->dev);
+	struct mcf_platform_uart *platp = pdev->dev.platform_data;
 	struct uart_port *port;
 	int i;
 

@@ -99,6 +99,14 @@
 #include <wl_main.h>
 #include <wl_netdev.h>
 #include <wl_cs.h>
+#include <wl_sysfs.h>
+
+/*******************************************************************************
+ *  global definitions
+ ******************************************************************************/
+#if DBG
+extern dbg_info_t *DbgInfo;
+#endif  /* DBG */
 
 /*******************************************************************************
  *	wl_adapter_attach()
@@ -123,7 +131,10 @@ static int wl_adapter_attach(struct pcmcia_device *link)
 {
 	struct net_device   *dev;
 	struct wl_private   *lp;
-	int ret;
+	/*--------------------------------------------------------------------*/
+
+	DBG_FUNC("wl_adapter_attach");
+	DBG_ENTER(DbgInfo);
 
 	dev = wl_device_alloc();
 	if (dev == NULL) {
@@ -141,40 +152,46 @@ static int wl_adapter_attach(struct pcmcia_device *link)
 	lp = wl_priv(dev);
 	lp->link = link;
 
-	ret = wl_adapter_insert(link);
-	if (ret != 0)
-		wl_device_dealloc(dev);
+	wl_adapter_insert(link);
 
-	return ret;
+	DBG_LEAVE(DbgInfo);
+	return 0;
 } /* wl_adapter_attach */
 /*============================================================================*/
-
-
 
 static void wl_adapter_detach(struct pcmcia_device *link)
 {
 	struct net_device   *dev = link->priv;
+	/*--------------------------------------------------------------------*/
 
+	DBG_FUNC("wl_adapter_detach");
+	DBG_ENTER(DbgInfo);
 	DBG_PARAM(DbgInfo, "link", "0x%p", link);
 
 	wl_adapter_release(link);
 
 	if (dev) {
+		unregister_wlags_sysfs(dev);
 		unregister_netdev(dev);
 		wl_device_dealloc(dev);
 	}
+
+	DBG_LEAVE(DbgInfo);
 } /* wl_adapter_detach */
 /*============================================================================*/
 
-
 void wl_adapter_release(struct pcmcia_device *link)
 {
+	DBG_FUNC("wl_adapter_release");
+	DBG_ENTER(DbgInfo);
 	DBG_PARAM(DbgInfo, "link", "0x%p", link);
 
 	/* Stop hardware */
 	wl_remove(link->priv);
 
 	pcmcia_disable_device(link);
+
+	DBG_LEAVE(DbgInfo);
 } /* wl_adapter_release */
 /*============================================================================*/
 
@@ -202,11 +219,14 @@ static int wl_adapter_resume(struct pcmcia_device *link)
 	return 0;
 } /* wl_adapter_resume */
 
-int wl_adapter_insert(struct pcmcia_device *link)
+void wl_adapter_insert(struct pcmcia_device *link)
 {
 	struct net_device *dev;
 	int ret;
+	/*--------------------------------------------------------------------*/
 
+	DBG_FUNC("wl_adapter_insert");
+	DBG_ENTER(DbgInfo);
 	DBG_PARAM(DbgInfo, "link", "0x%p", link);
 
 	dev     = link->priv;
@@ -231,23 +251,26 @@ int wl_adapter_insert(struct pcmcia_device *link)
 	dev->base_addr  = link->resource[0]->start;
 
 	SET_NETDEV_DEV(dev, &link->dev);
-	ret = register_netdev(dev);
-	if (ret != 0) {
-		printk("%s: register_netdev() failed\n", KBUILD_MODNAME);
+	if (register_netdev(dev) != 0) {
+		printk("%s: register_netdev() failed\n", MODULE_NAME);
 		goto failed;
 	}
+
+	register_wlags_sysfs(dev);
 
 	printk(KERN_INFO "%s: Wireless, io_addr %#03lx, irq %d, mac_address"
 		" %pM\n", dev->name, dev->base_addr, dev->irq, dev->dev_addr);
 
-	return 0;
+	DBG_LEAVE(DbgInfo);
+	return;
 
 failed:
 	wl_adapter_release(link);
-	return ret;
+
+	DBG_LEAVE(DbgInfo);
+	return;
 } /* wl_adapter_insert */
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wl_adapter_open()
@@ -274,12 +297,17 @@ int wl_adapter_open(struct net_device *dev)
 	struct pcmcia_device *link = lp->link;
 	int result = 0;
 	int hcf_status = HCF_SUCCESS;
+	/*--------------------------------------------------------------------*/
 
+	DBG_FUNC("wl_adapter_open");
+	DBG_ENTER(DbgInfo);
 	DBG_PRINT("%s\n", VERSION_INFO);
 	DBG_PARAM(DbgInfo, "dev", "%s (0x%p)", dev->name, dev);
 
-	if (!pcmcia_dev_present(link))
+	if (!pcmcia_dev_present(link)) {
+		DBG_LEAVE(DbgInfo);
 		return -ENODEV;
+	}
 
 	link->open++;
 
@@ -290,10 +318,10 @@ int wl_adapter_open(struct net_device *dev)
 		result = -ENODEV;
 	}
 
+	DBG_LEAVE(DbgInfo);
 	return result;
 } /* wl_adapter_open */
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wl_adapter_close()
@@ -318,17 +346,23 @@ int wl_adapter_close(struct net_device *dev)
 {
 	struct wl_private *lp = wl_priv(dev);
 	struct pcmcia_device *link = lp->link;
+	/*--------------------------------------------------------------------*/
 
+	DBG_FUNC("wl_adapter_close");
+	DBG_ENTER(DbgInfo);
 	DBG_PARAM(DbgInfo, "dev", "%s (0x%p)", dev->name, dev);
 
-	if (link == NULL)
+	if (link == NULL) {
+		DBG_LEAVE(DbgInfo);
 		return -ENODEV;
+	}
 
 	DBG_TRACE(DbgInfo, "%s: Shutting down adapter.\n", dev->name);
 	wl_close(dev);
 
 	link->open--;
 
+	DBG_LEAVE(DbgInfo);
 	return 0;
 } /* wl_adapter_close */
 /*============================================================================*/
@@ -357,8 +391,6 @@ static struct pcmcia_driver wlags49_driver = {
 	.resume	    = wl_adapter_resume,
 };
 
-
-
 /*******************************************************************************
  *	wl_adapter_init_module()
  *******************************************************************************
@@ -379,10 +411,19 @@ static struct pcmcia_driver wlags49_driver = {
  ******************************************************************************/
 int wl_adapter_init_module(void)
 {
-	return pcmcia_register_driver(&wlags49_driver);
+	int ret;
+	/*--------------------------------------------------------------------*/
+
+	DBG_FUNC("wl_adapter_init_module");
+	DBG_ENTER(DbgInfo);
+	DBG_TRACE(DbgInfo, "wl_adapter_init_module() -- PCMCIA\n");
+
+	ret = pcmcia_register_driver(&wlags49_driver);
+
+	DBG_LEAVE(DbgInfo);
+	return ret;
 } /* wl_adapter_init_module */
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wl_adapter_cleanup_module()
@@ -403,10 +444,16 @@ int wl_adapter_init_module(void)
  ******************************************************************************/
 void wl_adapter_cleanup_module(void)
 {
+	DBG_FUNC("wl_adapter_cleanup_module");
+	DBG_ENTER(DbgInfo);
+	DBG_TRACE(DbgInfo, "wl_adapter_cleanup_module() -- PCMCIA\n");
+
 	pcmcia_unregister_driver(&wlags49_driver);
+
+	DBG_LEAVE(DbgInfo);
+	return;
 } /* wl_adapter_cleanup_module */
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wl_adapter_is_open()

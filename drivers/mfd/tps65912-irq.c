@@ -15,6 +15,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/bug.h>
 #include <linux/device.h>
 #include <linux/interrupt.h>
@@ -44,7 +45,6 @@ static irqreturn_t tps65912_irq(int irq, void *irq_data)
 	u32 irq_mask;
 	u8 reg;
 	int i;
-
 
 	tps65912->read(tps65912, TPS65912_INT_STS, 1, &reg);
 	irq_sts = reg;

@@ -330,7 +330,6 @@ static inline int tkey_mismatch(t_key a, int offset, t_key b)
   The bits from (n->pos) to (n->pos + n->bits - 1) - "C" - are the index into
   n's child array, and will of course be different for each child.
 
-
   The rest of the bits, from (n->pos + n->bits) onward, are completely unknown
   at this point.
 
@@ -664,7 +663,6 @@ static struct rt_trie_node *resize(struct trie *t, struct tnode *tn)
 		}
 	}
 
-
 	/* Only one child remains */
 	if (tn->empty_children == tnode_child_length(tn) - 1) {
 one_child:
@@ -684,7 +682,6 @@ one_child:
 	}
 	return (struct rt_trie_node *) tn;
 }
-
 
 static void tnode_clean_free(struct tnode *tn)
 {
@@ -762,9 +759,12 @@ static struct tnode *inflate(struct trie *t, struct tnode *tn)
 
 		if (IS_LEAF(node) || ((struct tnode *) node)->pos >
 		   tn->pos + tn->bits - 1) {
-			put_child(tn,
-				tkey_extract_bits(node->key, oldtnode->pos, oldtnode->bits + 1),
-				node);
+			if (tkey_extract_bits(node->key,
+					      oldtnode->pos + oldtnode->bits,
+					      1) == 0)
+				put_child(tn, 2*i, node);
+			else
+				put_child(tn, 2*i+1, node);
 			continue;
 		}
 
@@ -1117,8 +1117,12 @@ static struct list_head *fib_insert_node(struct trie *t, u32 key, int plen)
 		 *  first tnode need some special handling
 		 */
 
+		if (tp)
+			pos = tp->pos+tp->bits;
+		else
+			pos = 0;
+
 		if (n) {
-			pos = tp ? tp->pos+tp->bits : 0;
 			newpos = tkey_mismatch(key, pos, n->key);
 			tn = tnode_new(n->key, newpos, 1);
 		} else {
@@ -1802,7 +1806,6 @@ static struct leaf *trie_leafindex(struct trie *t, int index)
 	return l;
 }
 
-
 /*
  * Caller must hold RTNL.
  */
@@ -1955,7 +1958,6 @@ void __init fib_trie_init(void)
 					       sizeof(struct leaf_info)),
 					   0, SLAB_PANIC, NULL);
 }
-
 
 struct fib_table *fib_trie_table(u32 id)
 {
@@ -2123,7 +2125,7 @@ static void trie_show_stats(struct seq_file *seq, struct trie_stat *stat)
 		max--;
 
 	pointers = 0;
-	for (i = 1; i < max; i++)
+	for (i = 1; i <= max; i++)
 		if (stat->nodesizes[i] != 0) {
 			seq_printf(seq, "  %u: %u",  i, stat->nodesizes[i]);
 			pointers += (1<<i) * stat->nodesizes[i];
@@ -2162,7 +2164,6 @@ static void fib_table_print(struct seq_file *seq, struct fib_table *tb)
 	else
 		seq_printf(seq, "Id %d:\n", tb->tb_id);
 }
-
 
 static int fib_triestat_seq_show(struct seq_file *seq, void *v)
 {
@@ -2523,17 +2524,16 @@ static int fib_route_seq_show(struct seq_file *seq, void *v)
 		list_for_each_entry_rcu(fa, &li->falh, fa_list) {
 			const struct fib_info *fi = fa->fa_info;
 			unsigned int flags = fib_flag_trans(fa->fa_type, mask, fi);
+			int len;
 
 			if (fa->fa_type == RTN_BROADCAST
 			    || fa->fa_type == RTN_MULTICAST)
 				continue;
 
-			seq_setwidth(seq, 127);
-
 			if (fi)
 				seq_printf(seq,
 					 "%s\t%08X\t%08X\t%04X\t%d\t%u\t"
-					 "%d\t%08X\t%d\t%u\t%u",
+					 "%d\t%08X\t%d\t%u\t%u%n",
 					 fi->fib_dev ? fi->fib_dev->name : "*",
 					 prefix,
 					 fi->fib_nh->nh_gw, flags, 0, 0,
@@ -2542,15 +2542,15 @@ static int fib_route_seq_show(struct seq_file *seq, void *v)
 					 (fi->fib_advmss ?
 					  fi->fib_advmss + 40 : 0),
 					 fi->fib_window,
-					 fi->fib_rtt >> 3);
+					 fi->fib_rtt >> 3, &len);
 			else
 				seq_printf(seq,
 					 "*\t%08X\t%08X\t%04X\t%d\t%u\t"
-					 "%d\t%08X\t%d\t%u\t%u",
+					 "%d\t%08X\t%d\t%u\t%u%n",
 					 prefix, 0, flags, 0, 0, 0,
-					 mask, 0, 0, 0);
+					 mask, 0, 0, 0, &len);
 
-			seq_pad(seq, '\n');
+			seq_printf(seq, "%*s\n", 127 - len, "");
 		}
 	}
 

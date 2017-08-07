@@ -14,13 +14,13 @@
 
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kref.h>
 #include <linux/uaccess.h>
 #include <linux/usb.h>
 #include <linux/mutex.h>
-
 
 /* Define these values to match your devices */
 #define USB_SKEL_VENDOR_ID	0xfff0
@@ -32,7 +32,6 @@ static const struct usb_device_id skel_table[] = {
 	{ }					/* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, skel_table);
-
 
 /* Get a minor range for your devices from the usb maintainer */
 #define USB_SKEL_MINOR_BASE	192
@@ -324,8 +323,9 @@ retry:
 		rv = skel_do_read_io(dev, count);
 		if (rv < 0)
 			goto exit;
-		else
+		else if (!(file->f_flags & O_NONBLOCK))
 			goto retry;
+		rv = -EAGAIN;
 	}
 exit:
 	mutex_unlock(&dev->io_mutex);
@@ -450,7 +450,6 @@ static ssize_t skel_write(struct file *file, const char *user_buffer,
 	 * it entirely
 	 */
 	usb_free_urb(urb);
-
 
 	return writesize;
 

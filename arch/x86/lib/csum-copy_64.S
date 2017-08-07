@@ -45,7 +45,6 @@
 	_ASM_EXTABLE(30b, \L)
 	.endm
 
-
 ENTRY(csum_partial_copy_generic)
 	CFI_STARTPROC
 	cmpl	$3*64, %edx

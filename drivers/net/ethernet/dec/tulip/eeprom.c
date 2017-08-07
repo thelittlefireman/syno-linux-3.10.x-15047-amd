@@ -13,9 +13,8 @@
 #include <linux/pci.h>
 #include <linux/slab.h>
 #include "tulip.h"
+#include <linux/init.h>
 #include <asm/unaligned.h>
-
-
 
 /* Serial EEPROM section. */
 /* The main routine to parse the very complicated SROM structure.
@@ -77,7 +76,6 @@ static struct eeprom_fixup eeprom_fixups[] = {
   }},
   {NULL}};
 
-
 static const char *const block_name[] = {
 	"21140 non-MII",
 	"21140 MII PHY",
@@ -86,7 +84,6 @@ static const char *const block_name[] = {
 	"21143 SYM PHY",
 	"21143 reset method"
 };
-
 
 /**
  * tulip_build_fake_mediatable - Build a fake mediatable entry.
@@ -379,4 +376,3 @@ int tulip_read_eeprom(struct net_device *dev, int location, int addr_len)
 	iowrite32(EE_ENB & ~EE_CS, ee_addr);
 	return (tp->flags & HAS_SWAPPED_SEEPROM) ? swab16(retval) : retval;
 }
-

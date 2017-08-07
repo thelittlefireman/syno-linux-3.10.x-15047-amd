@@ -31,7 +31,6 @@
 #include <linux/mtd/map.h>
 #include <linux/mtd/partitions.h>
 
-
 /* We split the flash chip up into four parts.
  * 1: bootloader first 128k			(0x00000000 - 0x0001FFFF) size 0x020000
  * 2: kernel 640k					(0x00020000 - 0x000BFFFF) size 0x0A0000
@@ -54,14 +53,13 @@
 #define FLASH_PARTITION3_ADDR 0x00240000
 #define FLASH_PARTITION3_SIZE 0x001C0000
 
-
-static struct map_info flagadm_map = {
+struct map_info flagadm_map = {
 		.name =		"FlagaDM flash device",
 		.size =		FLASH_SIZE,
 		.bankwidth =	2,
 };
 
-static struct mtd_partition flagadm_parts[] = {
+struct mtd_partition flagadm_parts[] = {
 	{
 		.name =		"Bootloader",
 		.offset	=	FLASH_PARTITION0_ADDR,
@@ -112,7 +110,7 @@ static int __init init_flagadm(void)
 		return 0;
 	}
 
-	iounmap((void __iomem *)flagadm_map.virt);
+	iounmap((void *)flagadm_map.virt);
 	return -ENXIO;
 }
 
@@ -123,14 +121,13 @@ static void __exit cleanup_flagadm(void)
 		map_destroy(mymtd);
 	}
 	if (flagadm_map.virt) {
-		iounmap((void __iomem *)flagadm_map.virt);
-		flagadm_map.virt = NULL;
+		iounmap((void *)flagadm_map.virt);
+		flagadm_map.virt = 0;
 	}
 }
 
 module_init(init_flagadm);
 module_exit(cleanup_flagadm);
-
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Kári Davíðsson <kd@flaga.is>");

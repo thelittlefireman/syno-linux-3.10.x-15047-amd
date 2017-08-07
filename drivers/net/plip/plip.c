@@ -297,7 +297,6 @@ plip_init_netdev(struct net_device *dev)
 	dev->netdev_ops		 = &plip_netdev_ops;
 	dev->header_ops          = &plip_header_ops;
 
-
 	nl->port_owner = 0;
 
 	/* Initialize constants */
@@ -547,9 +546,9 @@ static __be16 plip_type_trans(struct sk_buff *skb, struct net_device *dev)
 	skb_pull(skb,dev->hard_header_len);
 	eth = eth_hdr(skb);
 
-	if(is_multicast_ether_addr(eth->h_dest))
+	if(*eth->h_dest&1)
 	{
-		if(ether_addr_equal_64bits(eth->h_dest, dev->broadcast))
+		if(memcmp(eth->h_dest,dev->broadcast, ETH_ALEN)==0)
 			skb->pkt_type=PACKET_BROADCAST;
 		else
 			skb->pkt_type=PACKET_MULTICAST;
@@ -1002,7 +1001,7 @@ plip_rewrite_address(const struct net_device *dev, struct ethhdr *eth)
 		/* Any address will do - we take the first */
 		const struct in_ifaddr *ifa = in_dev->ifa_list;
 		if (ifa) {
-			memcpy(eth->h_source, dev->dev_addr, ETH_ALEN);
+			memcpy(eth->h_source, dev->dev_addr, 6);
 			memset(eth->h_dest, 0xfc, 2);
 			memcpy(eth->h_dest+2, &ifa->ifa_address, 4);
 		}

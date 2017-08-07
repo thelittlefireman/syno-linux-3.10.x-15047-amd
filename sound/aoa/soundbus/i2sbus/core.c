@@ -11,8 +11,6 @@
 #include <linux/pci.h>
 #include <linux/interrupt.h>
 #include <linux/dma-mapping.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 
 #include <sound/core.h>
 
@@ -109,7 +107,6 @@ static irqreturn_t i2sbus_bus_intr(int irq, void *devid)
 
 	return IRQ_HANDLED;
 }
-
 
 /*
  * XXX FIXME: We test the layout_id's here to get the proper way of
@@ -248,7 +245,6 @@ static int i2sbus_add_dev(struct macio_dev *macio,
 			goto err;
 		dev->interrupts[i] = irq;
 	}
-
 
 	/* Resource handling is problematic as some device-trees contain
 	 * useless crap (ugh ugh ugh). We work around that here by calling

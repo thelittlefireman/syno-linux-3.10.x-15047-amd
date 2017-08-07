@@ -48,7 +48,6 @@
 
 #include "lcs.h"
 
-
 #if !defined(CONFIG_ETHERNET) && !defined(CONFIG_FDDI)
 #error Cannot compile lcs.c without some net devices switched on.
 #endif
@@ -535,7 +534,6 @@ lcs_clear_channel(struct lcs_channel *channel)
 	return rc;
 }
 
-
 /**
  * Stop channel.
  */
@@ -772,7 +770,6 @@ lcs_get_lancmd(struct lcs_card *card, int count)
 	return buffer;
 }
 
-
 static void
 lcs_get_reply(struct lcs_reply *reply)
 {
@@ -899,7 +896,6 @@ lcs_send_lancmd(struct lcs_card *card, struct lcs_buffer *buffer,
 	add_timer(&timer);
 	wait_event(reply->wait_q, reply->received);
 	del_timer_sync(&timer);
-	destroy_timer_on_stack(&timer);
 	LCS_DBF_TEXT_(4, trace, "rc:%d",reply->rc);
 	rc = reply->rc;
 	lcs_put_reply(reply);
@@ -2442,7 +2438,7 @@ __init lcs_init_module(void)
 	if (rc)
 		goto out_err;
 	lcs_root_dev = root_device_register("lcs");
-	rc = PTR_RET(lcs_root_dev);
+	rc = IS_ERR(lcs_root_dev) ? PTR_ERR(lcs_root_dev) : 0;
 	if (rc)
 		goto register_err;
 	rc = ccw_driver_register(&lcs_ccw_driver);
@@ -2465,7 +2461,6 @@ out_err:
 	return rc;
 }
 
-
 /**
  *  LCS module cleanup function
  */
@@ -2485,4 +2480,3 @@ module_exit(lcs_cleanup_module);
 
 MODULE_AUTHOR("Frank Pavlic <fpavlic@de.ibm.com>");
 MODULE_LICENSE("GPL");
-

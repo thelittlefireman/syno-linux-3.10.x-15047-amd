@@ -225,7 +225,6 @@ do {							\
 #define pmd_clear(xp)	do { set_pmd(xp, __pmd(0)); } while (0)
 #define	pmd_bad(x)	0
 
-
 #define pages_to_mb(x) ((x) >> (20 - PAGE_SHIFT))
 
 #ifndef __ASSEMBLY__
@@ -485,6 +484,9 @@ extern void update_mmu_cache(struct vm_area_struct *vma,
 #endif /* !__ASSEMBLY__ */
 
 #define kern_addr_valid(addr)	(1)
+
+#define io_remap_pfn_range(vma, vaddr, pfn, size, prot) \
+	remap_pfn_range((vma), (vaddr), (pfn), (size), (prot))
 
 #define MK_IOSPACE_PFN(space, pfn)	(pfn)
 #define GET_IOSPACE(pfn)		0

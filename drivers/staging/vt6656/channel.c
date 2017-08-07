@@ -403,7 +403,7 @@ exit:
 
 void CHvInitChannelTable(struct vnt_private *pDevice)
 {
-	bool bMultiBand = false;
+	int bMultiBand = false;
 	int ii;
 
     for (ii = 1; ii <= CB_MAX_CHANNEL; ii++)
@@ -423,7 +423,8 @@ void CHvInitChannelTable(struct vnt_private *pDevice)
             break;
     }
 
-    if (pDevice->b11hEable == true) {
+    if ((pDevice->dwDiagRefCount != 0) ||
+        (pDevice->b11hEable == true)) {
         if (bMultiBand == true) {
 		for (ii = 0; ii < CB_MAX_CHANNEL; ii++) {
 			sChannelTbl[ii+1].bValid = true;

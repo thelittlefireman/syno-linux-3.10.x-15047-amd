@@ -336,7 +336,6 @@ int exofs_sbi_write_stats(struct exofs_sb_info *sbi)
 	sbi->s_ess.s_numfiles = cpu_to_le64(sbi->s_numfiles);
 	attrs[0].val_ptr = &sbi->s_ess;
 
-
 	ios->done = stats_done;
 	ios->private = sbi;
 	ios->out_attr = attrs;
@@ -543,7 +542,7 @@ static int exofs_devs_2_odi(struct exofs_dt_device_info *dt_dev,
 	return !(odi->systemid_len || odi->osdname_len);
 }
 
-static int __alloc_dev_table(struct exofs_sb_info *sbi, unsigned numdevs,
+int __alloc_dev_table(struct exofs_sb_info *sbi, unsigned numdevs,
 		      struct exofs_dev **peds)
 {
 	struct __alloc_ore_devs_and_exofs_devs {

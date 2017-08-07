@@ -2590,7 +2590,7 @@ struct saa7134_board saa7134_boards[] = {
 		}},
 	},
 	[SAA7134_BOARD_AVERMEDIA_AVERTVHD_A180] = {
-		/* Michael Krufky <mkrufky@linuxtv.org>
+		/* Michael Krufky <mkrufky@m1k.net>
 		 * Uses Alps Electric TDHU2, containing NXT2004 ATSC Decoder
 		 * AFAIK, there is no analog demod, thus,
 		 * no support for analog television.
@@ -7125,7 +7125,6 @@ MODULE_DEVICE_TABLE(pci, saa7134_pci_tbl);
 
 /* ----------------------------------------------------------- */
 /* flyvideo tweaks                                             */
-
 
 static void board_flyvideo(struct saa7134_dev *dev)
 {

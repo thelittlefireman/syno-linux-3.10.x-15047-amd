@@ -20,6 +20,7 @@
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/acpi.h>
 
 #define ALI1563_MAX_TIMEOUT	500
@@ -45,7 +46,6 @@
 #define HST_STS_DONE	0x80
 #define HST_STS_BAD	0x1c
 
-
 #define HST_CNTL1_TIMEOUT	0x80
 #define HST_CNTL1_LAST		0x40
 
@@ -56,7 +56,6 @@
 #define HST_CNTL2_BYTE_DATA	0x02
 #define HST_CNTL2_WORD_DATA	0x03
 #define HST_CNTL2_BLOCK		0x05
-
 
 #define HST_CNTL2_SIZEMASK	0x38
 
@@ -324,7 +323,6 @@ static u32 ali1563_func(struct i2c_adapter * a)
 	    I2C_FUNC_SMBUS_BLOCK_DATA;
 }
 
-
 static int ali1563_setup(struct pci_dev *dev)
 {
 	u16 ctrl;
@@ -416,7 +414,7 @@ static void ali1563_remove(struct pci_dev *dev)
 	ali1563_shutdown(dev);
 }
 
-static const struct pci_device_id ali1563_id_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(ali1563_id_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AL, PCI_DEVICE_ID_AL_M1563) },
 	{},
 };

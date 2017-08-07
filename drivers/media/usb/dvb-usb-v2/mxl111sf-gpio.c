@@ -1,7 +1,7 @@
 /*
  *  mxl111sf-gpio.c - driver for the MaxLinear MXL111SF
  *
- *  Copyright (C) 2010-2014 Michael Krufky <mkrufky@linuxtv.org>
+ *  Copyright (C) 2010 Michael Krufky <mkrufky@kernellabs.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@
 
 #define MXL_GPIO_DIR_INPUT  0
 #define MXL_GPIO_DIR_OUTPUT 1
-
 
 static int mxl111sf_set_gpo_state(struct mxl111sf_state *state, u8 pin, u8 val)
 {

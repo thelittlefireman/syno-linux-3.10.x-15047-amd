@@ -32,6 +32,7 @@
  */
 
 /* #define DEBUG */
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
@@ -112,7 +113,7 @@ static void sep_do_callback(struct work_struct *work)
  *	on what operation is to be done
  */
 static int sep_submit_work(struct workqueue_struct *work_queue,
-	void (*funct)(void *),
+	void(*funct)(void *),
 	void *data)
 {
 	struct sep_work_struct *sep_work;
@@ -771,8 +772,6 @@ static void sep_make_header(struct this_task_ctx *ta_ctx, u32 *msg_offset,
 	*msg_offset += sizeof(u32);
 }
 
-
-
 /**
  *	sep_read_msg -
  *	@ta_ctx: pointer to struct this_task_ctx
@@ -1133,7 +1132,7 @@ static int sep_crypto_block_data(struct ablkcipher_request *req)
 
 	if (int_error < 0) {
 		dev_warn(&ta_ctx->sep_used->pdev->dev, "oddball page error\n");
-		return int_error;
+		return -ENOMEM;
 	} else if (int_error == 1) {
 		ta_ctx->src_sg = new_sg;
 		ta_ctx->src_sg_hold = new_sg;
@@ -1148,7 +1147,7 @@ static int sep_crypto_block_data(struct ablkcipher_request *req)
 	if (int_error < 0) {
 		dev_warn(&ta_ctx->sep_used->pdev->dev, "walk phys error %x\n",
 			int_error);
-		return int_error;
+		return -ENOMEM;
 	} else if (int_error == 1) {
 		ta_ctx->dst_sg = new_sg;
 		ta_ctx->dst_sg_hold = new_sg;
@@ -1297,7 +1296,6 @@ static int sep_crypto_block_data(struct ablkcipher_request *req)
 	return 0;
 }
 
-
 /**
  * This function sets things up for a crypto key submit process
  * This does all preparation, but does not try to grab the
@@ -1417,7 +1415,6 @@ static int sep_crypto_send_key(struct ablkcipher_request *req)
 	/* Parent (caller) is now ready to tell the sep to do ahead */
 	return 0;
 }
-
 
 /* This needs to be run as a work queue as it can be put asleep */
 static void sep_crypto_block(void *data)
@@ -2506,7 +2503,6 @@ static void sep_dequeuer(void *data)
 	struct crypto_ahash *hash_tfm;
 	struct this_task_ctx *ta_ctx;
 
-
 	this_queue = (struct crypto_queue *)data;
 
 	spin_lock_irq(&queue_lock);
@@ -2574,7 +2570,6 @@ static void sep_dequeuer(void *data)
 			pr_debug("sep crypto queue null hash_tfm\n");
 			return;
 		}
-
 
 		sctx = crypto_ahash_ctx(hash_tfm);
 		if (!sctx) {
@@ -3926,7 +3921,6 @@ int sep_crypto_setup(void)
 err_algs:
 	for (k = 0; k < i; k++)
 		crypto_unregister_ahash(&hash_algs[k]);
-	destroy_workqueue(sep_dev->workqueue);
 	return err;
 
 err_crypto_algs:
@@ -3945,7 +3939,6 @@ void sep_crypto_takedown(void)
 	for (i = 0; i < ARRAY_SIZE(crypto_algs); i++)
 		crypto_unregister_alg(&crypto_algs[i]);
 
-	destroy_workqueue(sep_dev->workqueue);
 	tasklet_kill(&sep_dev->finish_tasklet);
 }
 

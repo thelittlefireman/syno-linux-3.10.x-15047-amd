@@ -64,7 +64,6 @@ static void all_notes_off(struct snd_midi_op *ops, void *private,
 static void snd_midi_reset_controllers(struct snd_midi_channel *chan);
 static void reset_all_channels(struct snd_midi_channel_set *chset);
 
-
 /*
  * Process an event in a driver independent way.  This means dealing
  * with RPN, NRPN, SysEx etc that are defined for common midi applications
@@ -89,7 +88,7 @@ snd_midi_process_event(struct snd_midi_op *ops,
 	int dest_channel = 0;
 
 	if (ev == NULL || chanset == NULL) {
-		pr_debug("ALSA: seq_midi_emul: ev or chanbase NULL (snd_midi_process_event)\n");
+		snd_printd("ev or chanbase NULL (snd_midi_process_event)\n");
 		return;
 	}
 	if (chanset->channels == NULL)
@@ -98,7 +97,7 @@ snd_midi_process_event(struct snd_midi_op *ops,
 	if (snd_seq_ev_is_channel_type(ev)) {
 		dest_channel = ev->data.note.channel;
 		if (dest_channel >= chanset->max_channels) {
-			pr_debug("ALSA: seq_midi_emul: dest channel is %d, max is %d\n",
+			snd_printd("dest channel is %d, max is %d\n",
 				   dest_channel, chanset->max_channels);
 			return;
 		}
@@ -232,11 +231,10 @@ snd_midi_process_event(struct snd_midi_op *ops,
 	case SNDRV_SEQ_EVENT_ECHO:
 	not_yet:
 	default:
-		/*pr_debug("ALSA: seq_midi_emul: Unimplemented event %d\n", ev->type);*/
+		/*snd_printd("Unimplemented event %d\n", ev->type);*/
 		break;
 	}
 }
-
 
 /*
  * release note
@@ -375,7 +373,6 @@ do_control(struct snd_midi_op *ops, void *drv, struct snd_midi_channel_set *chse
 	}
 }
 
-
 /*
  * initialize the MIDI status
  */
@@ -459,7 +456,6 @@ nrpn(struct snd_midi_op *ops, void *drv, struct snd_midi_channel *chan,
 		ops->nrpn(drv, chan, chset);
 }
 
-
 /*
  * convert channel parameter in GS sysex
  */
@@ -473,7 +469,6 @@ get_channel(unsigned char cmd)
 		p--;
 	return p;
 }
-
 
 /*
  * Process a sysex message.
@@ -682,7 +677,6 @@ reset_all_channels(struct snd_midi_channel_set *chset)
 	}
 }
 
-
 /*
  * Allocate and initialise a midi channel set.
  */
@@ -709,7 +703,6 @@ static void snd_midi_reset_controllers(struct snd_midi_channel *chan)
 	chan->gm_expression = 127;
 	chan->gm_pan = 64;
 }
-
 
 /*
  * Free a midi channel set.

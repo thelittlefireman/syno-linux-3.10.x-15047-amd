@@ -68,7 +68,6 @@ static DEFINE_PCI_DEVICE_TABLE(snd_vx222_ids) = {
 
 MODULE_DEVICE_TABLE(pci, snd_vx222_ids);
 
-
 /*
  */
 
@@ -111,7 +110,6 @@ static struct snd_vx_hardware vx222_mic_hw = {
 	.output_level_db_scale = db_scale_akm,
 };
 
-
 /*
  */
 static int snd_vx222_free(struct vx_core *chip)
@@ -132,7 +130,6 @@ static int snd_vx222_dev_free(struct snd_device *device)
 	struct vx_core *chip = device->device_data;
 	return snd_vx222_free(chip);
 }
-
 
 static int snd_vx222_create(struct snd_card *card, struct pci_dev *pci,
 			    struct snd_vx_hardware *hw,
@@ -170,7 +167,7 @@ static int snd_vx222_create(struct snd_card *card, struct pci_dev *pci,
 
 	if (request_irq(pci->irq, snd_vx_irq_handler, IRQF_SHARED,
 			KBUILD_MODNAME, chip)) {
-		dev_err(card->dev, "unable to grab IRQ %d\n", pci->irq);
+		snd_printk(KERN_ERR "unable to grab IRQ %d\n", pci->irq);
 		snd_vx222_free(chip);
 		return -EBUSY;
 	}
@@ -181,10 +178,11 @@ static int snd_vx222_create(struct snd_card *card, struct pci_dev *pci,
 		return err;
 	}
 
+	snd_card_set_dev(card, &pci->dev);
+
 	*rchip = vx;
 	return 0;
 }
-
 
 static int snd_vx222_probe(struct pci_dev *pci,
 			   const struct pci_device_id *pci_id)
@@ -202,8 +200,7 @@ static int snd_vx222_probe(struct pci_dev *pci,
 		return -ENOENT;
 	}
 
-	err = snd_card_new(&pci->dev, index[dev], id[dev], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0)
 		return err;
 
@@ -228,7 +225,7 @@ static int snd_vx222_probe(struct pci_dev *pci,
 
 	sprintf(card->longname, "%s at 0x%lx & 0x%lx, irq %i",
 		card->shortname, vx->port[0], vx->port[1], vx->core.irq);
-	dev_dbg(card->dev, "%s at 0x%lx & 0x%lx, irq %i\n",
+	snd_printdd("%s at 0x%lx & 0x%lx, irq %i\n",
 		    card->shortname, vx->port[0], vx->port[1], vx->core.irq);
 
 #ifdef SND_VX_FW_LOADER
@@ -253,6 +250,7 @@ static int snd_vx222_probe(struct pci_dev *pci,
 static void snd_vx222_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
+	pci_set_drvdata(pci, NULL);
 }
 
 #ifdef CONFIG_PM_SLEEP
@@ -279,7 +277,8 @@ static int snd_vx222_resume(struct device *dev)
 	pci_set_power_state(pci, PCI_D0);
 	pci_restore_state(pci);
 	if (pci_enable_device(pci) < 0) {
-		dev_err(dev, "pci_enable_device failed, disabling device\n");
+		printk(KERN_ERR "vx222: pci_enable_device failed, "
+		       "disabling device\n");
 		snd_card_disconnect(card);
 		return -EIO;
 	}

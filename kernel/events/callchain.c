@@ -23,7 +23,6 @@ static atomic_t nr_callchain_events;
 static DEFINE_MUTEX(callchain_mutex);
 static struct callchain_cpus_entries *callchain_cpus_entries;
 
-
 __weak void perf_callchain_kernel(struct perf_callchain_entry *entry,
 				  struct pt_regs *regs)
 {
@@ -116,9 +115,6 @@ int get_callchain_buffers(void)
 
 	err = alloc_callchain_buffers();
 exit:
-	if (err)
-		atomic_dec(&nr_callchain_events);
-
 	mutex_unlock(&callchain_mutex);
 
 	return err;

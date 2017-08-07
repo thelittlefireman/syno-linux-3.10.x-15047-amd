@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -104,7 +105,6 @@ static struct ata_port_operations marvell_ops = {
 	.cable_detect		= marvell_cable_detect,
 	.prereset		= marvell_pre_reset,
 };
-
 
 /**
  *	marvell_init_one - Register Marvell ATA PCI device with kernel services

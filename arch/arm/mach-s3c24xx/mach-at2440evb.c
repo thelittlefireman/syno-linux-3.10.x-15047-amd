@@ -21,7 +21,6 @@
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/dm9000.h>
 #include <linux/platform_device.h>
 
@@ -34,9 +33,9 @@
 #include <asm/irq.h>
 #include <asm/mach-types.h>
 
+#include <plat/regs-serial.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-lcd.h>
-#include <mach/gpio-samsung.h>
 #include <linux/platform_data/mtd-nand-s3c2410.h>
 #include <linux/platform_data/i2c-s3c2410.h>
 
@@ -206,7 +205,6 @@ static void __init at2440evb_init(void)
 
 	platform_add_devices(at2440evb_devices, ARRAY_SIZE(at2440evb_devices));
 }
-
 
 MACHINE_START(AT2440EVB, "AT2440EVB")
 	.atag_offset	= 0x100,

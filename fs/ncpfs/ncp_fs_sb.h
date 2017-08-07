@@ -38,14 +38,16 @@ struct ncp_mount_data_kernel {
 };
 
 struct ncp_server {
-	struct rcu_head rcu;
+
 	struct ncp_mount_data_kernel m;	/* Nearly all of the mount data is of
 					   interest for us later, so we store
 					   it completely. */
 
 	__u8 name_space[NCP_NUMBER_OF_VOLUMES + 2];
 
+	struct file *ncp_filp;	/* File pointer to ncp socket */
 	struct socket *ncp_sock;/* ncp socket */
+	struct file *info_filp;
 	struct socket *info_sock;
 
 	u8 sequence;

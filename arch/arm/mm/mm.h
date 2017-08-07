@@ -38,7 +38,6 @@ static inline pmd_t *pmd_off_k(unsigned long virt)
 
 struct mem_type {
 	pteval_t prot_pte;
-	pteval_t prot_pte_s2;
 	pmdval_t prot_l1;
 	pmdval_t prot_sect;
 	unsigned int domain;
@@ -68,7 +67,6 @@ extern void __flush_dcache_page(struct address_space *mapping, struct page *page
 /* consistent regions used by dma_alloc_attrs() */
 #define VM_ARM_DMA_CONSISTENT	0x20000000
 
-
 struct static_vm {
 	struct vm_struct vm;
 	struct list_head list;
@@ -82,10 +80,8 @@ extern __init void add_static_vm_early(struct static_vm *svm);
 
 #ifdef CONFIG_ZONE_DMA
 extern phys_addr_t arm_dma_limit;
-extern unsigned long arm_dma_pfn_limit;
 #else
 #define arm_dma_limit ((phys_addr_t)~0)
-#define arm_dma_pfn_limit (~0ul >> PAGE_SHIFT)
 #endif
 
 extern phys_addr_t arm_lowmem_limit;

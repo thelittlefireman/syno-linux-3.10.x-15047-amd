@@ -931,7 +931,6 @@
 #define M98090_MIXSPR_DACR_SHIFT	1
 #define M98090_MIXSPR_DACR_WIDTH	1
 
-
 /*
  * M98090_REG_RIGHT_SPK_MIXER
  */
@@ -1523,6 +1522,7 @@ struct max98090_priv {
 	struct regmap *regmap;
 	struct snd_soc_codec *codec;
 	enum max98090_type devtype;
+	void *control_data;
 	struct max98090_pdata *pdata;
 	unsigned int sysclk;
 	unsigned int bclk;

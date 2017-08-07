@@ -251,7 +251,7 @@ void rtl92se_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 			u8 e_aci = *val;
 			rtl92s_dm_init_edca_turbo(hw);
 
-			if (rtlpci->acm_method != EACMWAY2_SW)
+			if (rtlpci->acm_method != eAcmWay2_SW)
 				rtlpriv->cfg->ops->set_hw_reg(hw,
 						 HW_VAR_ACM_CTRL,
 						 &e_aci);
@@ -413,18 +413,20 @@ void rtl92se_set_hw_reg(struct ieee80211_hw *hw, u8 variable, u8 *val)
 					(u8 *)(&fw_current_inps));
 			rtlpriv->cfg->ops->set_hw_reg(hw,
 					HW_VAR_H2C_FW_PWRMODE,
-					&ppsc->fwctrl_psmode);
+					(u8 *)(&ppsc->fwctrl_psmode));
 
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_SET_RPWM,
-						      &rpwm_val);
+			rtlpriv->cfg->ops->set_hw_reg(hw,
+					HW_VAR_SET_RPWM,
+					(u8 *)(&rpwm_val));
 		} else {
 			rpwm_val = 0x0C;	/* RF on */
 			fw_pwrmode = FW_PS_ACTIVE_MODE;
 			fw_current_inps = false;
 			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_SET_RPWM,
-						      &rpwm_val);
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_H2C_FW_PWRMODE,
-						      &fw_pwrmode);
+					(u8 *)(&rpwm_val));
+			rtlpriv->cfg->ops->set_hw_reg(hw,
+					HW_VAR_H2C_FW_PWRMODE,
+					(u8 *)(&fw_pwrmode));
 
 			rtlpriv->cfg->ops->set_hw_reg(hw,
 					HW_VAR_FW_PSMODE_STATUS,
@@ -1148,12 +1150,11 @@ void rtl92se_set_mac_addr(struct rtl_io *io, const u8 *addr)
 void rtl92se_set_check_bssid(struct ieee80211_hw *hw, bool check_bssid)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
-	u32 reg_rcr;
+	struct rtl_pci *rtlpci = rtl_pcidev(rtl_pcipriv(hw));
+	u32 reg_rcr = rtlpci->receive_config;
 
 	if (rtlpriv->psc.rfpwr_state != ERFON)
 		return;
-
-	rtlpriv->cfg->ops->get_hw_reg(hw, HW_VAR_RCR, (u8 *)(&reg_rcr));
 
 	if (check_bssid) {
 		reg_rcr |= (RCR_CBSSID);
@@ -1207,7 +1208,6 @@ static int _rtl92se_set_media_status(struct ieee80211_hw *hw,
 	temp = rtl_read_dword(rtlpriv, TCR);
 	rtl_write_dword(rtlpriv, TCR, temp & (~BIT(8)));
 	rtl_write_dword(rtlpriv, TCR, temp | BIT(8));
-
 
 	return 0;
 }
@@ -1412,7 +1412,6 @@ static void _rtl92se_gen_refreshledstate(struct ieee80211_hw *hw)
 		rtl92se_sw_led_off(hw, pLed0);
 }
 
-
 static void _rtl92se_power_domain_init(struct ieee80211_hw *hw)
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
@@ -1482,7 +1481,6 @@ static void _rtl92se_power_domain_init(struct ieee80211_hw *hw)
 	/* Set Digital Vdd to Retention isolation Path. */
 	tmpu2b = rtl_read_word(rtlpriv, REG_SYS_ISO_CTRL);
 	rtl_write_word(rtlpriv, REG_SYS_ISO_CTRL, (tmpu2b | BIT(11)));
-
 
 	/* For warm reboot NIC disappera bug. */
 	tmpu2b = rtl_read_word(rtlpriv, REG_SYS_FUNC_EN);

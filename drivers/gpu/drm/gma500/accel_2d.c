@@ -132,7 +132,6 @@ static int psbfb_2d_submit(struct drm_psb_private *dev_priv, uint32_t *cmdbuf,
 	return ret;
 }
 
-
 /**
  *	psb_accel_2d_copy_direction	-	compute blit order
  *	@xdir: X direction of move
@@ -326,7 +325,7 @@ int psbfb_sync(struct fb_info *info)
 	struct psb_framebuffer *psbfb = &fbdev->pfb;
 	struct drm_device *dev = psbfb->base.dev;
 	struct drm_psb_private *dev_priv = dev->dev_private;
-	unsigned long _end = jiffies + HZ;
+	unsigned long _end = jiffies + DRM_HZ;
 	int busy = 0;
 	unsigned long flags;
 

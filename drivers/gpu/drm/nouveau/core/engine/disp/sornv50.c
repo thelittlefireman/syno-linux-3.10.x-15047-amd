@@ -56,7 +56,6 @@ nv50_sor_mthd(struct nouveau_object *object, u32 mthd, void *args, u32 size)
 		return -EINVAL;
 	data = *(u32 *)args;
 
-
 	switch (mthd & ~0x3f) {
 	case NV50_DISP_SOR_PWR:
 		ret = priv->sor.power(priv, or, data);

@@ -71,22 +71,20 @@ struct drm_gem_object *nouveau_gem_prime_import_sg_table(struct drm_device *dev,
 		return ERR_PTR(ret);
 
 	nvbo->valid_domains = NOUVEAU_GEM_DOMAIN_GART;
-
-	/* Initialize the embedded gem-object. We return a single gem-reference
-	 * to the caller, instead of a normal nouveau_bo ttm reference. */
-	ret = drm_gem_object_init(dev, &nvbo->gem, nvbo->bo.mem.size);
-	if (ret) {
+	nvbo->gem = drm_gem_object_alloc(dev, nvbo->bo.mem.size);
+	if (!nvbo->gem) {
 		nouveau_bo_ref(NULL, &nvbo);
 		return ERR_PTR(-ENOMEM);
 	}
 
-	return &nvbo->gem;
+	nvbo->gem->driver_private = nvbo;
+	return nvbo->gem;
 }
 
 int nouveau_gem_prime_pin(struct drm_gem_object *obj)
 {
 	struct nouveau_bo *nvbo = nouveau_gem_object(obj);
-	int ret;
+	int ret = 0;
 
 	/* pin buffer into GTT */
 	ret = nouveau_bo_pin(nvbo, TTM_PL_FLAG_TT);
@@ -94,11 +92,4 @@ int nouveau_gem_prime_pin(struct drm_gem_object *obj)
 		return -EINVAL;
 
 	return 0;
-}
-
-void nouveau_gem_prime_unpin(struct drm_gem_object *obj)
-{
-	struct nouveau_bo *nvbo = nouveau_gem_object(obj);
-
-	nouveau_bo_unpin(nvbo);
 }

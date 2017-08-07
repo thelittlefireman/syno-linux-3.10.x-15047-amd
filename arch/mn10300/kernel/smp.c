@@ -143,7 +143,7 @@ static struct irqaction call_function_ipi = {
 static irqreturn_t smp_ipi_timer_interrupt(int irq, void *dev_id);
 static struct irqaction local_timer_ipi = {
 	.handler	= smp_ipi_timer_interrupt,
-	.flags		= IRQF_NOBALANCING,
+	.flags		= IRQF_DISABLED | IRQF_NOBALANCING,
 	.name		= "smp local timer IPI"
 };
 #endif
@@ -272,7 +272,6 @@ static void mn10300_ipi_chip_disable(struct irq_data *d)
 {
 	mn10300_ipi_disable(d->irq);
 }
-
 
 /**
  * mn10300_ipi_ack - Acknowledge an IPI interrupt in the PIC

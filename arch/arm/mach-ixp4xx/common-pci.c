@@ -35,7 +35,6 @@
 #include <asm/mach/pci.h>
 #include <mach/hardware.h>
 
-
 /*
  * IXP4xx PCI read function is dependent on whether we are 
  * running A0 or B0 (AppleGate) silicon.
@@ -315,6 +314,32 @@ static int abort_handler(unsigned long addr, unsigned int fsr, struct pt_regs *r
 	return 0;
 }
 
+static int ixp4xx_needs_bounce(struct device *dev, dma_addr_t dma_addr, size_t size)
+{
+	return (dma_addr + size) >= SZ_64M;
+}
+
+/*
+ * Setup DMA mask to 64MB on PCI devices. Ignore all other devices.
+ */
+static int ixp4xx_pci_platform_notify(struct device *dev)
+{
+	if(dev->bus == &pci_bus_type) {
+		*dev->dma_mask =  SZ_64M - 1;
+		dev->coherent_dma_mask = SZ_64M - 1;
+		dmabounce_register_dev(dev, 2048, 4096, ixp4xx_needs_bounce);
+	}
+	return 0;
+}
+
+static int ixp4xx_pci_platform_notify_remove(struct device *dev)
+{
+	if(dev->bus == &pci_bus_type) {
+		dmabounce_unregister_dev(dev);
+	}
+	return 0;
+}
+
 void __init ixp4xx_pci_preinit(void)
 {
 	unsigned long cpuid = read_cpuid_id();
@@ -334,7 +359,6 @@ void __init ixp4xx_pci_preinit(void)
 		ixp4xx_pci_read = ixp4xx_pci_read_errata;
 	} else
 		ixp4xx_pci_read = ixp4xx_pci_read_no_errata;
-
 
 	/* hook in our fault handler for PCI errors */
 	hook_fault_code(16+6, abort_handler, SIGBUS, 0,
@@ -448,8 +472,20 @@ int ixp4xx_setup(int nr, struct pci_sys_data *sys)
 	pci_add_resource_offset(&sys->resources, &res[0], sys->io_offset);
 	pci_add_resource_offset(&sys->resources, &res[1], sys->mem_offset);
 
+	platform_notify = ixp4xx_pci_platform_notify;
+	platform_notify_remove = ixp4xx_pci_platform_notify_remove;
+
 	return 1;
+}
+
+int dma_set_coherent_mask(struct device *dev, u64 mask)
+{
+	if (mask >= SZ_64M - 1)
+		return 0;
+
+	return -EIO;
 }
 
 EXPORT_SYMBOL(ixp4xx_pci_read);
 EXPORT_SYMBOL(ixp4xx_pci_write);
+EXPORT_SYMBOL(dma_set_coherent_mask);

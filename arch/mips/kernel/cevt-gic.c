@@ -18,7 +18,6 @@
 DEFINE_PER_CPU(struct clock_event_device, gic_clockevent_device);
 int gic_timer_irq_installed;
 
-
 static int gic_next_event(unsigned long delta, struct clock_event_device *evt)
 {
 	u64 cnt;
@@ -54,12 +53,11 @@ struct irqaction gic_compare_irqaction = {
 	.name = "timer",
 };
 
-
 void gic_event_handler(struct clock_event_device *dev)
 {
 }
 
-int gic_clockevent_init(void)
+int __cpuinit gic_clockevent_init(void)
 {
 	unsigned int cpu = smp_processor_id();
 	struct clock_event_device *cd;

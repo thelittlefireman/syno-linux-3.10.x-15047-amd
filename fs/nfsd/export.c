@@ -289,7 +289,6 @@ svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
 		return NULL;
 }
 
-
 #define	EXPORT_HASHBITS		8
 #define	EXPORT_HASHMAX		(1<< EXPORT_HASHBITS)
 
@@ -580,25 +579,16 @@ static int svc_export_parse(struct cache_detail *cd, char *mesg, int mlen)
 		if (err)
 			goto out4;
 		/*
-		 * No point caching this if it would immediately expire.
-		 * Also, this protects exportfs's dummy export from the
-		 * anon_uid/anon_gid checks:
-		 */
-		if (exp.h.expiry_time < seconds_since_boot())
-			goto out4;
-		/*
 		 * For some reason exportfs has been passing down an
 		 * invalid (-1) uid & gid on the "dummy" export which it
 		 * uses to test export support.  To make sure exportfs
 		 * sees errors from check_export we therefore need to
 		 * delay these checks till after check_export:
 		 */
-		err = -EINVAL;
 		if (!uid_valid(exp.ex_anon_uid))
 			goto out4;
 		if (!gid_valid(exp.ex_anon_gid))
 			goto out4;
-		err = 0;
 	}
 
 	expp = svc_export_lookup(&exp);
@@ -769,7 +759,6 @@ svc_export_update(struct svc_export *new, struct svc_export *old)
 		return NULL;
 }
 
-
 static struct svc_expkey *
 exp_find_key(struct cache_detail *cd, svc_client *clp, int fsid_type,
 	     u32 *fsidv, struct cache_req *reqp)
@@ -792,7 +781,6 @@ exp_find_key(struct cache_detail *cd, svc_client *clp, int fsid_type,
 		return ERR_PTR(err);
 	return ek;
 }
-
 
 static svc_export *exp_get_by_name(struct cache_detail *cd, svc_client *clp,
 				   const struct path *path, struct cache_req *reqp)
@@ -835,8 +823,6 @@ static struct svc_export *exp_parent(struct cache_detail *cd, svc_client *clp,
 	path->dentry = saved;
 	return exp;
 }
-
-
 
 /*
  * Obtain the root fh on behalf of a client.
@@ -1063,7 +1049,6 @@ static void *e_start(struct seq_file *m, loff_t *pos)
 	hash = n >> 32;
 	export = n & ((1LL<<32) - 1);
 
-	
 	for (ch=export_table[hash]; ch; ch=ch->next)
 		if (!export--)
 			return ch;

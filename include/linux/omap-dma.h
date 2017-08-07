@@ -268,27 +268,14 @@ struct omap_dma_dev_attr {
 	u32 dev_caps;
 	u16 lch_count;
 	u16 chan_count;
-};
-
-enum {
-	OMAP_DMA_REG_NONE,
-	OMAP_DMA_REG_16BIT,
-	OMAP_DMA_REG_2X16BIT,
-	OMAP_DMA_REG_32BIT,
-};
-
-struct omap_dma_reg {
-	u16	offset;
-	u8	stride;
-	u8	type;
+	struct omap_dma_lch *chan;
 };
 
 /* System DMA platform data structure */
 struct omap_system_dma_plat_info {
-	const struct omap_dma_reg *reg_map;
-	unsigned channel_stride;
 	struct omap_dma_dev_attr *dma_attr;
 	u32 errata;
+	void (*disable_irq_lch)(int lch);
 	void (*show_dma_caps)(void);
 	void (*clear_lch_regs)(int lch);
 	void (*clear_dma)(int lch);
@@ -302,12 +289,8 @@ struct omap_system_dma_plat_info {
 #define dma_omap2plus()	0
 #endif
 #define dma_omap1()	(!dma_omap2plus())
-#define __dma_omap15xx(d) (dma_omap1() && (d)->dev_caps & ENABLE_1510_MODE)
-#define __dma_omap16xx(d) (dma_omap1() && (d)->dev_caps & ENABLE_16XX_MODE)
-#define dma_omap15xx()	__dma_omap15xx(d)
-#define dma_omap16xx()	__dma_omap16xx(d)
-
-extern struct omap_system_dma_plat_info *omap_get_plat_info(void);
+#define dma_omap15xx()	((dma_omap1() && (d->dev_caps & ENABLE_1510_MODE)))
+#define dma_omap16xx()	((dma_omap1() && (d->dev_caps & ENABLE_16XX_MODE)))
 
 extern void omap_set_dma_priority(int lch, int dst_port, int priority);
 extern int omap_request_dma(int dev_id, const char *dev_name,

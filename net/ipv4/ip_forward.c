@@ -42,12 +42,12 @@
 static bool ip_may_fragment(const struct sk_buff *skb)
 {
 	return unlikely((ip_hdr(skb)->frag_off & htons(IP_DF)) == 0) ||
-	       !skb->local_df;
+		skb->local_df;
 }
 
 static bool ip_exceeds_mtu(const struct sk_buff *skb, unsigned int mtu)
 {
-	if (skb->len <= mtu || skb->local_df)
+	if (skb->len <= mtu)
 		return false;
 
 	if (skb_is_gso(skb) && skb_gso_network_seglen(skb) <= mtu)
@@ -63,7 +63,7 @@ static bool ip_gso_exceeds_dst_mtu(const struct sk_buff *skb)
 	if (skb->local_df || !skb_is_gso(skb))
 		return false;
 
-	mtu = ip_dst_mtu_maybe_forward(skb_dst(skb), true);
+	mtu = dst_mtu(skb_dst(skb));
 
 	/* if seglen > mtu, do software segmentation for IP fragmentation on
 	 * output.  DF bit cannot be set since ip_forward would have sent
@@ -122,13 +122,11 @@ static int ip_forward_finish(struct sk_buff *skb)
 
 int ip_forward(struct sk_buff *skb)
 {
-	u32 mtu;
 	struct iphdr *iph;	/* Our header */
 	struct rtable *rt;	/* Route we use */
 	struct ip_options *opt	= &(IPCB(skb)->opt);
 
-	/* that should never happen */
-	if (skb->pkt_type != PACKET_HOST)
+	if (unlikely(skb->sk))
 		goto drop;
 
 	if (skb_warn_if_lro(skb))
@@ -139,6 +137,9 @@ int ip_forward(struct sk_buff *skb)
 
 	if (IPCB(skb)->opt.router_alert && ip_call_ra_chain(skb))
 		return NET_RX_SUCCESS;
+
+	if (skb->pkt_type != PACKET_HOST)
+		goto drop;
 
 	skb_forward_csum(skb);
 
@@ -158,12 +159,10 @@ int ip_forward(struct sk_buff *skb)
 	if (opt->is_strictroute && rt->rt_uses_gateway)
 		goto sr_failed;
 
-	IPCB(skb)->flags |= IPSKB_FORWARDED;
-	mtu = ip_dst_mtu_maybe_forward(&rt->dst, true);
-	if (!ip_may_fragment(skb) && ip_exceeds_mtu(skb, mtu)) {
+	if (!ip_may_fragment(skb) && ip_exceeds_mtu(skb, dst_mtu(&rt->dst))) {
 		IP_INC_STATS(dev_net(rt->dst.dev), IPSTATS_MIB_FRAGFAILS);
 		icmp_send(skb, ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED,
-			  htonl(mtu));
+			  htonl(dst_mtu(&rt->dst)));
 		goto drop;
 	}
 
@@ -179,7 +178,8 @@ int ip_forward(struct sk_buff *skb)
 	 *	We now generate an ICMP HOST REDIRECT giving the route
 	 *	we calculated.
 	 */
-	if (rt->rt_flags&RTCF_DOREDIRECT && !opt->srr && !skb_sec_path(skb))
+	if (IPCB(skb)->flags & IPSKB_DOREDIRECT && !opt->srr &&
+	    !skb_sec_path(skb))
 		ip_rt_send_redirect(skb);
 
 	skb->priority = rt_tos2priority(iph->tos);

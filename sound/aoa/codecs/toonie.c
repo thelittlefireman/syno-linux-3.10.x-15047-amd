@@ -19,7 +19,6 @@ MODULE_DESCRIPTION("toonie codec driver for snd-aoa");
 #include "../aoa.h"
 #include "../soundbus/soundbus.h"
 
-
 #define PFX "snd-aoa-codec-toonie: "
 
 struct toonie {
@@ -92,7 +91,7 @@ static int toonie_init_codec(struct aoa_codec *codec)
 	if (toonie->codec.connected != 1)
 		return -ENOTCONN;
 
-	if (aoa_snd_device_new(SNDRV_DEV_CODEC, toonie, &ops)) {
+	if (aoa_snd_device_new(SNDRV_DEV_LOWLEVEL, toonie, &ops)) {
 		printk(KERN_ERR PFX "failed to create toonie snd device!\n");
 		return -ENODEV;
 	}

@@ -16,7 +16,6 @@
 #include <linux/rtc.h>
 #include <linux/slab.h>
 #include <linux/module.h>
-#include <linux/err.h>
 
 #define DRV_VERSION "0.1"
 
@@ -40,7 +39,6 @@
 
 #define ISL12022_INT_WRTC	(1 << 6)
 
-
 static struct i2c_driver isl12022_driver;
 
 struct isl12022 {
@@ -48,7 +46,6 @@ struct isl12022 {
 
 	bool write_enabled;	/* true if write enable is set */
 };
-
 
 static int isl12022_read_regs(struct i2c_client *client, uint8_t reg,
 			      uint8_t *data, size_t n)
@@ -81,7 +78,6 @@ static int isl12022_read_regs(struct i2c_client *client, uint8_t reg,
 	return 0;
 }
 
-
 static int isl12022_write_reg(struct i2c_client *client,
 			      uint8_t reg, uint8_t val)
 {
@@ -98,7 +94,6 @@ static int isl12022_write_reg(struct i2c_client *client,
 
 	return 0;
 }
-
 
 /*
  * In the routines that deal directly with the isl12022 hardware, we use
@@ -268,7 +263,15 @@ static int isl12022_probe(struct i2c_client *client,
 	isl12022->rtc = devm_rtc_device_register(&client->dev,
 					isl12022_driver.driver.name,
 					&isl12022_rtc_ops, THIS_MODULE);
-	return PTR_ERR_OR_ZERO(isl12022->rtc);
+	if (IS_ERR(isl12022->rtc))
+		return PTR_ERR(isl12022->rtc);
+
+	return 0;
+}
+
+static int isl12022_remove(struct i2c_client *client)
+{
+	return 0;
 }
 
 static const struct i2c_device_id isl12022_id[] = {
@@ -282,6 +285,7 @@ static struct i2c_driver isl12022_driver = {
 		.name	= "rtc-isl12022",
 	},
 	.probe		= isl12022_probe,
+	.remove		= isl12022_remove,
 	.id_table	= isl12022_id,
 };
 

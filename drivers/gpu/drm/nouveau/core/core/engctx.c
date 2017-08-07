@@ -216,7 +216,6 @@ _nouveau_engctx_init(struct nouveau_object *object)
 	return nouveau_engctx_init(nv_engctx(object));
 }
 
-
 int
 _nouveau_engctx_fini(struct nouveau_object *object, bool suspend)
 {

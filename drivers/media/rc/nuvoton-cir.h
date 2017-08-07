@@ -34,7 +34,6 @@
 /* debugging module parameter */
 static int debug;
 
-
 #define nvt_pr(level, text, ...) \
 	printk(level KBUILD_MODNAME ": " text, ## __VA_ARGS__)
 
@@ -52,7 +51,6 @@ static int debug;
 	if (debug > 2) \
 		printk(KERN_DEBUG \
 			KBUILD_MODNAME ": " text "\n" , ## __VA_ARGS__)
-
 
 /*
  * Original lirc driver said min value of 76, and recommended value of 256
@@ -84,8 +82,8 @@ struct nvt_dev {
 	} tx;
 
 	/* EFER Config register index/data pair */
-	u32 cr_efir;
-	u32 cr_efdr;
+	u8 cr_efir;
+	u8 cr_efdr;
 
 	/* hardware I/O settings */
 	unsigned long cir_addr;
@@ -235,7 +233,6 @@ struct nvt_dev {
 #define CIR_IRFIFOSTS_TX_EMPTY		0x02
 #define CIR_IRFIFOSTS_TX_FULL		0x01
 
-
 /* CIR WAKE UP Regs */
 #define CIR_WAKE_IRCON			0x00
 #define CIR_WAKE_IRSTS			0x01
@@ -363,6 +360,7 @@ struct nvt_dev {
 #define LOGICAL_DEV_ENABLE	0x01
 
 #define CIR_WAKE_ENABLE_BIT	0x08
+#define CIR_INTR_MOUSE_IRQ_BIT	0x80
 #define PME_INTR_CIR_PASS_BIT	0x08
 
 /* w83677hg CIR pin config */

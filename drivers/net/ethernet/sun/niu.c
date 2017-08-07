@@ -998,7 +998,6 @@ static int serdes_init_1g_serdes(struct niu *np)
 			return err;
 	}
 
-
 	sig = nr64(ESR_INT_SIGNALS);
 	switch (np->port) {
 	case 0:
@@ -1320,7 +1319,6 @@ static int bcm8706_init_user_dev3(struct niu *np)
 {
 	int err;
 
-
 	err = mdio_read(np, np->phy_addr, BCM8704_USER_DEV3_ADDR,
 			BCM8704_USER_OPT_DIGITAL_CTRL);
 	if (err < 0)
@@ -1466,7 +1464,6 @@ static int xcvr_init_10g_mrvl88x2011(struct niu *np)
 	return mdio_write(np, np->phy_addr, MRVL88X2011_USER_DEV1_ADDR,
 			  MRVL88X2011_10G_PMD_TX_DIS, MRVL88X2011_ENA_PMDTX);
 }
-
 
 static int xcvr_diag_bcm870x(struct niu *np)
 {
@@ -2447,7 +2444,6 @@ static int serdes_init_10g_serdes(struct niu *np)
 		if (err)
 			return err;
 	}
-
 
 	sig = nr64(ESR_INT_SIGNALS);
 	switch (np->port) {
@@ -3493,12 +3489,10 @@ static int niu_process_rx_pkt(struct napi_struct *napi, struct niu *np,
 
 	rh = (struct rx_pkt_hdr1 *) skb->data;
 	if (np->dev->features & NETIF_F_RXHASH)
-		skb_set_hash(skb,
-			     ((u32)rh->hashval2_0 << 24 |
-			      (u32)rh->hashval2_1 << 16 |
-			      (u32)rh->hashval1_1 << 8 |
-			      (u32)rh->hashval1_2 << 0),
-			     PKT_HASH_TYPE_L3);
+		skb->rxhash = ((u32)rh->hashval2_0 << 24 |
+			       (u32)rh->hashval2_1 << 16 |
+			       (u32)rh->hashval1_1 << 8 |
+			       (u32)rh->hashval1_2 << 0);
 	skb_pull(skb, sizeof(*rh));
 
 	rp->rx_packets++;
@@ -3835,7 +3829,6 @@ static int niu_rx_error(struct niu *np, struct rx_ring_info *rp)
 {
 	u64 stat = nr64(RX_DMA_CTL_STAT(rp->rx_channel));
 	int err = 0;
-
 
 	if (stat & (RX_DMA_CTL_STAT_CHAN_FATAL |
 		    RX_DMA_CTL_STAT_PORT_FATAL))
@@ -5447,7 +5440,6 @@ static int niu_init_pcs(struct niu *np)
 		(void) nr64_xpcs(XPCS_SYMERR_CNT01);
 		(void) nr64_xpcs(XPCS_SYMERR_CNT23);
 		break;
-
 
 	case NIU_FLAGS_XCVR_SERDES:
 		/* 1G SERDES */
@@ -7961,7 +7953,6 @@ static int niu_set_ldg_timer_res(struct niu *np, int res)
 	if (res < 0 || res > LDG_TIMER_RES_VAL)
 		return -EINVAL;
 
-
 	nw64(LDG_TIMER_RES, res);
 
 	return 0;
@@ -9041,7 +9032,7 @@ static void niu_try_msix(struct niu *np, u8 *ldg_num_map)
 	struct msix_entry msi_vec[NIU_NUM_LDG];
 	struct niu_parent *parent = np->parent;
 	struct pci_dev *pdev = np->pdev;
-	int i, num_irqs;
+	int i, num_irqs, err;
 	u8 first_ldg;
 
 	first_ldg = (NIU_NUM_LDG / parent->num_ports) * np->port;
@@ -9053,15 +9044,20 @@ static void niu_try_msix(struct niu *np, u8 *ldg_num_map)
 		    (np->port == 0 ? 3 : 1));
 	BUG_ON(num_irqs > (NIU_NUM_LDG / parent->num_ports));
 
+retry:
 	for (i = 0; i < num_irqs; i++) {
 		msi_vec[i].vector = 0;
 		msi_vec[i].entry = i;
 	}
 
-	num_irqs = pci_enable_msix_range(pdev, msi_vec, 1, num_irqs);
-	if (num_irqs < 0) {
+	err = pci_enable_msix(pdev, msi_vec, num_irqs);
+	if (err < 0) {
 		np->flags &= ~NIU_FLAGS_MSIX;
 		return;
+	}
+	if (err > 0) {
+		num_irqs = err;
+		goto retry;
 	}
 
 	np->flags |= NIU_FLAGS_MSIX;
@@ -9357,7 +9353,7 @@ static ssize_t show_port_phy(struct device *dev,
 			     struct device_attribute *attr, char *buf)
 {
 	struct platform_device *plat_dev = to_platform_device(dev);
-	struct niu_parent *p = dev_get_platdata(&plat_dev->dev);
+	struct niu_parent *p = plat_dev->dev.platform_data;
 	u32 port_phy = p->port_phy;
 	char *orig_buf = buf;
 	int i;
@@ -9387,7 +9383,7 @@ static ssize_t show_plat_type(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
 	struct platform_device *plat_dev = to_platform_device(dev);
-	struct niu_parent *p = dev_get_platdata(&plat_dev->dev);
+	struct niu_parent *p = plat_dev->dev.platform_data;
 	const char *type_str;
 
 	switch (p->plat_type) {
@@ -9416,7 +9412,7 @@ static ssize_t __show_chan_per_port(struct device *dev,
 				    int rx)
 {
 	struct platform_device *plat_dev = to_platform_device(dev);
-	struct niu_parent *p = dev_get_platdata(&plat_dev->dev);
+	struct niu_parent *p = plat_dev->dev.platform_data;
 	char *orig_buf = buf;
 	u8 *arr;
 	int i;
@@ -9449,7 +9445,7 @@ static ssize_t show_num_ports(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
 	struct platform_device *plat_dev = to_platform_device(dev);
-	struct niu_parent *p = dev_get_platdata(&plat_dev->dev);
+	struct niu_parent *p = plat_dev->dev.platform_data;
 
 	return sprintf(buf, "%d\n", p->num_ports);
 }
@@ -9475,7 +9471,7 @@ static struct niu_parent *niu_new_parent(struct niu *np,
 	if (IS_ERR(plat_dev))
 		return NULL;
 
-	for (i = 0; niu_parent_attributes[i].attr.name; i++) {
+	for (i = 0; attr_name(niu_parent_attributes[i]); i++) {
 		int err = device_create_file(&plat_dev->dev,
 					     &niu_parent_attributes[i]);
 		if (err)
@@ -9872,6 +9868,7 @@ err_out_free_res:
 
 err_out_disable_pdev:
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 
 	return err;
 }
@@ -9896,6 +9893,7 @@ static void niu_pci_remove_one(struct pci_dev *pdev)
 		free_netdev(dev);
 		pci_release_regions(pdev);
 		pci_disable_device(pdev);
+		pci_set_drvdata(pdev, NULL);
 	}
 }
 
@@ -10103,7 +10101,7 @@ static int niu_of_probe(struct platform_device *op)
 		goto err_out_iounmap;
 	}
 
-	platform_set_drvdata(op, dev);
+	dev_set_drvdata(&op->dev, dev);
 
 	niu_device_announce(np);
 
@@ -10140,7 +10138,7 @@ err_out:
 
 static int niu_of_remove(struct platform_device *op)
 {
-	struct net_device *dev = platform_get_drvdata(op);
+	struct net_device *dev = dev_get_drvdata(&op->dev);
 
 	if (dev) {
 		struct niu *np = netdev_priv(dev);
@@ -10170,6 +10168,7 @@ static int niu_of_remove(struct platform_device *op)
 		niu_put_parent(np);
 
 		free_netdev(dev);
+		dev_set_drvdata(&op->dev, NULL);
 	}
 	return 0;
 }

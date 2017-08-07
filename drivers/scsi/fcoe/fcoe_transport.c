@@ -180,10 +180,24 @@ void fcoe_ctlr_get_lesb(struct fcoe_ctlr_device *ctlr_dev)
 {
 	struct fcoe_ctlr *fip = fcoe_ctlr_device_priv(ctlr_dev);
 	struct net_device *netdev = fcoe_get_netdev(fip->lp);
-	struct fc_els_lesb *fc_lesb;
+	struct fcoe_fc_els_lesb *fcoe_lesb;
+	struct fc_els_lesb fc_lesb;
 
-	fc_lesb = (struct fc_els_lesb *)(&ctlr_dev->lesb);
-	__fcoe_get_lesb(fip->lp, fc_lesb, netdev);
+	__fcoe_get_lesb(fip->lp, &fc_lesb, netdev);
+	fcoe_lesb = (struct fcoe_fc_els_lesb *)(&fc_lesb);
+
+	ctlr_dev->lesb.lesb_link_fail =
+		ntohl(fcoe_lesb->lesb_link_fail);
+	ctlr_dev->lesb.lesb_vlink_fail =
+		ntohl(fcoe_lesb->lesb_vlink_fail);
+	ctlr_dev->lesb.lesb_miss_fka =
+		ntohl(fcoe_lesb->lesb_miss_fka);
+	ctlr_dev->lesb.lesb_symb_err =
+		ntohl(fcoe_lesb->lesb_symb_err);
+	ctlr_dev->lesb.lesb_err_block =
+		ntohl(fcoe_lesb->lesb_err_block);
+	ctlr_dev->lesb.lesb_fcs_error =
+		ntohl(fcoe_lesb->lesb_fcs_error);
 }
 EXPORT_SYMBOL_GPL(fcoe_ctlr_get_lesb);
 
@@ -320,7 +334,6 @@ int fcoe_start_io(struct sk_buff *skb)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(fcoe_start_io);
-
 
 /**
  * fcoe_clean_pending_queue() - Dequeue a skb and free it
@@ -590,7 +603,6 @@ static int fcoe_transport_exit(void)
 	return 0;
 }
 
-
 static int fcoe_add_netdev_mapping(struct net_device *netdev,
 					struct fcoe_transport *ft)
 {
@@ -611,7 +623,6 @@ static int fcoe_add_netdev_mapping(struct net_device *netdev,
 	return 0;
 }
 
-
 static void fcoe_del_netdev_mapping(struct net_device *netdev)
 {
 	struct fcoe_netdev_mapping *nm = NULL, *tmp;
@@ -627,7 +638,6 @@ static void fcoe_del_netdev_mapping(struct net_device *netdev)
 	}
 	mutex_unlock(&fn_mutex);
 }
-
 
 /**
  * fcoe_netdev_map_lookup - find the fcoe transport that matches the netdev on which
@@ -690,7 +700,7 @@ static struct net_device *fcoe_if_to_netdev(const char *buffer)
 static int libfcoe_device_notification(struct notifier_block *notifier,
 				    ulong event, void *ptr)
 {
-	struct net_device *netdev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *netdev = ptr;
 
 	switch (event) {
 	case NETDEV_UNREGISTER:
@@ -707,6 +717,7 @@ ssize_t fcoe_ctlr_create_store(struct bus_type *bus,
 {
 	struct net_device *netdev = NULL;
 	struct fcoe_transport *ft = NULL;
+	struct fcoe_ctlr_device *ctlr_dev = NULL;
 	int rc = 0;
 	int err;
 
@@ -753,8 +764,9 @@ ssize_t fcoe_ctlr_create_store(struct bus_type *bus,
 		goto out_putdev;
 	}
 
-	LIBFCOE_TRANSPORT_DBG("transport %s succeeded to create fcoe on %s.\n",
-			      ft->name, netdev->name);
+	LIBFCOE_TRANSPORT_DBG("transport %s %s to create fcoe on %s.\n",
+			      ft->name, (ctlr_dev) ? "succeeded" : "failed",
+			      netdev->name);
 
 out_putdev:
 	dev_put(netdev);

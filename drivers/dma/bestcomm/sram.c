@@ -19,18 +19,15 @@
 #include <linux/string.h>
 #include <linux/ioport.h>
 #include <linux/of.h>
-#include <linux/of_address.h>
 
 #include <asm/io.h>
 #include <asm/mmu.h>
 
 #include <linux/fsl/bestcomm/sram.h>
 
-
 /* Struct keeping our 'state' */
 struct bcom_sram *bcom_sram = NULL;
 EXPORT_SYMBOL_GPL(bcom_sram);	/* needed for inline functions */
-
 
 /* ======================================================================== */
 /* Public API                                                               */
@@ -176,4 +173,3 @@ void bcom_sram_free(void *ptr)
 	spin_unlock(&bcom_sram->lock);
 }
 EXPORT_SYMBOL_GPL(bcom_sram_free);
-

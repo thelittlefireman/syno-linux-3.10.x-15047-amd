@@ -35,7 +35,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 /* #define DEBUG 1 */
 
 #define DEFAULT_TIMEOUT     1		/* 1 minute */
@@ -323,7 +322,6 @@ static int pc87413_release(struct inode *inode, struct file *file)
  *      return, if the watchdog is enabled (timeout is set...)
  */
 
-
 static int pc87413_status(void)
 {
 	  return 0; /* currently not supported */
@@ -512,8 +510,9 @@ static int __init pc87413_init(void)
 		return -EBUSY;
 
 	ret = register_reboot_notifier(&pc87413_notifier);
-	if (ret != 0)
+	if (ret != 0) {
 		pr_err("cannot register reboot notifier (err=%d)\n", ret);
+	}
 
 	ret = misc_register(&pc87413_miscdev);
 	if (ret != 0) {
@@ -574,10 +573,12 @@ static void __exit pc87413_exit(void)
 module_init(pc87413_init);
 module_exit(pc87413_exit);
 
-MODULE_AUTHOR("Sven Anders <anders@anduras.de>");
-MODULE_AUTHOR("Marcus Junker <junker@anduras.de>");
+MODULE_AUTHOR("Sven Anders <anders@anduras.de>, "
+		"Marcus Junker <junker@anduras.de>,");
 MODULE_DESCRIPTION("PC87413 WDT driver");
 MODULE_LICENSE("GPL");
+
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 
 module_param(io, int, 0);
 MODULE_PARM_DESC(io, MODNAME " I/O port (default: "
@@ -592,4 +593,3 @@ module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout,
 		"Watchdog cannot be stopped once started (default="
 				__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
-

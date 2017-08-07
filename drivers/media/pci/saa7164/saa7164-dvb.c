@@ -553,4 +553,3 @@ int saa7164_dvb_register(struct saa7164_port *port)
 
 	return 0;
 }
-

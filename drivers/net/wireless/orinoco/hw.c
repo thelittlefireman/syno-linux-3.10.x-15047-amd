@@ -1193,7 +1193,7 @@ int orinoco_hw_get_freq(struct orinoco_private *priv)
 		goto out;
 
 	}
-	freq = ieee80211_channel_to_frequency(channel, IEEE80211_BAND_2GHZ);
+	freq = ieee80211_dsss_chan_to_freq(channel);
 
  out:
 	orinoco_unlock(priv, &flags);

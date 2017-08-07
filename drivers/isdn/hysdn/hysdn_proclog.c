@@ -49,7 +49,6 @@ struct procdata {
 	wait_queue_head_t rd_queue;
 };
 
-
 /**********************************************/
 /* log function for cards error log interface */
 /**********************************************/
@@ -144,7 +143,6 @@ put_log_buffer(hysdn_card *card, char *cp)
 	wake_up_interruptible(&(pd->rd_queue));		/* announce new entry */
 }				/* put_log_buffer */
 
-
 /******************************/
 /* file operations and tables */
 /******************************/
@@ -175,15 +173,14 @@ hysdn_log_read(struct file *file, char __user *buf, size_t count, loff_t *off)
 	int len;
 	hysdn_card *card = PDE_DATA(file_inode(file));
 
-	if (!(inf = *((struct log_data **) file->private_data))) {
+	if (!*((struct log_data **) file->private_data)) {
 		struct procdata *pd = card->proclog;
 		if (file->f_flags & O_NONBLOCK)
 			return (-EAGAIN);
 
-		wait_event_interruptible(pd->rd_queue, (inf =
-				*((struct log_data **) file->private_data)));
+		interruptible_sleep_on(&(pd->rd_queue));
 	}
-	if (!inf)
+	if (!(inf = *((struct log_data **) file->private_data)))
 		return (0);
 
 	inf->usage_cnt--;	/* new usage count */
@@ -314,7 +311,6 @@ static const struct file_operations log_fops =
 	.open           = hysdn_log_open,
 	.release        = hysdn_log_close,
 };
-
 
 /***********************************************************************************/
 /* hysdn_proclog_init is called when the module is loaded after creating the cards */

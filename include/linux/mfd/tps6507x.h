@@ -17,7 +17,6 @@
  * ----------------------------------------------------------------------------
  */
 
-
 /* Register definitions */
 #define	TPS6507X_REG_PPATH1			0X01
 #define	TPS6507X_CHG_USB			BIT(7)
@@ -163,6 +162,7 @@ struct tps6507x_dev {
 
 	/* Client devices */
 	struct tps6507x_pmic *pmic;
+	struct tps6507x_ts *ts;
 };
 
 #endif /*  __LINUX_MFD_TPS6507X_H */

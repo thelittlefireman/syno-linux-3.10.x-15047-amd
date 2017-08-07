@@ -104,7 +104,6 @@ static char *print_speed(int speed)
 	return speedbuffer;
 }
 
-
 static unsigned int calc_speed(int mult)
 {
 	int khz;
@@ -114,7 +113,6 @@ static unsigned int calc_speed(int mult)
 	khz *= 1000;
 	return khz;
 }
-
 
 static int longhaul_get_cpu_mult(void)
 {
@@ -254,7 +252,7 @@ static void longhaul_setstate(struct cpufreq_policy *policy,
 	u32 bm_timeout = 1000;
 	unsigned int dir = 0;
 
-	mults_index = longhaul_table[table_index].driver_data;
+	mults_index = longhaul_table[table_index].index;
 	/* Safety precautions */
 	mult = mults[mults_index & 0x1f];
 	if (mult == -1)
@@ -269,7 +267,7 @@ static void longhaul_setstate(struct cpufreq_policy *policy,
 	freqs.old = calc_speed(longhaul_get_cpu_mult());
 	freqs.new = speed;
 
-	cpufreq_freq_transition_begin(policy, &freqs);
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_PRECHANGE);
 
 	pr_debug("Setting to FSB:%dMHz Mult:%d.%dx (%s)\n",
 			fsb, mult/10, mult%10, print_speed(speed/1000));
@@ -386,7 +384,7 @@ retry_loop:
 		}
 	}
 	/* Report true CPU frequency */
-	cpufreq_freq_transition_end(policy, &freqs, 0);
+	cpufreq_notify_transition(policy, &freqs, CPUFREQ_POSTCHANGE);
 
 	if (!bm_timeout)
 		printk(KERN_INFO PFX "Warning: Timeout while waiting for "
@@ -421,8 +419,7 @@ static int guess_fsb(int mult)
 	return 0;
 }
 
-
-static int longhaul_get_ranges(void)
+static int __cpuinit longhaul_get_ranges(void)
 {
 	unsigned int i, j, k = 0;
 	unsigned int ratio;
@@ -475,7 +472,7 @@ static int longhaul_get_ranges(void)
 		return -EINVAL;
 	}
 
-	longhaul_table = kzalloc((numscales + 1) * sizeof(*longhaul_table),
+	longhaul_table = kmalloc((numscales + 1) * sizeof(*longhaul_table),
 			GFP_KERNEL);
 	if (!longhaul_table)
 		return -ENOMEM;
@@ -487,7 +484,7 @@ static int longhaul_get_ranges(void)
 		if (ratio > maxmult || ratio < minmult)
 			continue;
 		longhaul_table[k].frequency = calc_speed(ratio);
-		longhaul_table[k].driver_data	= j;
+		longhaul_table[k].index	= j;
 		k++;
 	}
 	if (k <= 1) {
@@ -508,8 +505,8 @@ static int longhaul_get_ranges(void)
 		if (min_i != j) {
 			swap(longhaul_table[j].frequency,
 			     longhaul_table[min_i].frequency);
-			swap(longhaul_table[j].driver_data,
-			     longhaul_table[min_i].driver_data);
+			swap(longhaul_table[j].index,
+			     longhaul_table[min_i].index);
 		}
 	}
 
@@ -517,7 +514,7 @@ static int longhaul_get_ranges(void)
 
 	/* Find index we are running on */
 	for (j = 0; j < k; j++) {
-		if (mults[longhaul_table[j].driver_data & 0x1f] == mult) {
+		if (mults[longhaul_table[j].index & 0x1f] == mult) {
 			longhaul_index = j;
 			break;
 		}
@@ -525,8 +522,7 @@ static int longhaul_get_ranges(void)
 	return 0;
 }
 
-
-static void longhaul_setup_voltagescaling(void)
+static void __cpuinit longhaul_setup_voltagescaling(void)
 {
 	union msr_longhaul longhaul;
 	struct mV_pos minvid, maxvid, vid;
@@ -613,7 +609,7 @@ static void longhaul_setup_voltagescaling(void)
 			pos = (speed - min_vid_speed) / kHz_step + minvid.pos;
 		else
 			pos = minvid.pos;
-		longhaul_table[j].driver_data |= mV_vrm_table[pos] << 8;
+		longhaul_table[j].index |= mV_vrm_table[pos] << 8;
 		vid = vrm_mV_table[mV_vrm_table[pos]];
 		printk(KERN_INFO PFX "f: %d kHz, index: %d, vid: %d mV\n",
 				speed, j, vid.mV);
@@ -624,13 +620,26 @@ static void longhaul_setup_voltagescaling(void)
 	printk(KERN_INFO PFX "Voltage scaling enabled.\n");
 }
 
+static int longhaul_verify(struct cpufreq_policy *policy)
+{
+	return cpufreq_frequency_table_verify(policy, longhaul_table);
+}
 
 static int longhaul_target(struct cpufreq_policy *policy,
-			    unsigned int table_index)
+			    unsigned int target_freq, unsigned int relation)
 {
+	unsigned int table_index = 0;
 	unsigned int i;
 	unsigned int dir = 0;
 	u8 vid, current_vid;
+
+	if (cpufreq_frequency_table_target(policy, longhaul_table, target_freq,
+				relation, &table_index))
+		return -EINVAL;
+
+	/* Don't set same frequency again */
+	if (longhaul_index == table_index)
+		return 0;
 
 	if (!can_scale_voltage)
 		longhaul_setstate(policy, table_index);
@@ -641,12 +650,12 @@ static int longhaul_target(struct cpufreq_policy *policy,
 		 * this in hardware, C3 is old and we need to do this
 		 * in software. */
 		i = longhaul_index;
-		current_vid = (longhaul_table[longhaul_index].driver_data >> 8);
+		current_vid = (longhaul_table[longhaul_index].index >> 8);
 		current_vid &= 0x1f;
 		if (table_index > longhaul_index)
 			dir = 1;
 		while (i != table_index) {
-			vid = (longhaul_table[i].driver_data >> 8) & 0x1f;
+			vid = (longhaul_table[i].index >> 8) & 0x1f;
 			if (vid != current_vid) {
 				longhaul_setstate(policy, i);
 				current_vid = vid;
@@ -662,7 +671,6 @@ static int longhaul_target(struct cpufreq_policy *policy,
 	longhaul_index = table_index;
 	return 0;
 }
-
 
 static unsigned int longhaul_get(unsigned int cpu)
 {
@@ -765,7 +773,7 @@ static int longhaul_setup_southbridge(void)
 	return 0;
 }
 
-static int longhaul_cpu_init(struct cpufreq_policy *policy)
+static int __cpuinit longhaul_cpu_init(struct cpufreq_policy *policy)
 {
 	struct cpuinfo_x86 *c = &cpu_data(0);
 	char *cpuname = NULL;
@@ -904,17 +912,37 @@ static int longhaul_cpu_init(struct cpufreq_policy *policy)
 		longhaul_setup_voltagescaling();
 
 	policy->cpuinfo.transition_latency = 200000;	/* nsec */
+	policy->cur = calc_speed(longhaul_get_cpu_mult());
 
-	return cpufreq_table_validate_and_show(policy, longhaul_table);
+	ret = cpufreq_frequency_table_cpuinfo(policy, longhaul_table);
+	if (ret)
+		return ret;
+
+	cpufreq_frequency_table_get_attr(longhaul_table, policy->cpu);
+
+	return 0;
 }
 
+static int longhaul_cpu_exit(struct cpufreq_policy *policy)
+{
+	cpufreq_frequency_table_put_attr(policy->cpu);
+	return 0;
+}
+
+static struct freq_attr *longhaul_attr[] = {
+	&cpufreq_freq_attr_scaling_available_freqs,
+	NULL,
+};
+
 static struct cpufreq_driver longhaul_driver = {
-	.verify	= cpufreq_generic_frequency_table_verify,
-	.target_index = longhaul_target,
+	.verify	= longhaul_verify,
+	.target	= longhaul_target,
 	.get	= longhaul_get,
 	.init	= longhaul_cpu_init,
+	.exit	= longhaul_cpu_exit,
 	.name	= "longhaul",
-	.attr	= cpufreq_generic_attr,
+	.owner	= THIS_MODULE,
+	.attr	= longhaul_attr,
 };
 
 static const struct x86_cpu_id longhaul_id[] = {
@@ -959,7 +987,6 @@ static int __init longhaul_init(void)
 
 	return -ENODEV;
 }
-
 
 static void __exit longhaul_exit(void)
 {

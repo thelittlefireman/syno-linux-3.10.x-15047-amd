@@ -37,12 +37,11 @@ static struct nand_ecclayout nand_oob_sm_small = {
 	}
 };
 
-
 static int sm_block_markbad(struct mtd_info *mtd, loff_t ofs)
 {
 	struct mtd_oob_ops ops;
 	struct sm_oob oob;
-	int ret;
+	int ret, error = 0;
 
 	memset(&oob, -1, SM_OOB_SIZE);
 	oob.block_status = 0x0F;
@@ -55,16 +54,16 @@ static int sm_block_markbad(struct mtd_info *mtd, loff_t ofs)
 	ops.oobbuf = (void *)&oob;
 	ops.datbuf = NULL;
 
-
 	ret = mtd_write_oob(mtd, ofs, &ops);
 	if (ret < 0 || ops.oobretlen != SM_OOB_SIZE) {
 		printk(KERN_NOTICE
 			"sm_common: can't mark sector at %i as bad\n",
 								(int)ofs);
-		return -EIO;
-	}
+		error = -EIO;
+	} else
+		mtd->ecc_stats.badblocks++;
 
-	return 0;
+	return error;
 }
 
 static struct nand_flash_dev nand_smartmedia_flash_ids[] = {

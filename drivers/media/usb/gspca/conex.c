@@ -451,7 +451,6 @@ static const __u8 cx_jpeg_init[][8] = {
 	{0x11, 0x00, 0x3F, 0x00, 0xFF, 0xD9, 0x00, 0x00}	/* 79 */
 };
 
-
 static const __u8 cxjpeg_640[][8] = {
 	{0xff, 0xd8, 0xff, 0xdb, 0x00, 0x84, 0x00, 0x10},	/* 1 */
 	{0x0b, 0x0c, 0x0e, 0x0c, 0x0a, 0x10, 0x0e, 0x0d},
@@ -589,7 +588,6 @@ static const __u8 cxjpeg_qtable[][8] = {
 	{0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32, 0x32},
 	{0xFF, 0xD9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}	/* 18 */
 };
-
 
 static void cx11646_jpegInit(struct gspca_dev*gspca_dev)
 {
@@ -783,8 +781,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 	struct sd *sd = (struct sd *) gspca_dev;
 
 	/* create the JPEG header */
-	jpeg_define(sd->jpeg_hdr, gspca_dev->pixfmt.height,
-			gspca_dev->pixfmt.width,
+	jpeg_define(sd->jpeg_hdr, gspca_dev->height, gspca_dev->width,
 			0x22);		/* JPEG 411 */
 	jpeg_set_qual(sd->jpeg_hdr, QUALITY);
 

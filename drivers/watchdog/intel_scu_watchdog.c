@@ -48,7 +48,7 @@
 #include <linux/atomic.h>
 #include <asm/intel_scu_ipc.h>
 #include <asm/apb_timer.h>
-#include <asm/intel-mid.h>
+#include <asm/mrst.h>
 
 #include "intel_scu_watchdog.h"
 
@@ -211,6 +211,7 @@ static int intel_scu_set_heartbeat(u32 t)
 	int			 ipc_ret;
 	int			 retry_count;
 	u32			 soft_value;
+	u32			 hw_pre_value;
 	u32			 hw_value;
 
 	watchdog_device.timer_set = t;
@@ -272,7 +273,8 @@ static int intel_scu_set_heartbeat(u32 t)
 			watchdog_device.timer_load_count_addr);
 
 		/* read count value before starting timer */
-		ioread32(watchdog_device.timer_load_count_addr);
+		hw_pre_value = ioread32(watchdog_device.timer_load_count_addr);
+		hw_pre_value = hw_pre_value & 0xFFFF0000;
 
 		/* Start the timer */
 		iowrite32(0x00000003, watchdog_device.timer_control_addr);
@@ -280,7 +282,6 @@ static int intel_scu_set_heartbeat(u32 t)
 		/* read the value the time loaded into its count reg */
 		hw_value = ioread32(watchdog_device.timer_load_count_addr);
 		hw_value = hw_value & 0xFFFF0000;
-
 
 	} while (soft_value != hw_value);
 
@@ -368,7 +369,6 @@ static long intel_scu_ioctl(struct file *file,
 	u32 __user *p = argp;
 	u32 new_margin;
 
-
 	static const struct watchdog_info ident = {
 		.options =          WDIOF_SETTIMEOUT
 				    | WDIOF_KEEPALIVEPING,
@@ -443,7 +443,7 @@ static int __init intel_scu_watchdog_init(void)
 	 *
 	 * If it isn't an intel MID device then it doesn't have this watchdog
 	 */
-	if (!intel_mid_identify_cpu())
+	if (!mrst_identify_cpu())
 		return -ENODEV;
 
 	/* Check boot parameters to verify that their initial values */
@@ -500,7 +500,6 @@ static int __init intel_scu_watchdog_init(void)
 	watchdog_device.soft_threshold =
 		(watchdog_device.timer_set - timer_margin)
 		* watchdog_device.timer_tbl_ptr->freq_hz;
-
 
 	watchdog_device.intel_scu_notifier.notifier_call =
 		intel_scu_notify_sys;
@@ -562,4 +561,5 @@ module_exit(intel_scu_watchdog_exit);
 MODULE_AUTHOR("Intel Corporation");
 MODULE_DESCRIPTION("Intel SCU Watchdog Device Driver");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);
 MODULE_VERSION(WDT_VER);

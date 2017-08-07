@@ -6,7 +6,6 @@
  * Copyright (C) 2009, 2010 Cavium Networks, Inc.
  */
 
-
 #include <linux/kernel.h>
 #include <linux/err.h>
 #include <linux/sched.h>

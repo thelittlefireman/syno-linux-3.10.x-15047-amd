@@ -60,7 +60,9 @@
 #define pr_fmt(fmt) KMSG_COMPONENT ": " fmt
 
 #include <linux/kernel.h>
-#include <linux/sfi_acpi.h>
+#include <acpi/acpi.h>
+
+#include <linux/sfi.h>
 #include "sfi_core.h"
 
 /*
@@ -196,7 +198,6 @@ static ssize_t sfi_acpi_table_show(struct file *filp, struct kobject *kobj,
 
 	return cnt;
 }
-
 
 void __init sfi_acpi_sysfs_init(void)
 {

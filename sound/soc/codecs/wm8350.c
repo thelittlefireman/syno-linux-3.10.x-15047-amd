@@ -274,7 +274,7 @@ static int pga_event(struct snd_soc_dapm_widget *w,
 		break;
 
 	default:
-		WARN(1, "Invalid shift %d\n", w->shift);
+		BUG();
 		return -1;
 	}
 
@@ -1155,7 +1155,6 @@ static int wm8350_set_bias_level(struct snd_soc_codec *codec,
 			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1,
 					 pm1);
 
-
 			/* enable analogue bias */
 			pm1 |= WM8350_BIASEN;
 			wm8350_reg_write(wm8350, WM8350_POWER_MGMT_1, pm1);
@@ -1301,8 +1300,7 @@ static irqreturn_t wm8350_hpl_jack_handler(int irq, void *data)
 	if (device_may_wakeup(wm8350->dev))
 		pm_wakeup_event(wm8350->dev, 250);
 
-	queue_delayed_work(system_power_efficient_wq,
-			   &priv->hpl.work, msecs_to_jiffies(200));
+	schedule_delayed_work(&priv->hpl.work, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
 }
@@ -1319,8 +1317,7 @@ static irqreturn_t wm8350_hpr_jack_handler(int irq, void *data)
 	if (device_may_wakeup(wm8350->dev))
 		pm_wakeup_event(wm8350->dev, 250);
 
-	queue_delayed_work(system_power_efficient_wq,
-			   &priv->hpr.work, msecs_to_jiffies(200));
+	schedule_delayed_work(&priv->hpr.work, msecs_to_jiffies(200));
 
 	return IRQ_HANDLED;
 }
@@ -1505,7 +1502,9 @@ static  int wm8350_codec_probe(struct snd_soc_codec *codec)
 	if (ret != 0)
 		return ret;
 
-	snd_soc_codec_set_cache_io(codec, wm8350->regmap);
+	codec->control_data = wm8350->regmap;
+
+	snd_soc_codec_set_cache_io(codec, 8, 16, SND_SOC_REGMAP);
 
 	/* Put the codec into reset if it wasn't already */
 	wm8350_clear_bits(wm8350, WM8350_POWER_MGMT_5, WM8350_CODEC_ENA);
@@ -1569,7 +1568,6 @@ static  int wm8350_codec_probe(struct snd_soc_codec *codec)
 			    wm8350_mic_handler, 0, "Microphone short", priv);
 	wm8350_register_irq(wm8350, WM8350_IRQ_CODEC_MICD,
 			    wm8350_mic_handler, 0, "Microphone detect", priv);
-
 
 	wm8350_set_bias_level(codec, SND_SOC_BIAS_STANDBY);
 

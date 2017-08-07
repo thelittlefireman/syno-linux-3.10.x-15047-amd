@@ -8,7 +8,8 @@
  * the Free Software Foundation version 2.
  */
 
-#include <linux/acpi.h>
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 #include <linux/wait.h>
 #include <linux/slab.h>
 #include <linux/delay.h>

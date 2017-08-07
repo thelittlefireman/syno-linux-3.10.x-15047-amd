@@ -85,8 +85,8 @@ static int ali_configure(void)
 	pci_write_config_dword(agp_bridge->dev, ALI_TLBCTRL, ((temp & 0xffffff00) | 0x00000010));
 
 	/* address to map to */
-	agp_bridge->gart_bus_addr = pci_bus_address(agp_bridge->dev,
-						    AGP_APERTURE_BAR);
+	pci_read_config_dword(agp_bridge->dev, AGP_APBASE, &temp);
+	agp_bridge->gart_bus_addr = (temp & PCI_BASE_ADDRESS_MEM_MASK);
 
 #if 0
 	if (agp_bridge->type == ALI_M1541) {
@@ -121,7 +121,6 @@ static int ali_configure(void)
 
 	return 0;
 }
-
 
 static void m1541_cache_flush(void)
 {
@@ -185,7 +184,6 @@ static void m1541_destroy_page(struct page *page, int flags)
 	agp_generic_destroy_page(page, flags);
 }
 
-
 /* Setup function */
 
 static const struct aper_size_info_32 ali_generic_sizes[7] =
@@ -247,7 +245,6 @@ static const struct agp_bridge_driver ali_m1541_bridge = {
 	.agp_destroy_page	= m1541_destroy_page,
 	.agp_type_to_mask_type  = agp_generic_type_to_mask_type,
 };
-
 
 static struct agp_device_ids ali_agp_device_ids[] =
 {
@@ -319,7 +316,6 @@ static int agp_ali_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	dev_err(&pdev->dev, "unsupported ALi chipset [%04x/%04x])\n",
 		pdev->vendor, pdev->device);
 	return -ENODEV;
-
 
 found:
 	bridge = agp_alloc_bridge();
@@ -419,4 +415,3 @@ module_exit(agp_ali_cleanup);
 
 MODULE_AUTHOR("Dave Jones <davej@redhat.com>");
 MODULE_LICENSE("GPL and additional rights");
-

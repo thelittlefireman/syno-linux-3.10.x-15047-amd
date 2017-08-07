@@ -1279,7 +1279,7 @@ static int dtv_property_process_get(struct dvb_frontend *fe,
 	switch(tvp->cmd) {
 	case DTV_ENUM_DELSYS:
 		ncaps = 0;
-		while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
+		while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
 			tvp->u.buffer.data[ncaps] = fe->ops.delsys[ncaps];
 			ncaps++;
 		}
@@ -1596,7 +1596,7 @@ static int dvbv5_set_delivery_system(struct dvb_frontend *fe,
 	 * supported
 	 */
 	ncaps = 0;
-	while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
+	while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
 		if (fe->ops.delsys[ncaps] == desired_system) {
 			c->delivery_system = desired_system;
 			dev_dbg(fe->dvb->device,
@@ -1628,7 +1628,7 @@ static int dvbv5_set_delivery_system(struct dvb_frontend *fe,
 	* of the desired system
 	*/
 	ncaps = 0;
-	while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
+	while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
 		if (dvbv3_type(fe->ops.delsys[ncaps]) == type)
 			delsys = fe->ops.delsys[ncaps];
 		ncaps++;
@@ -1703,7 +1703,7 @@ static int dvbv3_set_delivery_system(struct dvb_frontend *fe)
 	 * DVBv3 standard
 	 */
 	ncaps = 0;
-	while (ncaps < MAX_DELSYS && fe->ops.delsys[ncaps]) {
+	while (fe->ops.delsys[ncaps] && ncaps < MAX_DELSYS) {
 		if (dvbv3_type(fe->ops.delsys[ncaps]) != DVBV3_UNKNOWN) {
 			delsys = fe->ops.delsys[ncaps];
 			break;
@@ -1882,8 +1882,6 @@ static int dtv_property_process_set(struct dvb_frontend *fe,
 		c->lna = tvp->u.data;
 		if (fe->ops.set_lna)
 			r = fe->ops.set_lna(fe);
-		if (r < 0)
-			c->lna = LNA_AUTO;
 		break;
 
 	default:
@@ -2147,7 +2145,6 @@ static int dtv_set_frontend(struct dvb_frontend *fe)
 	return 0;
 }
 
-
 static int dvb_frontend_ioctl_legacy(struct file *file,
 			unsigned int cmd, void *parg)
 {
@@ -2197,9 +2194,9 @@ static int dvb_frontend_ioctl_legacy(struct file *file,
 		dev_dbg(fe->dvb->device, "%s: current delivery system on cache: %d, V3 type: %d\n",
 				 __func__, c->delivery_system, fe->ops.info.type);
 
-		/* Force the CAN_INVERSION_AUTO bit on. If the frontend doesn't
-		 * do it, it is done for it. */
-		info->caps |= FE_CAN_INVERSION_AUTO;
+		/* Set CAN_INVERSION_AUTO bit on in other than oneshot mode */
+		if (!(fepriv->tune_mode_flags & FE_TUNE_MODE_ONESHOT))
+			info->caps |= FE_CAN_INVERSION_AUTO;
 		err = 0;
 		break;
 	}
@@ -2397,7 +2394,6 @@ static int dvb_frontend_ioctl_legacy(struct file *file,
 
 	return err;
 }
-
 
 static unsigned int dvb_frontend_poll(struct file *file, struct poll_table_struct *wait)
 {

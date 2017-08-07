@@ -20,7 +20,6 @@
    along with this program; if not, write to the Free Software Foundation,
    Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
 
-
 %{
 
 #include <assert.h>
@@ -103,7 +102,6 @@ static void record_compound(struct string_list **keyw,
 
 %token ASM_PHRASE
 %token ATTRIBUTE_PHRASE
-%token TYPEOF_PHRASE
 %token BRACE_PHRASE
 %token BRACKET_PHRASE
 %token EXPRESSION_PHRASE
@@ -221,8 +219,8 @@ storage_class_specifier:
 type_specifier:
 	simple_type_specifier
 	| cvar_qualifier
-	| TYPEOF_KEYW '(' parameter_declaration ')'
-	| TYPEOF_PHRASE
+	| TYPEOF_KEYW '(' decl_specifier_seq '*' ')'
+	| TYPEOF_KEYW '(' decl_specifier_seq ')'
 
 	/* References to s/u/e's defined elsewhere.  Rearrange things
 	   so that it is easier to expand the definition fully later.  */
@@ -493,7 +491,6 @@ export_definition:
 	EXPORT_SYMBOL_KEYW '(' IDENT ')' ';'
 		{ export_symbol((*$3)->string); $$ = $5; }
 	;
-
 
 %%
 

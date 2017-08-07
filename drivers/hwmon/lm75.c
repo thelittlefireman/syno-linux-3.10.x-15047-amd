@@ -27,10 +27,7 @@
 #include <linux/hwmon-sysfs.h>
 #include <linux/err.h>
 #include <linux/mutex.h>
-#include <linux/of.h>
-#include <linux/thermal.h>
 #include "lm75.h"
-
 
 /*
  * This driver handles the LM75 and compatible digital temperature sensors.
@@ -41,7 +38,6 @@ enum lm75_type {		/* keep sorted in alphabetical order */
 	ds1775,
 	ds75,
 	ds7505,
-	g751,
 	lm75,
 	lm75a,
 	max6625,
@@ -61,7 +57,6 @@ enum lm75_type {		/* keep sorted in alphabetical order */
 static const unsigned short normal_i2c[] = { 0x48, 0x49, 0x4a, 0x4b, 0x4c,
 					0x4d, 0x4e, 0x4f, I2C_CLIENT_END };
 
-
 /* The LM75 registers */
 #define LM75_REG_CONF		0x01
 static const u8 LM75_REG_TEMP[3] = {
@@ -73,7 +68,6 @@ static const u8 LM75_REG_TEMP[3] = {
 /* Each client has this additional data */
 struct lm75_data {
 	struct device		*hwmon_dev;
-	struct thermal_zone_device	*tz;
 	struct mutex		update_lock;
 	u8			orig_conf;
 	u8			resolution;	/* In bits, between 9 and 12 */
@@ -91,39 +85,24 @@ static int lm75_read_value(struct i2c_client *client, u8 reg);
 static int lm75_write_value(struct i2c_client *client, u8 reg, u16 value);
 static struct lm75_data *lm75_update_device(struct device *dev);
 
-
 /*-----------------------------------------------------------------------*/
 
-static inline long lm75_reg_to_mc(s16 temp, u8 resolution)
-{
-	return ((temp >> (16 - resolution)) * 1000) >> (resolution - 8);
-}
-
 /* sysfs attributes for hwmon */
-
-static int lm75_read_temp(void *dev, long *temp)
-{
-	struct lm75_data *data = lm75_update_device(dev);
-
-	if (IS_ERR(data))
-		return PTR_ERR(data);
-
-	*temp = lm75_reg_to_mc(data->temp[0], data->resolution);
-
-	return 0;
-}
 
 static ssize_t show_temp(struct device *dev, struct device_attribute *da,
 			 char *buf)
 {
 	struct sensor_device_attribute *attr = to_sensor_dev_attr(da);
 	struct lm75_data *data = lm75_update_device(dev);
+	long temp;
 
 	if (IS_ERR(data))
 		return PTR_ERR(data);
 
-	return sprintf(buf, "%ld\n", lm75_reg_to_mc(data->temp[attr->index],
-						    data->resolution));
+	temp = ((data->temp[attr->index] >> (16 - data->resolution)) * 1000)
+	       >> (data->resolution - 8);
+
+	return sprintf(buf, "%ld\n", temp);
 }
 
 static ssize_t set_temp(struct device *dev, struct device_attribute *da,
@@ -226,7 +205,6 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		data->resolution = 12;
 		data->sample_time = HZ / 4;
 		break;
-	case g751:
 	case lm75:
 	case lm75a:
 		data->resolution = 9;
@@ -290,13 +268,6 @@ lm75_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		goto exit_remove;
 	}
 
-	data->tz = thermal_zone_of_sensor_register(&client->dev,
-						   0,
-						   &client->dev,
-						   lm75_read_temp, NULL);
-	if (IS_ERR(data->tz))
-		data->tz = NULL;
-
 	dev_info(&client->dev, "%s: sensor '%s'\n",
 		 dev_name(data->hwmon_dev), client->name);
 
@@ -311,7 +282,6 @@ static int lm75_remove(struct i2c_client *client)
 {
 	struct lm75_data *data = i2c_get_clientdata(client);
 
-	thermal_zone_of_sensor_unregister(&client->dev, data->tz);
 	hwmon_device_unregister(data->hwmon_dev);
 	sysfs_remove_group(&client->dev.kobj, &lm75_group);
 	lm75_write_value(client, LM75_REG_CONF, data->orig_conf);
@@ -323,7 +293,6 @@ static const struct i2c_device_id lm75_ids[] = {
 	{ "ds1775", ds1775, },
 	{ "ds75", ds75, },
 	{ "ds7505", ds7505, },
-	{ "g751", g751, },
 	{ "lm75", lm75, },
 	{ "lm75a", lm75a, },
 	{ "max6625", max6625, },

@@ -67,7 +67,6 @@ __async_tx_find_channel(struct async_submit_ctl *submit,
 EXPORT_SYMBOL_GPL(__async_tx_find_channel);
 #endif
 
-
 /**
  * async_tx_channel_switch - queue an interrupt descriptor with a dependency
  * 	pre-attached.
@@ -128,13 +127,12 @@ async_tx_channel_switch(struct dma_async_tx_descriptor *depend_tx,
 		}
 		device->device_issue_pending(chan);
 	} else {
-		if (dma_wait_for_async_tx(depend_tx) != DMA_COMPLETE)
+		if (dma_wait_for_async_tx(depend_tx) != DMA_SUCCESS)
 			panic("%s: DMA error waiting for depend_tx\n",
 			      __func__);
 		tx->tx_submit(tx);
 	}
 }
-
 
 /**
  * submit_disposition - flags for routing an incoming operation
@@ -280,7 +278,7 @@ void async_tx_quiesce(struct dma_async_tx_descriptor **tx)
 		 * we are referring to the correct operation
 		 */
 		BUG_ON(async_tx_test_ack(*tx));
-		if (dma_wait_for_async_tx(*tx) != DMA_COMPLETE)
+		if (dma_wait_for_async_tx(*tx) != DMA_SUCCESS)
 			panic("%s: DMA error waiting for transaction\n",
 			      __func__);
 		async_tx_ack(*tx);

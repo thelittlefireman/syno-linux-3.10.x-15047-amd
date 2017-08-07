@@ -432,7 +432,6 @@ static int cx88_risc_decode(u32 risc)
 	return incr[risc >> 28] ? incr[risc >> 28] : 1;
 }
 
-
 void cx88_sram_channel_dump(struct cx88_core *core,
 			    const struct sram_channel *ch)
 {
@@ -897,8 +896,6 @@ static int set_tvaudio(struct cx88_core *core)
 	return 0;
 }
 
-
-
 int cx88_set_tvnorm(struct cx88_core *core, v4l2_std_id norm)
 {
 	u32 fsc8;
@@ -1034,14 +1031,7 @@ struct video_device *cx88_vdev_init(struct cx88_core *core,
 	if (NULL == vfd)
 		return NULL;
 	*vfd = *template_;
-	/*
-	 * The dev pointer of v4l2_device is NULL, instead we set the
-	 * video_device dev_parent pointer to the correct PCI bus device.
-	 * This driver is a rare example where there is one v4l2_device,
-	 * but the video nodes have different parent (PCI) devices.
-	 */
 	vfd->v4l2_dev = &core->v4l2_dev;
-	vfd->dev_parent = &pci->dev;
 	vfd->release = video_device_release;
 	snprintf(vfd->name, sizeof(vfd->name), "%s %s (%s)",
 		 core->name, type, core->board.name);

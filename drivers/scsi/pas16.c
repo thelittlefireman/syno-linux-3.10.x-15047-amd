@@ -129,13 +129,11 @@
 #define AUTOPROBE_IRQ
 #include "NCR5380.h"
 
-
 static int pas_maxi = 0;
 static int pas_wmaxi = 0;
 static unsigned short pas16_addr = 0;
 static int pas16_irq = 0;
  
-
 static const int scsi_irq_translate[] =
 	{ 0,  0,  1,  2,  3,  4,  5,  6, 0,  0,  7,  8,  9,  0, 10, 11 };
 
@@ -208,7 +206,6 @@ static const unsigned short  pas16_offset[ 8 ] =
 #define rtrc(i) {}
 #endif
 
-
 /*
  * Function : enable_board( int  board_num, unsigned short port )
  *
@@ -224,8 +221,6 @@ static void __init
     outb( 0xbc + board_num, MASTER_ADDRESS_PTR );
     outb( port >> 2, MASTER_ADDRESS_PTR );
 }
-
-
 
 /*
  * Function : init_board( unsigned short port, int irq )
@@ -275,7 +270,6 @@ static void __init
 	    outb( 0x6d, io_port + SYS_CONFIG_4 );
 	}
 }
-
 
 /*
  * Function : pas16_hw_detect( unsigned short board_num )
@@ -335,7 +329,6 @@ static int __init
 
     return 1;
 }
-
 
 /*
  * Function : pas16_setup(char *str, int *ints)
@@ -431,7 +424,6 @@ int __init pas16_detect(struct scsi_host_template * tpnt)
 		}
     }
 
-
 #if defined(PDEBUG) && (PDEBUG & PDEBUG_INIT)
 	printk("scsi-pas16 : io_port = %04x\n", (unsigned int) io_port);
 #endif
@@ -453,7 +445,7 @@ int __init pas16_detect(struct scsi_host_template * tpnt)
 	    instance->irq = NCR5380_probe_irq(instance, PAS16_IRQS);
 
 	if (instance->irq != SCSI_IRQ_NONE) 
-	    if (request_irq(instance->irq, pas16_intr, 0,
+	    if (request_irq(instance->irq, pas16_intr, IRQF_DISABLED,
 			    "pas16", instance)) {
 		printk("scsi%d : IRQ%d not free, interrupts disabled\n", 
 		    instance->host_no, instance->irq);

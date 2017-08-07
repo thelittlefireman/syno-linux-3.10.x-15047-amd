@@ -34,6 +34,7 @@
 #include <asm/uaccess.h>
 
 #include "signal32.h"
+#include "sys32.h"
 
 #define DEBUG_COMPAT_SIG 0 
 #define DEBUG_COMPAT_SIG_LEVEL 2
@@ -168,7 +169,6 @@ setup_sigcontext32(struct compat_sigcontext __user *sc, struct compat_regfile __
 		err |= __put_user(compat_reg, &rf->rf_iaoq[0]);
 		DBG(2,"setup_sigcontext32: upper half iaoq[0] = %#x\n", compat_reg);
 		
-		
 		compat_reg = (compat_uint_t)(regs->gr[31]+4);
 		err |= __put_user(compat_reg, &sc->sc_iaoq[1]);
 		DBG(2,"setup_sigcontext32: sc->sc_iaoq[1] = %p <= %#x\n",
@@ -213,7 +213,6 @@ setup_sigcontext32(struct compat_sigcontext __user *sc, struct compat_regfile __
 		err |= __put_user(compat_reg, &rf->rf_iaoq[1]);
 		DBG(2,"setup_sigcontext32: upper half iaoq[1] = %#x\n", compat_reg);
 		
-		
 		compat_reg = (compat_uint_t)(regs->iasq[0]);
 		err |= __put_user(compat_reg, &sc->sc_iasq[0]);
 		DBG(2,"setup_sigcontext32: sc->sc_iasq[0] = %p <= %#x\n",
@@ -222,7 +221,6 @@ setup_sigcontext32(struct compat_sigcontext __user *sc, struct compat_regfile __
 		compat_reg = (compat_uint_t)(regs->iasq[0] >> 32);
 		err |= __put_user(compat_reg, &rf->rf_iasq[0]);
 		DBG(2,"setup_sigcontext32: upper half iasq[0] = %#x\n", compat_reg);
-		
 		
 		compat_reg = (compat_uint_t)(regs->iasq[1]);
 		err |= __put_user(compat_reg, &sc->sc_iasq[1]);
@@ -319,7 +317,7 @@ copy_siginfo_from_user32 (siginfo_t *to, compat_siginfo_t __user *from)
 }
 
 int
-copy_siginfo_to_user32 (compat_siginfo_t __user *to, const siginfo_t *from)
+copy_siginfo_to_user32 (compat_siginfo_t __user *to, siginfo_t *from)
 {
 	compat_uptr_t addr;
 	compat_int_t val;

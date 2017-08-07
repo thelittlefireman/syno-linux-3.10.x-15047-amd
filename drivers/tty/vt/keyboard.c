@@ -100,7 +100,6 @@ struct vt_spawn_console vt_spawn_con = {
 	.sig  = 0,
 };
 
-
 /*
  * Internal Data.
  */
@@ -131,6 +130,12 @@ static int shift_state = 0;
 
 static unsigned char ledstate = 0xff;			/* undefined */
 static unsigned char ledioctl;
+
+static struct ledptr {
+	unsigned int *addr;
+	unsigned int mask;
+	unsigned char valid:1;
+} ledptrs[3];
 
 /*
  * Notifier list for console keyboard events
@@ -988,11 +993,24 @@ void setledstate(struct kbd_struct *kbd, unsigned int led)
 static inline unsigned char getleds(void)
 {
 	struct kbd_struct *kbd = kbd_table + fg_console;
+	unsigned char leds;
+	int i;
 
 	if (kbd->ledmode == LED_SHOW_IOCTL)
 		return ledioctl;
 
-	return kbd->ledflagstate;
+	leds = kbd->ledflagstate;
+
+	if (kbd->ledmode == LED_SHOW_MEM) {
+		for (i = 0; i < 3; i++)
+			if (ledptrs[i].valid) {
+				if (*ledptrs[i].addr & ledptrs[i].mask)
+					leds |= (1 << i);
+				else
+					leds &= ~(1 << i);
+			}
+	}
+	return leds;
 }
 
 static int kbd_update_leds_helper(struct input_handle *handle, void *data)

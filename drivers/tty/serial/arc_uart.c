@@ -209,9 +209,9 @@ static void arc_serial_start_tx(struct uart_port *port)
 	arc_serial_tx_chars(uart);
 }
 
-static void arc_serial_rx_chars(struct arc_uart_port *uart, unsigned int status)
+static void arc_serial_rx_chars(struct arc_uart_port *uart)
 {
-	unsigned int ch, flg = 0;
+	unsigned int status, ch, flg = 0;
 
 	/*
 	 * UART has 4 deep RX-FIFO. Driver's recongnition of this fact
@@ -222,11 +222,11 @@ static void arc_serial_rx_chars(struct arc_uart_port *uart, unsigned int status)
 	 * before RX-EMPTY=0, implies some sort of buffering going on in the
 	 * controller, which is indeed the Rx-FIFO.
 	 */
-	do {
-		/*
-		 * This could be an Rx Intr for err (no data),
-		 * so check err and clear that Intr first
-		 */
+	while (!((status = UART_GET_STATUS(uart)) & RXEMPTY)) {
+
+		ch = UART_GET_DATA(uart);
+		uart->port.icount.rx++;
+
 		if (unlikely(status & (RXOERR | RXFERR))) {
 			if (status & RXOERR) {
 				uart->port.icount.overrun++;
@@ -242,19 +242,14 @@ static void arc_serial_rx_chars(struct arc_uart_port *uart, unsigned int status)
 		} else
 			flg = TTY_NORMAL;
 
-		if (status & RXEMPTY)
-			continue;
+		if (unlikely(uart_handle_sysrq_char(&uart->port, ch)))
+			goto done;
 
-		ch = UART_GET_DATA(uart);
-		uart->port.icount.rx++;
+		uart_insert_char(&uart->port, status, RXOERR, ch, flg);
 
-		if (!(uart_handle_sysrq_char(&uart->port, ch)))
-			uart_insert_char(&uart->port, status, RXOERR, ch, flg);
-
-		spin_unlock(&uart->port.lock);
+done:
 		tty_flip_buffer_push(&uart->port.state->port);
-		spin_lock(&uart->port.lock);
-	} while (!((status = UART_GET_STATUS(uart)) & RXEMPTY));
+	}
 }
 
 /*
@@ -297,11 +292,11 @@ static irqreturn_t arc_serial_isr(int irq, void *dev_id)
 	 * notifications from the UART Controller.
 	 * To demultiplex between the two, we check the relevant bits
 	 */
-	if (status & RXIENB) {
+	if ((status & RXIENB) && !(status & RXEMPTY)) {
 
 		/* already in ISR, no need of xx_irqsave */
 		spin_lock(&uart->port.lock);
-		arc_serial_rx_chars(uart, status);
+		arc_serial_rx_chars(uart);
 		spin_unlock(&uart->port.lock);
 	}
 
@@ -533,7 +528,7 @@ arc_uart_init_one(struct platform_device *pdev, int dev_id)
 	unsigned long *plat_data;
 	struct arc_uart_port *uart = &arc_uart_ports[dev_id];
 
-	plat_data = dev_get_platdata(&pdev->dev);
+	plat_data = ((unsigned long *)(pdev->dev.platform_data));
 	if (!plat_data)
 		return -ENODEV;
 

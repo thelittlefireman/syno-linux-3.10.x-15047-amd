@@ -135,7 +135,6 @@ struct kvm_dtable {
 	__u16 padding[3];
 };
 
-
 /* for KVM_GET_SREGS and KVM_SET_SREGS */
 struct kvm_sregs {
 	/* out (KVM_GET_SREGS) / in (KVM_SET_SREGS) */
@@ -183,7 +182,6 @@ struct kvm_msr_list {
 	__u32 indices[0];
 };
 
-
 struct kvm_cpuid_entry {
 	__u32 function;
 	__u32 eax;
@@ -211,9 +209,9 @@ struct kvm_cpuid_entry2 {
 	__u32 padding[3];
 };
 
-#define KVM_CPUID_FLAG_SIGNIFCANT_INDEX		BIT(0)
-#define KVM_CPUID_FLAG_STATEFUL_FUNC		BIT(1)
-#define KVM_CPUID_FLAG_STATE_READ_NEXT		BIT(2)
+#define KVM_CPUID_FLAG_SIGNIFCANT_INDEX 1
+#define KVM_CPUID_FLAG_STATEFUL_FUNC    2
+#define KVM_CPUID_FLAG_STATE_READ_NEXT  4
 
 /* for KVM_SET_CPUID2 */
 struct kvm_cpuid2 {

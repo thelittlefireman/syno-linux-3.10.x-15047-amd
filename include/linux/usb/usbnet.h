@@ -34,15 +34,12 @@ struct usbnet {
 	struct mutex		phy_mutex;
 	unsigned char		suspend_count;
 	unsigned char		pkt_cnt, pkt_err;
-	unsigned short		rx_qlen, tx_qlen;
-	unsigned		can_dma_sg:1;
 
 	/* i/o info: pipes etc */
 	unsigned		in, out;
 	struct usb_host_endpoint *status;
 	unsigned		maxpacket;
 	struct timer_list	delay;
-	const char		*padding_pkt;
 
 	/* protocol/interface state */
 	struct net_device	*net;
@@ -207,7 +204,6 @@ extern void usbnet_cdc_status(struct usbnet *, struct urb *);
 			|USB_CDC_PACKET_TYPE_PROMISCUOUS \
 			|USB_CDC_PACKET_TYPE_DIRECTED)
 
-
 /* we record the state for each of our queued skbs */
 enum skb_state {
 	illegal = 0,
@@ -255,7 +251,5 @@ extern void usbnet_link_change(struct usbnet *, bool, bool);
 
 extern int usbnet_status_start(struct usbnet *dev, gfp_t mem_flags);
 extern void usbnet_status_stop(struct usbnet *dev);
-
-extern void usbnet_update_max_qlen(struct usbnet *dev);
 
 #endif /* __LINUX_USB_USBNET_H */

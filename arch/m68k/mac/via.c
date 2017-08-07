@@ -30,6 +30,7 @@
 #include <linux/module.h>
 #include <linux/irq.h>
 
+#include <asm/bootinfo.h>
 #include <asm/macintosh.h>
 #include <asm/macints.h>
 #include <asm/mac_via.h>
@@ -61,7 +62,6 @@ static int gIER,gIFR,gBufA,gBufB;
 #define MAC_CLOCK_TICK		(783300/HZ)		/* ticks per HZ */
 #define MAC_CLOCK_LOW		(MAC_CLOCK_TICK&0xFF)
 #define MAC_CLOCK_HIGH		(MAC_CLOCK_TICK>>8)
-
 
 /*
  * On Macs with a genuine VIA chip there is no way to mask an individual slot

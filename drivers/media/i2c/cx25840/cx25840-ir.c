@@ -131,7 +131,6 @@ static inline struct cx25840_ir_state *to_ir_state(struct v4l2_subdev *sd)
 	return state ? state->ir_state : NULL;
 }
 
-
 /*
  * Rx and Tx Clock Divider register computations
  *
@@ -1031,7 +1030,6 @@ static int cx25840_ir_tx_s_parameters(struct v4l2_subdev *sd,
 	return 0;
 }
 
-
 /*
  * V4L2 Subdevice Core Ops support
  */
@@ -1174,7 +1172,6 @@ int cx25840_ir_log_status(struct v4l2_subdev *sd)
 	return 0;
 }
 
-
 const struct v4l2_subdev_ir_ops cx25840_ir_ops = {
 	.rx_read = cx25840_ir_rx_read,
 	.rx_g_parameters = cx25840_ir_rx_g_parameters,
@@ -1184,7 +1181,6 @@ const struct v4l2_subdev_ir_ops cx25840_ir_ops = {
 	.tx_g_parameters = cx25840_ir_tx_g_parameters,
 	.tx_s_parameters = cx25840_ir_tx_s_parameters,
 };
-
 
 static const struct v4l2_subdev_ir_parameters default_rx_params = {
 	.bytes_per_data_element = sizeof(union cx25840_ir_fifo_rec),
@@ -1230,14 +1226,16 @@ int cx25840_ir_probe(struct v4l2_subdev *sd)
 	if (!(is_cx23885(state) || is_cx23887(state)))
 		return 0;
 
-	ir_state = devm_kzalloc(&state->c->dev, sizeof(*ir_state), GFP_KERNEL);
+	ir_state = kzalloc(sizeof(struct cx25840_ir_state), GFP_KERNEL);
 	if (ir_state == NULL)
 		return -ENOMEM;
 
 	spin_lock_init(&ir_state->rx_kfifo_lock);
 	if (kfifo_alloc(&ir_state->rx_kfifo,
-			CX25840_IR_RX_KFIFO_SIZE, GFP_KERNEL))
+			CX25840_IR_RX_KFIFO_SIZE, GFP_KERNEL)) {
+		kfree(ir_state);
 		return -ENOMEM;
+	}
 
 	ir_state->c = state->c;
 	state->ir_state = ir_state;
@@ -1271,6 +1269,7 @@ int cx25840_ir_remove(struct v4l2_subdev *sd)
 	cx25840_ir_tx_shutdown(sd);
 
 	kfifo_free(&ir_state->rx_kfifo);
+	kfree(ir_state);
 	state->ir_state = NULL;
 	return 0;
 }

@@ -1,7 +1,6 @@
 #ifndef _ASM_X86_SPECIAL_INSNS_H
 #define _ASM_X86_SPECIAL_INSNS_H
 
-
 #ifdef __KERNEL__
 
 static inline void native_clts(void)
@@ -16,7 +15,7 @@ static inline void native_clts(void)
  * all loads stores around it, which can hurt performance. Solution is to
  * use a variable and mimic reads and writes to it to enforce serialization
  */
-extern unsigned long __force_order;
+static unsigned long __force_order;
 
 static inline unsigned long native_read_cr0(void)
 {
@@ -101,7 +100,7 @@ static inline void native_wbinvd(void)
 	asm volatile("wbinvd": : :"memory");
 }
 
-extern asmlinkage void native_load_gs_index(unsigned);
+extern void native_load_gs_index(unsigned);
 
 #ifdef CONFIG_PARAVIRT
 #include <asm/paravirt.h>
@@ -191,16 +190,7 @@ static inline void clflush(volatile void *__p)
 	asm volatile("clflush %0" : "+m" (*(volatile char __force *)__p));
 }
 
-static inline void clflushopt(volatile void *__p)
-{
-	alternative_io(".byte " __stringify(NOP_DS_PREFIX) "; clflush %P0",
-		       ".byte 0x66; clflush %P0",
-		       X86_FEATURE_CLFLUSHOPT,
-		       "+m" (*(volatile char __force *)__p));
-}
-
 #define nop() asm volatile ("nop")
-
 
 #endif /* __KERNEL__ */
 

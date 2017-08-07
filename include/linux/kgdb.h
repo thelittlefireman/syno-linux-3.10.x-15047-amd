@@ -204,7 +204,6 @@ extern void kgdb_roundup_cpus(unsigned long flags);
  */
 extern void kgdb_arch_set_pc(struct pt_regs *regs, unsigned long pc);
 
-
 /* Optional functions. */
 extern int kgdb_validate_break_address(unsigned long addr);
 extern int kgdb_arch_set_breakpoint(struct kgdb_bkpt *bpt);
@@ -219,7 +218,6 @@ extern int kgdb_arch_remove_breakpoint(struct kgdb_bkpt *bpt);
  *	default implementation does nothing.
  */
 extern void kgdb_arch_late(void);
-
 
 /**
  * struct kgdb_arch - Describe architecture specific values.
@@ -283,7 +281,7 @@ struct kgdb_io {
 
 extern struct kgdb_arch		arch_kgdb_ops;
 
-extern unsigned long __weak kgdb_arch_pc(int exception, struct pt_regs *regs);
+extern unsigned long kgdb_arch_pc(int exception, struct pt_regs *regs);
 
 #ifdef CONFIG_SERIAL_KGDB_NMI
 extern int kgdb_register_nmi_console(void);
@@ -310,8 +308,6 @@ extern int
 kgdb_handle_exception(int ex_vector, int signo, int err_code,
 		      struct pt_regs *regs);
 extern int kgdb_nmicallback(int cpu, void *regs);
-extern int kgdb_nmicallin(int cpu, int trapnr, void *regs, int err_code,
-			  atomic_t *snd_rdy);
 extern void gdbstub_exit(int status);
 
 extern int			kgdb_single_step;

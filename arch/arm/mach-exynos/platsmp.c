@@ -26,10 +26,13 @@
 #include <asm/smp_scu.h>
 #include <asm/firmware.h>
 
+#include <mach/hardware.h>
+#include <mach/regs-clock.h>
+#include <mach/regs-pmu.h>
+
 #include <plat/cpu.h>
 
 #include "common.h"
-#include "regs-pmu.h"
 
 extern void exynos4_secondary_startup(void);
 
@@ -47,8 +50,6 @@ static inline void __iomem *cpu_boot_reg(int cpu)
 	boot_reg = cpu_boot_reg_base();
 	if (soc_is_exynos4412())
 		boot_reg += 4*cpu;
-	else if (soc_is_exynos5420())
-		boot_reg += 4;
 	return boot_reg;
 }
 
@@ -61,7 +62,8 @@ static void write_pen_release(int val)
 {
 	pen_release = val;
 	smp_wmb();
-	sync_cache_w(&pen_release);
+	__cpuc_flush_dcache_area((void *)&pen_release, sizeof(pen_release));
+	outer_clean_range(__pa(&pen_release), __pa(&pen_release + 1));
 }
 
 static void __iomem *scu_base_addr(void)
@@ -71,7 +73,7 @@ static void __iomem *scu_base_addr(void)
 
 static DEFINE_SPINLOCK(boot_lock);
 
-static void exynos_secondary_init(unsigned int cpu)
+static void __cpuinit exynos_secondary_init(unsigned int cpu)
 {
 	/*
 	 * let the primary processor know we're out of the
@@ -86,7 +88,7 @@ static void exynos_secondary_init(unsigned int cpu)
 	spin_unlock(&boot_lock);
 }
 
-static int exynos_boot_secondary(unsigned int cpu, struct task_struct *idle)
+static int __cpuinit exynos_boot_secondary(unsigned int cpu, struct task_struct *idle)
 {
 	unsigned long timeout;
 	unsigned long phys_cpu = cpu_logical_map(cpu);
@@ -178,14 +180,10 @@ static void __init exynos_smp_init_cpus(void)
 	void __iomem *scu_base = scu_base_addr();
 	unsigned int i, ncores;
 
-	if (read_cpuid_part_number() == ARM_CPU_PART_CORTEX_A9)
-		ncores = scu_base ? scu_get_core_count(scu_base) : 1;
+	if (soc_is_exynos5250())
+		ncores = 2;
 	else
-		/*
-		 * CPU Nodes are passed thru DT and set_cpu_possible
-		 * is set by "arm_dt_init_cpu_maps".
-		 */
-		return;
+		ncores = scu_base ? scu_get_core_count(scu_base) : 1;
 
 	/* sanity check */
 	if (ncores > nr_cpu_ids) {
@@ -202,7 +200,7 @@ static void __init exynos_smp_prepare_cpus(unsigned int max_cpus)
 {
 	int i;
 
-	if (read_cpuid_part_number() == ARM_CPU_PART_CORTEX_A9)
+	if (!(soc_is_exynos5250() || soc_is_exynos5440()))
 		scu_enable(scu_base_addr());
 
 	/*

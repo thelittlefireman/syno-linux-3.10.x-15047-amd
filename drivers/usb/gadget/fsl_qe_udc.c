@@ -22,6 +22,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/ioport.h>
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -32,7 +33,6 @@
 #include <linux/io.h>
 #include <linux/moduleparam.h>
 #include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/dma-mapping.h>
 #include <linux/usb/ch9.h>
@@ -708,7 +708,6 @@ static inline void qe_usb_disable(struct qe_udc *udc)
 /*----------------------------------------------------------------------------*
  *		USB and EP basic manipulate function end		      *
  *----------------------------------------------------------------------------*/
-
 
 /******************************************************************************
 		UDC transmit and receive process
@@ -2200,7 +2199,6 @@ static int tx_irq(struct qe_udc *udc)
 	return res;
 }
 
-
 /* setup packect's rx is handle in the function too */
 static void rx_irq(struct qe_udc *udc)
 {
@@ -2428,7 +2426,7 @@ static int qe_ep_config(struct qe_udc *udc, unsigned char pipe_num)
 
 	ep->ep.ops = &qe_ep_ops;
 	ep->stopped = 1;
-	usb_ep_set_maxpacket_limit(&ep->ep, (unsigned short) ~0);
+	ep->ep.maxpacket = (unsigned short) ~0;
 	ep->ep.desc = NULL;
 	ep->dir = 0xff;
 	ep->epnum = (u8)pipe_num;
@@ -2589,7 +2587,7 @@ static int qe_udc_probe(struct platform_device *ofdev)
 	if (ret)
 		goto err6;
 
-	platform_set_drvdata(ofdev, udc);
+	dev_set_drvdata(&ofdev->dev, udc);
 	dev_info(udc->dev,
 			"%s USB controller initialized as device\n",
 			(udc->soc_type == PORT_QE) ? "QE" : "CPM");
@@ -2640,7 +2638,7 @@ static int qe_udc_resume(struct platform_device *dev)
 
 static int qe_udc_remove(struct platform_device *ofdev)
 {
-	struct qe_udc *udc = platform_get_drvdata(ofdev);
+	struct qe_udc *udc = dev_get_drvdata(&ofdev->dev);
 	struct qe_ep *ep;
 	unsigned int size;
 	DECLARE_COMPLETION(done);
@@ -2716,7 +2714,7 @@ MODULE_DEVICE_TABLE(of, qe_udc_match);
 
 static struct platform_driver udc_driver = {
 	.driver = {
-		.name = driver_name,
+		.name = (char *)driver_name,
 		.owner = THIS_MODULE,
 		.of_match_table = qe_udc_match,
 	},
@@ -2733,4 +2731,3 @@ module_platform_driver(udc_driver);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_LICENSE("GPL");
-

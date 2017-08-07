@@ -9,7 +9,6 @@
 #ifndef _UAPI_ASM_SIGINFO_H
 #define _UAPI_ASM_SIGINFO_H
 
-
 #define __ARCH_SIGEV_PREAMBLE_SIZE (sizeof(long) + 2*sizeof(int))
 #undef __ARCH_SI_TRAPNO /* exception code needs to fill this ...  */
 
@@ -25,15 +24,12 @@ struct siginfo;
 /*
  * Careful to keep union _sifields from shifting ...
  */
-#if _MIPS_SZLONG == 32
+#ifdef CONFIG_32BIT
 #define __ARCH_SI_PREAMBLE_SIZE (3 * sizeof(int))
-#elif _MIPS_SZLONG == 64
-#define __ARCH_SI_PREAMBLE_SIZE (4 * sizeof(int))
-#else
-#error _MIPS_SZLONG neither 32 nor 64
 #endif
-
-#define __ARCH_SIGSYS
+#ifdef CONFIG_64BIT
+#define __ARCH_SI_PREAMBLE_SIZE (4 * sizeof(int))
+#endif
 
 #include <asm-generic/siginfo.h>
 
@@ -99,13 +95,6 @@ typedef struct siginfo {
 			__ARCH_SI_BAND_T _band; /* POLL_IN, POLL_OUT, POLL_MSG */
 			int _fd;
 		} _sigpoll;
-
-		/* SIGSYS */
-		struct {
-			void __user *_call_addr; /* calling user insn */
-			int _syscall;	/* triggering system call number */
-			unsigned int _arch;	/* AUDIT_ARCH_* of syscall */
-		} _sigsys;
 	} _sifields;
 } siginfo_t;
 
@@ -119,6 +108,5 @@ typedef struct siginfo {
 #define SI_ASYNCIO	-2	/* sent by AIO completion */
 #define SI_TIMER __SI_CODE(__SI_TIMER, -3) /* sent by timer expiration */
 #define SI_MESGQ __SI_CODE(__SI_MESGQ, -4) /* sent by real time mesq state change */
-
 
 #endif /* _UAPI_ASM_SIGINFO_H */

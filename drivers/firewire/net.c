@@ -415,7 +415,6 @@ static struct fwnet_partial_datagram *fwnet_pd_find(struct fwnet_peer *peer,
 	return NULL;
 }
 
-
 static void fwnet_pd_delete(struct fwnet_partial_datagram *old)
 {
 	struct fwnet_fragment_info *fi, *n;
@@ -490,7 +489,6 @@ static unsigned fwnet_max_payload(unsigned max_rec, unsigned speed)
 
 	return (1 << (max_rec + 1)) - RFC2374_FRAG_HDR_SIZE;
 }
-
 
 static int fwnet_finish_incoming_packet(struct net_device *net,
 					struct sk_buff *skb, u16 source_node_id,
@@ -1440,9 +1438,9 @@ static int fwnet_add_peer(struct fwnet_device *dev,
 	return 0;
 }
 
-static int fwnet_probe(struct fw_unit *unit,
-		       const struct ieee1394_device_id *id)
+static int fwnet_probe(struct device *_dev)
 {
+	struct fw_unit *unit = fw_unit(_dev);
 	struct fw_device *device = fw_parent_device(unit);
 	struct fw_card *card = device->card;
 	struct net_device *net;
@@ -1526,24 +1524,6 @@ static int fwnet_probe(struct fw_unit *unit,
 	return ret;
 }
 
-/*
- * FIXME abort partially sent fragmented datagrams,
- * discard partially received fragmented datagrams
- */
-static void fwnet_update(struct fw_unit *unit)
-{
-	struct fw_device *device = fw_parent_device(unit);
-	struct fwnet_peer *peer = dev_get_drvdata(&unit->device);
-	int generation;
-
-	generation = device->generation;
-
-	spin_lock_irq(&peer->dev->lock);
-	peer->node_id    = device->node_id;
-	peer->generation = generation;
-	spin_unlock_irq(&peer->dev->lock);
-}
-
 static void fwnet_remove_peer(struct fwnet_peer *peer, struct fwnet_device *dev)
 {
 	struct fwnet_partial_datagram *pd, *pd_next;
@@ -1560,9 +1540,9 @@ static void fwnet_remove_peer(struct fwnet_peer *peer, struct fwnet_device *dev)
 	kfree(peer);
 }
 
-static void fwnet_remove(struct fw_unit *unit)
+static int fwnet_remove(struct device *_dev)
 {
-	struct fwnet_peer *peer = dev_get_drvdata(&unit->device);
+	struct fwnet_peer *peer = dev_get_drvdata(_dev);
 	struct fwnet_device *dev = peer->dev;
 	struct net_device *net;
 	int i;
@@ -1587,6 +1567,26 @@ static void fwnet_remove(struct fw_unit *unit)
 	}
 
 	mutex_unlock(&fwnet_device_mutex);
+
+	return 0;
+}
+
+/*
+ * FIXME abort partially sent fragmented datagrams,
+ * discard partially received fragmented datagrams
+ */
+static void fwnet_update(struct fw_unit *unit)
+{
+	struct fw_device *device = fw_parent_device(unit);
+	struct fwnet_peer *peer = dev_get_drvdata(&unit->device);
+	int generation;
+
+	generation = device->generation;
+
+	spin_lock_irq(&peer->dev->lock);
+	peer->node_id    = device->node_id;
+	peer->generation = generation;
+	spin_unlock_irq(&peer->dev->lock);
 }
 
 static const struct ieee1394_device_id fwnet_id_table[] = {
@@ -1612,10 +1612,10 @@ static struct fw_driver fwnet_driver = {
 		.owner  = THIS_MODULE,
 		.name   = KBUILD_MODNAME,
 		.bus    = &fw_bus_type,
+		.probe  = fwnet_probe,
+		.remove = fwnet_remove,
 	},
-	.probe    = fwnet_probe,
 	.update   = fwnet_update,
-	.remove   = fwnet_remove,
 	.id_table = fwnet_id_table,
 };
 

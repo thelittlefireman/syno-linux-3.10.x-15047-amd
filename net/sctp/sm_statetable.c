@@ -22,12 +22,16 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * along with GNU CC; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  *
  * Please send any bug reports or fixes you make to the
  * email address(es):
- *    lksctp developers <linux-sctp@vger.kernel.org>
+ *    lksctp developers <lksctp-developers@lists.sourceforge.net>
+ *
+ * Or submit a bug report through the following website:
+ *    http://www.sf.net/projects/lksctp
  *
  * Written or modified by:
  *    La Monte H.P. Yarroll <piggy@acm.org>
@@ -37,6 +41,9 @@
  *    Daisy Chang	    <daisyc@us.ibm.com>
  *    Ardelle Fan	    <ardelle.fan@intel.com>
  *    Sridhar Samudrala	    <sri@us.ibm.com>
+ *
+ * Any bugs reported given to us we will try to fix... any fixes shared will
+ * be incorporated into the next SCTP release.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -56,7 +63,6 @@ static const sctp_sm_table_entry_t *sctp_chunk_event_lookup(struct net *net,
 							    sctp_cid_t cid,
 							    sctp_state_t state);
 
-
 static const sctp_sm_table_entry_t bug = {
 	.fn = sctp_sf_bug,
 	.name = "sctp_sf_bug"
@@ -69,7 +75,7 @@ static const sctp_sm_table_entry_t bug = {
 	if ((event_subtype._type > (_max))) {				\
 		pr_warn("table %p possible attack: event %d exceeds max %d\n", \
 			_table, event_subtype._type, _max);		\
-		rtn = &bug;						\
+	        rtn = &bug;						\
 	} else								\
 		rtn = &_table[event_subtype._type][(int)state];		\
 									\
@@ -527,7 +533,6 @@ chunk_event_table_unknown[SCTP_STATE_NUM_STATES] = {
 	/* SCTP_STATE_SHUTDOWN_ACK_SENT */
 	TYPE_SCTP_FUNC(sctp_sf_unk_chunk),
 };	/* chunk unknown */
-
 
 #define TYPE_SCTP_PRIMITIVE_ASSOCIATE  { \
 	/* SCTP_STATE_CLOSED */ \

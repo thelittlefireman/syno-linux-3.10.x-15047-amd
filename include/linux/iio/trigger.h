@@ -8,7 +8,6 @@
  */
 #include <linux/irq.h>
 #include <linux/module.h>
-#include <linux/atomic.h>
 
 #ifndef _IIO_TRIGGER_H_
 #define _IIO_TRIGGER_H_
@@ -38,7 +37,6 @@ struct iio_trigger_ops {
 			       struct iio_dev *indio_dev);
 };
 
-
 /**
  * struct iio_trigger - industrial I/O trigger device
  * @ops:		[DRIVER] operations structure
@@ -62,7 +60,7 @@ struct iio_trigger {
 
 	struct list_head		list;
 	struct list_head		alloc_list;
-	atomic_t			use_count;
+	int use_count;
 
 	struct irq_chip			subirq_chip;
 	int				subirq_base;
@@ -71,7 +69,6 @@ struct iio_trigger {
 	unsigned long pool[BITS_TO_LONGS(CONFIG_IIO_CONSUMERS_PER_TRIGGER)];
 	struct mutex			pool_lock;
 };
-
 
 static inline struct iio_trigger *to_iio_trigger(struct device *d)
 {
@@ -84,10 +81,12 @@ static inline void iio_trigger_put(struct iio_trigger *trig)
 	put_device(&trig->dev);
 }
 
-static inline void iio_trigger_get(struct iio_trigger *trig)
+static inline struct iio_trigger *iio_trigger_get(struct iio_trigger *trig)
 {
 	get_device(&trig->dev);
 	__module_get(trig->ops->owner);
+
+	return trig;
 }
 
 /**

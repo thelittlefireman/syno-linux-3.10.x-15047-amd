@@ -28,7 +28,6 @@
 #include "../w1.h"
 #include "../w1_int.h"
 
-
 #define DS1WM_CMD	0x00	/* R/W 4 bits command */
 #define DS1WM_DATA	0x01	/* R/W 8 bits, transmit/receive buffer */
 #define DS1WM_INT	0x02	/* R/W interrupt status */
@@ -123,7 +122,6 @@ static inline u8 ds1wm_read_register(struct ds1wm_data *ds1wm_data, u32 reg)
 {
 	return __raw_readb(ds1wm_data->map + (reg << ds1wm_data->bus_shift));
 }
-
 
 static irqreturn_t ds1wm_isr(int isr, void *data)
 {
@@ -255,17 +253,17 @@ static int ds1wm_find_divisor(int gclk)
 static void ds1wm_up(struct ds1wm_data *ds1wm_data)
 {
 	int divisor;
-	struct device *dev = &ds1wm_data->pdev->dev;
-	struct ds1wm_driver_data *plat = dev_get_platdata(dev);
+	struct ds1wm_driver_data *plat = ds1wm_data->pdev->dev.platform_data;
 
 	if (ds1wm_data->cell->enable)
 		ds1wm_data->cell->enable(ds1wm_data->pdev);
 
 	divisor = ds1wm_find_divisor(plat->clock_rate);
-	dev_dbg(dev, "found divisor 0x%x for clock %d\n",
-		divisor, plat->clock_rate);
+	dev_dbg(&ds1wm_data->pdev->dev,
+		"found divisor 0x%x for clock %d\n", divisor, plat->clock_rate);
 	if (divisor == 0) {
-		dev_err(dev, "no suitable divisor for %dHz clock\n",
+		dev_err(&ds1wm_data->pdev->dev,
+			"no suitable divisor for %dHz clock\n",
 			plat->clock_rate);
 		return;
 	}
@@ -411,7 +409,6 @@ static void ds1wm_search(void *data, struct w1_master *master_dev,
 			continue; /* start over */
 		}
 
-
 		dev_dbg(&ds1wm_data->pdev->dev,
 			"pass: %d found %0#18llx\n", pass, r_prime);
 		slave_found(master_dev, r_prime);
@@ -481,7 +478,7 @@ static int ds1wm_probe(struct platform_device *pdev)
 	ds1wm_data->cell = mfd_get_cell(pdev);
 	if (!ds1wm_data->cell)
 		return -ENODEV;
-	plat = dev_get_platdata(&pdev->dev);
+	plat = pdev->dev.platform_data;
 	if (!plat)
 		return -ENODEV;
 
@@ -498,7 +495,7 @@ static int ds1wm_probe(struct platform_device *pdev)
 		irq_set_irq_type(ds1wm_data->irq, IRQ_TYPE_EDGE_FALLING);
 
 	ret = devm_request_irq(&pdev->dev, ds1wm_data->irq, ds1wm_isr,
-			IRQF_SHARED, "ds1wm", ds1wm_data);
+			IRQF_DISABLED | IRQF_SHARED, "ds1wm", ds1wm_data);
 	if (ret)
 		return ret;
 

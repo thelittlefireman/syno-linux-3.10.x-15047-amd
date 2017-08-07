@@ -60,7 +60,6 @@ u32 atari_gettimeoffset(void)
   return (ticks + offset) * 1000;
 }
 
-
 static void mste_read(struct MSTE_RTC *val)
 {
 #define COPY(v) val->v=(mste_rtc.v & 0xf)
@@ -101,7 +100,6 @@ static void mste_write(struct MSTE_RTC *val)
 		atari_writeb(reg,&tt_rtc.regsel);	\
 		tt_rtc.data = (val);		\
 	} while(0)
-
 
 #define HWCLK_POLL_INTERVAL	5
 
@@ -285,7 +283,6 @@ int atari_tt_hwclk( int op, struct rtc_time *t )
 
     return( 0 );
 }
-
 
 int atari_mste_set_clock_mmss (unsigned long nowtime)
 {

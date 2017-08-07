@@ -13,6 +13,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 
 /*
@@ -42,7 +47,6 @@ There are 4 x 12-bit Analogue Outputs.  Ranges : 5V, 10V, +/-5V, +/-10V
 Configuration options: not applicable, uses PCI auto config
 */
 
-#include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -91,13 +95,12 @@ Configuration options: not applicable, uses PCI auto config
 #define	Status_IRQ	0x00ff	/*  All interrupts */
 
 /*  Define analogue range */
-static const struct comedi_lrange range_analog = {
-	4, {
-		UNI_RANGE(5),
-		UNI_RANGE(10),
-		BIP_RANGE(5),
-		BIP_RANGE(10)
-	}
+static const struct comedi_lrange range_analog = { 4, {
+						       UNI_RANGE(5),
+						       UNI_RANGE(10),
+						       BIP_RANGE(5),
+						       BIP_RANGE(10)
+						       }
 };
 
 static const char range_codes_analog[] = { 0x00, 0x20, 0x10, 0x30 };
@@ -119,7 +122,9 @@ struct icp_multi_private {
 	unsigned char act_chanlist_len;	/*  len of scanlist */
 	unsigned char act_chanlist_pos;	/*  actual position in MUX list */
 	unsigned int *ai_chanlist;	/*  actaul chanlist */
-	unsigned short ao_data[4];	/*  data output buffer */
+	short *ai_data;		/*  data buffer */
+	short ao_data[4];	/*  data output buffer */
+	short di_data;		/*  Digital input data */
 	unsigned int do_data;	/*  Remember digital output data */
 };
 
@@ -171,27 +176,12 @@ static void setup_channel_list(struct comedi_device *dev,
 	}
 }
 
-static int icp_multi_ai_eoc(struct comedi_device *dev,
-			    struct comedi_subdevice *s,
-			    struct comedi_insn *insn,
-			    unsigned long context)
-{
-	struct icp_multi_private *devpriv = dev->private;
-	unsigned int status;
-
-	status = readw(devpriv->io_addr + ICP_MULTI_ADC_CSR);
-	if ((status & ADC_BSY) == 0)
-		return 0;
-	return -EBUSY;
-}
-
 static int icp_multi_insn_read_ai(struct comedi_device *dev,
 				  struct comedi_subdevice *s,
 				  struct comedi_insn *insn, unsigned int *data)
 {
 	struct icp_multi_private *devpriv = dev->private;
-	int ret = 0;
-	int n;
+	int n, timeout;
 
 	/*  Disable A/D conversion ready interrupt */
 	devpriv->IntEnable &= ~ADC_READY;
@@ -214,10 +204,33 @@ static int icp_multi_insn_read_ai(struct comedi_device *dev,
 		udelay(1);
 
 		/*  Wait for conversion to complete, or get fed up waiting */
-		ret = comedi_timeout(dev, s, insn, icp_multi_ai_eoc, 0);
-		if (ret)
-			break;
+		timeout = 100;
+		while (timeout--) {
+			if (!(readw(devpriv->io_addr +
+				    ICP_MULTI_ADC_CSR) & ADC_BSY))
+				goto conv_finish;
 
+			udelay(1);
+		}
+
+		/*  If we reach here, a timeout has occurred */
+		comedi_error(dev, "A/D insn timeout");
+
+		/*  Disable interrupt */
+		devpriv->IntEnable &= ~ADC_READY;
+		writew(devpriv->IntEnable, devpriv->io_addr + ICP_MULTI_INT_EN);
+
+		/*  Clear interrupt status */
+		devpriv->IntStatus |= ADC_READY;
+		writew(devpriv->IntStatus,
+		       devpriv->io_addr + ICP_MULTI_INT_STAT);
+
+		/*  Clear data received */
+		data[n] = 0;
+
+		return -ETIME;
+
+conv_finish:
 		data[n] =
 		    (readw(devpriv->io_addr + ICP_MULTI_AI) >> 4) & 0x0fff;
 	}
@@ -230,21 +243,7 @@ static int icp_multi_insn_read_ai(struct comedi_device *dev,
 	devpriv->IntStatus |= ADC_READY;
 	writew(devpriv->IntStatus, devpriv->io_addr + ICP_MULTI_INT_STAT);
 
-	return ret ? ret : n;
-}
-
-static int icp_multi_ao_eoc(struct comedi_device *dev,
-			    struct comedi_subdevice *s,
-			    struct comedi_insn *insn,
-			    unsigned long context)
-{
-	struct icp_multi_private *devpriv = dev->private;
-	unsigned int status;
-
-	status = readw(devpriv->io_addr + ICP_MULTI_DAC_CSR);
-	if ((status & DAC_BSY) == 0)
-		return 0;
-	return -EBUSY;
+	return n;
 }
 
 static int icp_multi_insn_write_ao(struct comedi_device *dev,
@@ -252,8 +251,7 @@ static int icp_multi_insn_write_ao(struct comedi_device *dev,
 				   struct comedi_insn *insn, unsigned int *data)
 {
 	struct icp_multi_private *devpriv = dev->private;
-	int n, chan, range;
-	int ret;
+	int n, chan, range, timeout;
 
 	/*  Disable D/A conversion ready interrupt */
 	devpriv->IntEnable &= ~DAC_READY;
@@ -281,24 +279,33 @@ static int icp_multi_insn_write_ao(struct comedi_device *dev,
 	for (n = 0; n < insn->n; n++) {
 		/*  Wait for analogue output data register to be
 		 *  ready for new data, or get fed up waiting */
-		ret = comedi_timeout(dev, s, insn, icp_multi_ao_eoc, 0);
-		if (ret) {
-			/*  Disable interrupt */
-			devpriv->IntEnable &= ~DAC_READY;
-			writew(devpriv->IntEnable,
-			       devpriv->io_addr + ICP_MULTI_INT_EN);
+		timeout = 100;
+		while (timeout--) {
+			if (!(readw(devpriv->io_addr +
+				    ICP_MULTI_DAC_CSR) & DAC_BSY))
+				goto dac_ready;
 
-			/*  Clear interrupt status */
-			devpriv->IntStatus |= DAC_READY;
-			writew(devpriv->IntStatus,
-			       devpriv->io_addr + ICP_MULTI_INT_STAT);
-
-			/*  Clear data received */
-			devpriv->ao_data[chan] = 0;
-
-			return ret;
+			udelay(1);
 		}
 
+		/*  If we reach here, a timeout has occurred */
+		comedi_error(dev, "D/A insn timeout");
+
+		/*  Disable interrupt */
+		devpriv->IntEnable &= ~DAC_READY;
+		writew(devpriv->IntEnable, devpriv->io_addr + ICP_MULTI_INT_EN);
+
+		/*  Clear interrupt status */
+		devpriv->IntStatus |= DAC_READY;
+		writew(devpriv->IntStatus,
+		       devpriv->io_addr + ICP_MULTI_INT_STAT);
+
+		/*  Clear data received */
+		devpriv->ao_data[chan] = 0;
+
+		return -ETIME;
+
+dac_ready:
 		/*  Write data to analogue output data register */
 		writew(data[n], devpriv->io_addr + ICP_MULTI_AO);
 
@@ -345,13 +352,18 @@ static int icp_multi_insn_bits_di(struct comedi_device *dev,
 
 static int icp_multi_insn_bits_do(struct comedi_device *dev,
 				  struct comedi_subdevice *s,
-				  struct comedi_insn *insn,
-				  unsigned int *data)
+				  struct comedi_insn *insn, unsigned int *data)
 {
 	struct icp_multi_private *devpriv = dev->private;
 
-	if (comedi_dio_update_state(s, data))
+	if (data[0]) {
+		s->state &= ~data[0];
+		s->state |= (data[0] & data[1]);
+
+		printk(KERN_DEBUG "Digital outputs = %4x \n", s->state);
+
 		writew(s->state, devpriv->io_addr + ICP_MULTI_DO);
+	}
 
 	data[1] = readw(devpriv->io_addr + ICP_MULTI_DI);
 
@@ -488,9 +500,10 @@ static int icp_multi_auto_attach(struct comedi_device *dev,
 	struct comedi_subdevice *s;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	ret = comedi_pci_enable(dev);
 	if (ret)
@@ -540,6 +553,7 @@ static int icp_multi_auto_attach(struct comedi_device *dev,
 	s->maxdata = 1;
 	s->len_chanlist = 16;
 	s->range_table = &range_digital;
+	s->io_bits = 0;
 	s->insn_bits = icp_multi_insn_bits_di;
 
 	s = &dev->subdevices[3];
@@ -549,6 +563,8 @@ static int icp_multi_auto_attach(struct comedi_device *dev,
 	s->maxdata = 1;
 	s->len_chanlist = 8;
 	s->range_table = &range_digital;
+	s->io_bits = 0xff;
+	s->state = 0;
 	s->insn_bits = icp_multi_insn_bits_do;
 
 	s = &dev->subdevices[4];
@@ -562,6 +578,9 @@ static int icp_multi_auto_attach(struct comedi_device *dev,
 	s->insn_write = icp_multi_insn_write_ctr;
 
 	devpriv->valid = 1;
+
+	dev_info(dev->class_dev, "%s attached, irq %sabled\n",
+		dev->board_name, dev->irq ? "en" : "dis");
 
 	return 0;
 }
@@ -593,7 +612,7 @@ static int icp_multi_pci_probe(struct pci_dev *dev,
 	return comedi_pci_auto_config(dev, &icp_multi_driver, id->driver_data);
 }
 
-static const struct pci_device_id icp_multi_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(icp_multi_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_ICP, PCI_DEVICE_ID_ICP_MULTI) },
 	{ 0 }
 };

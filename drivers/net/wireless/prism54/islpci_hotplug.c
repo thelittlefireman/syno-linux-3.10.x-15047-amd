@@ -12,7 +12,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -198,6 +199,7 @@ prism54_probe(struct pci_dev *pdev, const struct pci_device_id *id)
       do_unregister_netdev:
 	unregister_netdev(ndev);
 	islpci_free_memory(priv);
+	pci_set_drvdata(pdev, NULL);
 	free_netdev(ndev);
 	priv = NULL;
       do_pci_clear_mwi:
@@ -245,6 +247,7 @@ prism54_remove(struct pci_dev *pdev)
 	/* free the PCI memory and unmap the remapped page */
 	islpci_free_memory(priv);
 
+	pci_set_drvdata(pdev, NULL);
 	free_netdev(ndev);
 	priv = NULL;
 
@@ -261,7 +264,6 @@ prism54_suspend(struct pci_dev *pdev, pm_message_t state)
 	struct net_device *ndev = pci_get_drvdata(pdev);
 	islpci_private *priv = ndev ? netdev_priv(ndev) : NULL;
 	BUG_ON(!priv);
-
 
 	pci_save_state(pdev);
 

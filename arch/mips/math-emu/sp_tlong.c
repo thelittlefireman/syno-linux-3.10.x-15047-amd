@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754sp.h"
 
 s64 ieee754sp_tlong(ieee754sp x)
@@ -106,7 +105,6 @@ s64 ieee754sp_tlong(ieee754sp x)
 	else
 		return xm;
 }
-
 
 u64 ieee754sp_tulong(ieee754sp x)
 {

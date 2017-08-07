@@ -1,12 +1,4 @@
-/*
- * linux/fs/ext4/ioctl.c
- *
- * Copyright (C) 1993, 1994, 1995
- * Remy Card (card@masi.ibp.fr)
- * Laboratoire MASI - Institut Blaise Pascal
- * Universite Pierre et Marie Curie (Paris VI)
- */
-
+ 
 #include <linux/fs.h>
 #include <linux/jbd2.h>
 #include <linux/capability.h>
@@ -17,17 +9,10 @@
 #include <asm/uaccess.h>
 #include "ext4_jbd2.h"
 #include "ext4.h"
+#include "ext4_extents.h"
 
 #define MAX_32_NUM ((((unsigned long long) 1) << 32) - 1)
 
-/**
- * Swap memory between @a and @b for @len bytes.
- *
- * @a:          pointer to first memory area
- * @b:          pointer to second memory area
- * @len:        number of bytes to swap
- *
- */
 static void memswap(void *a, void *b, size_t len)
 {
 	unsigned char *ap, *bp;
@@ -44,17 +29,6 @@ static void memswap(void *a, void *b, size_t len)
 	}
 }
 
-/**
- * Swap i_data and associated attributes between @inode1 and @inode2.
- * This function is used for the primary swap between inode1 and inode2
- * and also to revert this primary swap in case of errors.
- *
- * Therefore you have to make sure, that calling this method twice
- * will revert all changes.
- *
- * @inode1:     pointer to first inode
- * @inode2:     pointer to second inode
- */
 static void swap_inode_data(struct inode *inode1, struct inode *inode2)
 {
 	loff_t isize;
@@ -86,46 +60,44 @@ static void swap_inode_data(struct inode *inode1, struct inode *inode2)
 	i_size_write(inode2, isize);
 }
 
-/**
- * Swap the information from the given @inode and the inode
- * EXT4_BOOT_LOADER_INO. It will basically swap i_data and all other
- * important fields of the inodes.
- *
- * @sb:         the super block of the filesystem
- * @inode:      the inode to swap with EXT4_BOOT_LOADER_INO
- *
- */
 static long swap_inode_boot_loader(struct super_block *sb,
 				struct inode *inode)
 {
 	handle_t *handle;
 	int err;
 	struct inode *inode_bl;
+	struct ext4_inode_info *ei;
 	struct ext4_inode_info *ei_bl;
-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+	struct ext4_sb_info *sbi;
 
-	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode))
-		return -EINVAL;
+	if (inode->i_nlink != 1 || !S_ISREG(inode->i_mode)) {
+		err = -EINVAL;
+		goto swap_boot_out;
+	}
 
-	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN))
-		return -EPERM;
+	if (!inode_owner_or_capable(inode) || !capable(CAP_SYS_ADMIN)) {
+		err = -EPERM;
+		goto swap_boot_out;
+	}
+
+	sbi = EXT4_SB(sb);
+	ei = EXT4_I(inode);
 
 	inode_bl = ext4_iget(sb, EXT4_BOOT_LOADER_INO);
-	if (IS_ERR(inode_bl))
-		return PTR_ERR(inode_bl);
+	if (IS_ERR(inode_bl)) {
+		err = PTR_ERR(inode_bl);
+		goto swap_boot_out;
+	}
 	ei_bl = EXT4_I(inode_bl);
 
 	filemap_flush(inode->i_mapping);
 	filemap_flush(inode_bl->i_mapping);
 
-	/* Protect orig inodes against a truncate and make sure,
-	 * that only 1 swap_inode_boot_loader is running. */
-	lock_two_nondirectories(inode, inode_bl);
+	ext4_inode_double_lock(inode, inode_bl);
 
 	truncate_inode_pages(&inode->i_data, 0);
 	truncate_inode_pages(&inode_bl->i_data, 0);
 
-	/* Wait for all existing dio workers */
 	ext4_inode_block_unlocked_dio(inode);
 	ext4_inode_block_unlocked_dio(inode_bl);
 	inode_dio_wait(inode);
@@ -137,11 +109,10 @@ static long swap_inode_boot_loader(struct super_block *sb,
 		goto journal_err_out;
 	}
 
-	/* Protect extent tree against block allocations via delalloc */
 	ext4_double_down_write_data_sem(inode, inode_bl);
 
 	if (inode_bl->i_nlink == 0) {
-		/* this inode has never been used as a BOOT_LOADER */
+		 
 		set_nlink(inode_bl, 1);
 		i_uid_write(inode_bl, 0);
 		i_gid_write(inode_bl, 0);
@@ -174,7 +145,7 @@ static long swap_inode_boot_loader(struct super_block *sb,
 		ext4_warning(inode->i_sb,
 			"couldn't mark inode #%lu dirty (err %d)",
 			inode->i_ino, err);
-		/* Revert all changes: */
+		 
 		swap_inode_data(inode, inode_bl);
 	} else {
 		err = ext4_mark_inode_dirty(handle, inode_bl);
@@ -182,19 +153,25 @@ static long swap_inode_boot_loader(struct super_block *sb,
 			ext4_warning(inode_bl->i_sb,
 				"couldn't mark inode #%lu dirty (err %d)",
 				inode_bl->i_ino, err);
-			/* Revert all changes: */
+			 
 			swap_inode_data(inode, inode_bl);
 			ext4_mark_inode_dirty(handle, inode);
 		}
 	}
+
 	ext4_journal_stop(handle);
+
 	ext4_double_up_write_data_sem(inode, inode_bl);
 
 journal_err_out:
 	ext4_inode_resume_unlocked_dio(inode);
 	ext4_inode_resume_unlocked_dio(inode_bl);
-	unlock_two_nondirectories(inode, inode_bl);
+
+	ext4_inode_double_unlock(inode, inode_bl);
+
 	iput(inode_bl);
+
+swap_boot_out:
 	return err;
 }
 
@@ -233,30 +210,19 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		err = -EPERM;
 		mutex_lock(&inode->i_mutex);
-		/* Is it quota file? Do not allow user to mess with it */
+		 
 		if (IS_NOQUOTA(inode))
 			goto flags_out;
 
 		oldflags = ei->i_flags;
 
-		/* The JOURNAL_DATA flag is modifiable only by root */
 		jflag = flags & EXT4_JOURNAL_DATA_FL;
 
-		/*
-		 * The IMMUTABLE and APPEND_ONLY flags can only be changed by
-		 * the relevant capability.
-		 *
-		 * This test looks nicer. Thanks to Pauline Middelink
-		 */
 		if ((flags ^ oldflags) & (EXT4_APPEND_FL | EXT4_IMMUTABLE_FL)) {
 			if (!capable(CAP_LINUX_IMMUTABLE))
 				goto flags_out;
 		}
 
-		/*
-		 * The JOURNAL_DATA flag can only be changed by
-		 * the relevant capability.
-		 */
 		if ((jflag ^ oldflags) & (EXT4_JOURNAL_DATA_FL)) {
 			if (!capable(CAP_SYS_RESOURCE))
 				goto flags_out;
@@ -265,7 +231,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 			migrate = 1;
 
 		if (flags & EXT4_EOFBLOCKS_FL) {
-			/* we don't support adding EOFBLOCKS flag */
+			 
 			if (!(oldflags & EXT4_EOFBLOCKS_FL)) {
 				err = -EOPNOTSUPP;
 				goto flags_out;
@@ -504,12 +470,7 @@ group_add_out:
 		err = mnt_want_write_file(filp);
 		if (err)
 			return err;
-		/*
-		 * inode_mutex prevent write and truncate on the file.
-		 * Read still goes through. We take i_data_sem in
-		 * ext4_ext_swap_inode_data before we switch the
-		 * inode format to prevent read.
-		 */
+		 
 		mutex_lock(&(inode->i_mutex));
 		err = ext4_ext_migrate(inode);
 		mutex_unlock(&(inode->i_mutex));
@@ -532,9 +493,17 @@ group_add_out:
 	}
 
 	case EXT4_IOC_SWAP_BOOT:
+	{
+		int err;
 		if (!(filp->f_mode & FMODE_WRITE))
 			return -EBADF;
-		return swap_inode_boot_loader(sb, inode);
+		err = mnt_want_write_file(filp);
+		if (err)
+			return err;
+		err = swap_inode_boot_loader(sb, inode);
+		mnt_drop_write_file(filp);
+		return err;
+	}
 
 	case EXT4_IOC_RESIZE_FS: {
 		ext4_fsblk_t n_blocks_count;
@@ -608,8 +577,6 @@ resizefs_out:
 
 		return 0;
 	}
-	case EXT4_IOC_PRECACHE_EXTENTS:
-		return ext4_ext_precache(inode);
 
 	default:
 		return -ENOTTY;
@@ -619,7 +586,7 @@ resizefs_out:
 #ifdef CONFIG_COMPAT
 long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
-	/* These are just misnamed, they actually get/put from/to user an int */
+	 
 	switch (cmd) {
 	case EXT4_IOC32_GETFLAGS:
 		cmd = EXT4_IOC_GETFLAGS;
@@ -674,7 +641,6 @@ long ext4_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	case EXT4_IOC_MOVE_EXT:
 	case FITRIM:
 	case EXT4_IOC_RESIZE_FS:
-	case EXT4_IOC_PRECACHE_EXTENTS:
 		break;
 	default:
 		return -ENOIOCTLCMD;

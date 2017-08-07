@@ -15,11 +15,11 @@
 #include <linux/ata_platform.h>
 #include <linux/clk-provider.h>
 #include <linux/ethtool.h>
-#include <asm/hardware/cache-feroceon-l2.h>
 #include <asm/mach/map.h>
 #include <asm/mach/time.h>
 #include <mach/mv78xx0.h>
 #include <mach/bridge-regs.h>
+#include <plat/cache-feroceon-l2.h>
 #include <linux/platform_data/usb-ehci-orion.h>
 #include <linux/platform_data/mtd-orion_nand.h>
 #include <plat/time.h>
@@ -124,7 +124,6 @@ static int get_tclk(void)
 	return tclk_freq;
 }
 
-
 /*****************************************************************************
  * I/O Address Mapping
  ****************************************************************************/
@@ -160,7 +159,6 @@ void __init mv78xx0_map_io(void)
 	iotable_init(mv78xx0_io_desc, ARRAY_SIZE(mv78xx0_io_desc));
 }
 
-
 /*****************************************************************************
  * CLK tree
  ****************************************************************************/
@@ -182,7 +180,6 @@ void __init mv78xx0_ehci0_init(void)
 	orion_ehci_init(USB0_PHYS_BASE, IRQ_MV78XX0_USB_0, EHCI_PHY_NA);
 }
 
-
 /*****************************************************************************
  * EHCI1
  ****************************************************************************/
@@ -191,7 +188,6 @@ void __init mv78xx0_ehci1_init(void)
 	orion_ehci_1_init(USB1_PHYS_BASE, IRQ_MV78XX0_USB_1);
 }
 
-
 /*****************************************************************************
  * EHCI2
  ****************************************************************************/
@@ -199,7 +195,6 @@ void __init mv78xx0_ehci2_init(void)
 {
 	orion_ehci_2_init(USB2_PHYS_BASE, IRQ_MV78XX0_USB_2);
 }
-
 
 /*****************************************************************************
  * GE00
@@ -212,7 +207,6 @@ void __init mv78xx0_ge00_init(struct mv643xx_eth_platform_data *eth_data)
 			MV643XX_TX_CSUM_DEFAULT_LIMIT);
 }
 
-
 /*****************************************************************************
  * GE01
  ****************************************************************************/
@@ -223,7 +217,6 @@ void __init mv78xx0_ge01_init(struct mv643xx_eth_platform_data *eth_data)
 			NO_IRQ,
 			MV643XX_TX_CSUM_DEFAULT_LIMIT);
 }
-
 
 /*****************************************************************************
  * GE10
@@ -247,7 +240,6 @@ void __init mv78xx0_ge10_init(struct mv643xx_eth_platform_data *eth_data)
 			GE10_PHYS_BASE, IRQ_MV78XX0_GE10_SUM,
 			NO_IRQ);
 }
-
 
 /*****************************************************************************
  * GE11
@@ -289,7 +281,6 @@ void __init mv78xx0_sata_init(struct mv_sata_platform_data *sata_data)
 	orion_sata_init(sata_data, SATA_PHYS_BASE, IRQ_MV78XX0_SATA);
 }
 
-
 /*****************************************************************************
  * UART0
  ****************************************************************************/
@@ -299,7 +290,6 @@ void __init mv78xx0_uart0_init(void)
 			 IRQ_MV78XX0_UART_0, tclk);
 }
 
-
 /*****************************************************************************
  * UART1
  ****************************************************************************/
@@ -308,7 +298,6 @@ void __init mv78xx0_uart1_init(void)
 	orion_uart1_init(UART1_VIRT_BASE, UART1_PHYS_BASE,
 			 IRQ_MV78XX0_UART_1, tclk);
 }
-
 
 /*****************************************************************************
  * UART2
@@ -337,11 +326,11 @@ void __init mv78xx0_init_early(void)
 	if (mv78xx0_core_index() == 0)
 		mvebu_mbus_init("marvell,mv78xx0-mbus",
 				BRIDGE_WINS_CPU0_BASE, BRIDGE_WINS_SZ,
-				DDR_WINDOW_CPU0_BASE, DDR_WINDOW_CPU_SZ);
+				DDR_WINDOW_CPU0_BASE, DDR_WINDOW_CPU_SZ, 0);
 	else
 		mvebu_mbus_init("marvell,mv78xx0-mbus",
 				BRIDGE_WINS_CPU1_BASE, BRIDGE_WINS_SZ,
-				DDR_WINDOW_CPU1_BASE, DDR_WINDOW_CPU_SZ);
+				DDR_WINDOW_CPU1_BASE, DDR_WINDOW_CPU_SZ, 0);
 }
 
 void __init_refok mv78xx0_timer_init(void)
@@ -349,7 +338,6 @@ void __init_refok mv78xx0_timer_init(void)
 	orion_time_init(BRIDGE_VIRT_BASE, BRIDGE_INT_TIMER1_CLR,
 			IRQ_MV78XX0_TIMER_1, get_tclk());
 }
-
 
 /*****************************************************************************
  * General
@@ -413,7 +401,7 @@ void __init mv78xx0_init(void)
 	clk_init();
 }
 
-void mv78xx0_restart(enum reboot_mode mode, const char *cmd)
+void mv78xx0_restart(char mode, const char *cmd)
 {
 	/*
 	 * Enable soft reset to assert RSTOUTn.

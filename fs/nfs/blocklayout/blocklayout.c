@@ -134,8 +134,8 @@ bl_submit_bio(int rw, struct bio *bio)
 	if (bio) {
 		get_parallel(bio->bi_private);
 		dprintk("%s submitting %s bio %u@%llu\n", __func__,
-			rw == READ ? "read" : "write", bio->bi_iter.bi_size,
-			(unsigned long long)bio->bi_iter.bi_sector);
+			rw == READ ? "read" : "write",
+			bio->bi_size, (unsigned long long)bio->bi_sector);
 		submit_bio(rw, bio);
 	}
 	return NULL;
@@ -156,8 +156,7 @@ static struct bio *bl_alloc_init_bio(int npg, sector_t isect,
 	}
 
 	if (bio) {
-		bio->bi_iter.bi_sector = isect - be->be_f_offset +
-			be->be_v_offset;
+		bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
 		bio->bi_bdev = be->be_mdev;
 		bio->bi_end_io = end_io;
 		bio->bi_private = par;
@@ -202,14 +201,18 @@ static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
 static void bl_end_io_read(struct bio *bio, int err)
 {
 	struct parallel_io *par = bio->bi_private;
-	struct bio_vec *bvec;
-	int i;
+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
+	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 
-	if (!err)
-		bio_for_each_segment_all(bvec, bio, i)
-			SetPageUptodate(bvec->bv_page);
+	do {
+		struct page *page = bvec->bv_page;
 
-	if (err) {
+		if (--bvec >= bio->bi_io_vec)
+			prefetchw(&bvec->bv_page->flags);
+		if (uptodate)
+			SetPageUptodate(page);
+	} while (bvec >= bio->bi_io_vec);
+	if (!uptodate) {
 		struct nfs_read_data *rdata = par->data;
 		struct nfs_pgio_header *header = rdata->header;
 
@@ -380,16 +383,20 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
 static void bl_end_io_write_zero(struct bio *bio, int err)
 {
 	struct parallel_io *par = bio->bi_private;
-	struct bio_vec *bvec;
-	int i;
+	const int uptodate = test_bit(BIO_UPTODATE, &bio->bi_flags);
+	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
 
-	bio_for_each_segment_all(bvec, bio, i) {
+	do {
+		struct page *page = bvec->bv_page;
+
+		if (--bvec >= bio->bi_io_vec)
+			prefetchw(&bvec->bv_page->flags);
 		/* This is the zeroing page we added */
-		end_page_writeback(bvec->bv_page);
-		page_cache_release(bvec->bv_page);
-	}
+		end_page_writeback(page);
+		page_cache_release(page);
+	} while (bvec >= bio->bi_io_vec);
 
-	if (unlikely(err)) {
+	if (unlikely(!uptodate)) {
 		struct nfs_write_data *data = par->data;
 		struct nfs_pgio_header *header = data->header;
 
@@ -512,7 +519,7 @@ bl_do_readpage_sync(struct page *page, struct pnfs_block_extent *be,
 	isect = (page->index << PAGE_CACHE_SECTOR_SHIFT) +
 		(offset / SECTOR_SIZE);
 
-	bio->bi_iter.bi_sector = isect - be->be_f_offset + be->be_v_offset;
+	bio->bi_sector = isect - be->be_f_offset + be->be_v_offset;
 	bio->bi_bdev = be->be_mdev;
 	bio->bi_end_io = bl_read_single_end_io;
 
@@ -861,7 +868,6 @@ next_page:
 				 - pg_offset;
 		}
 
-
 		bio = do_add_page_to_bio(bio, wdata->pages.npages - i, WRITE,
 					 isect, pages[i], be,
 					 bl_end_io_write, par,
@@ -1082,10 +1088,9 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
 	dev->pgbase = 0;
 	dev->pglen = PAGE_SIZE * max_pages;
 	dev->mincount = 0;
-	dev->maxcount = max_resp_sz - nfs41_maxgetdevinfo_overhead;
 
 	dprintk("%s: dev_id: %s\n", __func__, dev->dev_id.data);
-	rc = nfs4_proc_getdeviceinfo(server, dev, NULL);
+	rc = nfs4_proc_getdeviceinfo(server, dev);
 	dprintk("%s getdevice info returns %d\n", __func__, rc);
 	if (rc) {
 		rv = ERR_PTR(rc);
@@ -1213,7 +1218,7 @@ static u64 pnfs_num_cont_bytes(struct inode *inode, pgoff_t idx)
 	end = DIV_ROUND_UP(i_size_read(inode), PAGE_CACHE_SIZE);
 	if (end != NFS_I(inode)->npages) {
 		rcu_read_lock();
-		end = page_cache_next_hole(mapping, idx + 1, ULONG_MAX);
+		end = radix_tree_next_hole(&mapping->page_tree, idx + 1, ULONG_MAX);
 		rcu_read_unlock();
 	}
 

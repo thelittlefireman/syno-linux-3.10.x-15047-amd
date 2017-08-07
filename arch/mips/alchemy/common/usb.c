@@ -14,7 +14,6 @@
 #include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/syscore_ops.h>
-#include <asm/cpu.h>
 #include <asm/mach-au1x00/au1000.h>
 
 /* control register offsets */
@@ -359,7 +358,7 @@ static inline int au1200_coherency_bug(void)
 {
 #if defined(CONFIG_DMA_COHERENT)
 	/* Au1200 AB USB does not support coherent memory */
-	if (!(read_c0_prid() & PRID_REV_MASK)) {
+	if (!(read_c0_prid() & 0xff)) {
 		printk(KERN_INFO "Au1200 USB: this is chip revision AB !!\n");
 		printk(KERN_INFO "Au1200 USB: update your board or re-configure"
 				 " the kernel\n");
@@ -398,7 +397,6 @@ out:
 	return ret;
 }
 
-
 /* initialize USB block(s) to a known working state */
 static inline void au1200_usb_init(void)
 {
@@ -423,7 +421,6 @@ static inline void au1000_usb_init(unsigned long rb, int reg)
 	wmb();
 	udelay(1000);
 }
-
 
 static inline void __au1xx0_ohci_control(int enable, unsigned long rb, int creg)
 {
@@ -498,7 +495,6 @@ int alchemy_usb_control(int block, int enable)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(alchemy_usb_control);
-
 
 static unsigned long alchemy_usb_pmdata[2];
 

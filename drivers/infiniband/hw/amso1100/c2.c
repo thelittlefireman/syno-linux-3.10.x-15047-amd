@@ -1082,7 +1082,6 @@ static int c2_probe(struct pci_dev *pcidev, const struct pci_device_id *ent)
 
 	/* Initialize network device */
 	if ((netdev = c2_devinit(c2dev, mmio_regs)) == NULL) {
-		ret = -ENOMEM;
 		iounmap(mmio_regs);
 		goto bail4;
 	}
@@ -1152,8 +1151,7 @@ static int c2_probe(struct pci_dev *pcidev, const struct pci_device_id *ent)
 		goto bail10;
 	}
 
-	ret = c2_register_device(c2dev);
-	if (ret)
+	if (c2_register_device(c2dev))
 		goto bail10;
 
 	return 0;

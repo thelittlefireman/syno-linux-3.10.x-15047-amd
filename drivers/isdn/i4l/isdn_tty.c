@@ -1347,7 +1347,6 @@ isdn_tty_get_lsr_info(modem_info *info, uint __user *value)
 	return put_user(result, value);
 }
 
-
 static int
 isdn_tty_tiocmget(struct tty_struct *tty)
 {
@@ -1874,7 +1873,6 @@ isdn_tty_exit(void)
 	put_tty_driver(dev->mdm.tty_modem);
 	dev->mdm.tty_modem = NULL;
 }
-
 
 /*
  * isdn_tty_match_icall(char *MSN, atemu *tty_emulator, int dev_idx)
@@ -2537,7 +2535,6 @@ isdn_tty_modem_result(int code, modem_info *info)
 			tty_hangup(info->port.tty);
 	}
 }
-
 
 /*
  * Display a modem-register-value.

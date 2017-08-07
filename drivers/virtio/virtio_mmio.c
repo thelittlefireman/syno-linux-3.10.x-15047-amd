@@ -101,13 +101,9 @@
 #include <linux/virtio_mmio.h>
 #include <linux/virtio_ring.h>
 
-
-
 /* The alignment to use between consumer and producer parts of vring.
  * Currently hardcoded to the page size. */
 #define VIRTIO_MMIO_VRING_ALIGN		PAGE_SIZE
-
-
 
 #define to_virtio_mmio_device(_plat_dev) \
 	container_of(_plat_dev, struct virtio_mmio_device, vdev)
@@ -137,8 +133,6 @@ struct virtio_mmio_vq_info {
 	/* the list node for the virtqueues list */
 	struct list_head node;
 };
-
-
 
 /* Configuration interface */
 
@@ -214,19 +208,16 @@ static void vm_reset(struct virtio_device *vdev)
 	writel(0, vm_dev->base + VIRTIO_MMIO_STATUS);
 }
 
-
-
 /* Transport interface */
 
 /* the notify function used when creating a virt queue */
-static bool vm_notify(struct virtqueue *vq)
+static void vm_notify(struct virtqueue *vq)
 {
 	struct virtio_mmio_device *vm_dev = to_virtio_mmio_device(vq->vdev);
 
 	/* We write the queue's selector into the notification register to
 	 * signal the other end */
 	writel(vq->index, vm_dev->base + VIRTIO_MMIO_QUEUE_NOTIFY);
-	return true;
 }
 
 /* Notify all virtqueues on an interrupt. */
@@ -260,8 +251,6 @@ static irqreturn_t vm_interrupt(int irq, void *opaque)
 	return ret;
 }
 
-
-
 static void vm_del_vq(struct virtqueue *vq)
 {
 	struct virtio_mmio_device *vm_dev = to_virtio_mmio_device(vq->vdev);
@@ -294,8 +283,6 @@ static void vm_del_vqs(struct virtio_device *vdev)
 
 	free_irq(platform_get_irq(vm_dev->pdev, 0), vm_dev);
 }
-
-
 
 static struct virtqueue *vm_setup_vq(struct virtio_device *vdev, unsigned index,
 				  void (*callback)(struct virtqueue *vq),
@@ -437,8 +424,6 @@ static const struct virtio_config_ops virtio_mmio_config_ops = {
 	.bus_name	= vm_bus_name,
 };
 
-
-
 /* Platform device */
 
 static int virtio_mmio_probe(struct platform_device *pdev)
@@ -471,7 +456,7 @@ static int virtio_mmio_probe(struct platform_device *pdev)
 
 	/* Check magic value */
 	magic = readl(vm_dev->base + VIRTIO_MMIO_MAGIC_VALUE);
-	if (magic != ('v' | 'i' << 8 | 'r' << 16 | 't' << 24)) {
+	if (memcmp(&magic, "virt", 4) != 0) {
 		dev_warn(&pdev->dev, "Wrong magic value 0x%08lx!\n", magic);
 		return -ENODEV;
 	}
@@ -502,8 +487,6 @@ static int virtio_mmio_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-
 
 /* Devices list parameter */
 

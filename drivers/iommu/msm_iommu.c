@@ -31,8 +31,8 @@
 #include <asm/cacheflush.h>
 #include <asm/sizes.h>
 
-#include "msm_iommu_hw-8xxx.h"
-#include "msm_iommu.h"
+#include <mach/iommu_hw-8xxx.h>
+#include <mach/iommu.h>
 
 #define MRC(reg, processor, op1, crn, crm, op2)				\
 __asm__ __volatile__ (							\
@@ -450,7 +450,6 @@ static int msm_iommu_map(struct iommu_domain *domain, unsigned long va,
 	sl_table = (unsigned long *) __va(((*fl_pte) & FL_BASE_MASK));
 	sl_offset = SL_OFFSET(va);
 	sl_pte = sl_table + sl_offset;
-
 
 	if (len == SZ_4K)
 		*sl_pte = (pa & SL_BASE_MASK_SMALL) | SL_AP0 | SL_AP1 | SL_NG |

@@ -85,7 +85,6 @@ int msm_dmov_exec_cmd(unsigned id, unsigned int cmdptr) { return -EIO; }
 /* no client rate control ifc (eg, ram) */
 #define DMOV_NONE_CRCI        0
 
-
 /* If the CMD_PTR register has CMD_PTR_LIST selected, the data mover
  * is going to walk a list of 32bit pointers as described below.  Each
  * pointer points to a *array* of dmov_s, etc structs.  The last pointer

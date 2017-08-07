@@ -69,7 +69,6 @@ static struct clk_ops vexpress_osc_ops = {
 	.set_rate = vexpress_osc_set_rate,
 };
 
-
 struct clk * __init vexpress_osc_setup(struct device *dev)
 {
 	struct clk_init_data init;
@@ -102,12 +101,12 @@ void __init vexpress_osc_of_setup(struct device_node *node)
 
 	osc = kzalloc(sizeof(*osc), GFP_KERNEL);
 	if (!osc)
-		goto error;
+		return;
 
 	osc->func = vexpress_config_func_get_by_node(node);
 	if (!osc->func) {
 		pr_err("Failed to obtain config func for node '%s'!\n",
-				node->full_name);
+				node->name);
 		goto error;
 	}
 
@@ -119,7 +118,7 @@ void __init vexpress_osc_of_setup(struct device_node *node)
 
 	of_property_read_string(node, "clock-output-names", &init.name);
 	if (!init.name)
-		init.name = node->full_name;
+		init.name = node->name;
 
 	init.ops = &vexpress_osc_ops;
 	init.flags = CLK_IS_ROOT;

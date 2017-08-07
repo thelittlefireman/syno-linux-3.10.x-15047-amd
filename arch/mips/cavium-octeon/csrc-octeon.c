@@ -12,13 +12,11 @@
 #include <linux/smp.h>
 
 #include <asm/cpu-info.h>
-#include <asm/cpu-type.h>
 #include <asm/time.h>
 
 #include <asm/octeon/octeon.h>
 #include <asm/octeon/cvmx-ipd-defs.h>
 #include <asm/octeon/cvmx-mio-defs.h>
-
 
 static u64 f;
 static u64 rdiv;
@@ -165,7 +163,6 @@ void __delay(unsigned long loops)
 		cur = read_c0_cvmcount();
 }
 EXPORT_SYMBOL(__delay);
-
 
 /**
  * octeon_io_clk_delay - wait for a given number of io clock cycles to pass.

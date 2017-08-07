@@ -18,7 +18,6 @@
  *    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-
 /*
  * Driver implements own I2C-adapter for tuner I2C access. That's since chip
  * have unusual I2C-gate control which closes gate automatically after each
@@ -710,7 +709,6 @@ struct dvb_frontend *rtl2830_attach(const struct rtl2830_config *cfg,
 		sizeof(priv->tuner_i2c_adapter.name));
 	priv->tuner_i2c_adapter.algo = &rtl2830_tuner_i2c_algo;
 	priv->tuner_i2c_adapter.algo_data = NULL;
-	priv->tuner_i2c_adapter.dev.parent = &i2c->dev;
 	i2c_set_adapdata(&priv->tuner_i2c_adapter, priv);
 	if (i2c_add_adapter(&priv->tuner_i2c_adapter) < 0) {
 		dev_err(&i2c->dev,

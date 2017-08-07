@@ -131,7 +131,6 @@ struct l2x0_regs {
 	unsigned long prefetch_ctrl;
 	unsigned long pwr_ctrl;
 	unsigned long ctrl;
-	unsigned long aux2_ctrl;
 };
 
 extern struct l2x0_regs l2x0_saved_regs;

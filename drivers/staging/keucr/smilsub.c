@@ -6,25 +6,50 @@
 #include "smcommon.h"
 #include "smil.h"
 
-static u8   _Check_D_DevCode(u8);
-static u32	ErrXDCode;
-static u8	IsSSFDCCompliance;
-static u8	IsXDCompliance;
+void   _Set_D_SsfdcRdCmd(BYTE);
+void   _Set_D_SsfdcRdAddr(BYTE);
+void   _Set_D_SsfdcRdChip(void);
+void   _Set_D_SsfdcRdStandby(void);
+void   _Start_D_SsfdcRdHwECC(void);
+void   _Stop_D_SsfdcRdHwECC(void);
+void   _Load_D_SsfdcRdHwECC(BYTE);
+void   _Set_D_SsfdcWrCmd(BYTE);
+void   _Set_D_SsfdcWrAddr(BYTE);
+void   _Set_D_SsfdcWrBlock(void);
+void   _Set_D_SsfdcWrStandby(void);
+void   _Start_D_SsfdcWrHwECC(void);
+void   _Load_D_SsfdcWrHwECC(BYTE);
+int    _Check_D_SsfdcBusy(WORD);
+int    _Check_D_SsfdcStatus(void);
+void   _Reset_D_SsfdcErr(void);
+void   _Read_D_SsfdcBuf(BYTE *);
+void   _Write_D_SsfdcBuf(BYTE *);
+void   _Read_D_SsfdcByte(BYTE *);
+void   _ReadRedt_D_SsfdcBuf(BYTE *);
+void   _WriteRedt_D_SsfdcBuf(BYTE *);
+BYTE   _Check_D_DevCode(BYTE);
 
-struct keucr_media_info         Ssfdc;
-struct keucr_media_address      Media;
-struct keucr_media_area         CisArea;
+void   _Set_D_ECCdata(BYTE, BYTE *);
+void   _Calc_D_ECCdata(BYTE *);
 
-static u8                            EccBuf[6];
+struct SSFDCTYPE                Ssfdc;
+struct ADDRESS                  Media;
+struct CIS_AREA                 CisArea;
+
+static BYTE                            EccBuf[6];
+extern PBYTE                    SMHostAddr;
+extern DWORD                    ErrXDCode;
+
+extern WORD  ReadBlock;
+extern WORD  WriteBlock;
 
 #define EVEN                    0             /* Even Page for 256byte/page */
 #define ODD                     1             /* Odd Page for 256byte/page */
 
-
 /* SmartMedia Redundant buffer data Control Subroutine
  *----- Check_D_DataBlank() --------------------------------------------
  */
-int Check_D_DataBlank(u8 *redundant)
+int Check_D_DataBlank(BYTE *redundant)
 {
 	char i;
 
@@ -36,7 +61,7 @@ int Check_D_DataBlank(u8 *redundant)
 }
 
 /* ----- Check_D_FailBlock() -------------------------------------------- */
-int Check_D_FailBlock(u8 *redundant)
+int Check_D_FailBlock(BYTE *redundant)
 {
 	redundant += REDT_BLOCK;
 
@@ -51,7 +76,7 @@ int Check_D_FailBlock(u8 *redundant)
 }
 
 /* ----- Check_D_DataStatus() ------------------------------------------- */
-int Check_D_DataStatus(u8 *redundant)
+int Check_D_DataStatus(BYTE *redundant)
 {
 	redundant += REDT_DATA;
 
@@ -70,14 +95,12 @@ int Check_D_DataStatus(u8 *redundant)
 }
 
 /* ----- Load_D_LogBlockAddr() ------------------------------------------ */
-int Load_D_LogBlockAddr(u8 *redundant)
+int Load_D_LogBlockAddr(BYTE *redundant)
 {
-	u16 addr1, addr2;
+	WORD addr1, addr2;
 
-	addr1 = (u16)*(redundant + REDT_ADDR1H)*0x0100 +
-					(u16)*(redundant + REDT_ADDR1L);
-	addr2 = (u16)*(redundant + REDT_ADDR2H)*0x0100 +
-					(u16)*(redundant + REDT_ADDR2L);
+	addr1 = (WORD)*(redundant + REDT_ADDR1H)*0x0100 + (WORD)*(redundant + REDT_ADDR1L);
+	addr2 = (WORD)*(redundant + REDT_ADDR2H)*0x0100 + (WORD)*(redundant + REDT_ADDR2L);
 
 	if (addr1 == addr2)
 		if ((addr1 & 0xF000) == 0x1000) {
@@ -85,7 +108,7 @@ int Load_D_LogBlockAddr(u8 *redundant)
 			return SMSUCCESS;
 		}
 
-	if (hweight16((u16)(addr1^addr2)) != 0x01)
+	if (hweight16((WORD)(addr1^addr2)) != 0x01)
 		return ERROR;
 
 	if ((addr1 & 0xF000) == 0x1000)
@@ -104,7 +127,7 @@ int Load_D_LogBlockAddr(u8 *redundant)
 }
 
 /* ----- Clr_D_RedundantData() ------------------------------------------ */
-void Clr_D_RedundantData(u8 *redundant)
+void Clr_D_RedundantData(BYTE *redundant)
 {
 	char i;
 
@@ -113,9 +136,9 @@ void Clr_D_RedundantData(u8 *redundant)
 }
 
 /* ----- Set_D_LogBlockAddr() ------------------------------------------- */
-void Set_D_LogBlockAddr(u8 *redundant)
+void Set_D_LogBlockAddr(BYTE *redundant)
 {
-	u16 addr;
+	WORD addr;
 
 	*(redundant + REDT_BLOCK) = 0xFF;
 	*(redundant + REDT_DATA) = 0xFF;
@@ -124,21 +147,20 @@ void Set_D_LogBlockAddr(u8 *redundant)
 	if ((hweight16(addr) % 2))
 		addr++;
 
-	*(redundant + REDT_ADDR1H) = *(redundant + REDT_ADDR2H) =
-							(u8)(addr / 0x0100);
-	*(redundant + REDT_ADDR1L) = *(redundant + REDT_ADDR2L) = (u8)addr;
+	*(redundant + REDT_ADDR1H) = *(redundant + REDT_ADDR2H) = (BYTE)(addr / 0x0100);
+	*(redundant + REDT_ADDR1L) = *(redundant + REDT_ADDR2L) = (BYTE)addr;
 }
 
 /*----- Set_D_FailBlock() ---------------------------------------------- */
-void Set_D_FailBlock(u8 *redundant)
+void Set_D_FailBlock(BYTE *redundant)
 {
 	char i;
 	for (i = 0; i < REDTSIZE; i++)
-		*redundant++ = (u8)((i == REDT_BLOCK) ? 0xF0 : 0xFF);
+		*redundant++ = (BYTE)((i == REDT_BLOCK) ? 0xF0 : 0xFF);
 }
 
 /* ----- Set_D_DataStaus() ---------------------------------------------- */
-void Set_D_DataStaus(u8 *redundant)
+void Set_D_DataStaus(BYTE *redundant)
 {
 	redundant += REDT_DATA;
 	*redundant = 0x00;
@@ -154,10 +176,10 @@ void Ssfdc_D_Reset(struct us_data *us)
 }
 
 /* ----- Ssfdc_D_ReadCisSect() ------------------------------------------ */
-int Ssfdc_D_ReadCisSect(struct us_data *us, u8 *buf, u8 *redundant)
+int Ssfdc_D_ReadCisSect(struct us_data *us, BYTE *buf, BYTE *redundant)
 {
-	u8 zone, sector;
-	u16 block;
+	BYTE zone, sector;
+	WORD block;
 
 	zone = Media.Zone; block = Media.PhyBlock; sector = Media.Sector;
 	Media.Zone = 0;
@@ -165,9 +187,7 @@ int Ssfdc_D_ReadCisSect(struct us_data *us, u8 *buf, u8 *redundant)
 	Media.Sector = CisArea.Sector;
 
 	if (Ssfdc_D_ReadSect(us, buf, redundant)) {
-		Media.Zone = zone;
-		Media.PhyBlock = block;
-		Media.Sector = sector;
+		Media.Zone = zone; Media.PhyBlock = block; Media.Sector = sector;
 		return ERROR;
 	}
 
@@ -177,21 +197,20 @@ int Ssfdc_D_ReadCisSect(struct us_data *us, u8 *buf, u8 *redundant)
 
 /* 6250 CMD 1 */
 /* ----- Ssfdc_D_ReadSect() --------------------------------------------- */
-int Ssfdc_D_ReadSect(struct us_data *us, u8 *buf, u8 *redundant)
+int Ssfdc_D_ReadSect(struct us_data *us, BYTE *buf, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	addr;
+	WORD	addr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors + Media.Sector;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors + Media.Sector;
 
 	/* Read sect data */
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
@@ -200,8 +219,8 @@ int Ssfdc_D_ReadSect(struct us_data *us, u8 *buf, u8 *redundant)
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF1;
 	bcb->CDB[1]			= 0x02;
-	bcb->CDB[4]			= (u8)addr;
-	bcb->CDB[3]			= (u8)(addr / 0x0100);
+	bcb->CDB[4]			= (BYTE)addr;
+	bcb->CDB[3]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[2]			= Media.Zone / 2;
 
 	result = ENE_SendScsiCmd(us, FDIR_READ, buf, 0);
@@ -215,8 +234,8 @@ int Ssfdc_D_ReadSect(struct us_data *us, u8 *buf, u8 *redundant)
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF1;
 	bcb->CDB[1]			= 0x03;
-	bcb->CDB[4]			= (u8)addr;
-	bcb->CDB[3]			= (u8)(addr / 0x0100);
+	bcb->CDB[4]			= (BYTE)addr;
+	bcb->CDB[3]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[2]			= Media.Zone / 2;
 	bcb->CDB[8]			= 0;
 	bcb->CDB[9]			= 1;
@@ -229,22 +248,20 @@ int Ssfdc_D_ReadSect(struct us_data *us, u8 *buf, u8 *redundant)
 }
 
 /* ----- Ssfdc_D_ReadBlock() --------------------------------------------- */
-int Ssfdc_D_ReadBlock(struct us_data *us, u16 count, u8 *buf,
-							u8 *redundant)
+int Ssfdc_D_ReadBlock(struct us_data *us, WORD count, BYTE *buf, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	addr;
+	WORD	addr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors + Media.Sector;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors + Media.Sector;
 
 	/* Read sect data */
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
@@ -253,8 +270,8 @@ int Ssfdc_D_ReadBlock(struct us_data *us, u16 count, u8 *buf,
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF1;
 	bcb->CDB[1]			= 0x02;
-	bcb->CDB[4]			= (u8)addr;
-	bcb->CDB[3]			= (u8)(addr / 0x0100);
+	bcb->CDB[4]			= (BYTE)addr;
+	bcb->CDB[3]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[2]			= Media.Zone / 2;
 
 	result = ENE_SendScsiCmd(us, FDIR_READ, buf, 0);
@@ -268,8 +285,8 @@ int Ssfdc_D_ReadBlock(struct us_data *us, u16 count, u8 *buf,
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF1;
 	bcb->CDB[1]			= 0x03;
-	bcb->CDB[4]			= (u8)addr;
-	bcb->CDB[3]			= (u8)(addr / 0x0100);
+	bcb->CDB[4]			= (BYTE)addr;
+	bcb->CDB[3]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[2]			= Media.Zone / 2;
 	bcb->CDB[8]			= 0;
 	bcb->CDB[9]			= 1;
@@ -281,26 +298,23 @@ int Ssfdc_D_ReadBlock(struct us_data *us, u16 count, u8 *buf,
 	return USB_STOR_TRANSPORT_GOOD;
 }
 
-
 /* ----- Ssfdc_D_CopyBlock() -------------------------------------------- */
-int Ssfdc_D_CopyBlock(struct us_data *us, u16 count, u8 *buf,
-							u8 *redundant)
+int Ssfdc_D_CopyBlock(struct us_data *us, WORD count, BYTE *buf, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	ReadAddr, WriteAddr;
+	WORD	ReadAddr, WriteAddr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	ReadAddr = (u16)Media.Zone*Ssfdc.MaxBlocks + ReadBlock;
-	ReadAddr = ReadAddr*(u16)Ssfdc.MaxSectors;
-	WriteAddr = (u16)Media.Zone*Ssfdc.MaxBlocks + WriteBlock;
-	WriteAddr = WriteAddr*(u16)Ssfdc.MaxSectors;
+	ReadAddr = (WORD)Media.Zone*Ssfdc.MaxBlocks + ReadBlock;
+	ReadAddr = ReadAddr*(WORD)Ssfdc.MaxSectors;
+	WriteAddr = (WORD)Media.Zone*Ssfdc.MaxBlocks + WriteBlock;
+	WriteAddr = WriteAddr*(WORD)Ssfdc.MaxSectors;
 
 	/* Write sect data */
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
@@ -309,16 +323,16 @@ int Ssfdc_D_CopyBlock(struct us_data *us, u16 count, u8 *buf,
 	bcb->Flags			= 0x00;
 	bcb->CDB[0]			= 0xF0;
 	bcb->CDB[1]			= 0x08;
-	bcb->CDB[7]			= (u8)WriteAddr;
-	bcb->CDB[6]			= (u8)(WriteAddr / 0x0100);
+	bcb->CDB[7]			= (BYTE)WriteAddr;
+	bcb->CDB[6]			= (BYTE)(WriteAddr / 0x0100);
 	bcb->CDB[5]			= Media.Zone / 2;
 	bcb->CDB[8]			= *(redundant + REDT_ADDR1H);
 	bcb->CDB[9]			= *(redundant + REDT_ADDR1L);
 	bcb->CDB[10]		= Media.Sector;
 
 	if (ReadBlock != NO_ASSIGN) {
-		bcb->CDB[4]		= (u8)ReadAddr;
-		bcb->CDB[3]		= (u8)(ReadAddr / 0x0100);
+		bcb->CDB[4]		= (BYTE)ReadAddr;
+		bcb->CDB[3]		= (BYTE)(ReadAddr / 0x0100);
 		bcb->CDB[2]		= Media.Zone / 2;
 	} else
 		bcb->CDB[11]	= 1;
@@ -331,22 +345,20 @@ int Ssfdc_D_CopyBlock(struct us_data *us, u16 count, u8 *buf,
 }
 
 /* ----- Ssfdc_D_WriteSectForCopy() ------------------------------------- */
-int Ssfdc_D_WriteSectForCopy(struct us_data *us, u8 *buf, u8 *redundant)
+int Ssfdc_D_WriteSectForCopy(struct us_data *us, BYTE *buf, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	addr;
+	WORD	addr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors + Media.Sector;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors + Media.Sector;
 
 	/* Write sect data */
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
@@ -355,8 +367,8 @@ int Ssfdc_D_WriteSectForCopy(struct us_data *us, u8 *buf, u8 *redundant)
 	bcb->Flags			= 0x00;
 	bcb->CDB[0]			= 0xF0;
 	bcb->CDB[1]			= 0x04;
-	bcb->CDB[7]			= (u8)addr;
-	bcb->CDB[6]			= (u8)(addr / 0x0100);
+	bcb->CDB[7]			= (BYTE)addr;
+	bcb->CDB[6]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[5]			= Media.Zone / 2;
 	bcb->CDB[8]			= *(redundant + REDT_ADDR1H);
 	bcb->CDB[9]			= *(redundant + REDT_ADDR1L);
@@ -374,17 +386,16 @@ int Ssfdc_D_EraseBlock(struct us_data *us)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	addr;
+	WORD	addr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors;
 
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
 	bcb->Signature = cpu_to_le32(US_BULK_CB_SIGN);
@@ -392,8 +403,8 @@ int Ssfdc_D_EraseBlock(struct us_data *us)
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF2;
 	bcb->CDB[1]			= 0x06;
-	bcb->CDB[7]			= (u8)addr;
-	bcb->CDB[6]			= (u8)(addr / 0x0100);
+	bcb->CDB[7]			= (BYTE)addr;
+	bcb->CDB[6]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[5]			= Media.Zone / 2;
 
 	result = ENE_SendScsiCmd(us, FDIR_READ, NULL, 0);
@@ -405,22 +416,21 @@ int Ssfdc_D_EraseBlock(struct us_data *us)
 
 /* 6250 CMD 2 */
 /*----- Ssfdc_D_ReadRedtData() ----------------------------------------- */
-int Ssfdc_D_ReadRedtData(struct us_data *us, u8 *redundant)
+int Ssfdc_D_ReadRedtData(struct us_data *us, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16	addr;
-	u8	*buf;
+	WORD	addr;
+	BYTE	*buf;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors + Media.Sector;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors + Media.Sector;
 
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
 	bcb->Signature = cpu_to_le32(US_BULK_CB_SIGN);
@@ -428,8 +438,8 @@ int Ssfdc_D_ReadRedtData(struct us_data *us, u8 *redundant)
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF1;
 	bcb->CDB[1]			= 0x03;
-	bcb->CDB[4]			= (u8)addr;
-	bcb->CDB[3]			= (u8)(addr / 0x0100);
+	bcb->CDB[4]			= (BYTE)addr;
+	bcb->CDB[3]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[2]			= Media.Zone / 2;
 	bcb->CDB[8]			= 0;
 	bcb->CDB[9]			= 1;
@@ -446,21 +456,20 @@ int Ssfdc_D_ReadRedtData(struct us_data *us, u8 *redundant)
 
 /* 6250 CMD 4 */
 /* ----- Ssfdc_D_WriteRedtData() ---------------------------------------- */
-int Ssfdc_D_WriteRedtData(struct us_data *us, u8 *redundant)
+int Ssfdc_D_WriteRedtData(struct us_data *us, BYTE *redundant)
 {
 	struct bulk_cb_wrap *bcb = (struct bulk_cb_wrap *) us->iobuf;
 	int	result;
-	u16                    addr;
+	WORD                    addr;
 
 	result = ENE_LoadBinCode(us, SM_RW_PATTERN);
 	if (result != USB_STOR_XFER_GOOD) {
-		dev_err(&us->pusb_dev->dev,
-			"Failed to load SmartMedia read/write code\n");
+		printk("Load SM RW Code Fail !!\n");
 		return USB_STOR_TRANSPORT_ERROR;
 	}
 
-	addr = (u16)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
-	addr = addr*(u16)Ssfdc.MaxSectors + Media.Sector;
+	addr = (WORD)Media.Zone*Ssfdc.MaxBlocks + Media.PhyBlock;
+	addr = addr*(WORD)Ssfdc.MaxSectors + Media.Sector;
 
 	memset(bcb, 0, sizeof(struct bulk_cb_wrap));
 	bcb->Signature = cpu_to_le32(US_BULK_CB_SIGN);
@@ -468,8 +477,8 @@ int Ssfdc_D_WriteRedtData(struct us_data *us, u8 *redundant)
 	bcb->Flags			= 0x80;
 	bcb->CDB[0]			= 0xF2;
 	bcb->CDB[1]			= 0x05;
-	bcb->CDB[7]			= (u8)addr;
-	bcb->CDB[6]			= (u8)(addr / 0x0100);
+	bcb->CDB[7]			= (BYTE)addr;
+	bcb->CDB[6]			= (BYTE)(addr / 0x0100);
 	bcb->CDB[5]			= Media.Zone / 2;
 	bcb->CDB[8]			= *(redundant + REDT_ADDR1H);
 	bcb->CDB[9]			= *(redundant + REDT_ADDR1L);
@@ -487,12 +496,10 @@ int Ssfdc_D_CheckStatus(void)
 	return SMSUCCESS;
 }
 
-
-
 /* SmartMedia ID Code Check & Mode Set Subroutine
  * ----- Set_D_SsfdcModel() ---------------------------------------------
  */
-int Set_D_SsfdcModel(u8 dcode)
+int Set_D_SsfdcModel(BYTE dcode)
 {
 	switch (_Check_D_DevCode(dcode)) {
 	case SSFDC1MB:
@@ -596,11 +603,11 @@ int Set_D_SsfdcModel(u8 dcode)
 		return ERROR;
 	}
 
-	return SMSUCCESS;
+    return SMSUCCESS;
 }
 
 /* ----- _Check_D_DevCode() --------------------------------------------- */
-static u8 _Check_D_DevCode(u8 dcode)
+BYTE _Check_D_DevCode(BYTE dcode)
 {
 	switch (dcode) {
 	case 0x6E:
@@ -624,27 +631,24 @@ static u8 _Check_D_DevCode(u8 dcode)
 	}
 }
 
-
-
-
 /* SmartMedia ECC Control Subroutine
  * ----- Check_D_ReadError() ----------------------------------------------
  */
-int Check_D_ReadError(u8 *redundant)
+int Check_D_ReadError(BYTE *redundant)
 {
 	return SMSUCCESS;
 }
 
 /* ----- Check_D_Correct() ---------------------------------------------- */
-int Check_D_Correct(u8 *buf, u8 *redundant)
+int Check_D_Correct(BYTE *buf, BYTE *redundant)
 {
 	return SMSUCCESS;
 }
 
 /* ----- Check_D_CISdata() ---------------------------------------------- */
-int Check_D_CISdata(u8 *buf, u8 *redundant)
+int Check_D_CISdata(BYTE *buf, BYTE *redundant)
 {
-	u8 cis[] = {0x01, 0x03, 0xD9, 0x01, 0xFF, 0x18, 0x02,
+	BYTE cis[] = {0x01, 0x03, 0xD9, 0x01, 0xFF, 0x18, 0x02,
 		      0xDF, 0x01, 0x20};
 
 	int cis_len = sizeof(cis);
@@ -669,10 +673,8 @@ int Check_D_CISdata(u8 *buf, u8 *redundant)
 }
 
 /* ----- Set_D_RightECC() ---------------------------------------------- */
-void Set_D_RightECC(u8 *redundant)
+void Set_D_RightECC(BYTE *redundant)
 {
-	/* Driver ECC Check */
-	return;
+    /* Driver ECC Check */
+    return;
 }
-
-

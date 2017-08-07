@@ -15,7 +15,6 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/rtc.h>
-#include <linux/err.h>
 
 #include <linux/mfd/da9052/da9052.h>
 #include <linux/mfd/da9052/reg.h>
@@ -26,6 +25,7 @@
 struct da9052_rtc {
 	struct rtc_device *rtc;
 	struct da9052 *da9052;
+	int irq;
 };
 
 static int da9052_rtc_enable_alarm(struct da9052 *da9052, bool enable)
@@ -239,7 +239,8 @@ static int da9052_rtc_probe(struct platform_device *pdev)
 
 	rtc->da9052 = dev_get_drvdata(pdev->dev.parent);
 	platform_set_drvdata(pdev, rtc);
-	ret = da9052_request_irq(rtc->da9052, DA9052_IRQ_ALARM, "ALM",
+	rtc->irq =  DA9052_IRQ_ALARM;
+	ret = da9052_request_irq(rtc->da9052, rtc->irq, "ALM",
 				da9052_rtc_irq, rtc);
 	if (ret != 0) {
 		rtc_err(rtc->da9052, "irq registration failed: %d\n", ret);
@@ -248,11 +249,22 @@ static int da9052_rtc_probe(struct platform_device *pdev)
 
 	rtc->rtc = devm_rtc_device_register(&pdev->dev, pdev->name,
 				       &da9052_rtc_ops, THIS_MODULE);
-	return PTR_ERR_OR_ZERO(rtc->rtc);
+	if (IS_ERR(rtc->rtc))
+		return PTR_ERR(rtc->rtc);
+
+	return 0;
+}
+
+static int da9052_rtc_remove(struct platform_device *pdev)
+{
+	platform_set_drvdata(pdev, NULL);
+
+	return 0;
 }
 
 static struct platform_driver da9052_rtc_driver = {
 	.probe	= da9052_rtc_probe,
+	.remove	= da9052_rtc_remove,
 	.driver = {
 		.name	= "da9052-rtc",
 		.owner	= THIS_MODULE,

@@ -21,8 +21,6 @@
 
 #include <linux/list.h>
 #include <linux/io.h>
-#include <linux/of.h>
-
 
 /*
  * SSP Serial Port Registers
@@ -65,7 +63,6 @@
 #define SSCR0_FPCKE	(1 << 29)	/* FIFO packing enable */
 #define SSCR0_ACS	(1 << 30)	/* Audio clock select */
 #define SSCR0_MOD	(1 << 31)	/* Mode (normal or network) */
-
 
 #define SSCR1_RIE	(1 << 0)	/* Receive FIFO Interrupt Enable */
 #define SSCR1_TIE	(1 << 1)	/* Transmit FIFO Interrupt Enable */
@@ -136,7 +133,6 @@
 #define SSSR_TINT		(1 << 19)	/* Receiver Time-out Interrupt */
 #define SSSR_PINT		(1 << 18)	/* Peripheral Trailing Byte Interrupt */
 
-
 #define SSPSP_SCMODE(x)		((x) << 0)	/* Serial Bit Rate Clock Mode */
 #define SSPSP_SFRMP		(1 << 2)	/* Serial Frame Polarity */
 #define SSPSP_ETDS		(1 << 3)	/* End of Transfer data State */
@@ -192,8 +188,6 @@ struct ssp_device {
 	int		irq;
 	int		drcmr_rx;
 	int		drcmr_tx;
-
-	struct device_node	*of_node;
 };
 
 /**
@@ -219,18 +213,11 @@ static inline u32 pxa_ssp_read_reg(struct ssp_device *dev, u32 reg)
 	return __raw_readl(dev->mmio_base + reg);
 }
 
-#if IS_ENABLED(CONFIG_PXA_SSP)
+#ifdef CONFIG_ARCH_PXA
 struct ssp_device *pxa_ssp_request(int port, const char *label);
 void pxa_ssp_free(struct ssp_device *);
-struct ssp_device *pxa_ssp_request_of(const struct device_node *of_node,
-				      const char *label);
 #else
 static inline struct ssp_device *pxa_ssp_request(int port, const char *label)
-{
-	return NULL;
-}
-static inline struct ssp_device *pxa_ssp_request_of(const struct device_node *n,
-						    const char *name)
 {
 	return NULL;
 }

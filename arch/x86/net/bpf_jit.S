@@ -103,7 +103,6 @@ sk_load_byte_msh_positive_offset:
 	pop	%r9;				\
 	pop	%rdi
 
-
 bpf_slow_path_word:
 	bpf_slow_path_common(4)
 	js	bpf_error
@@ -147,7 +146,6 @@ bpf_slow_path_byte_msh:
 	pop	%r9;						\
 	pop	%rdi;						\
 	jz	bpf_error
-
 
 bpf_slow_path_word_neg:
 	cmp	SKF_MAX_NEG_OFF, %esi	/* test range */

@@ -37,7 +37,6 @@
 #define KN01_CSR	(14*KN01_SLOT_SIZE)	/* system ctrl & status reg */
 #define KN01_SYS_ROM	(15*KN01_SLOT_SIZE)	/* system board ROM */
 
-
 /*
  * Frame buffer memory address.
  */
@@ -53,23 +52,21 @@
 #define KN01_CPU_INR_LANCE	3	/* LANCE (Am7990) Ethernet */
 #define KN01_CPU_INR_SII	2	/* SII (DC7061) SCSI */
 
-
 /*
  * System Control & Status Register bits.
  */
-#define KN01_CSR_MNFMOD		(1<<15)	/* MNFMOD manufacturing jumper */
-#define KN01_CSR_STATUS		(1<<14)	/* self-test result status output */
-#define KN01_CSR_PARDIS		(1<<13)	/* parity error disable */
-#define KN01_CSR_CRSRTST	(1<<12)	/* PCC test output */
-#define KN01_CSR_MONO		(1<<11)	/* mono/color fb SIMM installed */
-#define KN01_CSR_MEMERR		(1<<10)	/* write timeout error status & ack*/
+#define KN01_CSR_MNFMOD		(1<<15) /* MNFMOD manufacturing jumper */
+#define KN01_CSR_STATUS		(1<<14) /* self-test result status output */
+#define KN01_CSR_PARDIS		(1<<13) /* parity error disable */
+#define KN01_CSR_CRSRTST	(1<<12) /* PCC test output */
+#define KN01_CSR_MONO		(1<<11) /* mono/color fb SIMM installed */
+#define KN01_CSR_MEMERR		(1<<10) /* write timeout error status & ack*/
 #define KN01_CSR_VINT		(1<<9)	/* PCC area detect #2 status & ack */
 #define KN01_CSR_TXDIS		(1<<8)	/* DZ11 transmit disable */
 #define KN01_CSR_VBGTRG		(1<<2)	/* blue DAC voltage over green (r/o) */
 #define KN01_CSR_VRGTRG		(1<<1)	/* red DAC voltage over green (r/o) */
 #define KN01_CSR_VRGTRB		(1<<0)	/* red DAC voltage over blue (r/o) */
 #define KN01_CSR_LEDS		(0xff<<0) /* ~diagnostic LEDs (w/o) */
-
 
 #ifndef __ASSEMBLY__
 

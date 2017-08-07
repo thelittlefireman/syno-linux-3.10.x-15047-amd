@@ -54,6 +54,28 @@
 static void __iomem *avic_base;
 static struct irq_domain *domain;
 
+#ifdef CONFIG_MXC_IRQ_PRIOR
+static int avic_irq_set_priority(unsigned char irq, unsigned char prio)
+{
+	struct irq_data *d = irq_get_irq_data(irq);
+	unsigned int temp;
+	unsigned int mask = 0x0F << irq % 8 * 4;
+
+	irq = d->hwirq;
+
+	if (irq >= AVIC_NUM_IRQS)
+		return -EINVAL;
+
+	temp = __raw_readl(avic_base + AVIC_NIPRIORITY(irq / 8));
+	temp &= ~mask;
+	temp |= prio & mask;
+
+	__raw_writel(temp, avic_base + AVIC_NIPRIORITY(irq / 8));
+
+	return 0;
+}
+#endif
+
 #ifdef CONFIG_FIQ
 static int avic_set_irq_fiq(unsigned int irq, unsigned int type)
 {
@@ -78,8 +100,10 @@ static int avic_set_irq_fiq(unsigned int irq, unsigned int type)
 }
 #endif /* CONFIG_FIQ */
 
-
 static struct mxc_extra_irq avic_extra_irq = {
+#ifdef CONFIG_MXC_IRQ_PRIOR
+	.set_priority = avic_irq_set_priority,
+#endif
 #ifdef CONFIG_FIQ
 	.set_irq_fiq = avic_set_irq_fiq,
 #endif

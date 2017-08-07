@@ -20,7 +20,6 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/of.h>
-#include <linux/err.h>
 
 #define DRV_VERSION "0.4.3"
 
@@ -111,7 +110,6 @@ static int pcf8563_get_datetime(struct i2c_client *client, struct rtc_time *tm)
 		buf[0], buf[1], buf[2], buf[3],
 		buf[4], buf[5], buf[6], buf[7],
 		buf[8]);
-
 
 	tm->tm_sec = bcd2bin(buf[PCF8563_REG_SC] & 0x7F);
 	tm->tm_min = bcd2bin(buf[PCF8563_REG_MN] & 0x7F);
@@ -264,7 +262,15 @@ static int pcf8563_probe(struct i2c_client *client,
 				pcf8563_driver.driver.name,
 				&pcf8563_rtc_ops, THIS_MODULE);
 
-	return PTR_ERR_OR_ZERO(pcf8563->rtc);
+	if (IS_ERR(pcf8563->rtc))
+		return PTR_ERR(pcf8563->rtc);
+
+	return 0;
+}
+
+static int pcf8563_remove(struct i2c_client *client)
+{
+	return 0;
 }
 
 static const struct i2c_device_id pcf8563_id[] = {
@@ -289,6 +295,7 @@ static struct i2c_driver pcf8563_driver = {
 		.of_match_table = of_match_ptr(pcf8563_of_match),
 	},
 	.probe		= pcf8563_probe,
+	.remove		= pcf8563_remove,
 	.id_table	= pcf8563_id,
 };
 

@@ -23,7 +23,9 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *     along with this program; if not, write to the Free Software
+ *     Foundation, Inc., 59 Temple Place, Suite 330, Boston,
+ *     MA 02111-1307 USA
  *
  ********************************************************************/
 
@@ -328,7 +330,6 @@ void irlap_data_indication(struct irlap_cb *self, struct sk_buff *skb,
 
 	irlmp_link_data_indication(self->notify.instance, skb, unreliable);
 }
-
 
 /*
  * Function irlap_data_request (self, skb)
@@ -1031,7 +1032,6 @@ void irlap_apply_connection_parameters(struct irlap_cb *self, int now)
 					self->qos_tx.max_turn_time.value);
 	self->bytes_left = self->line_capacity;
 #endif /* CONFIG_IRDA_DYNAMIC_WINDOW */
-
 
 	/*
 	 *  Initialize timeout values, some of the rules are listed on

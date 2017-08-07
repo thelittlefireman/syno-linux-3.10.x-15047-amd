@@ -31,9 +31,7 @@
 
 #include <linux/capability.h>
 
-
 #define GENERIC_FILESIZE	64
-
 
 static int get_integer(const char *buf, size_t count)
 {
@@ -42,7 +40,7 @@ static int get_integer(const char *buf, size_t count)
 
 	if (count == 0)
 		goto out;
-	count = min_t(size_t, count, 10);
+	count = min(count, (size_t)10);
 	memcpy(tmp, buf, count);
 	ret = simple_strtol(tmp, NULL, 10);
 out:

@@ -208,7 +208,6 @@ static int sdhi_boot_request(void __iomem *base, struct mmc_command *cmd)
 	sd_ctrl_write32(base, CTL_ARG_REG, cmd->arg);
 	sd_ctrl_write16(base, CTL_SD_CMD, c);
 
-
 	sd_ctrl_write32(base, CTL_IRQ_MASK,
 			~(TMIO_STAT_CMDRESPEND | ALL_ERROR) &
 			sd_ctrl_read32(base, CTL_IRQ_MASK));

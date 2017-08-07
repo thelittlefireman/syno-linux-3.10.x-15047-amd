@@ -14,9 +14,6 @@
  * which always checksum on 4 octet boundaries.  ihl is the number
  * of 32-bit words and is always >= 5.
  */
-#ifdef CONFIG_GENERIC_CSUM
-#include <asm-generic/checksum.h>
-#else
 extern __sum16 ip_fast_csum(const void *iph, unsigned int ihl);
 
 /*
@@ -75,7 +72,6 @@ extern __wsum csum_and_copy_to_user(const void *src, void __user *dst,
 #define csum_partial_copy_nocheck(src, dst, len, sum)   \
         csum_partial_copy_generic((src), (dst), (len), (sum), NULL, NULL)
 
-
 /*
  * turns a 32-bit partial checksum (e.g. from csum_partial) into a
  * 1's complement 16-bit checksum.
@@ -126,7 +122,5 @@ static inline __wsum csum_tcpudp_nofold(__be32 saddr, __be32 daddr,
 	return sum;
 #endif
 }
-
-#endif
 #endif /* __KERNEL__ */
 #endif

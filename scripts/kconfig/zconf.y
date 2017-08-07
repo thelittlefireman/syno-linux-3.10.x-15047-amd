@@ -136,7 +136,6 @@ option_error:
 	| error T_EOL			{ zconf_error("invalid option"); }
 ;
 
-
 /* config/menuconfig entry */
 
 config_entry_start: T_CONFIG T_WORD T_EOL
@@ -493,6 +492,9 @@ void conf_parse(const char *name)
 
 	sym_init();
 	_menu_init();
+	modules_sym = sym_lookup(NULL, 0);
+	modules_sym->type = S_BOOLEAN;
+	modules_sym->flags |= SYMBOL_AUTO;
 	rootmenu.prompt = menu_add_prompt(P_MENU, "Linux Kernel Configuration", NULL);
 
 	if (getenv("ZCONF_DEBUG"))
@@ -500,8 +502,12 @@ void conf_parse(const char *name)
 	zconfparse();
 	if (zconfnerrs)
 		exit(1);
-	if (!modules_sym)
-		modules_sym = sym_find( "n" );
+	if (!modules_sym->prop) {
+		struct property *prop;
+
+		prop = prop_alloc(P_DEFAULT, modules_sym);
+		prop->expr = expr_alloc_symbol(sym_lookup("MODULES", 0));
+	}
 
 	rootmenu.prompt->text = _(rootmenu.prompt->text);
 	rootmenu.prompt->text = sym_expand_string_value(rootmenu.prompt->text);

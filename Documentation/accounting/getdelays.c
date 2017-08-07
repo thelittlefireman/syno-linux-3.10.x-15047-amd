@@ -114,7 +114,6 @@ error:
 	return -1;
 }
 
-
 static int send_cmd(int sd, __u16 nlmsg_type, __u32 nlmsg_pid,
 	     __u8 genl_cmd, __u16 nla_type,
 	     void *nla_data, int nla_len)
@@ -153,7 +152,6 @@ static int send_cmd(int sd, __u16 nlmsg_type, __u32 nlmsg_pid,
 	}
 	return 0;
 }
-
 
 /*
  * Probe the controller in genetlink to find the family id
@@ -242,7 +240,6 @@ static void print_cgroupstats(struct cgroupstats *c)
 		(unsigned long long)c->nr_uninterruptible);
 }
 
-
 static void print_ioacct(struct taskstats *t)
 {
 	printf("%s: read=%llu, write=%llu, cancelled_write=%llu\n",
@@ -272,7 +269,7 @@ int main(int argc, char *argv[])
 	char *logfile = NULL;
 	int loop = 0;
 	int containerset = 0;
-	char *containerpath = NULL;
+	char containerpath[1024];
 	int cfd = 0;
 	int forking = 0;
 	sigset_t sigset;
@@ -299,7 +296,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'C':
 			containerset = 1;
-			containerpath = optarg;
+			strncpy(containerpath, optarg, strlen(optarg) + 1);
 			break;
 		case 'w':
 			logfile = strdup(optarg);
@@ -376,7 +373,6 @@ int main(int argc, char *argv[])
 
 	if ((nl_sd = create_nl_socket(NETLINK_GENERIC)) < 0)
 		err(1, "error creating Netlink socket\n");
-
 
 	mypid = getpid();
 	id = get_family_id(nl_sd);
@@ -458,7 +454,6 @@ int main(int argc, char *argv[])
 
 		PRINTF("nlmsghdr size=%zu, nlmsg_len=%d, rep_len=%d\n",
 		       sizeof(struct nlmsghdr), msg.n.nlmsg_len, rep_len);
-
 
 		rep_len = GENLMSG_PAYLOAD(&msg.n);
 

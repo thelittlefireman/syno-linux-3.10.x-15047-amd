@@ -98,11 +98,9 @@ static void dgrp_tty_send_xchar(struct tty_struct *, char);
 #define	SERIAL_TYPE_CALLOUT	2
 #define	SERIAL_TYPE_XPRINT	3
 
-
 /*
  *	tty globals/statics
  */
-
 
 #define PORTSERVER_DIVIDEND	1843200
 
@@ -160,7 +158,6 @@ static const struct tty_operations dgrp_tty_ops = {
 	.break_ctl       = dgrp_tty_send_break,
 	.send_xchar      = dgrp_tty_send_xchar
 };
-
 
 static int calc_baud_rate(struct un_struct *un)
 {
@@ -226,7 +223,6 @@ static int calc_fastbaud_rate(struct un_struct *un, struct ktermios *uts)
 	brate = C_BAUD(un->un_tty) & 0xff;
 
 	i = (uts->c_cflag & CBAUDEX) ? 1 : 0;
-
 
 	if ((i >= 0) && (i < 2) && (brate >= 0) && (brate < 16))
 		brate = bauds[i][brate];
@@ -347,7 +343,6 @@ static void drp_param(struct ch_struct *ch)
 
 	ch->ch_oflag = ch->ch_ocook;
 
-
 	ch->ch_flag &= ~CH_FAST_READ;
 
 	/*
@@ -371,7 +366,7 @@ static void drp_param(struct ch_struct *ch)
 			ch->ch_flag |= CH_BAUD0;
 		}
 	} else if (ch->ch_custom_speed) {
-		ch->ch_brate = PORTSERVER_DIVIDEND / ch->ch_custom_speed;
+		ch->ch_brate = PORTSERVER_DIVIDEND / ch->ch_custom_speed ;
 
 		if (ch->ch_flag & CH_BAUD0) {
 			ch->ch_mout |= DM_DTR | DM_RTS;
@@ -475,7 +470,6 @@ static void drp_param(struct ch_struct *ch)
 
 	ch->ch_xflag = xflag;
 
-
 	/*
 	 *  Figure effective DCD value.
 	 */
@@ -541,7 +535,6 @@ static void wake_up_drp_sleep_timer(unsigned long ptr)
 	if (ch)
 		wake_up(&ch->ch_sleep);
 }
-
 
 /*
  * Set up our own sleep that can't be cancelled
@@ -752,7 +745,7 @@ static int dgrp_tty_open(struct tty_struct *tty, struct file *file)
 
 			if (ch->ch_open_error != 0 && otype == ch->ch_otype) {
 				retval = (ch->ch_open_error <= 2) ?
-					  delay_error : -ENXIO;
+					  delay_error : -ENXIO ;
 				goto unlock;
 			}
 
@@ -955,9 +948,6 @@ done:
 	return retval;
 }
 
-
-
-
 /*
  * dgrp_tty_close() -- close function for tty_operations
  */
@@ -992,7 +982,6 @@ static void dgrp_tty_close(struct tty_struct *tty, struct file *file)
 		return;
 
 	spin_lock_irqsave(&nd->nd_lock, lock_flags);
-
 
 	/* Used to be on channel basis, now we check on a unit basis. */
 	if (un->un_open_count != 1)
@@ -1120,9 +1109,7 @@ static void dgrp_tty_close(struct tty_struct *tty, struct file *file)
 				if (!sent_printer_offstr)
 					dgrp_tty_flush_buffer(tty);
 
-				spin_unlock_irqrestore(&nd->nd_lock, lock_flags);
 				tty_ldisc_flush(tty);
-				spin_lock_irqsave(&nd->nd_lock, lock_flags);
 				break;
 		}
 
@@ -1199,7 +1186,6 @@ static void dgrp_tty_close(struct tty_struct *tty, struct file *file)
 
 	if (!IS_PRINT(MINOR(tty_devnum(tty))))
 		ch->ch_rout = ch->ch_rin;
-
 
 	/*
 	 * Don't permit the close to happen until we get any pending
@@ -1304,7 +1290,6 @@ static void drp_wmove(struct ch_struct *ch, int from_user, void *buf, int count)
 	ch->ch_tin += count;
 }
 
-
 static int dgrp_calculate_txprint_bounds(struct ch_struct *ch, int space,
 					 int *un_flag)
 {
@@ -1319,8 +1304,7 @@ static int dgrp_calculate_txprint_bounds(struct ch_struct *ch, int space,
 
 	if (ch->ch_tun.un_open_count != 0 &&
 	    ch->ch_tun.un_tty->ops->chars_in_buffer &&
-	    ((ch->ch_tun.un_tty->ops->chars_in_buffer)
-	     (ch->ch_tun.un_tty) != 0)) {
+	    ((ch->ch_tun.un_tty->ops->chars_in_buffer)(ch->ch_tun.un_tty) != 0)) {
 		*un_flag = UN_PWAIT;
 		return 0;
 	}
@@ -1403,7 +1387,6 @@ static int dgrp_calculate_txprint_bounds(struct ch_struct *ch, int space,
 		((ch->ch_tin - ch->ch_tout) & TBUF_MASK) -
 		((ch->ch_s_tin - ch->ch_s_tpos) & 0xffff));
 
-
 	/*
 	 * If the digi_maxchar constraint now holds, limit
 	 * the transmit count accordingly, and arrange to
@@ -1420,7 +1403,6 @@ static int dgrp_calculate_txprint_bounds(struct ch_struct *ch, int space,
 
 	return space;
 }
-
 
 static int dgrp_tty_write(struct tty_struct *tty,
 			  const unsigned char *buf,
@@ -1502,8 +1484,7 @@ static int dgrp_tty_write(struct tty_struct *tty,
 		 */
 
 		if (ch->ch_tun.un_open_count != 0 &&
-		    ((ch->ch_tun.un_tty->ops->chars_in_buffer)
-		     (ch->ch_tun.un_tty) != 0)) {
+		    ((ch->ch_tun.un_tty->ops->chars_in_buffer)(ch->ch_tun.un_tty) != 0)) {
 			un->un_flag |= UN_PWAIT;
 			count = 0;
 			goto out;
@@ -1602,7 +1583,6 @@ static int dgrp_tty_write(struct tty_struct *tty,
 			((ch->ch_tin - ch->ch_tout) & TBUF_MASK) -
 			((ch->ch_s_tin - ch->ch_s_tpos) & 0xffff));
 
-
 		/*
 		 * If the digi_maxchar constraint now holds, limit
 		 * the transmit count accordingly, and arrange to
@@ -1668,8 +1648,7 @@ static int dgrp_tty_write(struct tty_struct *tty,
 
 		if (n >= t) {
 			memcpy(ch->ch_tbuf + ch->ch_tin, buf, t);
-			if (nd->nd_dpa_debug && nd->nd_dpa_port ==
-				PORT_NUM(MINOR(tty_devnum(un->un_tty))))
+			if (nd->nd_dpa_debug && nd->nd_dpa_port == PORT_NUM(MINOR(tty_devnum(un->un_tty))))
 				dgrp_dpa_data(nd, 0, (char *) buf, t);
 			buf += t;
 			n -= t;
@@ -1678,8 +1657,7 @@ static int dgrp_tty_write(struct tty_struct *tty,
 		}
 
 		memcpy(ch->ch_tbuf + ch->ch_tin, buf, n);
-		if (nd->nd_dpa_debug && nd->nd_dpa_port ==
-			PORT_NUM(MINOR(tty_devnum(un->un_tty))))
+		if (nd->nd_dpa_debug && nd->nd_dpa_port == PORT_NUM(MINOR(tty_devnum(un->un_tty))))
 			dgrp_dpa_data(nd, 0, (char *) buf, n);
 		buf += n;
 		ch->ch_tin += n;
@@ -1736,7 +1714,6 @@ out:
 	return count;
 }
 
-
 /*
  *	Put a character into ch->ch_buf
  *
@@ -1766,7 +1743,6 @@ static int dgrp_tty_put_char(struct tty_struct *tty, unsigned char new_char)
 		return 0;
 
 	spin_lock_irqsave(&dgrp_poll_data.poll_lock, lock_flags);
-
 
 	/*
 	 *	If space is 0 and its because the ch->tbuf
@@ -1844,7 +1820,6 @@ static int dgrp_tty_put_char(struct tty_struct *tty, unsigned char new_char)
 			ch->ch_digi.digi_maxcps));
 	}
 
-
 	un->un_tbusy--;
 	(ch->ch_nd)->nd_tx_work = 1;
 
@@ -1853,8 +1828,6 @@ out:
 	spin_unlock_irqrestore(&dgrp_poll_data.poll_lock, lock_flags);
 	return retval;
 }
-
-
 
 /*
  *	Flush TX buffer (make in == out)
@@ -1974,14 +1947,12 @@ static int dgrp_tty_chars_in_buffer(struct tty_struct *tty)
 	return count;
 }
 
-
 /*****************************************************************************
  *
  * Helper applications for dgrp_tty_ioctl()
  *
  *****************************************************************************
  */
-
 
 /**
  * ch_to_tty_flags() -- convert channel flags to termio flags
@@ -2053,7 +2024,6 @@ static tcflag_t ch_to_tty_flags(ushort ch_flag, char flagtype)
 
 	return retval;
 }
-
 
 /**
  * tty_to_ch_flags() -- convert termio flags to digi channel flags
@@ -2137,7 +2107,6 @@ static ushort tty_to_ch_flags(struct tty_struct *tty, char flagtype)
 	return retval;
 }
 
-
 static int dgrp_tty_send_break(struct tty_struct *tty, int msec)
 {
 	struct un_struct *un;
@@ -2158,7 +2127,6 @@ static int dgrp_tty_send_break(struct tty_struct *tty, int msec)
 	dgrp_send_break(ch, msec);
 	return 0;
 }
-
 
 /*
  * This routine sends a break character out the serial port.
@@ -2181,7 +2149,6 @@ static int dgrp_send_break(struct ch_struct *ch, int msec)
 
 	return 0;
 }
-
 
 /*
  * Return modem signals to ld.
@@ -2212,7 +2179,6 @@ static int dgrp_tty_tiocmget(struct tty_struct *tty)
 
 	return mlast;
 }
-
 
 /*
  *      Set modem lines
@@ -2252,8 +2218,6 @@ static int dgrp_tty_tiocmset(struct tty_struct *tty,
 
 	return 0;
 }
-
-
 
 /*
  *      Get current modem status
@@ -2319,7 +2283,6 @@ static int set_modem_info(struct ch_struct *ch, unsigned int command,
 
 	return 0;
 }
-
 
 /*
  *  Assign the custom baud rate to the channel structure
@@ -2387,7 +2350,6 @@ static void dgrp_set_custom_speed(struct ch_struct *ch, int newrate)
 	return;
 }
 
-
 /*
  # dgrp_tty_digiseta()
  *
@@ -2445,8 +2407,6 @@ static int dgrp_tty_digiseta(struct tty_struct *tty,
 	return 0;
 }
 
-
-
 /*
  * dgrp_tty_digigetedelay()
  *
@@ -2484,7 +2444,6 @@ static int dgrp_tty_digigetedelay(struct tty_struct *tty, int *retinfo)
 	return 0;
 }
 
-
 /*
  * dgrp_tty_digisetedelay()
  *
@@ -2519,7 +2478,6 @@ static int dgrp_tty_digisetedelay(struct tty_struct *tty, int *new_info)
 
 	return 0;
 }
-
 
 /*
  *	The usual assortment of ioctl's
@@ -2660,8 +2618,7 @@ static int dgrp_tty_ioctl(struct tty_struct *tty, unsigned int cmd,
 				ch->ch_send |= RR_RX_FLUSH;
 				(ch->ch_nd)->nd_tx_work = 1;
 				(ch->ch_nd)->nd_tx_ready = 1;
-				wake_up_interruptible(
-					&(ch->ch_nd)->nd_tx_waitq);
+				wake_up_interruptible(&(ch->ch_nd)->nd_tx_waitq);
 			}
 			if (arg == TCIFLUSH)
 				break;
@@ -2687,8 +2644,7 @@ static int dgrp_tty_ioctl(struct tty_struct *tty, unsigned int cmd,
 	Linux		HPUX		Function
 	TCSETA		TCSETA		- set the termios
 	TCSETAF		TCSETAF		- wait for drain first, then set termios
-	TCSETAW		TCSETAW		- wait for drain,
-					flush the input queue, then set termios
+	TCSETAW		TCSETAW		- wait for drain, flush the input queue, then set termios
 	- looking at the tty_ioctl code, these command all call our
 	tty_set_termios at the driver's end, when a TCSETA* is sent,
 	it is expecting the tty to have a termio structure,
@@ -2804,7 +2760,6 @@ static int dgrp_tty_ioctl(struct tty_struct *tty, unsigned int cmd,
 		}
 
 		/* pretend we didn't recognize this */
-		/* fall-through */
 
 	case DIGI_SETA:
 		return dgrp_tty_digiseta(tty, (struct digi_struct *) arg);
@@ -2903,7 +2858,6 @@ static void dgrp_tty_set_termios(struct tty_struct *tty, struct ktermios *old)
 		wake_up_interruptible(&un->un_open_wait);
 }
 
-
 /*
  *	Throttle receiving data.  We just set a bit and stop reading
  *	data out of the channel buffer.  It will back up and the
@@ -2922,7 +2876,6 @@ static void dgrp_tty_throttle(struct tty_struct *tty)
 
 	ch->ch_flag |= CH_RXSTOP;
 }
-
 
 static void dgrp_tty_unthrottle(struct tty_struct *tty)
 {
@@ -3010,7 +2963,6 @@ static void dgrp_tty_input_stop(struct tty_struct *tty)
 
 }
 
-
 static void dgrp_tty_send_xchar(struct tty_struct *tty, char c)
 {
 	struct un_struct *un;
@@ -3037,7 +2989,6 @@ static void dgrp_tty_send_xchar(struct tty_struct *tty, char c)
 	return;
 }
 
-
 static void dgrp_tty_input_start(struct tty_struct *tty)
 {
 	struct ch_struct *ch;
@@ -3057,7 +3008,6 @@ static void dgrp_tty_input_start(struct tty_struct *tty)
 		wake_up_interruptible(&(ch->ch_nd)->nd_tx_waitq);
 
 }
-
 
 /*
  *	Hangup the port.  Like a close, but don't wait for output
@@ -3150,8 +3100,6 @@ dgrp_tty_uninit(struct nd_struct *nd)
 		tty_port_destroy(&nd->nd_chan[i].port);
 }
 
-
-
 /*
  *     Initialize the TTY portion of the supplied node.
  */
@@ -3214,8 +3162,7 @@ dgrp_tty_init(struct nd_struct *nd)
 				int max_majors = 1U << (32 - MINORBITS);
 				for (i = 256; i < max_majors; i++) {
 					nd->nd_serial_ttdriver->major = i;
-					rc = tty_register_driver
-						(nd->nd_serial_ttdriver);
+					rc = tty_register_driver(nd->nd_serial_ttdriver);
 					if (rc >= 0)
 						break;
 				}
@@ -3269,7 +3216,6 @@ dgrp_tty_init(struct nd_struct *nd)
 			nd->nd_ttdriver_flags |= CALLOUT_TTDRV_REG;
 		}
 	}
-
 
 	nd->nd_xprint_ttdriver = alloc_tty_driver(CHAN_MAX);
 	if (!nd->nd_xprint_ttdriver)

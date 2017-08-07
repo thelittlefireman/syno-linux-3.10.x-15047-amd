@@ -47,6 +47,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/rwsem.h>
@@ -126,7 +127,6 @@ struct yealink_dev {
 		u8		  b[sizeof(struct yld_status)];
 	} master, copy;
 };
-
 
 /*******************************************************************************
  * Yealink lcd interface

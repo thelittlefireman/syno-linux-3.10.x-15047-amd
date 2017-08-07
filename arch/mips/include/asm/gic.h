@@ -11,9 +11,6 @@
 #ifndef _ASM_GICREGS_H
 #define _ASM_GICREGS_H
 
-#include <linux/bitmap.h>
-#include <linux/threads.h>
-
 #undef	GICISBYTELITTLEENDIAN
 
 /* Constants */
@@ -55,7 +52,6 @@
 #define GICWRITE(reg, data)	((reg) = (data))
 #define GICBIS(reg, bits)	((reg) |= (bits))
 #endif
-
 
 /* GIC Address Space */
 #define SHARED_SECTION_OFS		0x0000
@@ -350,7 +346,7 @@ struct gic_shared_intr_map {
 #define GIC_CPU_INT2		2 /* .		      */
 #define GIC_CPU_INT3		3 /* .		      */
 #define GIC_CPU_INT4		4 /* .		      */
-#define GIC_CPU_INT5		5 /* Core Interrupt 7 */
+#define GIC_CPU_INT5		5 /* Core Interrupt 5 */
 
 /* Local GIC interrupts. */
 #define GIC_INT_TMR		(GIC_CPU_INT5)

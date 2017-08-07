@@ -13,6 +13,7 @@
 #include <linux/kernel.h>
 #include <linux/stddef.h>
 #include <linux/ioport.h>
+#include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/delay.h>
 #include <linux/acpi.h>
@@ -187,7 +188,6 @@ static int amd_ec_write(struct amd_smbus *smbus, unsigned char address,
 #define AMD_SMB_PRTCL_BLOCK_PROC_CALL	0x0d
 #define AMD_SMB_PRTCL_I2C_BLOCK_DATA	0x4a
 #define AMD_SMB_PRTCL_PEC		0x80
-
 
 static s32 amd8111_access(struct i2c_adapter * adap, u16 addr,
 		unsigned short flags, char read_write, u8 command, int size,
@@ -398,7 +398,6 @@ static s32 amd8111_access(struct i2c_adapter * adap, u16 addr,
 	return 0;
 }
 
-
 static u32 amd8111_func(struct i2c_adapter *adapter)
 {
 	return	I2C_FUNC_SMBUS_QUICK | I2C_FUNC_SMBUS_BYTE |
@@ -413,8 +412,7 @@ static const struct i2c_algorithm smbus_algorithm = {
 	.functionality = amd8111_func,
 };
 
-
-static const struct pci_device_id amd8111_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(amd8111_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_8111_SMBUS2) },
 	{ 0, }
 };

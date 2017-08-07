@@ -206,15 +206,13 @@ static void qxl_evict_flags(struct ttm_buffer_object *bo,
 		return;
 	}
 	qbo = container_of(bo, struct qxl_bo, tbo);
-	qxl_ttm_placement_from_domain(qbo, QXL_GEM_DOMAIN_CPU, false);
+	qxl_ttm_placement_from_domain(qbo, QXL_GEM_DOMAIN_CPU);
 	*placement = qbo->placement;
 }
 
 static int qxl_verify_access(struct ttm_buffer_object *bo, struct file *filp)
 {
-	struct qxl_bo *qbo = to_qxl_bo(bo);
-
-	return drm_vma_node_verify_access(&qbo->gem_base.vma_node, filp);
+	return 0;
 }
 
 static int qxl_ttm_io_mem_reserve(struct ttm_bo_device *bdev,
@@ -361,7 +359,6 @@ static int qxl_bo_move(struct ttm_buffer_object *bo,
 	return ttm_bo_move_memcpy(bo, evict, no_wait_gpu, new_mem);
 }
 
-
 static int qxl_sync_obj_wait(void *sync_obj,
 			     bool lazy, bool interruptible)
 {
@@ -481,8 +478,6 @@ static struct ttm_bo_driver qxl_bo_driver = {
 	.move_notify = &qxl_bo_move_notify,
 };
 
-
-
 int qxl_ttm_init(struct qxl_device *qdev)
 {
 	int r;
@@ -494,9 +489,7 @@ int qxl_ttm_init(struct qxl_device *qdev)
 	/* No others user of address space so set it to 0 */
 	r = ttm_bo_device_init(&qdev->mman.bdev,
 			       qdev->mman.bo_global_ref.ref.object,
-			       &qxl_bo_driver,
-			       qdev->ddev->anon_inode->i_mapping,
-			       DRM_FILE_PAGE_OFFSET, 0);
+			       &qxl_bo_driver, DRM_FILE_PAGE_OFFSET, 0);
 	if (r) {
 		DRM_ERROR("failed initializing buffer object driver(%d).\n", r);
 		return r;
@@ -519,8 +512,8 @@ int qxl_ttm_init(struct qxl_device *qdev)
 		 (unsigned)qdev->vram_size / (1024 * 1024));
 	DRM_INFO("qxl: %luM of IO pages memory ready (VRAM domain)\n",
 		 ((unsigned)num_io_pages * PAGE_SIZE) / (1024 * 1024));
-	DRM_INFO("qxl: %uM of Surface memory size\n",
-		 (unsigned)qdev->surfaceram_size / (1024 * 1024));
+	if (unlikely(qdev->mman.bdev.dev_mapping == NULL))
+		qdev->mman.bdev.dev_mapping = qdev->ddev->dev_mapping;
 	r = qxl_ttm_debugfs_init(qdev);
 	if (r) {
 		DRM_ERROR("Failed to init debugfs\n");
@@ -537,7 +530,6 @@ void qxl_ttm_fini(struct qxl_device *qdev)
 	qxl_ttm_global_fini(qdev);
 	DRM_INFO("qxl: ttm finalized\n");
 }
-
 
 #define QXL_DEBUGFS_MEM_TYPES 2
 

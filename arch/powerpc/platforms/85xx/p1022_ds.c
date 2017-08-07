@@ -321,7 +321,6 @@ static void p1022ds_set_monitor_port(enum fsl_diu_monitor_port port)
 		in_be32(&guts->pmuxcr);
 	}
 
-
 	switch (port) {
 	case FSL_DIU_PORT_DVI:
 		/* Enable the DVI port, disable the DFP and the backlight */
@@ -567,7 +566,6 @@ define_machine(p1022_ds) {
 	.init_IRQ		= p1022_ds_pic_init,
 #ifdef CONFIG_PCI
 	.pcibios_fixup_bus	= fsl_pcibios_fixup_bus,
-	.pcibios_fixup_phb	= fsl_pcibios_fixup_phb,
 #endif
 	.get_irq		= mpic_get_irq,
 	.restart		= fsl_rstcr_restart,

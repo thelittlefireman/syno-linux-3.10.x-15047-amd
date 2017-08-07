@@ -276,7 +276,6 @@ static const char *loop_names[N_LOOPS] = {
 
 static unsigned int pm121_failure_state;
 static int pm121_readjust, pm121_skipping;
-static bool pm121_overtemp;
 static s32 average_power;
 
 struct pm121_correction {
@@ -462,8 +461,6 @@ struct pm121_cpu_state {
 
 static struct pm121_cpu_state *pm121_cpu_state;
 
-
-
 /*
  * ***** Implementation *****
  *
@@ -635,7 +632,6 @@ static void pm121_sys_fans_tick(int loop_id)
 	}
 }
 
-
 /* CPU LOOP */
 static void pm121_create_cpu_fans(void)
 {
@@ -713,7 +709,6 @@ static void pm121_create_cpu_fans(void)
 	if (fan_cpu)
 		wf_control_set_max(fan_cpu);
 }
-
 
 static void pm121_cpu_fans_tick(struct pm121_cpu_state *st)
 {
@@ -810,7 +805,6 @@ static void pm121_tick(void)
 
 	average_power = total_power / pm121_cpu_state->pid.param.history_len;
 
-
 	pm121_failure_state = 0;
 	for (i = 0 ; i < N_LOOPS; i++) {
 		if (pm121_sys_state[i])
@@ -848,7 +842,6 @@ static void pm121_tick(void)
 	if (new_failure & FAILURE_OVERTEMP) {
 		wf_set_overtemp();
 		pm121_skipping = 2;
-		pm121_overtemp = true;
 	}
 
 	/* We only clear the overtemp condition if overtemp is cleared
@@ -857,12 +850,9 @@ static void pm121_tick(void)
 	 * the control loop levels, but we don't want to keep it clear
 	 * here in this case
 	 */
-	if (!pm121_failure_state && pm121_overtemp) {
+	if (new_failure == 0 && last_failure & FAILURE_OVERTEMP)
 		wf_clear_overtemp();
-		pm121_overtemp = false;
-	}
 }
-
 
 static struct wf_control* pm121_register_control(struct wf_control *ct,
 						 const char *match,
@@ -890,9 +880,6 @@ static void pm121_new_control(struct wf_control *ct)
 	if (all)
 		pm121_all_controls_ok = 1;
 }
-
-
-
 
 static struct wf_sensor* pm121_register_sensor(struct wf_sensor *sensor,
 					       const char *match,
@@ -934,8 +921,6 @@ static void pm121_new_sensor(struct wf_sensor *sr)
 	if (all)
 		pm121_all_sensors_ok = 1;
 }
-
-
 
 static int pm121_notify(struct notifier_block *self,
 			unsigned long event, void *data)
@@ -983,7 +968,6 @@ static int pm121_init_pm(void)
 	return 0;
 }
 
-
 static int pm121_probe(struct platform_device *ddev)
 {
 	wf_register_client(&pm121_events);
@@ -1005,7 +989,6 @@ static struct platform_driver pm121_driver = {
 		.bus = &platform_bus_type,
 	},
 };
-
 
 static int __init pm121_init(void)
 {
@@ -1033,11 +1016,9 @@ static void __exit pm121_exit(void)
 	platform_driver_unregister(&pm121_driver);
 }
 
-
 module_init(pm121_init);
 module_exit(pm121_exit);
 
 MODULE_AUTHOR("Étienne Bersac <bersace@gmail.com>");
 MODULE_DESCRIPTION("Thermal control logic for iMac G5 (iSight)");
 MODULE_LICENSE("GPL");
-

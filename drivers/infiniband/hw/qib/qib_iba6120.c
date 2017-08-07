@@ -214,7 +214,6 @@ static const u8 qib_6120_physportstate[0x20] = {
 	[0x17] = IB_PHYSPORTSTATE_CFG_TRAIN
 };
 
-
 struct qib_chip_specific {
 	u64 __iomem *cregbase;
 	u64 *cntrs;
@@ -442,7 +441,6 @@ static inline u32 read_6120_creg32(const struct qib_devdata *dd, u16 regno)
 #define QLOGIC_IB_HWE_PCIE0PLLFAILED       0x0800000000000000ULL
 #define QLOGIC_IB_HWE_SERDESPLLFAILED      0x1000000000000000ULL
 
-
 /* kr_extstatus bits */
 #define QLOGIC_IB_EXTS_FREQSEL 0x2
 #define QLOGIC_IB_EXTS_SERDESSEL 0x4
@@ -460,7 +458,6 @@ static inline u32 read_6120_creg32(const struct qib_devdata *dd, u16 regno)
 #define GPIO_OVRUN_BIT 4
 #define GPIO_LLI_BIT 5
 #define GPIO_ERRINTR_MASK 0x38
-
 
 #define QLOGIC_IB_RT_BUFSIZE_MASK 0xe0000000ULL
 #define QLOGIC_IB_RT_BUFSIZE_SHIFTVAL(tid) \
@@ -1634,7 +1631,9 @@ static irqreturn_t qib_6120intr(int irq, void *data)
 		goto bail;
 	}
 
-	this_cpu_inc(*dd->int_counter);
+	qib_stats.sps_ints++;
+	if (dd->int_counter != (u32) -1)
+		dd->int_counter++;
 
 	if (unlikely(istat & (~QLOGIC_IB_I_BITSEXTANT |
 			      QLOGIC_IB_I_GPIO | QLOGIC_IB_I_ERROR)))
@@ -1679,7 +1678,6 @@ static irqreturn_t qib_6120intr(int irq, void *data)
 					dd->cspec->lli_counter += cntr;
 			}
 		}
-
 
 		if (ctxtrbits) {
 			ctxtrbits =
@@ -1806,8 +1804,7 @@ static int qib_6120_setup_reset(struct qib_devdata *dd)
 	 * isn't set.
 	 */
 	dd->flags &= ~(QIB_INITTED | QIB_PRESENT);
-	/* so we check interrupts work again */
-	dd->z_int_counter = qib_int_counter(dd);
+	dd->int_counter = 0; /* so we check interrupts work again */
 	val = dd->control | QLOGIC_IB_C_RESET;
 	writeq(val, &dd->kregbase[kr_control]);
 	mb(); /* prevent compiler re-ordering around actual reset */
@@ -1963,7 +1960,6 @@ static void qib_6120_put_tid_2(struct qib_devdata *dd, u64 __iomem *tidptr,
 	mmiowb();
 }
 
-
 /**
  * qib_6120_clear_tids - clear all TID entries for a context, expected and eager
  * @dd: the qlogic_ib device
@@ -2058,7 +2054,6 @@ static int qib_6120_get_base_info(struct qib_ctxtdata *rcd,
 		QIB_RUNTIME_FORCE_PIOAVAIL | QIB_RUNTIME_PIO_REGSWAPPED;
 	return 0;
 }
-
 
 static struct qib_message_header *
 qib_6120_get_msgheader(struct qib_devdata *dd, __le32 *rhf_addr)
@@ -2681,8 +2676,6 @@ static void qib_get_6120_faststats(unsigned long opaque)
 	spin_lock_irqsave(&dd->eep_st_lock, flags);
 	traffic_wds -= dd->traffic_wds;
 	dd->traffic_wds += traffic_wds;
-	if (traffic_wds  >= QIB_TRAFFIC_ACTIVE_THRESHOLD)
-		atomic_add(5, &dd->active_time); /* S/B #define */
 	spin_unlock_irqrestore(&dd->eep_st_lock, flags);
 
 	qib_chk_6120_errormask(dd);
@@ -3265,9 +3258,7 @@ static int init_6120_variables(struct qib_devdata *dd)
 
 	dd->eep_st_masks[2].errs_to_log = ERR_MASK(ResetNegated);
 
-	ret = qib_init_pportdata(ppd, dd, 0, 1);
-	if (ret)
-		goto bail;
+	qib_init_pportdata(ppd, dd, 0, 1);
 	ppd->link_width_supported = IB_WIDTH_1X | IB_WIDTH_4X;
 	ppd->link_speed_supported = QIB_IB_SDR;
 	ppd->link_width_enabled = IB_WIDTH_4X;
@@ -3465,13 +3456,6 @@ static int qib_6120_tempsense_rd(struct qib_devdata *dd, int regnum)
 	return -ENXIO;
 }
 
-#ifdef CONFIG_INFINIBAND_QIB_DCA
-static int qib_6120_notify_dca(struct qib_devdata *dd, unsigned long event)
-{
-	return 0;
-}
-#endif
-
 /* Dummy function, as 6120 boards never disable EEPROM Write */
 static int qib_6120_eeprom_wen(struct qib_devdata *dd, int wen)
 {
@@ -3547,9 +3531,6 @@ struct qib_devdata *qib_init_iba6120_funcs(struct pci_dev *pdev,
 	dd->f_xgxs_reset        = qib_6120_xgxs_reset;
 	dd->f_writescratch      = writescratch;
 	dd->f_tempsense_rd	= qib_6120_tempsense_rd;
-#ifdef CONFIG_INFINIBAND_QIB_DCA
-	dd->f_notify_dca = qib_6120_notify_dca;
-#endif
 	/*
 	 * Do remaining pcie setup and save pcie values in dd.
 	 * Any error printing is already done by the init code.

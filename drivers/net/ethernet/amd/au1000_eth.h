@@ -18,13 +18,13 @@
  *  for more details.
  *
  *  You should have received a copy of the GNU General Public License along
- *  with this program; if not, see <http://www.gnu.org/licenses/>.
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  59 Temple Place - Suite 330, Boston MA 02111-1307, USA.
  *
  * ########################################################################
  *
  *
  */
-
 
 #define MAC_IOSIZE 0x10000
 #define NUM_RX_DMA 4       /* Au1x00 has 4 rx hardware descriptors */
@@ -66,7 +66,6 @@ struct rx_dma {
 	u32 pad[2];
 };
 
-
 /*
  * MAC control registers, memory mapped.
  */
@@ -82,7 +81,6 @@ struct mac_reg {
 	u32 vlan1_tag;
 	u32 vlan2_tag;
 };
-
 
 struct au1000_private {
 	struct db_dest *pDBfree;

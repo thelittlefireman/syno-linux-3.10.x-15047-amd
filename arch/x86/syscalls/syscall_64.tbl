@@ -212,10 +212,10 @@
 203	common	sched_setaffinity	sys_sched_setaffinity
 204	common	sched_getaffinity	sys_sched_getaffinity
 205	64	set_thread_area
-206	common	io_setup		sys_io_setup
+206	64	io_setup		sys_io_setup
 207	common	io_destroy		sys_io_destroy
 208	common	io_getevents		sys_io_getevents
-209	common	io_submit		sys_io_submit
+209	64	io_submit		sys_io_submit
 210	common	io_cancel		sys_io_cancel
 211	64	get_thread_area
 212	common	lookup_dcookie		sys_lookup_dcookie
@@ -320,9 +320,42 @@
 311	64	process_vm_writev	sys_process_vm_writev
 312	common	kcmp			sys_kcmp
 313	common	finit_module		sys_finit_module
-314	common	sched_setattr		sys_sched_setattr
-315	common	sched_getattr		sys_sched_getattr
-316	common	renameat2		sys_renameat2
+
+#
+# start - CONFIG_SYNO_SYSTEM_CALL
+# Synology defined system calls are listed here.
+#
+# 400 is available for reuse
+# 401 is available for reuse
+402	common	SYNOUtime		sys_SYNOUtime
+403	common	SYNOArchiveBit		sys_SYNOArchiveBit
+404	common	recvfile		sys_recvfile
+#405	common	SYNOMTDAlloc		sys_SYNOMTDAlloc
+406	common	SYNOCaselessStat	sys_SYNOCaselessStat
+407	common	SYNOCaselessLStat	sys_SYNOCaselessLStat
+#408	x32	SYNOCaselessStat64	sys_SYNOCaselessStat64		# not used
+#409	x32	SYNOCaselessLStat64	sys_SYNOCaselessLStat64		# not used
+410	common	SYNOEcryptName		sys_SYNOEcryptName
+411	common	SYNODecryptName		sys_SYNODecryptName
+412	common	SYNOACLCheckPerm	sys_SYNOACLCheckPerm
+413	common	SYNOACLIsSupport	sys_SYNOACLIsSupport
+414	common	SYNOACLGetPerm		sys_SYNOACLGetPerm
+415	common	SYNOFlushAggregate	sys_SYNOFlushAggregate
+#416	# not used
+#417	# not used
+#418	# not used
+419	common	SYNOStat		sys_SYNOStat
+420	common	SYNOFStat		sys_SYNOFStat
+421	common	SYNOLStat		sys_SYNOLStat
+422	common	SYNONotifyInit		sys_SYNONotifyInit
+423	64	SYNONotifyAddWatch	sys_SYNONotifyAddWatch
+424	64	SYNONotifyRemoveWatch	sys_SYNONotifyRemoveWatch
+#425	x32	SYNONotifyAddWatch	sys_SYNONotifyAddWatch32			# not used
+#426	x32	SYNONotifyRemoveWatch	sys_SYNONotifyRemoveWatch32			# not used
+427	common	SYNOArchiveOverwrite	sys_SYNOArchiveOverwrite
+#
+# end - CONFIG_SYNO_SYSTEM_CALL
+#
 
 #
 # x32-specific system call numbers start at 512 to avoid cache impact
@@ -359,3 +392,5 @@
 540	x32	process_vm_writev	compat_sys_process_vm_writev
 541	x32	setsockopt		compat_sys_setsockopt
 542	x32	getsockopt		compat_sys_getsockopt
+543	x32	io_setup		compat_sys_io_setup
+544	x32	io_submit		compat_sys_io_submit

@@ -21,7 +21,6 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 
-
 #include "clock.h"
 #include "clock2xxx.h"
 #include "cm2xxx.h"
@@ -52,7 +51,7 @@ static bool omap2xxx_clk_apll_locked(struct clk_hw *hw)
 
 	apll_mask = EN_APLL_LOCKED << clk->enable_bit;
 
-	r = omap2xxx_cm_get_pll_status();
+	r = omap2_cm_read_mod_reg(PLL_MOD, CM_CLKEN);
 
 	return ((r & apll_mask) == apll_mask) ? true : false;
 }
@@ -126,7 +125,7 @@ u32 omap2xxx_get_apll_clkin(void)
 {
 	u32 aplls, srate = 0;
 
-	aplls = omap2xxx_cm_get_pll_config();
+	aplls = omap2_cm_read_mod_reg(PLL_MOD, CM_CLKSEL1);
 	aplls &= OMAP24XX_APLLS_CLKIN_MASK;
 	aplls >>= OMAP24XX_APLLS_CLKIN_SHIFT;
 
@@ -139,4 +138,3 @@ u32 omap2xxx_get_apll_clkin(void)
 
 	return srate;
 }
-

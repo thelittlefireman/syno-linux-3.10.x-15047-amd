@@ -25,7 +25,8 @@
  *     GNU General Public License for more details.
  *
  *     You should have received a copy of the GNU General Public License
- *     along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *     along with this program; if not, write to the Free Software Foundation,
+ *     Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  *
  ****************************************************************/
 
@@ -45,6 +46,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -98,7 +100,6 @@
 #define	STATE_SHIFT				5
 
 #define IS_BLOCKED(s) (s & KAWETH_STATUS_BLOCKED)
-
 
 MODULE_AUTHOR("Michael Zappe <zapman@interlan.net>, Stephane Alnet <stephane@u-picardie.fr>, Brad Hards <bhards@bigpond.net.au> and Oliver Neukum <oliver@neukum.org>");
 MODULE_DESCRIPTION("KL5USB101 USB Ethernet driver");
@@ -237,7 +238,6 @@ struct kaweth_device
 	dma_addr_t rxbufferhandle;
 	__u8 *rx_buf;
 
-	
 	struct sk_buff *tx_skb;
 
 	__u8 *firmware_buf;
@@ -551,7 +551,6 @@ static void kaweth_resubmit_tl(struct work_struct *work)
 	if (kaweth->suspend_lowmem_ctrl)
 		kaweth_resubmit_int_urb(kaweth, GFP_NOIO);
 }
-
 
 /****************************************************************
  *     kaweth_resubmit_rx_urb
@@ -985,7 +984,6 @@ static int kaweth_resume(struct usb_interface *intf)
  *     kaweth_probe
  ****************************************************************/
 
-
 static const struct net_device_ops kaweth_netdev_ops = {
 	.ndo_open =			kaweth_open,
 	.ndo_stop =			kaweth_close,
@@ -1083,7 +1081,6 @@ static int kaweth_probe(
 			dev_err(dev, "Error downloading trigger code fix (%d)\n", result);
 			goto err_fw;
 		}
-
 
 		if ((result = kaweth_trigger_firmware(kaweth, 126)) < 0) {
 			dev_err(dev, "Error triggering firmware (%d)\n", result);
@@ -1242,7 +1239,6 @@ static void kaweth_disconnect(struct usb_interface *intf)
 
 	free_netdev(netdev);
 }
-
 
 // FIXME this completion stuff is a modified clone of
 // an OLD version of some stuff in usb.c ...

@@ -2,7 +2,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2008 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2008 - 2013 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -29,6 +29,7 @@
 #include <linux/etherdevice.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/sched.h>
 #include <net/mac80211.h>
 
@@ -205,7 +206,6 @@ static const __le32 iwlagn_def_3w_lookup[IWLAGN_BT_DECISION_LUT_SIZE] = {
 	cpu_to_le32(0xf0005000),
 };
 
-
 /* Loose Coex */
 static const __le32 iwlagn_loose_lookup[IWLAGN_BT_DECISION_LUT_SIZE] = {
 	cpu_to_le32(0xaaaaaaaa),
@@ -253,23 +253,23 @@ void iwlagn_send_advance_bt_config(struct iwl_priv *priv)
 	BUILD_BUG_ON(sizeof(iwlagn_def_3w_lookup) !=
 			sizeof(basic.bt3_lookup_table));
 
-	if (priv->lib->bt_params) {
+	if (priv->cfg->bt_params) {
 		/*
 		 * newer generation of devices (2000 series and newer)
 		 * use the version 2 of the bt command
 		 * we need to make sure sending the host command
 		 * with correct data structure to avoid uCode assert
 		 */
-		if (priv->lib->bt_params->bt_session_2) {
+		if (priv->cfg->bt_params->bt_session_2) {
 			bt_cmd_v2.prio_boost = cpu_to_le32(
-				priv->lib->bt_params->bt_prio_boost);
+				priv->cfg->bt_params->bt_prio_boost);
 			bt_cmd_v2.tx_prio_boost = 0;
 			bt_cmd_v2.rx_prio_boost = 0;
 		} else {
 			/* older version only has 8 bits */
-			WARN_ON(priv->lib->bt_params->bt_prio_boost & ~0xFF);
+			WARN_ON(priv->cfg->bt_params->bt_prio_boost & ~0xFF);
 			bt_cmd_v1.prio_boost =
-				priv->lib->bt_params->bt_prio_boost;
+				priv->cfg->bt_params->bt_prio_boost;
 			bt_cmd_v1.tx_prio_boost = 0;
 			bt_cmd_v1.rx_prio_boost = 0;
 		}
@@ -329,7 +329,7 @@ void iwlagn_send_advance_bt_config(struct iwl_priv *priv)
 		       priv->bt_full_concurrent ?
 		       "full concurrency" : "3-wire");
 
-	if (priv->lib->bt_params->bt_session_2) {
+	if (priv->cfg->bt_params->bt_session_2) {
 		memcpy(&bt_cmd_v2.basic, &basic,
 			sizeof(basic));
 		ret = iwl_dvm_send_cmd_pdu(priv, REPLY_BT_CONFIG,
@@ -710,7 +710,6 @@ int iwlagn_bt_coex_profile_notif(struct iwl_priv *priv,
 	    iwlagn_set_kill_msk(priv, uart_msg))
 		queue_work(priv->workqueue, &priv->bt_runtime_config);
 
-
 	/* FIXME: based on notification, adjust the prio_boost */
 
 	priv->bt_ci_compliance = coex->bt_ci_compliance;
@@ -757,8 +756,8 @@ static bool is_single_rx_stream(struct iwl_priv *priv)
  */
 static int iwl_get_active_rx_chain_count(struct iwl_priv *priv)
 {
-	if (priv->lib->bt_params &&
-	    priv->lib->bt_params->advanced_bt_coexist &&
+	if (priv->cfg->bt_params &&
+	    priv->cfg->bt_params->advanced_bt_coexist &&
 	    (priv->bt_full_concurrent ||
 	     priv->bt_traffic_load >= IWL_BT_COEX_TRAFFIC_LOAD_HIGH)) {
 		/*
@@ -829,8 +828,8 @@ void iwlagn_set_rxon_chain(struct iwl_priv *priv, struct iwl_rxon_context *ctx)
 	else
 		active_chains = priv->nvm_data->valid_rx_ant;
 
-	if (priv->lib->bt_params &&
-	    priv->lib->bt_params->advanced_bt_coexist &&
+	if (priv->cfg->bt_params &&
+	    priv->cfg->bt_params->advanced_bt_coexist &&
 	    (priv->bt_full_concurrent ||
 	     priv->bt_traffic_load >= IWL_BT_COEX_TRAFFIC_LOAD_HIGH)) {
 		/*
@@ -845,7 +844,6 @@ void iwlagn_set_rxon_chain(struct iwl_priv *priv, struct iwl_rxon_context *ctx)
 	/* How many receivers should we use? */
 	active_rx_cnt = iwl_get_active_rx_chain_count(priv);
 	idle_rx_cnt = iwl_get_idle_rx_chain_count(priv, active_rx_cnt);
-
 
 	/* correct rx chain count according hw settings
 	 * and chain noise calibration
@@ -908,7 +906,6 @@ struct wowlan_key_data {
 	const u8 *bssid;
 	bool error, use_rsc_tsc, use_tkip;
 };
-
 
 static void iwlagn_wowlan_program_keys(struct ieee80211_hw *hw,
 			       struct ieee80211_vif *vif,
@@ -1022,7 +1019,7 @@ static void iwlagn_wowlan_program_keys(struct ieee80211_hw *hw,
 			u8 *pn = seq.ccmp.pn;
 
 			ieee80211_get_key_rx_seq(key, i, &seq);
-			aes_sc->pn = cpu_to_le64(
+			aes_sc[i].pn = cpu_to_le64(
 					(u64)pn[5] |
 					((u64)pn[4] << 8) |
 					((u64)pn[3] << 16) |
@@ -1286,6 +1283,12 @@ int iwl_dvm_send_cmd(struct iwl_priv *priv, struct iwl_host_cmd *cmd)
 	 */
 	if (!(cmd->flags & CMD_ASYNC))
 		lockdep_assert_held(&priv->mutex);
+
+	if (priv->ucode_owner == IWL_OWNERSHIP_TM &&
+	    !(cmd->flags & CMD_ON_DEMAND)) {
+		IWL_DEBUG_HC(priv, "tm own the uCode, no regular hcmd send\n");
+		return -EIO;
+	}
 
 	return iwl_trans_send_cmd(priv->trans, cmd);
 }

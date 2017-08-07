@@ -78,7 +78,7 @@ extern unsigned int HPAGE_SHIFT;
  *
  * Also, KERNELBASE >= PAGE_OFFSET and PHYSICAL_START >= MEMORY_START
  *
- * There are two ways to determine a physical address from a virtual one:
+ * There are two was to determine a physical address from a virtual one:
  * va = pa + PAGE_OFFSET - MEMORY_START
  * va = pa + KERNELBASE - PHYSICAL_START
  *
@@ -115,7 +115,6 @@ extern long long virt_phys_offset;
 #else
 #define VIRT_PHYS_OFFSET (KERNELBASE - PHYSICAL_START)
 #endif
-
 
 #ifdef CONFIG_PPC64
 #define MEMORY_START	0UL
@@ -340,7 +339,6 @@ typedef struct { pte_t pte; unsigned long hidx; } real_pte_t;
 typedef pte_t real_pte_t;
 #endif
 
-
 #ifdef CONFIG_PPC64
 typedef unsigned long pmd_t;
 #define pmd_val(x)	(x)
@@ -403,7 +401,7 @@ void arch_free_page(struct page *page, int order);
 
 struct vm_area_struct;
 
-#if defined(CONFIG_PPC_64K_PAGES) && defined(CONFIG_PPC64)
+#ifdef CONFIG_PPC_64K_PAGES
 typedef pte_t *pgtable_t;
 #else
 typedef struct page *pgtable_t;

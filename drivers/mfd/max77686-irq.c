@@ -305,7 +305,6 @@ int max77686_irq_init(struct max77686_dev *max77686)
 		dev_err(max77686->dev, "Failed to request IRQ %d: %d\n",
 			max77686->irq, ret);
 
-
 	if (debug_mask & MAX77686_DEBUG_IRQ_INFO)
 		pr_info("%s-\n", __func__);
 

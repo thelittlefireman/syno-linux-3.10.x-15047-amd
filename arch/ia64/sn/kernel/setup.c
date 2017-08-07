@@ -53,7 +53,6 @@
 #include "xtalk/hubdev.h"
 #include <asm/sn/klconfig.h>
 
-
 DEFINE_PER_CPU(struct pda_s, pda_percpu);
 
 #define MAX_PHYS_MEMORY		(1UL << IA64_MAX_PHYS_BITS)	/* Max physical address supported */
@@ -192,7 +191,7 @@ void __init early_sn_setup(void)
 }
 
 extern int platform_intr_list[];
-static int shub_1_1_found;
+static int __cpuinitdata shub_1_1_found;
 
 /*
  * sn_check_for_wars
@@ -200,7 +199,7 @@ static int shub_1_1_found;
  * Set flag for enabling shub specific wars
  */
 
-static inline int is_shub_1_1(int nasid)
+static inline int __cpuinit is_shub_1_1(int nasid)
 {
 	unsigned long id;
 	int rev;
@@ -212,7 +211,7 @@ static inline int is_shub_1_1(int nasid)
 	return rev <= 2;
 }
 
-static void sn_check_for_wars(void)
+static void __cpuinit sn_check_for_wars(void)
 {
 	int cnode;
 
@@ -558,7 +557,7 @@ static void __init sn_init_pdas(char **cmdline_p)
  * Also sets up a few fields in the nodepda.  Also known as
  * platform_cpu_init() by the ia64 machvec code.
  */
-void sn_cpu_init(void)
+void __cpuinit sn_cpu_init(void)
 {
 	int cpuid;
 	int cpuphyid;
@@ -772,4 +771,3 @@ sn_kernel_launch_event(void)
 		printk(KERN_ERR "KEXEC is not supported in this PROM, Please update the PROM.\n");
 }
 EXPORT_SYMBOL(sn_prom_feature_available);
-

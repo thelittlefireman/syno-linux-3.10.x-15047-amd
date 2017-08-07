@@ -322,14 +322,13 @@ bool init_firmware(struct net_device *dev)
 				break;
 			}
 
-
 		} else if (rst_opt == OPT_FIRMWARE_RESET) {
 			mapped_file = pfirmware->firmware_buf[init_step];
 			file_length = pfirmware->firmware_buf_size[init_step];
 		}
 
 		rt_status = fw_download_code(dev, mapped_file, file_length);
-		if (!rt_status) {
+		if (rt_status != true) {
 			goto download_firmware_fail;
 		}
 

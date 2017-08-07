@@ -37,18 +37,15 @@
 
 #include <subdev/i2c.h>
 
-static struct nouveau_i2c_board_info nv04_tv_encoder_info[] = {
+static struct i2c_board_info nv04_tv_encoder_info[] = {
 	{
-		{
-			I2C_BOARD_INFO("ch7006", 0x75),
-			.platform_data = &(struct ch7006_encoder_params) {
-				CH7006_FORMAT_RGB24m12I, CH7006_CLOCK_MASTER,
-				0, 0, 0,
-				CH7006_SYNC_SLAVE, CH7006_SYNC_SEPARATED,
-				CH7006_POUT_3_3V, CH7006_ACTIVE_HSYNC
-			}
-		},
-		0
+		I2C_BOARD_INFO("ch7006", 0x75),
+		.platform_data = &(struct ch7006_encoder_params) {
+			CH7006_FORMAT_RGB24m12I, CH7006_CLOCK_MASTER,
+			0, 0, 0,
+			CH7006_SYNC_SLAVE, CH7006_SYNC_SEPARATED,
+			CH7006_POUT_3_3V, CH7006_ACTIVE_HSYNC
+		}
 	},
 	{ }
 };
@@ -59,9 +56,8 @@ int nv04_tv_identify(struct drm_device *dev, int i2c_index)
 	struct nouveau_i2c *i2c = nouveau_i2c(drm->device);
 
 	return i2c->identify(i2c, i2c_index, "TV encoder",
-			     nv04_tv_encoder_info, NULL, NULL);
+			     nv04_tv_encoder_info, NULL);
 }
-
 
 #define PLLSEL_TV_CRTC1_MASK				\
 	(NV_PRAMDAC_PLL_COEFF_SELECT_TV_VSCLK1		\
@@ -232,8 +228,7 @@ nv04_tv_create(struct drm_connector *connector, struct dcb_output *entry)
 
 	/* Run the slave-specific initialization */
 	ret = drm_i2c_encoder_init(dev, to_encoder_slave(encoder),
-				   &port->adapter,
-				   &nv04_tv_encoder_info[type].dev);
+				   &port->adapter, &nv04_tv_encoder_info[type]);
 	if (ret < 0)
 		goto fail_cleanup;
 

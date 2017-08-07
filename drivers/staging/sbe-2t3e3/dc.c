@@ -202,7 +202,6 @@ void dc_reset(struct channel *sc)
 	dc_write(sc->addr, SBE_2T3E3_21143_REG_SIA_AND_GENERAL_PURPOSE_PORT, 0);
 }
 
-
 void dc_receiver_onoff(struct channel *sc, u32 mode)
 {
 	u32 i, state = 0;
@@ -281,8 +280,6 @@ void dc_transmitter_onoff(struct channel *sc, u32 mode)
 	sc->p.transmitter_on = mode;
 }
 
-
-
 void dc_set_loopback(struct channel *sc, u32 mode)
 {
 	u32 val;
@@ -316,19 +313,18 @@ static int dc_init_descriptor_list(struct channel *sc)
 
 	if (sc->ether.rx_ring == NULL)
 		sc->ether.rx_ring = kcalloc(SBE_2T3E3_RX_DESC_RING_SIZE,
-					    sizeof(struct t3e3_rx_desc), GFP_KERNEL);
+					    sizeof(t3e3_rx_desc_t), GFP_KERNEL);
 	if (sc->ether.rx_ring == NULL)
 		return -ENOMEM;
 
 	if (sc->ether.tx_ring == NULL)
 		sc->ether.tx_ring = kcalloc(SBE_2T3E3_TX_DESC_RING_SIZE,
-					    sizeof(struct t3e3_tx_desc), GFP_KERNEL);
+					    sizeof(t3e3_tx_desc_t), GFP_KERNEL);
 	if (sc->ether.tx_ring == NULL) {
 		kfree(sc->ether.rx_ring);
 		sc->ether.rx_ring = NULL;
 		return -ENOMEM;
 	}
-
 
 	/*
 	 * Receive ring
@@ -339,8 +335,7 @@ static int dc_init_descriptor_list(struct channel *sc)
 			SBE_2T3E3_RX_DESC_SECOND_ADDRESS_CHAINED | SBE_2T3E3_MTU;
 
 		if (sc->ether.rx_data[i] == NULL) {
-			m = dev_alloc_skb(MCLBYTES);
-			if (!m) {
+			if (!(m = dev_alloc_skb(MCLBYTES))) {
 				for (j = 0; j < i; j++) {
 					dev_kfree_skb_any(sc->ether.rx_data[j]);
 					sc->ether.rx_data[j] = NULL;
@@ -430,7 +425,6 @@ void dc_drop_descriptor_list(struct channel *sc)
 	kfree(sc->ether.tx_ring);
 	sc->ether.tx_ring = NULL;
 }
-
 
 void dc_set_output_port(struct channel *sc)
 {

@@ -17,29 +17,13 @@
 #include <linux/init.h>
 #include <linux/string.h>
 #include <linux/blkdev.h>
+#include <linux/cramfs_fs.h>
 #include <linux/slab.h>
+#include <linux/cramfs_fs_sb.h>
 #include <linux/vfs.h>
 #include <linux/mutex.h>
-#include <uapi/linux/cramfs_fs.h>
+
 #include <asm/uaccess.h>
-
-#include "internal.h"
-
-/*
- * cramfs super-block data in memory
- */
-struct cramfs_sb_info {
-	unsigned long magic;
-	unsigned long size;
-	unsigned long blocks;
-	unsigned long files;
-	unsigned long flags;
-};
-
-static inline struct cramfs_sb_info *CRAMFS_SB(struct super_block *sb)
-{
-	return sb->s_fs_info;
-}
 
 static const struct super_operations cramfs_ops;
 static const struct inode_operations cramfs_dir_inode_operations;
@@ -47,7 +31,6 @@ static const struct file_operations cramfs_directory_operations;
 static const struct address_space_operations cramfs_aops;
 
 static DEFINE_MUTEX(read_mutex);
-
 
 /* These macros may change in future, to provide better st_ino semantics. */
 #define OFFSET(x)	((x)->i_ino)
@@ -195,7 +178,8 @@ static void *cramfs_read(struct super_block *sb, unsigned int offset, unsigned i
 		struct page *page = NULL;
 
 		if (blocknr + i < devsize) {
-			page = read_mapping_page(mapping, blocknr + i, NULL);
+			page = read_mapping_page_async(mapping, blocknr + i,
+									NULL);
 			/* synchronous error? */
 			if (IS_ERR(page))
 				page = NULL;
@@ -234,11 +218,10 @@ static void *cramfs_read(struct super_block *sb, unsigned int offset, unsigned i
 	return read_buffers[buffer] + offset;
 }
 
-static void cramfs_kill_sb(struct super_block *sb)
+static void cramfs_put_super(struct super_block *sb)
 {
-	struct cramfs_sb_info *sbi = CRAMFS_SB(sb);
-	kill_block_super(sb);
-	kfree(sbi);
+	kfree(sb->s_fs_info);
+	sb->s_fs_info = NULL;
 }
 
 static int cramfs_remount(struct super_block *sb, int *flags, char *data)
@@ -278,7 +261,7 @@ static int cramfs_fill_super(struct super_block *sb, void *data, int silent)
 		if (super.magic == CRAMFS_MAGIC_WEND) {
 			if (!silent)
 				printk(KERN_ERR "cramfs: wrong endianness\n");
-			return -EINVAL;
+			goto out;
 		}
 
 		/* check at 512 byte offset */
@@ -290,20 +273,20 @@ static int cramfs_fill_super(struct super_block *sb, void *data, int silent)
 				printk(KERN_ERR "cramfs: wrong endianness\n");
 			else if (!silent)
 				printk(KERN_ERR "cramfs: wrong magic\n");
-			return -EINVAL;
+			goto out;
 		}
 	}
 
 	/* get feature flags first */
 	if (super.flags & ~CRAMFS_SUPPORTED_FLAGS) {
 		printk(KERN_ERR "cramfs: unsupported filesystem features\n");
-		return -EINVAL;
+		goto out;
 	}
 
 	/* Check that the root inode is in a sane state */
 	if (!S_ISDIR(super.root.mode)) {
 		printk(KERN_ERR "cramfs: root is not a directory\n");
-		return -EINVAL;
+		goto out;
 	}
 	/* correct strange, hard-coded permissions of mkcramfs */
 	super.root.mode |= (S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -327,18 +310,22 @@ static int cramfs_fill_super(struct super_block *sb, void *data, int silent)
 		  (root_offset != 512 + sizeof(struct cramfs_super))))
 	{
 		printk(KERN_ERR "cramfs: bad root offset %lu\n", root_offset);
-		return -EINVAL;
+		goto out;
 	}
 
 	/* Set it all up.. */
 	sb->s_op = &cramfs_ops;
 	root = get_cramfs_inode(sb, &super.root, 0);
 	if (IS_ERR(root))
-		return PTR_ERR(root);
+		goto out;
 	sb->s_root = d_make_root(root);
 	if (!sb->s_root)
-		return -ENOMEM;
+		goto out;
 	return 0;
+out:
+	kfree(sbi);
+	sb->s_fs_info = NULL;
+	return -EINVAL;
 }
 
 static int cramfs_statfs(struct dentry *dentry, struct kstatfs *buf)
@@ -362,17 +349,18 @@ static int cramfs_statfs(struct dentry *dentry, struct kstatfs *buf)
 /*
  * Read a cramfs directory entry.
  */
-static int cramfs_readdir(struct file *file, struct dir_context *ctx)
+static int cramfs_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file_inode(filp);
 	struct super_block *sb = inode->i_sb;
 	char *buf;
 	unsigned int offset;
+	int copied;
 
 	/* Offset within the thing. */
-	if (ctx->pos >= inode->i_size)
+	offset = filp->f_pos;
+	if (offset >= inode->i_size)
 		return 0;
-	offset = ctx->pos;
 	/* Directory entries are always 4-byte aligned */
 	if (offset & 3)
 		return -EINVAL;
@@ -381,13 +369,14 @@ static int cramfs_readdir(struct file *file, struct dir_context *ctx)
 	if (!buf)
 		return -ENOMEM;
 
+	copied = 0;
 	while (offset < inode->i_size) {
 		struct cramfs_inode *de;
 		unsigned long nextoffset;
 		char *name;
 		ino_t ino;
 		umode_t mode;
-		int namelen;
+		int namelen, error;
 
 		mutex_lock(&read_mutex);
 		de = cramfs_read(sb, OFFSET(inode) + offset, sizeof(*de)+CRAMFS_MAXPATHLEN);
@@ -413,10 +402,13 @@ static int cramfs_readdir(struct file *file, struct dir_context *ctx)
 				break;
 			namelen--;
 		}
-		if (!dir_emit(ctx, buf, namelen, ino, mode >> 12))
+		error = filldir(dirent, buf, namelen, offset, ino, mode >> 12);
+		if (error)
 			break;
 
-		ctx->pos = offset = nextoffset;
+		offset = nextoffset;
+		filp->f_pos = offset;
+		copied++;
 	}
 	kfree(buf);
 	return 0;
@@ -555,7 +547,7 @@ static const struct address_space_operations cramfs_aops = {
 static const struct file_operations cramfs_directory_operations = {
 	.llseek		= generic_file_llseek,
 	.read		= generic_read_dir,
-	.iterate	= cramfs_readdir,
+	.readdir	= cramfs_readdir,
 };
 
 static const struct inode_operations cramfs_dir_inode_operations = {
@@ -563,6 +555,7 @@ static const struct inode_operations cramfs_dir_inode_operations = {
 };
 
 static const struct super_operations cramfs_ops = {
+	.put_super	= cramfs_put_super,
 	.remount_fs	= cramfs_remount,
 	.statfs		= cramfs_statfs,
 };
@@ -577,7 +570,7 @@ static struct file_system_type cramfs_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= "cramfs",
 	.mount		= cramfs_mount,
-	.kill_sb	= cramfs_kill_sb,
+	.kill_sb	= kill_block_super,
 	.fs_flags	= FS_REQUIRES_DEV,
 };
 MODULE_ALIAS_FS("cramfs");

@@ -27,7 +27,7 @@
 #include <sound/core.h>
 #include <sound/timer.h>
 
-#if IS_ENABLED(CONFIG_RTC)
+#if defined(CONFIG_RTC) || defined(CONFIG_RTC_MODULE)
 
 #include <linux/mc146818rtc.h>
 
@@ -41,7 +41,6 @@ static int rtctimer_open(struct snd_timer *t);
 static int rtctimer_close(struct snd_timer *t);
 static int rtctimer_start(struct snd_timer *t);
 static int rtctimer_stop(struct snd_timer *t);
-
 
 /*
  * The hardware dependent description for this timer.
@@ -61,7 +60,6 @@ static int rtctimer_freq = RTC_FREQ;		/* frequency */
 static struct snd_timer *rtctimer;
 static struct tasklet_struct rtc_tasklet;
 static rtc_task_t rtc_task;
-
 
 static int
 rtctimer_open(struct snd_timer *t)
@@ -121,7 +119,6 @@ static void rtctimer_interrupt(void *private_data)
 	tasklet_schedule(private_data);
 }
 
-
 /*
  *  ENTRY functions
  */
@@ -132,7 +129,8 @@ static int __init rtctimer_init(void)
 
 	if (rtctimer_freq < 2 || rtctimer_freq > 8192 ||
 	    !is_power_of_2(rtctimer_freq)) {
-		pr_err("ALSA: rtctimer: invalid frequency %d\n", rtctimer_freq);
+		snd_printk(KERN_ERR "rtctimer: invalid frequency %d\n",
+			   rtctimer_freq);
 		return -EINVAL;
 	}
 
@@ -170,7 +168,6 @@ static void __exit rtctimer_exit(void)
 	}
 }
 
-
 /*
  * exported stuff
  */
@@ -184,4 +181,4 @@ MODULE_LICENSE("GPL");
 
 MODULE_ALIAS("snd-timer-" __stringify(SNDRV_TIMER_GLOBAL_RTC));
 
-#endif /* IS_ENABLED(CONFIG_RTC) */
+#endif /* CONFIG_RTC || CONFIG_RTC_MODULE */

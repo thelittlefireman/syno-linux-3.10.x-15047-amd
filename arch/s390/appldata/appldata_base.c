@@ -34,7 +34,6 @@
 
 #include "appldata.h"
 
-
 #define APPLDATA_CPU_INTERVAL	10000		/* default (CPU) time for
 						   sampling interval in
 						   milliseconds */
@@ -48,9 +47,9 @@ static struct platform_device *appldata_pdev;
  * /proc entries (sysctl)
  */
 static const char appldata_proc_name[APPLDATA_PROC_NAME_LENGTH] = "appldata";
-static int appldata_timer_handler(struct ctl_table *ctl, int write,
+static int appldata_timer_handler(ctl_table *ctl, int write,
 				  void __user *buffer, size_t *lenp, loff_t *ppos);
-static int appldata_interval_handler(struct ctl_table *ctl, int write,
+static int appldata_interval_handler(ctl_table *ctl, int write,
 					 void __user *buffer,
 					 size_t *lenp, loff_t *ppos);
 
@@ -96,13 +95,11 @@ static struct workqueue_struct *appldata_wq;
 static void appldata_work_fn(struct work_struct *work);
 static DECLARE_WORK(appldata_work, appldata_work_fn);
 
-
 /*
  * Ops list
  */
 static DEFINE_MUTEX(appldata_ops_mutex);
 static LIST_HEAD(appldata_ops_list);
-
 
 /*************************** timer, work, DIAG *******************************/
 /*
@@ -157,7 +154,6 @@ int appldata_diag(char record_nr, u16 function, unsigned long buffer,
 }
 /************************ timer, work, DIAG <END> ****************************/
 
-
 /****************************** /proc stuff **********************************/
 
 #define APPLDATA_ADD_TIMER	0
@@ -201,10 +197,10 @@ static void __appldata_vtimer_setup(int cmd)
  * Start/Stop timer, show status of timer (0 = not active, 1 = active)
  */
 static int
-appldata_timer_handler(struct ctl_table *ctl, int write,
+appldata_timer_handler(ctl_table *ctl, int write,
 			   void __user *buffer, size_t *lenp, loff_t *ppos)
 {
-	unsigned int len;
+	int len;
 	char buf[2];
 
 	if (!*lenp || *ppos) {
@@ -243,11 +239,10 @@ out:
  * current timer interval.
  */
 static int
-appldata_interval_handler(struct ctl_table *ctl, int write,
+appldata_interval_handler(ctl_table *ctl, int write,
 			   void __user *buffer, size_t *lenp, loff_t *ppos)
 {
-	unsigned int len;
-	int interval;
+	int len, interval;
 	char buf[16];
 
 	if (!*lenp || *ppos) {
@@ -287,12 +282,11 @@ out:
  * monitoring (0 = not in process, 1 = in process)
  */
 static int
-appldata_generic_handler(struct ctl_table *ctl, int write,
+appldata_generic_handler(ctl_table *ctl, int write,
 			   void __user *buffer, size_t *lenp, loff_t *ppos)
 {
 	struct appldata_ops *ops = NULL, *tmp_ops;
-	unsigned int len;
-	int rc, found;
+	int rc, len, found;
 	char buf[2];
 	struct list_head *lh;
 
@@ -377,7 +371,6 @@ out:
 
 /*************************** /proc stuff <END> *******************************/
 
-
 /************************* module-ops management *****************************/
 /*
  * appldata_register_ops()
@@ -433,7 +426,6 @@ void appldata_unregister_ops(struct appldata_ops *ops)
 	kfree(ops->ctl_table);
 }
 /********************** module-ops management <END> **************************/
-
 
 /**************************** suspend / resume *******************************/
 static int appldata_freeze(struct device *dev)
@@ -517,7 +509,6 @@ static struct platform_driver appldata_pdrv = {
 };
 /************************* suspend / resume <END> ****************************/
 
-
 /******************************* init / exit *********************************/
 
 /*
@@ -529,7 +520,6 @@ static int __init appldata_init(void)
 {
 	int rc;
 
-	init_virt_timer(&appldata_timer);
 	appldata_timer.function = appldata_timer_function;
 	appldata_timer.data = (unsigned long) &appldata_work;
 

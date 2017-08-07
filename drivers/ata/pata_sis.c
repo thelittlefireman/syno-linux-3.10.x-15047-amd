@@ -26,6 +26,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -152,7 +153,6 @@ static int sis_66_cable_detect(struct ata_port *ap)
 	return ATA_CBL_PATA80;
 }
 
-
 /**
  *	sis_pre_reset - probe begin
  *	@link: ATA link
@@ -179,7 +179,6 @@ static int sis_pre_reset(struct ata_link *link, unsigned long deadline)
 	pci_write_config_byte(pdev, 0x4B, 0);
 	return ata_sff_prereset(link, deadline);
 }
-
 
 /**
  *	sis_set_fifo - Set RWP fifo bits for this device
@@ -872,7 +871,7 @@ static int sis_init_one (struct pci_dev *pdev, const struct pci_device_id *ent)
 #ifdef CONFIG_PM
 static int sis_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

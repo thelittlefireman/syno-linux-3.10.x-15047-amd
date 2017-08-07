@@ -70,7 +70,6 @@ void PHY_SetRF8256Bandwidth(struct net_device *dev,
 					 "unknown hardware version\n");
 			}
 
-
 			break;
 		default:
 			RT_TRACE(COMP_ERR, "PHY_SetRF8256Bandwidth(): unknown "
@@ -112,7 +111,6 @@ bool phy_RF8256_Config_ParaFile(struct net_device *dev)
 
 		pPhyReg = &priv->PHYRegDef[eRFPath];
 
-
 		switch (eRFPath) {
 		case RF90_PATH_A:
 		case RF90_PATH_C:
@@ -140,7 +138,7 @@ bool phy_RF8256_Config_ParaFile(struct net_device *dev)
 
 		rtStatus = rtl8192_phy_checkBBAndRF(dev, HW90_BLOCK_RF,
 						(enum rf90_radio_path)eRFPath);
-		if (!rtStatus) {
+		if (rtStatus != true) {
 			RT_TRACE(COMP_ERR, "PHY_RF8256_Config():Check "
 				 "Radio[%d] Fail!!\n", eRFPath);
 			goto phy_RF8256_Config_ParaFile_Fail;
@@ -245,7 +243,7 @@ void PHY_SetRF8256CCKTxPower(struct net_device *dev, u8	powerlevel)
 	struct r8192_priv *priv = rtllib_priv(dev);
 
 	TxAGC = powerlevel;
-	if (priv->bDynamicTxLowPower) {
+	if (priv->bDynamicTxLowPower == true) {
 		if (priv->CustomerID == RT_CID_819x_Netcore)
 			TxAGC = 0x22;
 		else
@@ -255,7 +253,6 @@ void PHY_SetRF8256CCKTxPower(struct net_device *dev, u8	powerlevel)
 		TxAGC = 0x24;
 	rtl8192_setBBreg(dev, rTxAGC_CCK_Mcs32, bTxAGCRateCCK, TxAGC);
 }
-
 
 void PHY_SetRF8256OFDMTxPower(struct net_device *dev, u8 powerlevel)
 {
@@ -294,7 +291,7 @@ void PHY_SetRF8256OFDMTxPower(struct net_device *dev, u8 powerlevel)
 			priv->Pwr_Track = writeVal_tmp;
 		}
 
-		if (priv->bDynamicTxHighPower)
+		if (priv->bDynamicTxHighPower == true)
 			writeVal = 0x03030303;
 		else
 			writeVal = (byte3 << 24) | (byte2 << 16) |

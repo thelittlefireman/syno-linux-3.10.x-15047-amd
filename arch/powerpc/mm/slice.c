@@ -41,7 +41,6 @@
 
 static DEFINE_SPINLOCK(slice_convert_lock);
 
-
 #ifdef DEBUG
 int _slice_debug = 1;
 
@@ -354,7 +353,6 @@ static unsigned long slice_find_area_topdown(struct mm_struct *mm,
 	return slice_find_area_bottomup(mm, len, available, psize);
 }
 
-
 static unsigned long slice_find_area(struct mm_struct *mm, unsigned long len,
 				     struct slice_mask mask, int psize,
 				     int topdown)
@@ -408,7 +406,7 @@ unsigned long slice_get_unmapped_area(unsigned long addr, unsigned long len,
 	if (fixed && (addr & ((1ul << pshift) - 1)))
 		return -EINVAL;
 	if (fixed && addr > (mm->task_size - len))
-		return -ENOMEM;
+		return -EINVAL;
 
 	/* If hint, make sure it matches our alignment restrictions */
 	if (!fixed && addr) {
@@ -634,9 +632,6 @@ void slice_set_user_psize(struct mm_struct *mm, unsigned int psize)
 				(((unsigned long)psize) << (mask_index * 4));
 	}
 
-
-
-
 	slice_dbg(" lsps=%lx, hsps=%lx\n",
 		  mm->context.low_slices_psize,
 		  mm->context.high_slices_psize);
@@ -728,4 +723,3 @@ int is_hugepage_only_range(struct mm_struct *mm, unsigned long addr,
 #endif
 	return !slice_check_fit(mask, available);
 }
-

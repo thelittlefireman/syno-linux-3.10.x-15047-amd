@@ -6,21 +6,7 @@
 
 SECTIONS
 {
-#ifdef BUILD_VDSO32
-#include <asm/vdso32.h>
-
-	hpet_page = . - VDSO_OFFSET(VDSO_HPET_PAGE);
-
-	vvar = . - VDSO_OFFSET(VDSO_VVAR_PAGE);
-
-	/* Place all vvars at the offsets in asm/vvar.h. */
-#define EMIT_VVAR(name, offset) vvar_ ## name = vvar + offset;
-#define __VVAR_KERNEL_LDS
-#include <asm/vvar.h>
-#undef __VVAR_KERNEL_LDS
-#undef EMIT_VVAR
-#endif
-	. = SIZEOF_HEADERS;
+	. = VDSO_PRELINK + SIZEOF_HEADERS;
 
 	.hash		: { *(.hash) }			:text
 	.gnu.hash	: { *(.gnu.hash) }
@@ -57,17 +43,7 @@ SECTIONS
 	 */
 	. = ALIGN(0x100);
 
-	.text		: { *(.text*) }			:text	=0x90909090,
-
-	/*
-	 * The comma above works around a bug in gold:
-	 * https://sourceware.org/bugzilla/show_bug.cgi?id=16804
-	 */
-
-	/DISCARD/ : {
-		*(.discard)
-		*(.discard.*)
-	}
+	.text		: { *(.text*) }			:text	=0x90909090
 }
 
 /*

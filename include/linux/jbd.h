@@ -27,6 +27,7 @@
 #include <linux/buffer_head.h>
 #include <linux/journal-head.h>
 #include <linux/stddef.h>
+#include <linux/bit_spinlock.h>
 #include <linux/mutex.h>
 #include <linux/timer.h>
 #include <linux/lockdep.h>
@@ -57,13 +58,16 @@
 #define JBD_EXPENSIVE_CHECKING
 extern u8 journal_enable_debug;
 
-void __jbd_debug(int level, const char *file, const char *func,
-		 unsigned int line, const char *fmt, ...);
-
-#define jbd_debug(n, fmt, a...) \
-	__jbd_debug((n), __FILE__, __func__, __LINE__, (fmt), ##a)
+#define jbd_debug(n, f, a...)						\
+	do {								\
+		if ((n) <= journal_enable_debug) {			\
+			printk (KERN_DEBUG "(%s, %d): %s: ",		\
+				__FILE__, __LINE__, __func__);	\
+			printk (f, ## a);				\
+		}							\
+	} while (0)
 #else
-#define jbd_debug(n, fmt, a...)    /**/
+#define jbd_debug(f, a...)	/**/
 #endif
 
 static inline void *jbd_alloc(size_t size, gfp_t flags)
@@ -74,10 +78,9 @@ static inline void *jbd_alloc(size_t size, gfp_t flags)
 static inline void jbd_free(void *ptr, size_t size)
 {
 	free_pages((unsigned long)ptr, get_order(size));
-}
+};
 
 #define JFS_MIN_JOURNAL_BLOCKS 1024
-
 
 /**
  * typedef handle_t - The handle_t type represents a single atomic update being performed by some process.
@@ -97,7 +100,6 @@ static inline void jbd_free(void *ptr, size_t size)
  * This is an opaque datatype.
  **/
 typedef struct handle_s		handle_t;	/* Atomic operation type */
-
 
 /**
  * typedef journal_t - The journal_t maintains all of the journaling state information for a single filesystem.
@@ -143,7 +145,6 @@ typedef struct journal_header_s
 	__be32		h_sequence;
 } journal_header_t;
 
-
 /*
  * The block tag: used to describe a single buffer in the journal
  */
@@ -163,13 +164,11 @@ typedef struct journal_revoke_header_s
 	__be32		 r_count;	/* Count of bytes used in the block */
 } journal_revoke_header_t;
 
-
 /* Definitions for the journal tag flags word: */
 #define JFS_FLAG_ESCAPE		1	/* on-disk block is escaped */
 #define JFS_FLAG_SAME_UUID	2	/* block has same uuid as previous */
 #define JFS_FLAG_DELETED	4	/* block deleted by this transaction */
 #define JFS_FLAG_LAST_TAG	8	/* last tag in this descriptor block */
-
 
 /*
  * The journal superblock.  All fields are in big-endian byte order.
@@ -240,31 +239,6 @@ typedef struct journal_superblock_s
 
 #include <linux/fs.h>
 #include <linux/sched.h>
-
-enum jbd_state_bits {
-	BH_JBD			/* Has an attached ext3 journal_head */
-	  = BH_PrivateStart,
-	BH_JWrite,		/* Being written to log (@@@ DEBUGGING) */
-	BH_Freed,		/* Has been freed (truncated) */
-	BH_Revoked,		/* Has been revoked from the log */
-	BH_RevokeValid,		/* Revoked flag is valid */
-	BH_JBDDirty,		/* Is dirty but journaled */
-	BH_State,		/* Pins most journal_head state */
-	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
-	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-	BH_JBDPrivateStart,	/* First bit available for private use by FS */
-};
-
-BUFFER_FNS(JBD, jbd)
-BUFFER_FNS(JWrite, jwrite)
-BUFFER_FNS(JBDDirty, jbddirty)
-TAS_BUFFER_FNS(JBDDirty, jbddirty)
-BUFFER_FNS(Revoked, revoked)
-TAS_BUFFER_FNS(Revoked, revoked)
-BUFFER_FNS(RevokeValid, revokevalid)
-TAS_BUFFER_FNS(RevokeValid, revokevalid)
-BUFFER_FNS(Freed, freed)
-
 #include <linux/jbd_common.h>
 
 #define J_ASSERT(assert)	BUG_ON(!(assert))
@@ -329,7 +303,6 @@ struct handle_s
 	struct lockdep_map	h_lockdep_map;
 #endif
 };
-
 
 /* The transaction_t type is the guts of the journaling mechanism.  It
  * tracks a compound transaction through its various states:
@@ -861,7 +834,7 @@ extern void	 journal_release_buffer (handle_t *, struct buffer_head *);
 extern int	 journal_forget (handle_t *, struct buffer_head *);
 extern void	 journal_sync_buffer (struct buffer_head *);
 extern void	 journal_invalidatepage(journal_t *,
-				struct page *, unsigned int, unsigned int);
+				struct page *, unsigned long);
 extern int	 journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
 extern int	 journal_stop(handle_t *);
 extern int	 journal_flush (journal_t *);

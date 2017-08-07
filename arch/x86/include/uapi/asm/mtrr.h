@@ -113,5 +113,4 @@ struct mtrr_state_type {
 #define MTRR_TYPE_WRBACK     6
 #define MTRR_NUM_TYPES       7
 
-
 #endif /* _UAPI_ASM_X86_MTRR_H */

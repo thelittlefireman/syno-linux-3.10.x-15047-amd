@@ -407,7 +407,6 @@ static ssize_t ath6kl_fwlog_read(struct file *file, char __user *user_buf,
 			break;
 		}
 
-
 		memcpy(buf + len, skb->data, skb->len);
 		len += skb->len;
 
@@ -473,7 +472,6 @@ static ssize_t ath6kl_fwlog_block_read(struct file *file,
 			__skb_queue_head(&ar->debug.fwlog_queue, skb);
 			break;
 		}
-
 
 		memcpy(buf + len, skb->data, skb->len);
 		len += skb->len;
@@ -1240,14 +1238,20 @@ static ssize_t ath6kl_force_roam_write(struct file *file,
 	char buf[20];
 	size_t len;
 	u8 bssid[ETH_ALEN];
+	int i;
+	int addr[ETH_ALEN];
 
 	len = min(count, sizeof(buf) - 1);
 	if (copy_from_user(buf, user_buf, len))
 		return -EFAULT;
 	buf[len] = '\0';
 
-	if (!mac_pton(buf, bssid))
+	if (sscanf(buf, "%02x:%02x:%02x:%02x:%02x:%02x",
+		   &addr[0], &addr[1], &addr[2], &addr[3], &addr[4], &addr[5])
+	    != ETH_ALEN)
 		return -EINVAL;
+	for (i = 0; i < ETH_ALEN; i++)
+		bssid[i] = addr[i];
 
 	ret = ath6kl_wmi_force_roam_cmd(ar->wmi, bssid);
 	if (ret)

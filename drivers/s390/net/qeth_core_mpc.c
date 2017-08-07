@@ -155,7 +155,6 @@ unsigned char READ_CCW[] = {
 	0, 0, 0, 0
 };
 
-
 struct ipa_rc_msg {
 	enum qeth_ipa_return_codes rc;
 	char *msg;
@@ -210,8 +209,6 @@ static struct ipa_rc_msg qeth_ipa_rc_msg[] = {
 	{IPA_RC_FFFF,			"Unknown Error"}
 };
 
-
-
 char *qeth_get_ipa_msg(enum qeth_ipa_return_codes rc)
 {
 	int x = 0;
@@ -221,7 +218,6 @@ char *qeth_get_ipa_msg(enum qeth_ipa_return_codes rc)
 		x++;
 	return qeth_ipa_rc_msg[x].msg;
 }
-
 
 struct ipa_cmd_names {
 	enum qeth_ipa_cmds cmd;
@@ -249,12 +245,10 @@ static struct ipa_cmd_names qeth_ipa_cmd_names[] = {
 	{IPA_CMD_DELIP,		"delip"},
 	{IPA_CMD_SETADAPTERPARMS, "setadapterparms"},
 	{IPA_CMD_SET_DIAG_ASS,	"set_diag_ass"},
-	{IPA_CMD_SETBRIDGEPORT,	"set_bridge_port"},
 	{IPA_CMD_CREATE_ADDR,	"create_addr"},
 	{IPA_CMD_DESTROY_ADDR,	"destroy_addr"},
 	{IPA_CMD_REGISTER_LOCAL_ADDR,	"register_local_addr"},
 	{IPA_CMD_UNREGISTER_LOCAL_ADDR,	"unregister_local_addr"},
-	{IPA_CMD_ADDRESS_CHANGE_NOTIF, "address_change_notification"},
 	{IPA_CMD_UNKNOWN,	"unknown"},
 };
 

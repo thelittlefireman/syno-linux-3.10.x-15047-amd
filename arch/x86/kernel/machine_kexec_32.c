@@ -9,6 +9,7 @@
 #include <linux/mm.h>
 #include <linux/kexec.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/numa.h>
 #include <linux/ftrace.h>
 #include <linux/suspend.h>
@@ -35,7 +36,6 @@ static void set_idt(void *newidt, __u16 limit)
 
 	load_idt(&curidt);
 }
-
 
 static void set_gdt(void *newgdt, __u16 limit)
 {
@@ -268,4 +268,3 @@ void arch_crash_save_vmcoreinfo(void)
 	VMCOREINFO_CONFIG(X86_PAE);
 #endif
 }
-

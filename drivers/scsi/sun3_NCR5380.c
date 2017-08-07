@@ -322,7 +322,6 @@ typedef struct {
 
 static TAG_ALLOC TagAlloc[8][8]; /* 8 targets and 8 LUNs */
 
-
 static void __init init_tags( void )
 {
     int target, lun;
@@ -344,7 +343,6 @@ static void __init init_tags( void )
 	}
     }
 }
-
 
 /* Check if we can issue a command to this LUN: First see if the LUN is marked
  * busy by an untagged command. If the command should use tagged queuing, also
@@ -370,7 +368,6 @@ static int is_lun_busy(struct scsi_cmnd *cmd, int should_be_tagged)
     }
     return( 0 );
 }
-
 
 /* Allocate a tag for a command (there are no checks anymore, check_lun_busy()
  * must be called before!), or reserve the LUN in 'busy' if the command is
@@ -404,7 +401,6 @@ static void cmd_get_tag(struct scsi_cmnd *cmd, int should_be_tagged)
     }
 }
 
-
 /* Mark the tag of command 'cmd' as free, or in case of an untagged command,
  * unlock the LUN.
  */
@@ -431,7 +427,6 @@ static void cmd_free_tag(struct scsi_cmnd *cmd)
     }
 }
 
-
 static void free_all_tags( void )
 {
     int target, lun;
@@ -450,7 +445,6 @@ static void free_all_tags( void )
 }
 
 #endif /* SUPPORT_TAGS */
-
 
 /*
  * Function : void initialize_SCp(struct scsi_cmnd *cmd)
@@ -613,7 +607,6 @@ static __inline__ void queue_main(void)
        any newly queued command. */
 }
 
-
 static inline void NCR5380_all_init (void)
 {
     static int done = 0;
@@ -623,7 +616,6 @@ static inline void NCR5380_all_init (void)
     }
 }
 
- 
 /*
  * Function : void NCR58380_print_options (struct Scsi_Host *instance)
  *
@@ -794,7 +786,6 @@ static int __init NCR5380_init(struct Scsi_Host *instance, int flags)
 	first_instance = instance;
     }
 	
-
 #ifndef AUTOSENSE
     if ((instance->cmd_per_lun > 1) || (instance->can_queue > 1))
 	 printk("scsi%d: WARNING : support for multiple outstanding commands enabled\n"
@@ -853,7 +844,6 @@ static int NCR5380_queue_command_lck(struct scsi_cmnd *cmd,
     }
 #endif /* (NDEBUG & NDEBUG_NO_WRITE) */
 
-
 #ifdef NCR5380_STATS
 # if 0
     if (!hostdata->connected && !hostdata->issue_queue &&
@@ -892,7 +882,6 @@ static int NCR5380_queue_command_lck(struct scsi_cmnd *cmd,
     cmd->scsi_done = done;
 
     cmd->result = 0;
-
 
     /* 
      * Insert the cmd into the issue queue. Note that REQUEST SENSE 
@@ -1105,7 +1094,6 @@ static void NCR5380_main (struct work_struct *bl)
     local_irq_restore(flags);
 }
 
-
 #ifdef REAL_DMA
 /*
  * Function : void NCR5380_dma_complete (struct Scsi_Host *instance)
@@ -1154,8 +1142,6 @@ static void NCR5380_dma_complete( struct Scsi_Host *instance )
 	    BUG();
     }
 
-
-
     (void) NCR5380_read(RESET_PARITY_INTERRUPT_REG);
     NCR5380_write(MODE_REG, MR_BASE);
     NCR5380_write(INITIATOR_COMMAND_REG, ICR_BASE);
@@ -1170,7 +1156,6 @@ static void NCR5380_dma_complete( struct Scsi_Host *instance )
 
 }
 #endif /* REAL_DMA */
-
 
 /*
  * Function : void NCR5380_intr (int irq)
@@ -1353,7 +1338,6 @@ static int NCR5380_select(struct Scsi_Host *instance, struct scsi_cmnd *cmd,
 	return -1;
     }
     NCR5380_write(TARGET_COMMAND_REG, 0);
-
 
     /* 
      * Start arbitration.
@@ -1628,7 +1612,6 @@ static int NCR5380_select(struct Scsi_Host *instance, struct scsi_cmnd *cmd,
 #endif
     initialize_SCp(cmd);
 
-
     return 0;
 }
 
@@ -1837,7 +1820,6 @@ static int do_abort (struct Scsi_Host *host)
  *
  */
 
-
 static int NCR5380_transfer_dma( struct Scsi_Host *instance, 
 				 unsigned char *phase, int *count,
 				 unsigned char **data)
@@ -1962,7 +1944,6 @@ static void NCR5380_information_transfer (struct Scsi_Host *instance)
 #endif
 	    }
 
-	    
 	    if (sink && (phase != PHASE_MSGOUT)) {
 		NCR5380_write(TARGET_COMMAND_REG, PHASE_SR_TO_TCR(tmp));
 
@@ -2368,7 +2349,6 @@ static void NCR5380_information_transfer (struct Scsi_Host *instance)
 			       HOSTNO, extended_msg[1], extended_msg[0],
 			       cmd->device->id, cmd->device->lun);
    
-
 		    msgout = MESSAGE_REJECT;
 		    NCR5380_write(INITIATOR_COMMAND_REG, ICR_BASE | 
 			ICR_ASSERT_ATN);
@@ -2590,7 +2570,6 @@ static void NCR5380_reselect (struct Scsi_Host *instance)
 	       HOSTNO, tmp->target, tmp->lun, tmp->tag);
 }
 
-
 /*
  * Function : int NCR5380_abort(struct scsi_cmnd *cmd)
  *
@@ -2789,7 +2768,6 @@ static int NCR5380_abort(struct scsi_cmnd *cmd)
     return SCSI_ABORT_NOT_RUNNING;
 }
 
-
 /* 
  * Function : int NCR5380_bus_reset(struct scsi_cmnd *cmd)
  * 
@@ -2807,7 +2785,6 @@ static int NCR5380_bus_reset(struct scsi_cmnd *cmd)
 #if 1
     struct scsi_cmnd *connected, *disconnected_queue;
 #endif
-
 
     NCR5380_print_status (cmd->device->host);
 
@@ -2870,7 +2847,6 @@ static int NCR5380_bus_reset(struct scsi_cmnd *cmd)
     }
     if (i > 0)
 	ABRT_PRINTK("scsi: reset aborted %d disconnected command(s)\n", i);
-
 
     /* since all commands have been explicitly terminated, we need to tell
      * the midlevel code that the reset was SUCCESSFUL, and there is no 

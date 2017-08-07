@@ -25,9 +25,9 @@
 #include <linux/string.h>
 #include <linux/crypto.h>
 #include <linux/blkdev.h>
+#include <linux/loop.h>
 #include <linux/scatterlist.h>
 #include <asm/uaccess.h>
-#include "loop.h"
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("loop blockdevice transferfunction adaptor / CryptoAPI");
@@ -101,7 +101,6 @@ cryptoloop_init(struct loop_device *lo, const struct loop_info64 *info)
  out:
 	return err;
 }
-
 
 typedef int (*encdec_cbc_t)(struct blkcipher_desc *desc,
 			struct scatterlist *sg_out,

@@ -221,7 +221,6 @@ static void gdrom_spicommand(void *spi_string, int buflen)
 	outsw(GDROM_DATA_REG, cmd, 6);
 }
 
-
 /* gdrom_command_executediagnostic:
  * Used to probe for presence of working GDROM
  * Restarts GDROM device and then applies standard ATA 3
@@ -561,11 +560,11 @@ static int gdrom_set_interrupt_handlers(void)
 	int err;
 
 	err = request_irq(HW_EVENT_GDROM_CMD, gdrom_command_interrupt,
-		0, "gdrom_command", &gd);
+		IRQF_DISABLED, "gdrom_command", &gd);
 	if (err)
 		return err;
 	err = request_irq(HW_EVENT_GDROM_DMA, gdrom_dma_interrupt,
-		0, "gdrom_dma", &gd);
+		IRQF_DISABLED, "gdrom_dma", &gd);
 	if (err)
 		free_irq(HW_EVENT_GDROM_CMD, &gd);
 	return err;
@@ -830,9 +829,9 @@ probe_fail_cdrom_register:
 	del_gendisk(gd.disk);
 probe_fail_no_disk:
 	kfree(gd.cd_info);
-probe_fail_no_mem:
 	unregister_blkdev(gdrom_major, GDROM_DEV_NAME);
 	gdrom_major = 0;
+probe_fail_no_mem:
 	pr_warning("Probe failed - error is 0x%X\n", err);
 	return err;
 }

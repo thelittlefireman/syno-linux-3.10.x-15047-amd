@@ -1,7 +1,9 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <linux/string.h>
-#include <linux/compiler.h>
 #include <linux/export.h>
 #include <linux/err.h>
 #include <linux/sched.h>
@@ -10,6 +12,7 @@
 #include <linux/swapops.h>
 #include <linux/mman.h>
 #include <linux/hugetlb.h>
+#include <linux/vmalloc.h>
 
 #include <asm/uaccess.h>
 
@@ -18,11 +21,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/kmem.h>
 
-/**
- * kstrdup - allocate space for and copy an existing string
- * @s: the string to duplicate
- * @gfp: the GFP mask used in the kmalloc() call when allocating memory
- */
 char *kstrdup(const char *s, gfp_t gfp)
 {
 	size_t len;
@@ -39,12 +37,6 @@ char *kstrdup(const char *s, gfp_t gfp)
 }
 EXPORT_SYMBOL(kstrdup);
 
-/**
- * kstrndup - allocate space for and copy an existing string
- * @s: the string to duplicate
- * @max: read at most @max chars from @s
- * @gfp: the GFP mask used in the kmalloc() call when allocating memory
- */
 char *kstrndup(const char *s, size_t max, gfp_t gfp)
 {
 	size_t len;
@@ -63,13 +55,6 @@ char *kstrndup(const char *s, size_t max, gfp_t gfp)
 }
 EXPORT_SYMBOL(kstrndup);
 
-/**
- * kmemdup - duplicate region of memory
- *
- * @src: memory region to duplicate
- * @len: memory region length
- * @gfp: GFP mask to use
- */
 void *kmemdup(const void *src, size_t len, gfp_t gfp)
 {
 	void *p;
@@ -81,23 +66,10 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp)
 }
 EXPORT_SYMBOL(kmemdup);
 
-/**
- * memdup_user - duplicate memory region from user space
- *
- * @src: source address in user space
- * @len: number of bytes to copy
- *
- * Returns an ERR_PTR() on failure.
- */
 void *memdup_user(const void __user *src, size_t len)
 {
 	void *p;
 
-	/*
-	 * Always use GFP_KERNEL, since copy_from_user() can sleep and
-	 * cause pagefault, which makes it pointless to use GFP_NOFS
-	 * or GFP_ATOMIC.
-	 */
 	p = kmalloc_track_caller(len, GFP_KERNEL);
 	if (!p)
 		return ERR_PTR(-ENOMEM);
@@ -130,16 +102,6 @@ static __always_inline void *__do_krealloc(const void *p, size_t new_size,
 	return ret;
 }
 
-/**
- * __krealloc - like krealloc() but don't free @p.
- * @p: object to reallocate memory for.
- * @new_size: how many bytes of memory are required.
- * @flags: the type of memory to allocate.
- *
- * This function is like krealloc() except it never frees the originally
- * allocated buffer. Use this if you don't want to free the buffer immediately
- * like, for example, with RCU.
- */
 void *__krealloc(const void *p, size_t new_size, gfp_t flags)
 {
 	if (unlikely(!new_size))
@@ -150,17 +112,6 @@ void *__krealloc(const void *p, size_t new_size, gfp_t flags)
 }
 EXPORT_SYMBOL(__krealloc);
 
-/**
- * krealloc - reallocate memory. The contents will remain unchanged.
- * @p: object to reallocate memory for.
- * @new_size: how many bytes of memory are required.
- * @flags: the type of memory to allocate.
- *
- * The contents of the object pointed to are preserved up to the
- * lesser of the new and old sizes.  If @p is %NULL, krealloc()
- * behaves exactly like kmalloc().  If @new_size is 0 and @p is not a
- * %NULL pointer, the object pointed to is freed.
- */
 void *krealloc(const void *p, size_t new_size, gfp_t flags)
 {
 	void *ret;
@@ -178,17 +129,6 @@ void *krealloc(const void *p, size_t new_size, gfp_t flags)
 }
 EXPORT_SYMBOL(krealloc);
 
-/**
- * kzfree - like kfree but zero memory
- * @p: object to free memory of
- *
- * The memory of the object @p points to is zeroed before freed.
- * If @p is %NULL, kzfree() does nothing.
- *
- * Note: this function zeroes the whole allocated buffer which can be a good
- * deal bigger than the requested buffer size passed to kmalloc(). So be
- * careful when using this function in performance sensitive code.
- */
 void kzfree(const void *p)
 {
 	size_t ks;
@@ -202,11 +142,6 @@ void kzfree(const void *p)
 }
 EXPORT_SYMBOL(kzfree);
 
-/*
- * strndup_user - duplicate an existing string from user space
- * @s: The string to duplicate
- * @n: Maximum number of bytes to copy, including the trailing NUL.
- */
 char *strndup_user(const char __user *s, long n)
 {
 	char *p;
@@ -253,19 +188,12 @@ void __vma_link_list(struct mm_struct *mm, struct vm_area_struct *vma,
 		next->vm_prev = vma;
 }
 
-/* Check if the vma is being used as a stack by this task */
 static int vm_is_stack_for_task(struct task_struct *t,
 				struct vm_area_struct *vma)
 {
 	return (vma->vm_start <= KSTK_ESP(t) && vma->vm_end >= KSTK_ESP(t));
 }
 
-/*
- * Check if the vma is being used as a stack.
- * If is_group is non-zero, check in the entire thread group or else
- * just check in the current task. Returns the pid of the task that
- * the vma is stack for.
- */
 pid_t vm_is_stack(struct task_struct *task,
 		  struct vm_area_struct *vma, int in_group)
 {
@@ -276,17 +204,14 @@ pid_t vm_is_stack(struct task_struct *task,
 
 	if (in_group) {
 		struct task_struct *t;
-		rcu_read_lock();
-		if (!pid_alive(task))
-			goto done;
 
-		t = task;
-		do {
+		rcu_read_lock();
+		for_each_thread(task, t) {
 			if (vm_is_stack_for_task(t, vma)) {
 				ret = t->pid;
 				goto done;
 			}
-		} while_each_thread(task, t);
+		}
 done:
 		rcu_read_unlock();
 	}
@@ -299,47 +224,18 @@ void arch_pick_mmap_layout(struct mm_struct *mm)
 {
 	mm->mmap_base = TASK_UNMAPPED_BASE;
 	mm->get_unmapped_area = arch_get_unmapped_area;
+	mm->unmap_area = arch_unmap_area;
 }
 #endif
 
-/*
- * Like get_user_pages_fast() except its IRQ-safe in that it won't fall
- * back to the regular GUP.
- * If the architecture not support this function, simply return with no
- * page pinned
- */
-int __weak __get_user_pages_fast(unsigned long start,
+int __attribute__((weak)) __get_user_pages_fast(unsigned long start,
 				 int nr_pages, int write, struct page **pages)
 {
 	return 0;
 }
 EXPORT_SYMBOL_GPL(__get_user_pages_fast);
 
-/**
- * get_user_pages_fast() - pin user pages in memory
- * @start:	starting user address
- * @nr_pages:	number of pages from start to pin
- * @write:	whether pages will be written to
- * @pages:	array that receives pointers to the pages pinned.
- *		Should be at least nr_pages long.
- *
- * Returns number of pages pinned. This may be fewer than the number
- * requested. If nr_pages is 0 or negative, returns 0. If no pages
- * were pinned, returns -errno.
- *
- * get_user_pages_fast provides equivalent functionality to get_user_pages,
- * operating on current and current->mm, with force=0 and vma=NULL. However
- * unlike get_user_pages, it must be called without mmap_sem held.
- *
- * get_user_pages_fast may take mmap_sem and page table locks, so no
- * assumptions can be made about lack of locking. get_user_pages_fast is to be
- * implemented in a way that is advantageous (vs get_user_pages()) when the
- * user memory area is already faulted in and present in ptes. However if the
- * pages have to be faulted in, it may turn out to be slightly slower so
- * callers need to carefully consider what to use. On many architectures,
- * get_user_pages_fast simply falls back to get_user_pages.
- */
-int __weak get_user_pages_fast(unsigned long start,
+int __attribute__((weak)) get_user_pages_fast(unsigned long start,
 				int nr_pages, int write, struct page **pages)
 {
 	struct mm_struct *mm = current->mm;
@@ -387,104 +283,73 @@ unsigned long vm_mmap(struct file *file, unsigned long addr,
 }
 EXPORT_SYMBOL(vm_mmap);
 
+void kvfree(const void *addr)
+{
+	if (is_vmalloc_addr(addr))
+		vfree(addr);
+	else
+		kfree(addr);
+}
+EXPORT_SYMBOL(kvfree);
+
 struct address_space *page_mapping(struct page *page)
 {
 	struct address_space *mapping = page->mapping;
 
-	/* This happens if someone calls flush_dcache_page on slab page */
-	if (unlikely(PageSlab(page)))
-		return NULL;
-
+	VM_BUG_ON(PageSlab(page));
+#ifdef CONFIG_SWAP
 	if (unlikely(PageSwapCache(page))) {
 		swp_entry_t entry;
 
 		entry.val = page_private(page);
 		mapping = swap_address_space(entry);
-	} else if ((unsigned long)mapping & PAGE_MAPPING_ANON)
+	} else
+#endif
+	if ((unsigned long)mapping & PAGE_MAPPING_ANON)
 		mapping = NULL;
 	return mapping;
 }
 
-int overcommit_ratio_handler(struct ctl_table *table, int write,
-			     void __user *buffer, size_t *lenp,
-			     loff_t *ppos)
-{
-	int ret;
-
-	ret = proc_dointvec(table, write, buffer, lenp, ppos);
-	if (ret == 0 && write)
-		sysctl_overcommit_kbytes = 0;
-	return ret;
-}
-
-int overcommit_kbytes_handler(struct ctl_table *table, int write,
-			     void __user *buffer, size_t *lenp,
-			     loff_t *ppos)
-{
-	int ret;
-
-	ret = proc_doulongvec_minmax(table, write, buffer, lenp, ppos);
-	if (ret == 0 && write)
-		sysctl_overcommit_ratio = 0;
-	return ret;
-}
-
-/*
- * Committed memory limit enforced when OVERCOMMIT_NEVER policy is used
- */
 unsigned long vm_commit_limit(void)
 {
-	unsigned long allowed;
-
-	if (sysctl_overcommit_kbytes)
-		allowed = sysctl_overcommit_kbytes >> (PAGE_SHIFT - 10);
-	else
-		allowed = ((totalram_pages - hugetlb_total_pages())
-			   * sysctl_overcommit_ratio / 100);
-	allowed += total_swap_pages;
-
-	return allowed;
+	return ((totalram_pages - hugetlb_total_pages())
+		* sysctl_overcommit_ratio / 100) + total_swap_pages;
 }
 
-/**
- * get_cmdline() - copy the cmdline value to a buffer.
- * @task:     the task whose cmdline value to copy.
- * @buffer:   the buffer to copy to.
- * @buflen:   the length of the buffer. Larger cmdline values are truncated
- *            to this length.
- * Returns the size of the cmdline field copied. Note that the copy does
- * not guarantee an ending NULL byte.
- */
 int get_cmdline(struct task_struct *task, char *buffer, int buflen)
 {
 	int res = 0;
 	unsigned int len;
 	struct mm_struct *mm = get_task_mm(task);
+	unsigned long arg_start, arg_end, env_start, env_end;
 	if (!mm)
 		goto out;
 	if (!mm->arg_end)
-		goto out_mm;	/* Shh! No looking before we're done */
+		goto out_mm;	 
 
-	len = mm->arg_end - mm->arg_start;
+	down_read(&mm->mmap_sem);
+	arg_start = mm->arg_start;
+	arg_end = mm->arg_end;
+	env_start = mm->env_start;
+	env_end = mm->env_end;
+	up_read(&mm->mmap_sem);
+
+	len = arg_end - arg_start;
 
 	if (len > buflen)
 		len = buflen;
 
-	res = access_process_vm(task, mm->arg_start, buffer, len, 0);
+	res = access_process_vm(task, arg_start, buffer, len, 0);
 
-	/*
-	 * If the nul at the end of args has been overwritten, then
-	 * assume application is using setproctitle(3).
-	 */
 	if (res > 0 && buffer[res-1] != '\0' && len < buflen) {
 		len = strnlen(buffer, res);
 		if (len < res) {
 			res = len;
 		} else {
-			len = mm->env_end - mm->env_start;
+			len = env_end - env_start;
 			if (len > buflen - res)
 				len = buflen - res;
-			res += access_process_vm(task, mm->env_start,
+			res += access_process_vm(task, env_start,
 						 buffer+res, len, 0);
 			res = strnlen(buffer, res);
 		}
@@ -494,8 +359,10 @@ out_mm:
 out:
 	return res;
 }
+#ifdef MY_ABC_HERE
+EXPORT_SYMBOL(get_cmdline);
+#endif
 
-/* Tracepoints definitions. */
 EXPORT_TRACEPOINT_SYMBOL(kmalloc);
 EXPORT_TRACEPOINT_SYMBOL(kmem_cache_alloc);
 EXPORT_TRACEPOINT_SYMBOL(kmalloc_node);

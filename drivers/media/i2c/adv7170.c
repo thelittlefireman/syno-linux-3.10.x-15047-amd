@@ -36,11 +36,11 @@
 #include <linux/i2c.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 
 MODULE_DESCRIPTION("Analog Devices ADV7170 video encoder driver");
 MODULE_AUTHOR("Maxim Yevtyushkin");
 MODULE_LICENSE("GPL");
-
 
 static int debug;
 module_param(debug, int, 0);
@@ -193,7 +193,6 @@ static const unsigned char init_PAL[] = {
 	0x19, 0x00,		/* Teletext Ctl */
 };
 
-
 static int adv7170_s_std_output(struct v4l2_subdev *sd, v4l2_std_id std)
 {
 	struct adv7170 *encoder = to_adv7170(sd);
@@ -316,7 +315,18 @@ static int adv7170_s_fmt(struct v4l2_subdev *sd,
 	return ret;
 }
 
+static int adv7170_g_chip_ident(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+
+	return v4l2_chip_ident_i2c_client(client, chip, V4L2_IDENT_ADV7170, 0);
+}
+
 /* ----------------------------------------------------------------------- */
+
+static const struct v4l2_subdev_core_ops adv7170_core_ops = {
+	.g_chip_ident = adv7170_g_chip_ident,
+};
 
 static const struct v4l2_subdev_video_ops adv7170_video_ops = {
 	.s_std_output = adv7170_s_std_output,
@@ -327,6 +337,7 @@ static const struct v4l2_subdev_video_ops adv7170_video_ops = {
 };
 
 static const struct v4l2_subdev_ops adv7170_ops = {
+	.core = &adv7170_core_ops,
 	.video = &adv7170_video_ops,
 };
 
@@ -346,7 +357,7 @@ static int adv7170_probe(struct i2c_client *client,
 	v4l_info(client, "chip found @ 0x%x (%s)\n",
 			client->addr << 1, client->adapter->name);
 
-	encoder = devm_kzalloc(&client->dev, sizeof(*encoder), GFP_KERNEL);
+	encoder = kzalloc(sizeof(struct adv7170), GFP_KERNEL);
 	if (encoder == NULL)
 		return -ENOMEM;
 	sd = &encoder->sd;
@@ -371,6 +382,7 @@ static int adv7170_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 
 	v4l2_device_unregister_subdev(sd);
+	kfree(to_adv7170(sd));
 	return 0;
 }
 

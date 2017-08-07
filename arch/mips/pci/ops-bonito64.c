@@ -22,6 +22,7 @@
 #include <linux/types.h>
 #include <linux/pci.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 
 #include <asm/mips-boards/bonito64.h>
 
@@ -31,7 +32,6 @@
 #define CFG_SPACE_REG(offset) (void *)CKSEG1ADDR(_pcictrl_bonito_pcicfg + (offset))
 #define ID_SEL_BEGIN 10
 #define MAX_DEV_NUM (31 - ID_SEL_BEGIN)
-
 
 static int bonito64_pcibios_config_access(unsigned char access_type,
 				      struct pci_bus *bus,
@@ -92,7 +92,6 @@ static int bonito64_pcibios_config_access(unsigned char access_type,
 	return 0;
 
 }
-
 
 /*
  * We can't address 8 and 16 bit words directly.  Instead we have to

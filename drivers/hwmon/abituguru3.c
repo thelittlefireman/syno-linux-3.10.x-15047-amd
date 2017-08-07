@@ -128,7 +128,6 @@
 #define ABIT_UGURU3_STATUS_READY_FOR_READ	0x01
 #define ABIT_UGURU3_STATUS_BUSY			0x02
 
-
 /* Structures */
 struct abituguru3_sensor_info {
 	const char *name;
@@ -176,7 +175,7 @@ struct abituguru3_data {
 
 	/*
 	 * The abituguru3 supports up to 48 sensors, and thus has registers
-	 * sets for 48 sensors, for convenience reasons / simplicity of the
+	 * sets for 48 sensors, for convienence reasons / simplicity of the
 	 * code we always read and store all registers for all 48 sensors
 	 */
 
@@ -193,7 +192,6 @@ struct abituguru3_data {
 	 */
 	u8 settings[48][3];
 };
-
 
 /* Constants */
 static const struct abituguru3_motherboard_info abituguru3_motherboards[] = {
@@ -627,7 +625,6 @@ static const struct abituguru3_motherboard_info abituguru3_motherboards[] = {
 	},
 	{ 0x0000, { NULL }, { { NULL, 0, 0, 0, 0, 0 } } }
 };
-
 
 /* Insmod parameters */
 static bool force;
@@ -1079,6 +1076,7 @@ static int abituguru3_remove(struct platform_device *pdev)
 	int i;
 	struct abituguru3_data *data = platform_get_drvdata(pdev);
 
+	platform_set_drvdata(pdev, NULL);
 	hwmon_device_unregister(data->hwmon_dev);
 	for (i = 0; data->sysfs_attr[i].dev_attr.attr.name; i++)
 		device_remove_file(&pdev->dev, &data->sysfs_attr[i].dev_attr);

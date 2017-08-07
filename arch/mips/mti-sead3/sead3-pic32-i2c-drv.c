@@ -257,7 +257,6 @@ platform_xfer(struct i2c_adapter *i2c_adap, struct i2c_msg *msgs, int num)
 			 (p->flags & I2C_M_RD) ? "Rd" : "Wr", buf);
 	}
 
-
 	for (i = 0; !err && i < num; i++) {
 		p = &msgs[i];
 		err = do_address(adap, p->addr, p->flags & I2C_M_RD);

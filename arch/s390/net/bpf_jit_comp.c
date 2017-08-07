@@ -9,11 +9,9 @@
 #include <linux/netdevice.h>
 #include <linux/if_vlan.h>
 #include <linux/filter.h>
-#include <linux/random.h>
-#include <linux/init.h>
 #include <asm/cacheflush.h>
+#include <asm/processor.h>
 #include <asm/facility.h>
-#include <asm/dis.h>
 
 /*
  * Conventions:
@@ -156,8 +154,8 @@ static void bpf_jit_prologue(struct bpf_jit *jit)
 		EMIT6(0xeb8ff058, 0x0024);
 		/* lgr %r14,%r15 */
 		EMIT4(0xb90400ef);
-		/* aghi %r15,<offset> */
-		EMIT4_IMM(0xa7fb0000, (jit->seen & SEEN_MEM) ? -112 : -80);
+		/* ahi %r15,<offset> */
+		EMIT4_IMM(0xa7fa0000, (jit->seen & SEEN_MEM) ? -112 : -80);
 		/* stg %r14,152(%r15) */
 		EMIT6(0xe3e0f098, 0x0024);
 	} else if ((jit->seen & SEEN_XREG) && (jit->seen & SEEN_LITERAL))
@@ -223,37 +221,6 @@ static void bpf_jit_epilogue(struct bpf_jit *jit)
 	EMIT2(0x07fe);
 }
 
-/* Helper to find the offset of pkt_type in sk_buff
- * Make sure its still a 3bit field starting at the MSBs within a byte.
- */
-#define PKT_TYPE_MAX 0xe0
-static int pkt_type_offset;
-
-static int __init bpf_pkt_type_offset_init(void)
-{
-	struct sk_buff skb_probe = {
-		.pkt_type = ~0,
-	};
-	char *ct = (char *)&skb_probe;
-	int off;
-
-	pkt_type_offset = -1;
-	for (off = 0; off < sizeof(struct sk_buff); off++) {
-		if (!ct[off])
-			continue;
-		if (ct[off] == PKT_TYPE_MAX)
-			pkt_type_offset = off;
-		else {
-			/* Found non matching bit pattern, fix needed. */
-			WARN_ON_ONCE(1);
-			pkt_type_offset = -1;
-			return -1;
-		}
-	}
-	return 0;
-}
-device_initcall(bpf_pkt_type_offset_init);
-
 /*
  * make sure we dont leak kernel information to user
  */
@@ -276,7 +243,6 @@ static void bpf_jit_noleaks(struct bpf_jit *jit, struct sock_filter *filter)
 	case BPF_S_LD_W_IND:
 	case BPF_S_LD_H_IND:
 	case BPF_S_LD_B_IND:
-	case BPF_S_LDX_B_MSH:
 	case BPF_S_LD_IMM:
 	case BPF_S_LD_MEM:
 	case BPF_S_MISC_TXA:
@@ -737,10 +703,10 @@ call_fn:	/* lg %r1,<d(function)>(%r13) */
 		/* icm	%r5,3,<d(type)>(%r1) */
 		EMIT4_DISP(0xbf531000, offsetof(struct net_device, type));
 		break;
-	case BPF_S_ANC_RXHASH: /* A = skb->hash */
-		BUILD_BUG_ON(FIELD_SIZEOF(struct sk_buff, hash) != 4);
-		/* l %r5,<d(hash)>(%r2) */
-		EMIT4_DISP(0x58502000, offsetof(struct sk_buff, hash));
+	case BPF_S_ANC_RXHASH: /* A = skb->rxhash */
+		BUILD_BUG_ON(FIELD_SIZEOF(struct sk_buff, rxhash) != 4);
+		/* l %r5,<d(rxhash)>(%r2) */
+		EMIT4_DISP(0x58502000, offsetof(struct sk_buff, rxhash));
 		break;
 	case BPF_S_ANC_VLAN_TAG:
 	case BPF_S_ANC_VLAN_TAG_PRESENT:
@@ -760,16 +726,6 @@ call_fn:	/* lg %r1,<d(function)>(%r13) */
 			EMIT4_DISP(0x88500000, 12);
 		}
 		break;
-	case BPF_S_ANC_PKTTYPE:
-		if (pkt_type_offset < 0)
-			goto out;
-		/* lhi %r5,0 */
-		EMIT4(0xa7580000);
-		/* ic %r5,<d(pkt_type_offset)>(%r2) */
-		EMIT4_DISP(0x43502000, pkt_type_offset);
-		/* srl %r5,5 */
-		EMIT4_DISP(0x88500000, 5);
-		break;
 	case BPF_S_ANC_CPU: /* A = smp_processor_id() */
 #ifdef CONFIG_SMP
 		/* l %r5,<d(cpu_nr)> */
@@ -788,41 +744,8 @@ out:
 	return -1;
 }
 
-/*
- * Note: for security reasons, bpf code will follow a randomly
- *	 sized amount of illegal instructions.
- */
-struct bpf_binary_header {
-	unsigned int pages;
-	u8 image[];
-};
-
-static struct bpf_binary_header *bpf_alloc_binary(unsigned int bpfsize,
-						  u8 **image_ptr)
-{
-	struct bpf_binary_header *header;
-	unsigned int sz, hole;
-
-	/* Most BPF filters are really small, but if some of them fill a page,
-	 * allow at least 128 extra bytes for illegal instructions.
-	 */
-	sz = round_up(bpfsize + sizeof(*header) + 128, PAGE_SIZE);
-	header = module_alloc(sz);
-	if (!header)
-		return NULL;
-	memset(header, 0, sz);
-	header->pages = sz / PAGE_SIZE;
-	hole = sz - (bpfsize + sizeof(*header));
-	/* Insert random number of illegal instructions before BPF code
-	 * and make sure the first instruction starts at an even address.
-	 */
-	*image_ptr = &header->image[(prandom_u32() % hole) & -2];
-	return header;
-}
-
 void bpf_jit_compile(struct sk_filter *fp)
 {
-	struct bpf_binary_header *header = NULL;
 	unsigned long size, prg_len, lit_len;
 	struct bpf_jit jit, cjit;
 	unsigned int *addrs;
@@ -855,11 +778,12 @@ void bpf_jit_compile(struct sk_filter *fp)
 		} else if (jit.prg == cjit.prg && jit.lit == cjit.lit) {
 			prg_len = jit.prg - jit.start;
 			lit_len = jit.lit - jit.mid;
-			size = prg_len + lit_len;
+			size = max_t(unsigned long, prg_len + lit_len,
+				     sizeof(struct work_struct));
 			if (size >= BPF_SIZE_MAX)
 				goto out;
-			header = bpf_alloc_binary(size, &jit.start);
-			if (!header)
+			jit.start = module_alloc(size);
+			if (!jit.start)
 				goto out;
 			jit.prg = jit.mid = jit.start + prg_len;
 			jit.lit = jit.end = jit.start + prg_len + lit_len;
@@ -870,30 +794,37 @@ void bpf_jit_compile(struct sk_filter *fp)
 		cjit = jit;
 	}
 	if (bpf_jit_enable > 1) {
-		bpf_jit_dump(fp->len, jit.end - jit.start, pass, jit.start);
-		if (jit.start)
+		pr_err("flen=%d proglen=%lu pass=%d image=%p\n",
+		       fp->len, jit.end - jit.start, pass, jit.start);
+		if (jit.start) {
+			printk(KERN_ERR "JIT code:\n");
 			print_fn_code(jit.start, jit.mid - jit.start);
+			print_hex_dump(KERN_ERR, "JIT literals:\n",
+				       DUMP_PREFIX_ADDRESS, 16, 1,
+				       jit.mid, jit.end - jit.mid, false);
+		}
 	}
-	if (jit.start) {
-		set_memory_ro((unsigned long)header, header->pages);
+	if (jit.start)
 		fp->bpf_func = (void *) jit.start;
-		fp->jited = 1;
-	}
 out:
 	kfree(addrs);
 }
 
+static void jit_free_defer(struct work_struct *arg)
+{
+	module_free(NULL, arg);
+}
+
+/* run from softirq, we must use a work_struct to call
+ * module_free() from process context
+ */
 void bpf_jit_free(struct sk_filter *fp)
 {
-	unsigned long addr = (unsigned long)fp->bpf_func & PAGE_MASK;
-	struct bpf_binary_header *header = (void *)addr;
+	struct work_struct *work;
 
-	if (!fp->jited)
-		goto free_filter;
-
-	set_memory_rw(addr, header->pages);
-	module_free(NULL, header);
-
-free_filter:
-	kfree(fp);
+	if (fp->bpf_func == sk_run_filter)
+		return;
+	work = (struct work_struct *)fp->bpf_func;
+	INIT_WORK(work, jit_free_defer);
+	schedule_work(work);
 }

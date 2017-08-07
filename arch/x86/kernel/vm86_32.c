@@ -65,10 +65,8 @@
  * Let's hope these problems do not actually matter for anything.
  */
 
-
 #define KVM86	((struct kernel_vm86_struct *)regs)
 #define VMPI	KVM86->vm86plus
-
 
 /*
  * 8- and 16-bit register defines..
@@ -197,8 +195,6 @@ out:
 	flush_tlb();
 }
 
-
-
 static int do_vm86_irq_handling(int subfunction, int irqnumber);
 static void do_sys_vm86(struct kernel_vm86_struct *info, struct task_struct *tsk);
 
@@ -225,7 +221,6 @@ SYSCALL_DEFINE1(vm86old, struct vm86_struct __user *, v86)
 	do_sys_vm86(&info, tsk);
 	return 0;	/* we never return here */
 }
-
 
 SYSCALL_DEFINE2(vm86, unsigned long, cmd, unsigned long, arg)
 {
@@ -270,7 +265,6 @@ SYSCALL_DEFINE2(vm86, unsigned long, cmd, unsigned long, arg)
 	do_sys_vm86(&info, tsk);
 	return 0;	/* we never return here */
 }
-
 
 static void do_sys_vm86(struct kernel_vm86_struct *info, struct task_struct *tsk)
 {
@@ -804,7 +798,6 @@ static inline int get_and_reset_irq(int irqnumber)
 	return ret;
 }
 
-
 static int do_vm86_irq_handling(int subfunction, int irqnumber)
 {
 	int ret;
@@ -838,4 +831,3 @@ static int do_vm86_irq_handling(int subfunction, int irqnumber)
 	}
 	return -EINVAL;
 }
-

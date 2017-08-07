@@ -29,7 +29,6 @@ u16 nvbios_outp_match(struct nouveau_bios *, u16 type, u16 mask,
 		      u8 *ver, u8 *hdr, u8 *cnt, u8 *len,
 		      struct nvbios_outp *);
 
-
 struct nvbios_ocfg {
 	u16 match;
 	u16 clkcmp[2];

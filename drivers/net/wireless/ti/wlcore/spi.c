@@ -72,7 +72,9 @@
  */
 #define SPI_AGGR_BUFFER_SIZE (4 * PAGE_SIZE)
 
-#define WSPI_MAX_NUM_OF_CHUNKS (SPI_AGGR_BUFFER_SIZE / WSPI_MAX_CHUNK_SIZE)
+/* Maximum number of SPI write chunks */
+#define WSPI_MAX_NUM_OF_CHUNKS \
+	((SPI_AGGR_BUFFER_SIZE / WSPI_MAX_CHUNK_SIZE) + 1)
 
 struct wl12xx_spi_glue {
 	struct device *dev;
@@ -211,7 +213,7 @@ static int __must_check wl12xx_spi_raw_read(struct device *child, int addr,
 	u32 chunk_len;
 
 	while (len > 0) {
-		chunk_len = min_t(size_t, WSPI_MAX_CHUNK_SIZE, len);
+		chunk_len = min((size_t)WSPI_MAX_CHUNK_SIZE, len);
 
 		cmd = &wl->buffer_cmd;
 		busy_buf = wl->buffer_busyword;
@@ -270,9 +272,10 @@ static int __must_check wl12xx_spi_raw_write(struct device *child, int addr,
 					     void *buf, size_t len, bool fixed)
 {
 	struct wl12xx_spi_glue *glue = dev_get_drvdata(child->parent);
-	struct spi_transfer t[2 * (WSPI_MAX_NUM_OF_CHUNKS + 1)];
+	/* SPI write buffers - 2 for each chunk */
+	struct spi_transfer t[2 * WSPI_MAX_NUM_OF_CHUNKS];
 	struct spi_message m;
-	u32 commands[WSPI_MAX_NUM_OF_CHUNKS];
+	u32 commands[WSPI_MAX_NUM_OF_CHUNKS]; /* 1 command per chunk */
 	u32 *cmd;
 	u32 chunk_len;
 	int i;
@@ -285,7 +288,7 @@ static int __must_check wl12xx_spi_raw_write(struct device *child, int addr,
 	cmd = &commands[0];
 	i = 0;
 	while (len > 0) {
-		chunk_len = min_t(size_t, WSPI_MAX_CHUNK_SIZE, len);
+		chunk_len = min((size_t)WSPI_MAX_CHUNK_SIZE, len);
 
 		*cmd = 0;
 		*cmd |= WSPI_CMD_WRITE;
@@ -335,7 +338,7 @@ static int wl1271_probe(struct spi_device *spi)
 	if (!pdev_data)
 		goto out;
 
-	pdev_data->pdata = dev_get_platdata(&spi->dev);
+	pdev_data->pdata = spi->dev.platform_data;
 	if (!pdev_data->pdata) {
 		dev_err(&spi->dev, "no platform data\n");
 		ret = -ENODEV;
@@ -423,7 +426,6 @@ static int wl1271_remove(struct spi_device *spi)
 	return 0;
 }
 
-
 static struct spi_driver wl1271_spi_driver = {
 	.driver = {
 		.name		= "wl1271_spi",
@@ -434,7 +436,19 @@ static struct spi_driver wl1271_spi_driver = {
 	.remove		= wl1271_remove,
 };
 
-module_spi_driver(wl1271_spi_driver);
+static int __init wl1271_init(void)
+{
+	return spi_register_driver(&wl1271_spi_driver);
+}
+
+static void __exit wl1271_exit(void)
+{
+	spi_unregister_driver(&wl1271_spi_driver);
+}
+
+module_init(wl1271_init);
+module_exit(wl1271_exit);
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Luciano Coelho <coelho@ti.com>");
 MODULE_AUTHOR("Juuso Oikarinen <juuso.oikarinen@nokia.com>");

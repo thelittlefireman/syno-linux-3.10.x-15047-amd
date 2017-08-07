@@ -525,7 +525,7 @@ int prism2mgmt_start(wlandevice_t *wlandev, void *msgp)
 
 	p80211pstrd_t *pstr;
 	u8 bytebuf[80];
-	struct hfa384x_bytestr *p2bytestr = (struct hfa384x_bytestr *) bytebuf;
+	hfa384x_bytestr_t *p2bytestr = (hfa384x_bytestr_t *) bytebuf;
 	u16 word;
 
 	wlandev->macmode = WLAN_MACMODE_NONE;
@@ -1019,7 +1019,7 @@ int prism2mgmt_autojoin(wlandevice_t *wlandev, void *msgp)
 	struct p80211msg_lnxreq_autojoin *msg = msgp;
 	p80211pstrd_t *pstr;
 	u8 bytebuf[256];
-	struct hfa384x_bytestr *p2bytestr = (struct hfa384x_bytestr *) bytebuf;
+	hfa384x_bytestr_t *p2bytestr = (hfa384x_bytestr_t *) bytebuf;
 
 	wlandev->macmode = WLAN_MACMODE_NONE;
 

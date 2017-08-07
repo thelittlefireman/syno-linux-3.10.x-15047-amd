@@ -51,7 +51,6 @@ static void wusbhc_rsv_complete_cb(struct uwb_rsv *rsv)
 	struct uwb_mas_bm mas;
 	char buf[72];
 
-	dev_dbg(dev, "%s: state = %d\n", __func__, rsv->state);
 	switch (rsv->state) {
 	case UWB_RSV_STATE_O_ESTABLISHED:
 		uwb_rsv_get_usable_mas(rsv, &mas);
@@ -69,7 +68,6 @@ static void wusbhc_rsv_complete_cb(struct uwb_rsv *rsv)
 	}
 }
 
-
 /**
  * wusbhc_rsv_establish - establish a reservation for the cluster
  * @wusbhc: the WUSB HC requesting a bandwidth reservation
@@ -80,9 +78,6 @@ int wusbhc_rsv_establish(struct wusbhc *wusbhc)
 	struct uwb_rsv *rsv;
 	struct uwb_dev_addr bcid;
 	int ret;
-
-	if (rc == NULL)
-		return -ENODEV;
 
 	rsv = uwb_rsv_create(rc, wusbhc_rsv_complete_cb, wusbhc);
 	if (rsv == NULL)
@@ -106,7 +101,6 @@ int wusbhc_rsv_establish(struct wusbhc *wusbhc)
 		uwb_rsv_destroy(rsv);
 	return ret;
 }
-
 
 /**
  * wusbhc_rsv_terminate - terminate the cluster reservation

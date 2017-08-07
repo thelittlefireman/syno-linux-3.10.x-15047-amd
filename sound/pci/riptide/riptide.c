@@ -1916,6 +1916,8 @@ snd_riptide_create(struct snd_card *card, struct pci_dev *pci,
 		return err;
 	}
 
+	snd_card_set_dev(card, &pci->dev);
+
 	*rchip = chip;
 	return 0;
 }
@@ -2030,32 +2032,43 @@ snd_riptide_joystick_probe(struct pci_dev *pci, const struct pci_device_id *id)
 {
 	static int dev;
 	struct gameport *gameport;
+	int ret;
 
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
+
 	if (!enable[dev]) {
-		dev++;
-		return -ENOENT;
+		ret = -ENOENT;
+		goto inc_dev;
 	}
 
-	if (!joystick_port[dev++])
-		return 0;
+	if (!joystick_port[dev]) {
+		ret = 0;
+		goto inc_dev;
+	}
 
 	gameport = gameport_allocate_port();
-	if (!gameport)
-		return -ENOMEM;
+	if (!gameport) {
+		ret = -ENOMEM;
+		goto inc_dev;
+	}
 	if (!request_region(joystick_port[dev], 8, "Riptide gameport")) {
 		snd_printk(KERN_WARNING
 			   "Riptide: cannot grab gameport 0x%x\n",
 			   joystick_port[dev]);
 		gameport_free_port(gameport);
-		return -EBUSY;
+		ret = -EBUSY;
+		goto inc_dev;
 	}
 
 	gameport->io = joystick_port[dev];
 	gameport_register_port(gameport);
 	pci_set_drvdata(pci, gameport);
-	return 0;
+
+	ret = 0;
+inc_dev:
+	dev++;
+	return ret;
 }
 
 static void snd_riptide_joystick_remove(struct pci_dev *pci)
@@ -2064,6 +2077,7 @@ static void snd_riptide_joystick_remove(struct pci_dev *pci)
 	if (gameport) {
 		release_region(gameport->io, 8);
 		gameport_unregister_port(gameport);
+		pci_set_drvdata(pci, NULL);
 	}
 }
 #endif
@@ -2084,8 +2098,7 @@ snd_card_riptide_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 		return -ENOENT;
 	}
 
-	err = snd_card_new(&pci->dev, index[dev], id[dev], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0)
 		return err;
 	err = snd_riptide_create(card, pci, &chip);
@@ -2177,6 +2190,7 @@ snd_card_riptide_probe(struct pci_dev *pci, const struct pci_device_id *pci_id)
 static void snd_card_riptide_remove(struct pci_dev *pci)
 {
 	snd_card_free(pci_get_drvdata(pci));
+	pci_set_drvdata(pci, NULL);
 }
 
 static struct pci_driver driver = {

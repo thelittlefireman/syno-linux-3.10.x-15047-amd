@@ -180,24 +180,6 @@ static struct dmi_system_id asus_quirks[] = {
 		},
 		.driver_data = &quirk_asus_x401u,
 	},
-	{
-		.callback = dmi_matched,
-		.ident = "ASUSTeK COMPUTER INC. 1015E",
-		.matches = {
-			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-			DMI_MATCH(DMI_PRODUCT_NAME, "1015E"),
-		},
-		.driver_data = &quirk_asus_x401u,
-	},
-	{
-		.callback = dmi_matched,
-		.ident = "ASUSTeK COMPUTER INC. 1015U",
-		.matches = {
-			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
-			DMI_MATCH(DMI_PRODUCT_NAME, "1015U"),
-		},
-		.driver_data = &quirk_asus_x401u,
-	},
 	{},
 };
 
@@ -274,7 +256,6 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
 	{ KE_KEY, 0xB5, { KEY_CALC } },
 	{ KE_KEY, 0xC4, { KEY_KBDILLUMUP } },
 	{ KE_KEY, 0xC5, { KEY_KBDILLUMDOWN } },
-	{ KE_IGNORE, 0xC6, },  /* Ambient Light Sensor notification */
 	{ KE_END, 0},
 };
 
@@ -287,7 +268,6 @@ static struct asus_wmi_driver asus_nb_wmi_driver = {
 	.input_phys = ASUS_NB_WMI_FILE "/input0",
 	.detect_quirks = asus_nb_wmi_quirks,
 };
-
 
 static int __init asus_nb_wmi_init(void)
 {

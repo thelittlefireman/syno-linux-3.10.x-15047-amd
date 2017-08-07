@@ -155,8 +155,6 @@ struct oz_usb_hdr {
 	u8	type;
 } PACKED;
 
-
-
 /* USB requests element subtypes (type field of hs_usb_hdr).
  */
 #define OZ_GET_DESC_REQ			1
@@ -192,7 +190,7 @@ struct oz_get_desc_req {
 	u16	size;
 	u8	req_type;
 	u8	desc_type;
-	__le16	w_index;
+	u16	w_index;
 	u8	index;
 } PACKED;
 
@@ -219,8 +217,8 @@ struct oz_get_desc_rsp {
 	u8	elt_seq_num;
 	u8	type;
 	u8	req_id;
-	__le16	offset;
-	__le16	total_size;
+	u16	offset;
+	u16	total_size;
 	u8	rcode;
 	u8	data[1];
 } PACKED;

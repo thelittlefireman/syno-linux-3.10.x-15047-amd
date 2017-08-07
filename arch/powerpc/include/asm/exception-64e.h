@@ -46,8 +46,9 @@
 #define EX_CR		(1 * 8)
 #define EX_R10		(2 * 8)
 #define EX_R11		(3 * 8)
-#define EX_R14		(4 * 8)
-#define EX_R15		(5 * 8)
+#define EX_R13		(4 * 8)
+#define EX_R14		(5 * 8)
+#define EX_R15		(6 * 8)
 
 /*
  * The TLB miss exception uses different slots.
@@ -172,6 +173,16 @@ exc_##label##_book3e:
 	ld	r9,EX_TLB_R9(r12);					    \
 	ld	r8,EX_TLB_R8(r12);					    \
 	mtlr	r16;
+#define TLB_MISS_PROLOG_STATS_BOLTED						    \
+	mflr	r10;							    \
+	std	r8,PACA_EXTLB+EX_TLB_R8(r13);				    \
+	std	r9,PACA_EXTLB+EX_TLB_R9(r13);				    \
+	std	r10,PACA_EXTLB+EX_TLB_LR(r13);
+#define TLB_MISS_RESTORE_STATS_BOLTED					            \
+	ld	r16,PACA_EXTLB+EX_TLB_LR(r13);				    \
+	ld	r9,PACA_EXTLB+EX_TLB_R9(r13);				    \
+	ld	r8,PACA_EXTLB+EX_TLB_R8(r13);				    \
+	mtlr	r16;
 #define TLB_MISS_STATS_D(name)						    \
 	addi	r9,r13,MMSTAT_DSTATS+name;				    \
 	bl	.tlb_stat_inc;
@@ -209,4 +220,3 @@ exc_##label##_book3e:
 	mtspr	SPRN_IVOR##vector_number,r3;
 
 #endif /* _ASM_POWERPC_EXCEPTION_64E_H */
-

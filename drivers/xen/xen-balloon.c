@@ -30,8 +30,6 @@
  * IN THE SOFTWARE.
  */
 
-#define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
-
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/capability.h>
@@ -74,7 +72,6 @@ static struct xenbus_watch target_watch = {
 	.callback = watch_target,
 };
 
-
 static int balloon_init_watcher(struct notifier_block *notifier,
 				unsigned long event,
 				void *data)
@@ -83,7 +80,7 @@ static int balloon_init_watcher(struct notifier_block *notifier,
 
 	err = register_xenbus_watch(&target_watch);
 	if (err)
-		pr_err("Failed to set balloon watcher\n");
+		printk(KERN_ERR "Failed to set balloon watcher\n");
 
 	return NOTIFY_DONE;
 }
@@ -97,7 +94,7 @@ static int __init balloon_init(void)
 	if (!xen_domain())
 		return -ENODEV;
 
-	pr_info("Initialising balloon driver\n");
+	pr_info("xen-balloon: Initialising balloon driver.\n");
 
 	register_balloon(&balloon_dev);
 
@@ -162,7 +159,6 @@ static ssize_t store_target_kb(struct device *dev,
 static DEVICE_ATTR(target_kb, S_IRUGO | S_IWUSR,
 		   show_target_kb, store_target_kb);
 
-
 static ssize_t show_target(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
@@ -191,7 +187,6 @@ static ssize_t store_target(struct device *dev,
 
 static DEVICE_ATTR(target, S_IRUGO | S_IWUSR,
 		   show_target, store_target);
-
 
 static struct device_attribute *balloon_attrs[] = {
 	&dev_attr_target_kb,

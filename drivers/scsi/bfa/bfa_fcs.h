@@ -41,7 +41,6 @@ enum bfa_lps_event {
 	BFA_LPS_SM_SET_N2N_PID  = 8,	/* Set assigned PID for n2n */
 };
 
-
 /*
  * !!! Only append to the enums defined here to avoid any versioning
  * !!! needed between trace utility and driver version
@@ -52,7 +51,6 @@ enum {
 	BFA_TRC_FCS_RPORT	= 3,
 	BFA_TRC_FCS_FCPIM	= 4,
 };
-
 
 struct bfa_fcs_s;
 
@@ -76,7 +74,6 @@ struct bfa_fcs_lport_ns_s {
 	u8	num_rsnn_nn_retries;
 };
 
-
 struct bfa_fcs_lport_scn_s {
 	bfa_sm_t        sm;		/*  state machine */
 	struct bfa_timer_s timer;
@@ -84,7 +81,6 @@ struct bfa_fcs_lport_scn_s {
 	struct bfa_fcxp_s *fcxp;
 	struct bfa_fcxp_wqe_s fcxp_wqe;
 };
-
 
 struct bfa_fcs_lport_fdmi_s {
 	bfa_sm_t        sm;		/*  state machine */
@@ -96,7 +92,6 @@ struct bfa_fcs_lport_fdmi_s {
 	u8	rsvd[3];
 };
 
-
 struct bfa_fcs_lport_ms_s {
 	bfa_sm_t        sm;		/*  state machine */
 	struct bfa_timer_s timer;
@@ -107,7 +102,6 @@ struct bfa_fcs_lport_ms_s {
 	u8         retry_cnt;	/*  retry count */
 	u8	rsvd[3];
 };
-
 
 struct bfa_fcs_lport_fab_s {
 	struct bfa_fcs_lport_ns_s ns;	/*  NS component of port */
@@ -131,13 +125,11 @@ struct bfa_fcs_lport_n2n_s {
 	wwn_t           rem_port_wwn;	/*  Attached port's wwn */
 };
 
-
 union bfa_fcs_lport_topo_u {
 	struct bfa_fcs_lport_fab_s pfab;
 	struct bfa_fcs_lport_loop_s ploop;
 	struct bfa_fcs_lport_n2n_s pn2n;
 };
-
 
 struct bfa_fcs_lport_s {
 	struct list_head         qe;	/*  used by port/vport */
@@ -177,7 +169,6 @@ enum bfa_fcs_fabric_type {
 	BFA_FCS_FABRIC_N2N = 2,
 	BFA_FCS_FABRIC_LOOP = 3,
 };
-
 
 struct bfa_fcs_fabric_s {
 	struct list_head   qe;		/*  queue element */
@@ -243,20 +234,23 @@ struct bfa_fcs_fabric_s;
  *  Symbolic Name.
  *
  *  Physical Port's symbolic name Format : (Total 128 bytes)
- *  Adapter Model number/name : 16 bytes
+ *  Adapter Model number/name : 12 bytes
  *  Driver Version     : 10 bytes
  *  Host Machine Name  : 30 bytes
- *  Host OS Info	   : 44 bytes
+ *  Host OS Info	   : 48 bytes
  *  Host OS PATCH Info : 16 bytes
  *  ( remaining 12 bytes reserved to be used for separator)
  */
 #define BFA_FCS_PORT_SYMBNAME_SEPARATOR			" | "
 
-#define BFA_FCS_PORT_SYMBNAME_MODEL_SZ			16
+#define BFA_FCS_PORT_SYMBNAME_MODEL_SZ			12
 #define BFA_FCS_PORT_SYMBNAME_VERSION_SZ		10
 #define BFA_FCS_PORT_SYMBNAME_MACHINENAME_SZ		30
-#define BFA_FCS_PORT_SYMBNAME_OSINFO_SZ			44
+#define BFA_FCS_PORT_SYMBNAME_OSINFO_SZ			48
 #define BFA_FCS_PORT_SYMBNAME_OSPATCH_SZ		16
+
+/* bb_scn value in 2^bb_scn */
+#define BFA_FCS_PORT_DEF_BB_SCN				3
 
 /*
  * Get FC port ID for a logical port.
@@ -532,13 +526,11 @@ bfa_fcs_itnim_get_drvport(struct bfa_fcs_itnim_s *itnim)
 	return itnim->rport->port->bfad_port;
 }
 
-
 static inline struct bfa_fcs_lport_s *
 bfa_fcs_itnim_get_port(struct bfa_fcs_itnim_s *itnim)
 {
 	return itnim->rport->port;
 }
-
 
 static inline wwn_t
 bfa_fcs_itnim_get_nwwn(struct bfa_fcs_itnim_s *itnim)
@@ -546,13 +538,11 @@ bfa_fcs_itnim_get_nwwn(struct bfa_fcs_itnim_s *itnim)
 	return itnim->rport->nwwn;
 }
 
-
 static inline wwn_t
 bfa_fcs_itnim_get_pwwn(struct bfa_fcs_itnim_s *itnim)
 {
 	return itnim->rport->pwwn;
 }
-
 
 static inline u32
 bfa_fcs_itnim_get_fcid(struct bfa_fcs_itnim_s *itnim)
@@ -560,13 +550,11 @@ bfa_fcs_itnim_get_fcid(struct bfa_fcs_itnim_s *itnim)
 	return itnim->rport->pid;
 }
 
-
 static inline	u32
 bfa_fcs_itnim_get_maxfrsize(struct bfa_fcs_itnim_s *itnim)
 {
 	return itnim->rport->maxfrsize;
 }
-
 
 static inline	enum fc_cos
 bfa_fcs_itnim_get_cos(struct bfa_fcs_itnim_s *itnim)
@@ -574,13 +562,11 @@ bfa_fcs_itnim_get_cos(struct bfa_fcs_itnim_s *itnim)
 	return itnim->rport->fc_cos;
 }
 
-
 static inline struct bfad_itnim_s *
 bfa_fcs_itnim_get_drvitn(struct bfa_fcs_itnim_s *itnim)
 {
 	return itnim->itnim_drv;
 }
-
 
 static inline struct bfa_itnim_s *
 bfa_fcs_itnim_get_halitn(struct bfa_fcs_itnim_s *itnim)
@@ -628,9 +614,6 @@ void bfa_fcs_fcpim_uf_recv(struct bfa_fcs_itnim_s *itnim,
 
 #define BFA_FCS_FDMI_SUPP_SPEEDS_10G	FDMI_TRANS_SPEED_10G
 
-#define BFA_FCS_FDMI_VENDOR_INFO_LEN    8
-#define BFA_FCS_FDMI_FC4_TYPE_LEN       32
-
 /*
  * HBA Attribute Block : BFA internal representation. Note : Some variable
  * sizes have been trimmed to suit BFA For Ex : Model will be "Brocade". Based
@@ -641,39 +624,25 @@ struct bfa_fcs_fdmi_hba_attr_s {
 	u8         manufacturer[64];
 	u8         serial_num[64];
 	u8         model[16];
-	u8         model_desc[128];
+	u8         model_desc[256];
 	u8         hw_version[8];
 	u8         driver_version[BFA_VERSION_LEN];
 	u8         option_rom_ver[BFA_VERSION_LEN];
 	u8         fw_version[BFA_VERSION_LEN];
 	u8         os_name[256];
 	__be32        max_ct_pyld;
-	struct      bfa_lport_symname_s node_sym_name;
-	u8     vendor_info[BFA_FCS_FDMI_VENDOR_INFO_LEN];
-	__be32    num_ports;
-	wwn_t       fabric_name;
-	u8     bios_ver[BFA_VERSION_LEN];
 };
 
 /*
  * Port Attribute Block
  */
 struct bfa_fcs_fdmi_port_attr_s {
-	u8         supp_fc4_types[BFA_FCS_FDMI_FC4_TYPE_LEN];
+	u8         supp_fc4_types[32];	/* supported FC4 types */
 	__be32        supp_speed;	/* supported speed */
 	__be32        curr_speed;	/* current Speed */
 	__be32        max_frm_size;	/* max frame size */
 	u8         os_device_name[256];	/* OS device Name */
 	u8         host_name[256];	/* host name */
-	wwn_t       port_name;
-	wwn_t       node_name;
-	struct      bfa_lport_symname_s port_sym_name;
-	__be32    port_type;
-	enum fc_cos    scos;
-	wwn_t       port_fabric_name;
-	u8     port_act_fc4_type[BFA_FCS_FDMI_FC4_TYPE_LEN];
-	__be32    port_state;
-	__be32    num_ports;
 };
 
 struct bfa_fcs_stats_s {
@@ -698,6 +667,8 @@ struct bfa_fcs_s {
 	struct bfa_trc_mod_s  *trcmod;	/*  tracing module */
 	bfa_boolean_t	vf_enabled;	/*  VF mode is enabled */
 	bfa_boolean_t	fdmi_enabled;	/*  FDMI is enabled */
+	bfa_boolean_t	bbscn_enabled;	/*  Driver Config Parameter */
+	bfa_boolean_t	bbscn_flogi_rjt;/*  FLOGI reject due to BB_SCN */
 	bfa_boolean_t min_cfg;		/* min cfg enabled/disabled */
 	u16	port_vfid;	/*  port default VF ID */
 	struct bfa_fcs_driver_info_s driver_info;

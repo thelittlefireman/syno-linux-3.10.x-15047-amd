@@ -50,7 +50,6 @@ struct kvm_fpu {
 	__u32 pad;
 };
 
-
 /*
  * For MIPS, we use KVM_SET_ONE_REG and KVM_GET_ONE_REG to access CP0
  * registers.  The id field is broken down as follows:

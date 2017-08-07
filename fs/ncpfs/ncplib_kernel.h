@@ -12,7 +12,6 @@
 #ifndef _NCPLIB_H
 #define _NCPLIB_H
 
-
 #include <linux/fs.h>
 #include <linux/types.h>
 #include <linux/errno.h>
@@ -94,7 +93,6 @@ int ncp_search_for_fileset(struct ncp_server *server,
 int ncp_ren_or_mov_file_or_subdir(struct ncp_server *server,
 			      struct inode *, const char *, struct inode *, const char *);
 
-
 int
 ncp_LogPhysicalRecord(struct ncp_server *server,
 		      const char *file_id, __u8 locktype,
@@ -154,7 +152,6 @@ int ncp__vol2io(unsigned char *, unsigned int *,
 #define ncp_io2vol(S,m,i,n,k,U)	ncp__io2vol(m,i,n,k,U)
 #define ncp_vol2io(S,m,i,n,k,U)	ncp__vol2io(m,i,n,k,U)
 
-
 static inline int ncp_strnicmp(const struct nls_table *t,
 		const unsigned char *s1, const unsigned char *s2, int len)
 {
@@ -194,7 +191,7 @@ ncp_renew_dentries(struct dentry *parent)
 	spin_lock(&parent->d_lock);
 	next = parent->d_subdirs.next;
 	while (next != &parent->d_subdirs) {
-		dentry = list_entry(next, struct dentry, d_u.d_child);
+		dentry = list_entry(next, struct dentry, d_child);
 
 		if (dentry->d_fsdata == NULL)
 			ncp_age_dentry(server, dentry);
@@ -216,7 +213,7 @@ ncp_invalidate_dircache_entries(struct dentry *parent)
 	spin_lock(&parent->d_lock);
 	next = parent->d_subdirs.next;
 	while (next != &parent->d_subdirs) {
-		dentry = list_entry(next, struct dentry, d_u.d_child);
+		dentry = list_entry(next, struct dentry, d_child);
 		dentry->d_fsdata = NULL;
 		ncp_age_dentry(server, dentry);
 		next = next->next;

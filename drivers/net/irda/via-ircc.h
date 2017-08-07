@@ -18,7 +18,8 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 See the GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License along with
-this program; if not, see <http://www.gnu.org/licenses/>.
+this program; if not, write to the Free Software Foundation, Inc.,
+59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 
  * Comment:
  * jul/08/2002 : Rx buffer length should use Rx ring ptr.	
@@ -63,7 +64,6 @@ struct tx_fifo {
 	int free;		/* Next free slot */
 	void *tail;		/* Next free start in DMA mem */
 };
-
 
 struct eventflag		// for keeping track of Interrupt Events
 {
@@ -121,7 +121,6 @@ struct via_ircc_cb {
 	unsigned int RxDataReady;
 	unsigned int RxLastCount;
 };
-
 
 //---------I=Infrared,  H=Host, M=Misc, T=Tx, R=Rx, ST=Status,
 //         CF=Config, CT=Control, L=Low, H=High, C=Count
@@ -407,14 +406,12 @@ static void SetFIFO(__u16 iobase, __u16 value)
 //**********************Version
 #define GetFIRVersion(BaseAddr)		ReadReg(BaseAddr,VERSION)
 
-
 static void SetTimer(__u16 iobase, __u8 count)
 {
 	EnTimerInt(iobase, OFF);
 	WriteReg(iobase, TIMER, count);
 	EnTimerInt(iobase, ON);
 }
-
 
 static void SetSendByte(__u16 iobase, __u32 count)
 {
@@ -483,7 +480,6 @@ static __u16 GetRecvByte(__u16 iobase, struct via_ircc_cb * self)
 	wTmp1 = high;
 	wTmp = (wTmp1 << 8) | low;
 
-
 	if (wTmp >= self->RxLastCount)
 		ret = wTmp - self->RxLastCount;
 	else
@@ -528,7 +524,6 @@ static void Tdelay(__u16 scale)
 		}
 	}
 }
-
 
 static void ActClk(__u16 iobase, __u8 value)
 {

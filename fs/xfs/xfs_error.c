@@ -16,13 +16,17 @@
  * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 #include "xfs.h"
-#include "xfs_format.h"
 #include "xfs_fs.h"
-#include "xfs_log_format.h"
-#include "xfs_trans_resv.h"
+#include "xfs_types.h"
+#include "xfs_log.h"
+#include "xfs_trans.h"
 #include "xfs_sb.h"
 #include "xfs_ag.h"
 #include "xfs_mount.h"
+#include "xfs_bmap_btree.h"
+#include "xfs_dinode.h"
+#include "xfs_inode.h"
+#include "xfs_utils.h"
 #include "xfs_error.h"
 
 #ifdef DEBUG
@@ -123,7 +127,6 @@ xfs_errortag_clearall(xfs_mount_t *mp, int loud)
 
 	memcpy(&fsid, mp->m_fixedfsid, sizeof(xfs_fsid_t));
 
-
 	for (i = 0; i < XFS_NUM_INJECT_ERROR; i++) {
 		if ((fsid == 0LL || xfs_etest_fsid[i] == fsid) &&
 		     xfs_etest[i] != 0) {
@@ -156,7 +159,7 @@ xfs_error_report(
 {
 	if (level <= xfs_error_level) {
 		xfs_alert_tag(mp, XFS_PTAG_ERROR_REPORT,
-		"Internal error %s at line %d of file %s.  Caller %pF",
+		"Internal error %s at line %d of file %s.  Caller 0x%p\n",
 			    tag, linenum, filename, ra);
 
 		xfs_stack_trace();
@@ -177,29 +180,4 @@ xfs_corruption_error(
 		xfs_hex_dump(p, 64);
 	xfs_error_report(tag, level, mp, filename, linenum, ra);
 	xfs_alert(mp, "Corruption detected. Unmount and run xfs_repair");
-}
-
-/*
- * Warnings specifically for verifier errors.  Differentiate CRC vs. invalid
- * values, and omit the stack trace unless the error level is tuned high.
- */
-void
-xfs_verifier_error(
-	struct xfs_buf		*bp)
-{
-	struct xfs_mount *mp = bp->b_target->bt_mount;
-
-	xfs_alert(mp, "Metadata %s detected at %pF, block 0x%llx",
-		  bp->b_error == EFSBADCRC ? "CRC error" : "corruption",
-		  __return_address, bp->b_bn);
-
-	xfs_alert(mp, "Unmount and run xfs_repair");
-
-	if (xfs_error_level >= XFS_ERRLEVEL_LOW) {
-		xfs_alert(mp, "First 64 bytes of corrupted metadata buffer:");
-		xfs_hex_dump(xfs_buf_offset(bp, 0), 64);
-	}
-
-	if (xfs_error_level >= XFS_ERRLEVEL_HIGH)
-		xfs_stack_trace();
 }

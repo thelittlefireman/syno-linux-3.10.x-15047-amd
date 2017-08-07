@@ -30,8 +30,6 @@
 #include <linux/interrupt.h>
 #include <linux/mm.h>
 #include <linux/vmalloc.h>
-#include <linux/of_address.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 
@@ -63,7 +61,6 @@ struct electra_cf_socket {
 };
 
 #define	POLL_INTERVAL		(2 * HZ)
-
 
 static int electra_cf_present(struct electra_cf_socket *cf)
 {
@@ -232,7 +229,6 @@ static int electra_cf_probe(struct platform_device *ofdev)
 		goto fail1;
 	}
 
-
 	cf->io_base = (unsigned long)cf->io_virt - VMALLOC_END;
 
 	cf->iomem.start = (unsigned long)cf->mem_base;
@@ -359,7 +355,7 @@ MODULE_DEVICE_TABLE(of, electra_cf_match);
 
 static struct platform_driver electra_cf_driver = {
 	.driver = {
-		.name = driver_name,
+		.name = (char *)driver_name,
 		.owner = THIS_MODULE,
 		.of_match_table = electra_cf_match,
 	},

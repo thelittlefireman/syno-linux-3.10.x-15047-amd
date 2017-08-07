@@ -84,8 +84,7 @@ void *dmar_alloc_dev_scope(void *start, void *end, int *cnt)
 	*cnt = 0;
 	while (start < end) {
 		scope = start;
-		if (scope->entry_type == ACPI_DMAR_SCOPE_TYPE_ACPI ||
-		    scope->entry_type == ACPI_DMAR_SCOPE_TYPE_ENDPOINT ||
+		if (scope->entry_type == ACPI_DMAR_SCOPE_TYPE_ENDPOINT ||
 		    scope->entry_type == ACPI_DMAR_SCOPE_TYPE_BRIDGE)
 			(*cnt)++;
 		else if (scope->entry_type != ACPI_DMAR_SCOPE_TYPE_IOAPIC &&
@@ -347,18 +346,21 @@ dmar_parse_one_drhd(struct acpi_dmar_header *header)
 	dmaru->reg_base_addr = drhd->address;
 	dmaru->segment = drhd->segment;
 	dmaru->include_all = drhd->flags & 0x1; /* BIT0: INCLUDE_ALL */
-	dmaru->devices = dmar_alloc_dev_scope((void *)(drhd + 1),
-					      ((void *)drhd) + drhd->header.length,
-					      &dmaru->devices_cnt);
-	if (dmaru->devices_cnt && dmaru->devices == NULL) {
-		kfree(dmaru);
-		return -ENOMEM;
+	if (!dmaru->include_all) {
+		dmaru->devices = dmar_alloc_dev_scope((void *)(drhd + 1),
+					((void *)drhd) + drhd->header.length,
+					&dmaru->devices_cnt);
+		if (dmaru->devices_cnt && dmaru->devices == NULL) {
+			kfree(dmaru);
+			return -ENOMEM;
+		}
 	}
 
 	ret = alloc_iommu(dmaru);
 	if (ret) {
-		dmar_free_dev_scope(&dmaru->devices,
-				    &dmaru->devices_cnt);
+		if (!dmaru->include_all)
+			dmar_free_dev_scope(&dmaru->devices,
+					    &dmaru->devices_cnt);
 		kfree(dmaru);
 		return ret;
 	}
@@ -373,26 +375,6 @@ static void dmar_free_drhd(struct dmar_drhd_unit *dmaru)
 	if (dmaru->iommu)
 		free_iommu(dmaru->iommu);
 	kfree(dmaru);
-}
-
-static int __init dmar_parse_one_andd(struct acpi_dmar_header *header)
-{
-	struct acpi_dmar_andd *andd = (void *)header;
-
-	/* Check for NUL termination within the designated length */
-	if (strnlen(andd->object_name, header->length - 8) == header->length - 8) {
-		WARN_TAINT(1, TAINT_FIRMWARE_WORKAROUND,
-			   "Your BIOS is broken; ANDD object name is not NUL-terminated\n"
-			   "BIOS vendor: %s; Ver: %s; Product Version: %s\n",
-			   dmi_get_system_info(DMI_BIOS_VENDOR),
-			   dmi_get_system_info(DMI_BIOS_VERSION),
-			   dmi_get_system_info(DMI_PRODUCT_VERSION));
-		return -EINVAL;
-	}
-	pr_info("ANDD device: %x name: %s\n", andd->device_number,
-		andd->object_name);
-
-	return 0;
 }
 
 #ifdef CONFIG_ACPI_NUMA
@@ -457,10 +439,6 @@ dmar_table_print_dmar_entry(struct acpi_dmar_header *header)
 		pr_info("RHSA base: %#016Lx proximity domain: %#x\n",
 		       (unsigned long long)rhsa->base_address,
 		       rhsa->proximity_domain);
-		break;
-	case ACPI_DMAR_TYPE_ANDD:
-		/* We don't print this here because we need to sanity-check
-		   it first. So print it in dmar_parse_one_andd() instead. */
 		break;
 	}
 }
@@ -547,9 +525,6 @@ parse_dmar_table(void)
 			ret = dmar_parse_one_rhsa(entry_header);
 #endif
 			break;
-		case ACPI_DMAR_TYPE_ANDD:
-			ret = dmar_parse_one_andd(entry_header);
-			break;
 		default:
 			pr_warn("Unknown DMAR structure type %d\n",
 				entry_header->type);
@@ -613,82 +588,6 @@ out:
 	return dmaru;
 }
 
-static void __init dmar_acpi_insert_dev_scope(u8 device_number,
-					      struct acpi_device *adev)
-{
-	struct dmar_drhd_unit *dmaru;
-	struct acpi_dmar_hardware_unit *drhd;
-	struct acpi_dmar_device_scope *scope;
-	struct device *tmp;
-	int i;
-	struct acpi_dmar_pci_path *path;
-
-	for_each_drhd_unit(dmaru) {
-		drhd = container_of(dmaru->hdr,
-				    struct acpi_dmar_hardware_unit,
-				    header);
-
-		for (scope = (void *)(drhd + 1);
-		     (unsigned long)scope < ((unsigned long)drhd) + drhd->header.length;
-		     scope = ((void *)scope) + scope->length) {
-			if (scope->entry_type != ACPI_DMAR_SCOPE_TYPE_ACPI)
-				continue;
-			if (scope->enumeration_id != device_number)
-				continue;
-
-			path = (void *)(scope + 1);
-			pr_info("ACPI device \"%s\" under DMAR at %llx as %02x:%02x.%d\n",
-				dev_name(&adev->dev), dmaru->reg_base_addr,
-				scope->bus, path->device, path->function);
-			for_each_dev_scope(dmaru->devices, dmaru->devices_cnt, i, tmp)
-				if (tmp == NULL) {
-					dmaru->devices[i].bus = scope->bus;
-					dmaru->devices[i].devfn = PCI_DEVFN(path->device,
-									    path->function);
-					rcu_assign_pointer(dmaru->devices[i].dev,
-							   get_device(&adev->dev));
-					return;
-				}
-			BUG_ON(i >= dmaru->devices_cnt);
-		}
-	}
-	pr_warn("No IOMMU scope found for ANDD enumeration ID %d (%s)\n",
-		device_number, dev_name(&adev->dev));
-}
-
-static int __init dmar_acpi_dev_scope_init(void)
-{
-	struct acpi_dmar_andd *andd;
-
-	if (dmar_tbl == NULL)
-		return -ENODEV;
-
-	for (andd = (void *)dmar_tbl + sizeof(struct acpi_table_dmar);
-	     ((unsigned long)andd) < ((unsigned long)dmar_tbl) + dmar_tbl->length;
-	     andd = ((void *)andd) + andd->header.length) {
-		if (andd->header.type == ACPI_DMAR_TYPE_ANDD) {
-			acpi_handle h;
-			struct acpi_device *adev;
-
-			if (!ACPI_SUCCESS(acpi_get_handle(ACPI_ROOT_OBJECT,
-							  andd->object_name,
-							  &h))) {
-				pr_err("Failed to find handle for ACPI object %s\n",
-				       andd->object_name);
-				continue;
-			}
-			acpi_bus_get_device(h, &adev);
-			if (!adev) {
-				pr_err("Failed to get device for ACPI object %s\n",
-				       andd->object_name);
-				continue;
-			}
-			dmar_acpi_insert_dev_scope(andd->device_number, adev);
-		}
-	}
-	return 0;
-}
-
 int __init dmar_dev_scope_init(void)
 {
 	struct pci_dev *dev = NULL;
@@ -701,8 +600,6 @@ int __init dmar_dev_scope_init(void)
 		dmar_dev_scope_status = -ENODEV;
 	} else {
 		dmar_dev_scope_status = 0;
-
-		dmar_acpi_dev_scope_init();
 
 		for_each_pci_dev(dev) {
 			if (dev->is_virtfn)
@@ -723,7 +620,6 @@ int __init dmar_dev_scope_init(void)
 
 	return dmar_dev_scope_status;
 }
-
 
 int __init dmar_table_init(void)
 {
@@ -837,7 +733,6 @@ int __init detect_intel_iommu(void)
 
 	return ret ? 1 : -ENODEV;
 }
-
 
 static void unmap_iommu(struct intel_iommu *iommu)
 {
@@ -1247,7 +1142,7 @@ void dmar_disable_qi(struct intel_iommu *iommu)
 
 	raw_spin_lock_irqsave(&iommu->register_lock, flags);
 
-	sts =  dmar_readq(iommu->reg + DMAR_GSTS_REG);
+	sts =  readl(iommu->reg + DMAR_GSTS_REG);
 	if (!(sts & DMA_GSTS_QIES))
 		goto end;
 
@@ -1321,7 +1216,6 @@ int dmar_enable_qi(struct intel_iommu *iommu)
 
 	qi = iommu->qi;
 
-
 	desc_page = alloc_pages_node(iommu->node, GFP_ATOMIC | __GFP_ZERO, 0);
 	if (!desc_page) {
 		kfree(qi);
@@ -1338,9 +1232,6 @@ int dmar_enable_qi(struct intel_iommu *iommu)
 		iommu->qi = NULL;
 		return -ENOMEM;
 	}
-
-	qi->free_head = qi->free_tail = 0;
-	qi->free_cnt = QI_LENGTH;
 
 	raw_spin_lock_init(&qi->q_lock);
 
@@ -1551,7 +1442,7 @@ int dmar_set_interrupt(struct intel_iommu *iommu)
 		return 0;
 
 	irq = create_irq();
-	if (!irq) {
+	if (irq <= 0) {
 		pr_err("IOMMU: no free vectors\n");
 		return -EINVAL;
 	}

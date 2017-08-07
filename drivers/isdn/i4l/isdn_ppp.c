@@ -58,8 +58,6 @@ static void isdn_ppp_ccp_reset_trans(struct ippp_struct *is,
 static void isdn_ppp_ccp_reset_ack_rcvd(struct ippp_struct *is,
 					unsigned char id);
 
-
-
 #ifdef CONFIG_ISDN_MPP
 static ippp_bundle *isdn_ppp_bundle_arr = NULL;
 
@@ -301,6 +299,8 @@ isdn_ppp_open(int min, struct file *file)
 	is->compflags = 0;
 
 	is->reset = isdn_ppp_ccp_reset_alloc(is);
+	if (!is->reset)
+		return -ENOMEM;
 
 	is->lp = NULL;
 	is->mp_seqno = 0;       /* MP sequence number */
@@ -320,6 +320,10 @@ isdn_ppp_open(int min, struct file *file)
 	 * VJ header compression init
 	 */
 	is->slcomp = slhc_init(16, 16);	/* not necessary for 2. link in bundle */
+	if (IS_ERR(is->slcomp)) {
+		isdn_ppp_ccp_reset_free(is);
+		return PTR_ERR(is->slcomp);
+	}
 #endif
 #ifdef CONFIG_IPPP_FILTER
 	is->pass_filter = NULL;
@@ -378,15 +382,10 @@ isdn_ppp_release(int min, struct file *file)
 	is->slcomp = NULL;
 #endif
 #ifdef CONFIG_IPPP_FILTER
-	if (is->pass_filter) {
-		sk_unattached_filter_destroy(is->pass_filter);
-		is->pass_filter = NULL;
-	}
-
-	if (is->active_filter) {
-		sk_unattached_filter_destroy(is->active_filter);
-		is->active_filter = NULL;
-	}
+	kfree(is->pass_filter);
+	is->pass_filter = NULL;
+	kfree(is->active_filter);
+	is->active_filter = NULL;
 #endif
 
 /* TODO: if this was the previous master: link the stuff to the new master */
@@ -573,10 +572,8 @@ isdn_ppp_ioctl(int min, struct file *file, unsigned int cmd, unsigned long arg)
 			is->maxcid = val;
 #ifdef CONFIG_ISDN_PPP_VJ
 			sltmp = slhc_init(16, val);
-			if (!sltmp) {
-				printk(KERN_ERR "ippp, can't realloc slhc struct\n");
-				return -ENOMEM;
-			}
+			if (IS_ERR(sltmp))
+				return PTR_ERR(sltmp);
 			if (is->slcomp)
 				slhc_free(is->slcomp);
 			is->slcomp = sltmp;
@@ -634,41 +631,25 @@ isdn_ppp_ioctl(int min, struct file *file, unsigned int cmd, unsigned long arg)
 #ifdef CONFIG_IPPP_FILTER
 	case PPPIOCSPASS:
 	{
-		struct sock_fprog fprog;
 		struct sock_filter *code;
-		int err, len = get_filter(argp, &code);
-
+		int len = get_filter(argp, &code);
 		if (len < 0)
 			return len;
-
-		fprog.len = len;
-		fprog.filter = code;
-
-		if (is->pass_filter)
-			sk_unattached_filter_destroy(is->pass_filter);
-		err = sk_unattached_filter_create(&is->pass_filter, &fprog);
-		kfree(code);
-
-		return err;
+		kfree(is->pass_filter);
+		is->pass_filter = code;
+		is->pass_len = len;
+		break;
 	}
 	case PPPIOCSACTIVE:
 	{
-		struct sock_fprog fprog;
 		struct sock_filter *code;
-		int err, len = get_filter(argp, &code);
-
+		int len = get_filter(argp, &code);
 		if (len < 0)
 			return len;
-
-		fprog.len = len;
-		fprog.filter = code;
-
-		if (is->active_filter)
-			sk_unattached_filter_destroy(is->active_filter);
-		err = sk_unattached_filter_create(&is->active_filter, &fprog);
-		kfree(code);
-
-		return err;
+		kfree(is->active_filter);
+		is->active_filter = code;
+		is->active_len = len;
+		break;
 	}
 #endif /* CONFIG_IPPP_FILTER */
 	default:
@@ -983,7 +964,6 @@ static int isdn_ppp_strip_proto(struct sk_buff *skb)
 	return proto;
 }
 
-
 /*
  * handler for incoming packets on a syncPPP interface
  */
@@ -1168,14 +1148,14 @@ isdn_ppp_push_higher(isdn_net_dev *net_dev, isdn_net_local *lp, struct sk_buff *
 	}
 
 	if (is->pass_filter
-	    && SK_RUN_FILTER(is->pass_filter, skb) == 0) {
+	    && sk_run_filter(skb, is->pass_filter) == 0) {
 		if (is->debug & 0x2)
 			printk(KERN_DEBUG "IPPP: inbound frame filtered.\n");
 		kfree_skb(skb);
 		return;
 	}
 	if (!(is->active_filter
-	      && SK_RUN_FILTER(is->active_filter, skb) == 0)) {
+	      && sk_run_filter(skb, is->active_filter) == 0)) {
 		if (is->debug & 0x2)
 			printk(KERN_DEBUG "IPPP: link-active filter: resetting huptimer.\n");
 		lp->huptimer = 0;
@@ -1314,14 +1294,14 @@ isdn_ppp_xmit(struct sk_buff *skb, struct net_device *netdev)
 	}
 
 	if (ipt->pass_filter
-	    && SK_RUN_FILTER(ipt->pass_filter, skb) == 0) {
+	    && sk_run_filter(skb, ipt->pass_filter) == 0) {
 		if (ipt->debug & 0x4)
 			printk(KERN_DEBUG "IPPP: outbound frame filtered.\n");
 		kfree_skb(skb);
 		goto unlock;
 	}
 	if (!(ipt->active_filter
-	      && SK_RUN_FILTER(ipt->active_filter, skb) == 0)) {
+	      && sk_run_filter(skb, ipt->active_filter) == 0)) {
 		if (ipt->debug & 0x4)
 			printk(KERN_DEBUG "IPPP: link-active filter: resetting huptimer.\n");
 		lp->huptimer = 0;
@@ -1511,9 +1491,9 @@ int isdn_ppp_autodial_filter(struct sk_buff *skb, isdn_net_local *lp)
 	}
 
 	drop |= is->pass_filter
-		&& SK_RUN_FILTER(is->pass_filter, skb) == 0;
+		&& sk_run_filter(skb, is->pass_filter) == 0;
 	drop |= is->active_filter
-		&& SK_RUN_FILTER(is->active_filter, skb) == 0;
+		&& sk_run_filter(skb, is->active_filter) == 0;
 
 	skb_push(skb, IPPP_MAX_HEADER - 4);
 	return drop;
@@ -1636,7 +1616,6 @@ static void isdn_ppp_mp_receive(isdn_net_dev *net_dev, isdn_net_local *lp,
 
 	newseq = isdn_ppp_mp_get_seq(is->mpppcfg & SC_IN_SHORT_SEQ,
 				     skb, is->last_link_seqno);
-
 
 	/* if this packet seq # is less than last already processed one,
 	 * toss it right away, but check for sequence start case first
@@ -2045,7 +2024,6 @@ isdn_ppp_dev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	int len;
 	isdn_net_local *lp = netdev_priv(dev);
 
-
 	if (lp->p_encap != ISDN_NET_ENCAP_SYNCPPP)
 		return -EINVAL;
 
@@ -2092,7 +2070,6 @@ isdn_ppp_if_get_unit(char *name)
 
 	return unit;
 }
-
 
 int
 isdn_ppp_dial_slave(char *name)
@@ -2166,7 +2143,6 @@ isdn_ppp_hangup_slave(char *name)
 /*
  * PPP compression stuff
  */
-
 
 /* Push an empty CCP Data Frame up to the daemon to wake it up and let it
    generate a CCP Reset-Request or tear down CCP altogether */
@@ -2369,7 +2345,6 @@ static struct ippp_ccp_reset_state *isdn_ppp_ccp_reset_alloc_state(struct ippp_s
 	}
 	return rs;
 }
-
 
 /* A decompressor wants a reset with a set of parameters - do what is
    necessary to fulfill it */
@@ -2808,7 +2783,6 @@ static void isdn_ppp_receive_ccp(isdn_net_dev *net_dev, isdn_net_local *lp,
 		break;
 	}
 }
-
 
 /*
  * Daemon sends a CCP frame ...

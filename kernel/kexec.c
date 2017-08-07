@@ -32,7 +32,6 @@
 #include <linux/vmalloc.h>
 #include <linux/swap.h>
 #include <linux/syscore_ops.h>
-#include <linux/compiler.h>
 
 #include <asm/page.h>
 #include <asm/uaccess.h>
@@ -531,7 +530,6 @@ static struct page *kimage_alloc_crash_control_pages(struct kimage *image,
 	return pages;
 }
 
-
 struct page *kimage_alloc_control_pages(struct kimage *image,
 					 unsigned int order)
 {
@@ -588,7 +586,6 @@ static int kimage_set_destination(struct kimage *image,
 	return result;
 }
 
-
 static int kimage_add_page(struct kimage *image, unsigned long page)
 {
 	int result;
@@ -600,7 +597,6 @@ static int kimage_add_page(struct kimage *image, unsigned long page)
 
 	return result;
 }
-
 
 static void kimage_free_extra_pages(struct kimage *image)
 {
@@ -925,7 +921,7 @@ static int kimage_load_segment(struct kimage *image,
  *   reinitialize them.
  *
  * - A machine specific part that includes the syscall number
- *   and then copies the image to it's final destination.  And
+ *   and the copies the image to it's final destination.  And
  *   jumps into the image at entry.
  *
  * kexec does not sync, or unmount filesystems so if you need
@@ -933,7 +929,6 @@ static int kimage_load_segment(struct kimage *image,
  */
 struct kimage *kexec_image;
 struct kimage *kexec_crash_image;
-int kexec_load_disabled;
 
 static DEFINE_MUTEX(kexec_mutex);
 
@@ -944,7 +939,7 @@ SYSCALL_DEFINE4(kexec_load, unsigned long, entry, unsigned long, nr_segments,
 	int result;
 
 	/* We only trust the superuser with rebooting the system. */
-	if (!capable(CAP_SYS_BOOT) || kexec_load_disabled)
+	if (!capable(CAP_SYS_BOOT))
 		return -EPERM;
 
 	/*
@@ -1040,10 +1035,10 @@ void __weak crash_unmap_reserved_pages(void)
 {}
 
 #ifdef CONFIG_COMPAT
-COMPAT_SYSCALL_DEFINE4(kexec_load, compat_ulong_t, entry,
-		       compat_ulong_t, nr_segments,
-		       struct compat_kexec_segment __user *, segments,
-		       compat_ulong_t, flags)
+asmlinkage long compat_sys_kexec_load(unsigned long entry,
+				unsigned long nr_segments,
+				struct compat_kexec_segment __user *segments,
+				unsigned long flags)
 {
 	struct compat_kexec_segment in;
 	struct kexec_segment out, __user *ksegments;
@@ -1236,15 +1231,13 @@ static int __init crash_notes_memory_init(void)
 	}
 	return 0;
 }
-subsys_initcall(crash_notes_memory_init);
-
+module_init(crash_notes_memory_init)
 
 /*
  * parsing the "crashkernel" commandline
  *
  * this code is intended to be called from architecture specific code
  */
-
 
 /*
  * This function parses command lines in the format
@@ -1479,8 +1472,11 @@ static int __init __parse_crashkernel(char *cmdline,
 	if (first_colon && (!first_space || first_colon < first_space))
 		return parse_crashkernel_mem(ck_cmdline, system_ram,
 				crash_size, crash_base);
+	else
+		return parse_crashkernel_simple(ck_cmdline, crash_size,
+				crash_base);
 
-	return parse_crashkernel_simple(ck_cmdline, crash_size, crash_base);
+	return 0;
 }
 
 /*
@@ -1538,7 +1534,7 @@ void vmcoreinfo_append_str(const char *fmt, ...)
 	size_t r;
 
 	va_start(args, fmt);
-	r = vscnprintf(buf, sizeof(buf), fmt, args);
+	r = vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 
 	r = min(r, vmcoreinfo_max_size - vmcoreinfo_size);
@@ -1552,10 +1548,10 @@ void vmcoreinfo_append_str(const char *fmt, ...)
  * provide an empty default implementation here -- architecture
  * code may override this
  */
-void __weak arch_crash_save_vmcoreinfo(void)
+void __attribute__ ((weak)) arch_crash_save_vmcoreinfo(void)
 {}
 
-unsigned long __weak paddr_vmcoreinfo_note(void)
+unsigned long __attribute__ ((weak)) paddr_vmcoreinfo_note(void)
 {
 	return __pa((unsigned long)(char *)&vmcoreinfo_note);
 }
@@ -1630,7 +1626,7 @@ static int __init crash_save_vmcoreinfo_init(void)
 	return 0;
 }
 
-subsys_initcall(crash_save_vmcoreinfo_init);
+module_init(crash_save_vmcoreinfo_init)
 
 /*
  * Move into place and start executing a preloaded standalone
@@ -1682,7 +1678,6 @@ int kernel_kexec(void)
 	{
 		kexec_in_progress = true;
 		kernel_restart_prepare(NULL);
-		migrate_to_reboot_cpu();
 		printk(KERN_EMERG "Starting new kernel\n");
 		machine_shutdown();
 	}

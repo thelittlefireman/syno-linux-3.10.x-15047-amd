@@ -28,10 +28,7 @@
  * elimination of all the tests and reduced cache footprint.
  */
 
-
 #define DRV_NAME	"3c59x"
-
-
 
 /* A few values that may be tweaked. */
 /* Keep the ring sizes a power of two for efficiency. */
@@ -101,14 +98,12 @@ static int vortex_debug = 1;
 
 #include <linux/delay.h>
 
-
 static const char version[] =
 	DRV_NAME ": Donald Becker and others.\n";
 
 MODULE_AUTHOR("Donald Becker <becker@scyld.com>");
 MODULE_DESCRIPTION("3Com 3c59x/3c9xx ethernet driver ");
 MODULE_LICENSE("GPL");
-
 
 /* Operational parameter that usually are not changed. */
 
@@ -125,8 +120,6 @@ MODULE_LICENSE("GPL");
 static char mii_preamble_required;
 
 #define PFX DRV_NAME ": "
-
-
 
 /*
 				Theory of Operation
@@ -267,7 +260,6 @@ enum vortex_chips {
 	CH_920B_EMB_WNM,
 };
 
-
 /* note: this array directly indexed by above enums, and MUST
  * be kept in sync with both the enums above, and the PCI device
  * table below
@@ -374,7 +366,6 @@ static struct vortex_chip_info {
 	{NULL,}, /* NULL terminated list. */
 };
 
-
 static DEFINE_PCI_DEVICE_TABLE(vortex_pci_tbl) = {
 	{ 0x10B7, 0x5900, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CH_3C590 },
 	{ 0x10B7, 0x5920, PCI_ANY_ID, PCI_ANY_ID, 0, 0, CH_3C592 },
@@ -426,7 +417,6 @@ static DEFINE_PCI_DEVICE_TABLE(vortex_pci_tbl) = {
 	{0,}						/* 0 terminated list. */
 };
 MODULE_DEVICE_TABLE(pci, vortex_pci_tbl);
-
 
 /* Operational definitions.
    These are not used by other compilation units and thus are not
@@ -693,7 +683,7 @@ DEFINE_WINDOW_IO(16)
 DEFINE_WINDOW_IO(32)
 
 #ifdef CONFIG_PCI
-#define DEVICE_PCI(dev) ((dev_is_pci(dev)) ? to_pci_dev((dev)) : NULL)
+#define DEVICE_PCI(dev) (((dev)->bus == &pci_bus_type) ? to_pci_dev((dev)) : NULL)
 #else
 #define DEVICE_PCI(dev) NULL
 #endif
@@ -1012,8 +1002,10 @@ static int vortex_init_one(struct pci_dev *pdev,
 		goto out;
 
 	rc = pci_request_regions(pdev, DRV_NAME);
-	if (rc < 0)
-		goto out_disable;
+	if (rc < 0) {
+		pci_disable_device(pdev);
+		goto out;
+	}
 
 	unit = vortex_cards_found;
 
@@ -1030,24 +1022,23 @@ static int vortex_init_one(struct pci_dev *pdev,
 	if (!ioaddr) /* If mapping fails, fall-back to BAR 0... */
 		ioaddr = pci_iomap(pdev, 0, 0);
 	if (!ioaddr) {
+		pci_release_regions(pdev);
+		pci_disable_device(pdev);
 		rc = -ENOMEM;
-		goto out_release;
+		goto out;
 	}
 
 	rc = vortex_probe1(&pdev->dev, ioaddr, pdev->irq,
 			   ent->driver_data, unit);
-	if (rc < 0)
-		goto out_iounmap;
+	if (rc < 0) {
+		pci_iounmap(pdev, ioaddr);
+		pci_release_regions(pdev);
+		pci_disable_device(pdev);
+		goto out;
+	}
 
 	vortex_cards_found++;
-	goto out;
 
-out_iounmap:
-	pci_iounmap(pdev, ioaddr);
-out_release:
-	pci_release_regions(pdev);
-out_disable:
-	pci_disable_device(pdev);
 out:
 	return rc;
 }
@@ -1320,7 +1311,6 @@ static int vortex_probe1(struct device *gendev, void __iomem *ioaddr, int irq,
 			step, (eeprom[4]>>5) & 15, eeprom[4] & 31, eeprom[4]>>9);
 	}
 
-
 	if (pdev && vci->drv_flags & HAS_CB_FNS) {
 		unsigned short n;
 
@@ -1472,7 +1462,7 @@ static int vortex_probe1(struct device *gendev, void __iomem *ioaddr, int irq,
 
 	if (pdev) {
 		vp->pm_state_valid = 1;
-		pci_save_state(pdev);
+ 		pci_save_state(VORTEX_PCI(vp));
  		acpi_set_WOL(dev);
 	}
 	retval = register_netdev(dev);
@@ -1638,7 +1628,6 @@ vortex_up(struct net_device *dev)
 	 * Don't reset the PHY - that upsets autonegotiation during DHCP operations.
 	 */
 	issue_and_wait(dev, RxReset|0x04);
-
 
 	iowrite16(SetStatusEnb | 0x00, ioaddr + EL3_CMD);
 
@@ -2079,14 +2068,12 @@ vortex_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		iowrite16(len, ioaddr + Wn7_MasterLen);
 		spin_unlock_irq(&vp->window_lock);
 		vp->tx_skb = skb;
-		skb_tx_timestamp(skb);
 		iowrite16(StartDMADown, ioaddr + EL3_CMD);
 		/* netif_wake_queue() will be called at the DMADone interrupt. */
 	} else {
 		/* ... and the packet rounded to a doubleword. */
-		skb_tx_timestamp(skb);
 		iowrite32_rep(ioaddr + TX_FIFO, skb->data, (skb->len + 3) >> 2);
-		dev_consume_skb_any (skb);
+		dev_kfree_skb (skb);
 		if (ioread16(ioaddr + TxFree) > 1536) {
 			netif_start_queue (dev);	/* AKPM: redundant? */
 		} else {
@@ -2095,7 +2082,6 @@ vortex_start_xmit(struct sk_buff *skb, struct net_device *dev)
 			iowrite16(SetTxThreshold + (1536>>2), ioaddr + EL3_CMD);
 		}
 	}
-
 
 	/* Clear the Tx status stack. */
 	{
@@ -2214,7 +2200,6 @@ boomerang_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		prev_entry->status &= cpu_to_le32(~TxIntrUploaded);
 #endif
 	}
-	skb_tx_timestamp(skb);
 	iowrite16(DownUnstall, ioaddr + EL3_CMD);
 	spin_unlock_irqrestore(&vp->lock, flags);
 	return NETDEV_TX_OK;
@@ -2353,7 +2338,6 @@ boomerang_interrupt(int irq, void *dev_id)
 	int work_done = max_interrupt_work;
 
 	ioaddr = vp->ioaddr;
-
 
 	/*
 	 * It seems dopey to put the spinlock this early, but we could race against vortex_tx_timeout
@@ -2911,7 +2895,6 @@ static void vortex_get_ethtool_stats(struct net_device *dev,
 	data[4] = vp->xstats.rx_bad_ssd;
 }
 
-
 static void vortex_get_strings(struct net_device *dev, u32 stringset, u8 *data)
 {
 	switch (stringset) {
@@ -2989,7 +2972,6 @@ static const struct ethtool_ops vortex_ethtool_ops = {
 	.nway_reset             = vortex_nway_reset,
 	.get_wol                = vortex_get_wol,
 	.set_wol                = vortex_set_wol,
-	.get_ts_info		= ethtool_op_get_ts_info,
 };
 
 #ifdef CONFIG_PCI
@@ -3016,7 +2998,6 @@ static int vortex_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return err;
 }
 #endif
-
 
 /* Pre-Cyclone chips have no documented multicast filter, so the only
    multicast setting is to receive all multicast frames.  At least
@@ -3083,7 +3064,6 @@ static void set_8021q_mode(struct net_device *dev, int enable)
 static void set_8021q_mode(struct net_device *dev, int enable)
 {
 }
-
 
 #endif
 
@@ -3222,7 +3202,6 @@ static void acpi_set_WOL(struct net_device *dev)
 	}
 }
 
-
 static void vortex_remove_one(struct pci_dev *pdev)
 {
 	struct net_device *dev = pci_get_drvdata(pdev);
@@ -3236,20 +3215,21 @@ static void vortex_remove_one(struct pci_dev *pdev)
 	vp = netdev_priv(dev);
 
 	if (vp->cb_fn_base)
-		pci_iounmap(pdev, vp->cb_fn_base);
+		pci_iounmap(VORTEX_PCI(vp), vp->cb_fn_base);
 
 	unregister_netdev(dev);
 
-	pci_set_power_state(pdev, PCI_D0);	/* Go active */
-	if (vp->pm_state_valid)
-		pci_restore_state(pdev);
-	pci_disable_device(pdev);
-
+	if (VORTEX_PCI(vp)) {
+		pci_set_power_state(VORTEX_PCI(vp), PCI_D0);	/* Go active */
+		if (vp->pm_state_valid)
+			pci_restore_state(VORTEX_PCI(vp));
+		pci_disable_device(VORTEX_PCI(vp));
+	}
 	/* Should really use issue_and_wait() here */
 	iowrite16(TotalReset | ((vp->drv_flags & EEPROM_RESET) ? 0x04 : 0x14),
 	     vp->ioaddr + EL3_CMD);
 
-	pci_iounmap(pdev, vp->ioaddr);
+	pci_iounmap(VORTEX_PCI(vp), vp->ioaddr);
 
 	pci_free_consistent(pdev,
 						sizeof(struct boom_rx_desc) * RX_RING_SIZE
@@ -3262,7 +3242,6 @@ static void vortex_remove_one(struct pci_dev *pdev)
 	free_netdev(dev);
 }
 
-
 static struct pci_driver vortex_driver = {
 	.name		= "3c59x",
 	.probe		= vortex_init_one,
@@ -3271,10 +3250,8 @@ static struct pci_driver vortex_driver = {
 	.driver.pm	= VORTEX_PM_OPS,
 };
 
-
 static int vortex_have_pci;
 static int vortex_have_eisa;
-
 
 static int __init vortex_init(void)
 {
@@ -3291,9 +3268,9 @@ static int __init vortex_init(void)
 	return (vortex_have_pci + vortex_have_eisa) ? 0 : -ENODEV;
 }
 
-
 static void __exit vortex_eisa_cleanup(void)
 {
+	struct vortex_private *vp;
 	void __iomem *ioaddr;
 
 #ifdef CONFIG_EISA
@@ -3302,6 +3279,7 @@ static void __exit vortex_eisa_cleanup(void)
 #endif
 
 	if (compaq_net_device) {
+		vp = netdev_priv(compaq_net_device);
 		ioaddr = ioport_map(compaq_net_device->base_addr,
 		                    VORTEX_TOTAL_SIZE);
 
@@ -3314,7 +3292,6 @@ static void __exit vortex_eisa_cleanup(void)
 	}
 }
 
-
 static void __exit vortex_cleanup(void)
 {
 	if (vortex_have_pci)
@@ -3322,7 +3299,6 @@ static void __exit vortex_cleanup(void)
 	if (vortex_have_eisa)
 		vortex_eisa_cleanup();
 }
-
 
 module_init(vortex_init);
 module_exit(vortex_cleanup);

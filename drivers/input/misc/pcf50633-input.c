@@ -16,6 +16,7 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/device.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
@@ -57,7 +58,6 @@ static int pcf50633_input_probe(struct platform_device *pdev)
 	struct pcf50633_input *input;
 	struct input_dev *input_dev;
 	int ret;
-
 
 	input = kzalloc(sizeof(*input), GFP_KERNEL);
 	if (!input)

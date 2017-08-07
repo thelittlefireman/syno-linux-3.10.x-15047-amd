@@ -6,7 +6,6 @@
 
 #include <uapi/asm/setup.h>
 
-
 extern char reboot_command[];
 
 #ifdef CONFIG_SPARC32

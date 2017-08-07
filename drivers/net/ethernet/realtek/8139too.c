@@ -94,7 +94,6 @@
 #define DRV_NAME	"8139too"
 #define DRV_VERSION	"0.9.28"
 
-
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/compiler.h>
@@ -121,13 +120,11 @@
                                  NETIF_MSG_PROBE  | \
                                  NETIF_MSG_LINK)
 
-
 /* define to 1, 2 or 3 to enable copious debugging info */
 #define RTL8139_DEBUG 0
 
 /* define to 1 to disable lightweight runtime debugging checks */
 #undef RTL8139_NDEBUG
-
 
 #ifdef RTL8139_NDEBUG
 #  define assert(expr) do {} while (0)
@@ -138,7 +135,6 @@
 		       #expr, __FILE__, __func__, __LINE__);	\
         }
 #endif
-
 
 /* A few user-configurable values. */
 /* media options */
@@ -203,7 +199,6 @@ static int debug = -1;
 /* Time in jiffies before concluding the transmitter is hung. */
 #define TX_TIMEOUT  (6*HZ)
 
-
 enum {
 	HAS_MII_XCVR = 0x010000,
 	HAS_CHIP_XCVR = 0x020000,
@@ -223,7 +218,6 @@ typedef enum {
 	RTL8129,
 } board_t;
 
-
 /* indexed by board_t, above */
 static const struct {
 	const char *name;
@@ -232,7 +226,6 @@ static const struct {
 	{ "RealTek RTL8139", RTL8139_CAPS },
 	{ "RealTek RTL8129", RTL8129_CAPS },
 };
-
 
 static DEFINE_PCI_DEVICE_TABLE(rtl8139_pci_tbl) = {
 	{0x10ec, 0x8139, PCI_ANY_ID, PCI_ANY_ID, 0, 0, RTL8139 },
@@ -675,7 +668,6 @@ static const struct ethtool_ops rtl8139_ethtool_ops;
 #define RTL_R16(reg)		ioread16 (ioaddr + (reg))
 #define RTL_R32(reg)		ioread32 (ioaddr + (reg))
 
-
 static const u16 rtl8139_intr_mask =
 	PCIErr | PCSTimeout | RxUnderrun | RxOverflow | RxFIFOOver |
 	TxErr | TxOK | RxErr | RxOK;
@@ -727,8 +719,8 @@ static void __rtl8139_cleanup_dev (struct net_device *dev)
 	pci_release_regions (pdev);
 
 	free_netdev(dev);
+	pci_set_drvdata (pdev, NULL);
 }
-
 
 static void rtl8139_chip_reset (void __iomem *ioaddr)
 {
@@ -745,7 +737,6 @@ static void rtl8139_chip_reset (void __iomem *ioaddr)
 		udelay (10);
 	}
 }
-
 
 static struct net_device *rtl8139_init_board(struct pci_dev *pdev)
 {
@@ -789,9 +780,6 @@ static struct net_device *rtl8139_init_board(struct pci_dev *pdev)
 	disable_dev_on_err = 1;
 
 	pci_set_master (pdev);
-
-	u64_stats_init(&tp->rx_stats.syncp);
-	u64_stats_init(&tp->tx_stats.syncp);
 
 retry:
 	/* PIO bar register comes first. */
@@ -1103,7 +1091,6 @@ err_out:
 	return i;
 }
 
-
 static void rtl8139_remove_one(struct pci_dev *pdev)
 {
 	struct net_device *dev = pci_get_drvdata (pdev);
@@ -1118,7 +1105,6 @@ static void rtl8139_remove_one(struct pci_dev *pdev)
 	__rtl8139_cleanup_dev (dev);
 	pci_disable_device (pdev);
 }
-
 
 /* Serial EEPROM section. */
 
@@ -1195,7 +1181,6 @@ static int read_eeprom(void __iomem *ioaddr, int location, int addr_len)
 
 #define mdio_delay()	RTL_R8(Config4)
 
-
 static const char mii_2_8139_map[8] = {
 	BasicModeCtrl,
 	BasicModeStatus,
@@ -1206,7 +1191,6 @@ static const char mii_2_8139_map[8] = {
 	NWayExpansion,
 	0
 };
-
 
 #ifdef CONFIG_8139TOO_8129
 /* Syncronize the MII management interface by shifting 32 one bits out. */
@@ -1264,7 +1248,6 @@ static int mdio_read (struct net_device *dev, int phy_id, int location)
 	return (retval >> 1) & 0xffff;
 }
 
-
 static void mdio_write (struct net_device *dev, int phy_id, int location,
 			int value)
 {
@@ -1307,7 +1290,6 @@ static void mdio_write (struct net_device *dev, int phy_id, int location,
 	}
 #endif
 }
-
 
 static int rtl8139_open (struct net_device *dev)
 {
@@ -1358,7 +1340,6 @@ static int rtl8139_open (struct net_device *dev)
 
 	return 0;
 }
-
 
 static void rtl_check_media (struct net_device *dev, unsigned int init_media)
 {
@@ -1435,7 +1416,6 @@ static void rtl8139_hw_start (struct net_device *dev)
 	RTL_W16 (IntrMask, rtl8139_intr_mask);
 }
 
-
 /* Initialize the Rx and Tx rings, along with various 'dev' bits. */
 static void rtl8139_init_ring (struct net_device *dev)
 {
@@ -1449,7 +1429,6 @@ static void rtl8139_init_ring (struct net_device *dev)
 	for (i = 0; i < NUM_TX_DESC; i++)
 		tp->tx_buf[i] = &tp->tx_bufs[i * TX_BUF_SIZE];
 }
-
 
 /* This must be global for CONFIG_8139TOO_TUNE_TWISTER case */
 static int next_tick = 3 * HZ;
@@ -1746,7 +1725,6 @@ static netdev_tx_t rtl8139_start_xmit (struct sk_buff *skb,
 	return NETDEV_TX_OK;
 }
 
-
 static void rtl8139_tx_interrupt (struct net_device *dev,
 				  struct rtl8139_private *tp,
 				  void __iomem *ioaddr)
@@ -1816,7 +1794,6 @@ static void rtl8139_tx_interrupt (struct net_device *dev,
 		netif_wake_queue (dev);
 	}
 }
-
 
 /* TODO: clean this up!  Rx reset need not be this intensive */
 static void rtl8139_rx_err (u32 rx_status, struct net_device *dev,
@@ -2073,7 +2050,6 @@ out:
 	return received;
 }
 
-
 static void rtl8139_weird_interrupt (struct net_device *dev,
 				     struct rtl8139_private *tp,
 				     void __iomem *ioaddr,
@@ -2290,7 +2266,6 @@ static int rtl8139_close (struct net_device *dev)
 	return 0;
 }
 
-
 /* Get the ethtool Wake-on-LAN settings.  Assumes that wol points to
    kernel memory, *wol has been initialized as {ETHTOOL_GWOL}, and
    other threads or interrupts aren't messing with the 8139.  */
@@ -2323,7 +2298,6 @@ static void rtl8139_get_wol(struct net_device *dev, struct ethtool_wolinfo *wol)
 	}
 	spin_unlock_irq(&tp->lock);
 }
-
 
 /* Set the ethtool Wake-on-LAN settings.  Return 0 or -errno.  Assumes
    that wol points to kernel memory and other threads or interrupts
@@ -2503,7 +2477,6 @@ static int netdev_ioctl(struct net_device *dev, struct ifreq *rq, int cmd)
 	return rc;
 }
 
-
 static struct rtnl_link_stats64 *
 rtl8139_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
 {
@@ -2522,16 +2495,16 @@ rtl8139_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
 	netdev_stats_to_stats64(stats, &dev->stats);
 
 	do {
-		start = u64_stats_fetch_begin_irq(&tp->rx_stats.syncp);
+		start = u64_stats_fetch_begin_bh(&tp->rx_stats.syncp);
 		stats->rx_packets = tp->rx_stats.packets;
 		stats->rx_bytes = tp->rx_stats.bytes;
-	} while (u64_stats_fetch_retry_irq(&tp->rx_stats.syncp, start));
+	} while (u64_stats_fetch_retry_bh(&tp->rx_stats.syncp, start));
 
 	do {
-		start = u64_stats_fetch_begin_irq(&tp->tx_stats.syncp);
+		start = u64_stats_fetch_begin_bh(&tp->tx_stats.syncp);
 		stats->tx_packets = tp->tx_stats.packets;
 		stats->tx_bytes = tp->tx_stats.bytes;
-	} while (u64_stats_fetch_retry_irq(&tp->tx_stats.syncp, start));
+	} while (u64_stats_fetch_retry_bh(&tp->tx_stats.syncp, start));
 
 	return stats;
 }
@@ -2629,7 +2602,6 @@ static int rtl8139_suspend (struct pci_dev *pdev, pm_message_t state)
 	return 0;
 }
 
-
 static int rtl8139_resume (struct pci_dev *pdev)
 {
 	struct net_device *dev = pci_get_drvdata (pdev);
@@ -2646,7 +2618,6 @@ static int rtl8139_resume (struct pci_dev *pdev)
 
 #endif /* CONFIG_PM */
 
-
 static struct pci_driver rtl8139_pci_driver = {
 	.name		= DRV_NAME,
 	.id_table	= rtl8139_pci_tbl,
@@ -2657,7 +2628,6 @@ static struct pci_driver rtl8139_pci_driver = {
 	.resume		= rtl8139_resume,
 #endif /* CONFIG_PM */
 };
-
 
 static int __init rtl8139_init_module (void)
 {
@@ -2671,12 +2641,10 @@ static int __init rtl8139_init_module (void)
 	return pci_register_driver(&rtl8139_pci_driver);
 }
 
-
 static void __exit rtl8139_cleanup_module (void)
 {
 	pci_unregister_driver (&rtl8139_pci_driver);
 }
-
 
 module_init(rtl8139_init_module);
 module_exit(rtl8139_cleanup_module);

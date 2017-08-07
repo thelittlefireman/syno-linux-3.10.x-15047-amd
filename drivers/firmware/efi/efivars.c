@@ -219,7 +219,8 @@ efivar_store_raw(struct efivar_entry *entry, const char *buf, size_t count)
 	}
 
 	if ((new_var->Attributes & ~EFI_VARIABLE_MASK) != 0 ||
-	    efivar_validate(new_var, new_var->Data, new_var->DataSize) == false) {
+	    efivar_validate(new_var->VendorGuid, new_var->VariableName,
+			    new_var->Data, new_var->DataSize) == false) {
 		printk(KERN_ERR "efivars: Malformed variable content\n");
 		return -EINVAL;
 	}
@@ -227,7 +228,7 @@ efivar_store_raw(struct efivar_entry *entry, const char *buf, size_t count)
 	memcpy(&entry->var, new_var, count);
 
 	err = efivar_entry_set(entry, new_var->Attributes,
-			       new_var->DataSize, new_var->Data, NULL);
+			       new_var->DataSize, new_var->Data, false);
 	if (err) {
 		printk(KERN_WARNING "efivars: set_variable() failed: status=%d\n", err);
 		return -EIO;
@@ -334,7 +335,8 @@ static ssize_t efivar_create(struct file *filp, struct kobject *kobj,
 		return -EACCES;
 
 	if ((new_var->Attributes & ~EFI_VARIABLE_MASK) != 0 ||
-	    efivar_validate(new_var, new_var->Data, new_var->DataSize) == false) {
+	    efivar_validate(new_var->VendorGuid, new_var->VariableName,
+			    new_var->Data, new_var->DataSize) == false) {
 		printk(KERN_ERR "efivars: Malformed variable content\n");
 		return -EINVAL;
 	}
@@ -383,16 +385,12 @@ static ssize_t efivar_delete(struct file *filp, struct kobject *kobj,
 	else if (__efivar_entry_delete(entry))
 		err = -EIO;
 
-	if (err) {
-		efivar_entry_iter_end();
-		return err;
-	}
+	efivar_entry_iter_end();
 
-	if (!entry->scanning) {
-		efivar_entry_iter_end();
-		efivar_unregister(entry);
-	} else
-		efivar_entry_iter_end();
+	if (err)
+		return err;
+
+	efivar_unregister(entry);
 
 	/* It's dead Jim.... */
 	return count;
@@ -409,35 +407,27 @@ efivar_create_sysfs_entry(struct efivar_entry *new_var)
 {
 	int i, short_name_size;
 	char *short_name;
-	unsigned long variable_name_size;
-	efi_char16_t *variable_name;
-
-	variable_name = new_var->var.VariableName;
-	variable_name_size = ucs2_strlen(variable_name) * sizeof(efi_char16_t);
+	unsigned long utf8_name_size;
+	efi_char16_t *variable_name = new_var->var.VariableName;
 
 	/*
-	 * Length of the variable bytes in ASCII, plus the '-' separator,
+	 * Length of the variable bytes in UTF8, plus the '-' separator,
 	 * plus the GUID, plus trailing NUL
 	 */
-	short_name_size = variable_name_size / sizeof(efi_char16_t)
-				+ 1 + EFI_VARIABLE_GUID_LEN + 1;
+	utf8_name_size = ucs2_utf8size(variable_name);
+	short_name_size = utf8_name_size + 1 + EFI_VARIABLE_GUID_LEN + 1;
 
-	short_name = kzalloc(short_name_size, GFP_KERNEL);
-
+	short_name = kmalloc(short_name_size, GFP_KERNEL);
 	if (!short_name)
 		return 1;
 
-	/* Convert Unicode to normal chars (assume top bits are 0),
-	   ala UTF-8 */
-	for (i=0; i < (int)(variable_name_size / sizeof(efi_char16_t)); i++) {
-		short_name[i] = variable_name[i] & 0xFF;
-	}
+	ucs2_as_utf8(short_name, variable_name, short_name_size);
+
 	/* This is ugly, but necessary to separate one vendor's
 	   private variables from another's.         */
-
-	*(short_name + strlen(short_name)) = '-';
+	short_name[utf8_name_size] = '-';
 	efi_guid_unparse(&new_var->var.VendorGuid,
-			 short_name + strlen(short_name));
+			 short_name + utf8_name_size + 1);
 
 	new_var->kobj.kset = efivars_kset;
 
@@ -568,7 +558,7 @@ static int efivar_sysfs_destroy(struct efivar_entry *entry, void *data)
 	return 0;
 }
 
-static void efivars_sysfs_exit(void)
+void efivars_sysfs_exit(void)
 {
 	/* Remove all entries and destroy */
 	__efivar_entry_iter(efivar_sysfs_destroy, &efivar_sysfs_list, NULL, NULL);
@@ -586,9 +576,6 @@ int efivars_sysfs_init(void)
 {
 	struct kobject *parent_kobj = efivars_kobject();
 	int error = 0;
-
-	if (!efi_enabled(EFI_RUNTIME_SERVICES))
-		return -ENODEV;
 
 	/* No efivars has been registered yet */
 	if (!parent_kobj)

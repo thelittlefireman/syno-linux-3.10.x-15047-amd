@@ -246,7 +246,6 @@ static void ali_set_dmamode(struct ata_port *ap, struct ata_device *adev)
 	unsigned long T =  1000000000 / 33333;	/* PCI clock based */
 	struct pci_dev *pdev = to_pci_dev(ap->host->dev);
 
-
 	if (adev->class == ATA_DEV_ATA)
 		ali_fifo_control(ap, adev, 0x08);
 
@@ -418,7 +417,6 @@ static struct ata_port_operations ali_c5_port_ops = {
 	.dev_config	= ali_warn_atapi_dma,
 	.cable_detect	= ali_c2_cable_detect,
 };
-
 
 /**
  *	ali_init_chipset	-	chip setup function
@@ -592,7 +590,7 @@ static int ali_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 #ifdef CONFIG_PM
 static int ali_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);
@@ -633,13 +631,11 @@ static int __init ali_init(void)
 	return ret;
 }
 
-
 static void __exit ali_exit(void)
 {
 	pci_unregister_driver(&ali_pci_driver);
 	pci_dev_put(ali_isa_bridge);
 }
-
 
 MODULE_AUTHOR("Alan Cox");
 MODULE_DESCRIPTION("low-level driver for ALi PATA");

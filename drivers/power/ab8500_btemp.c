@@ -1045,6 +1045,7 @@ static int ab8500_btemp_remove(struct platform_device *pdev)
 
 	flush_scheduled_work();
 	power_supply_unregister(&di->btemp_psy);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }
@@ -1099,7 +1100,6 @@ static int ab8500_btemp_probe(struct platform_device *pdev)
 	di->btemp_psy.num_supplicants = ARRAY_SIZE(supply_interface);
 	di->btemp_psy.external_power_changed =
 		ab8500_btemp_external_power_changed;
-
 
 	/* Create a work queue for the btemp */
 	di->btemp_wq =

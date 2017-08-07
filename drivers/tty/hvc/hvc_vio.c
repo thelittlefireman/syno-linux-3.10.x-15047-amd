@@ -48,7 +48,6 @@
 #include <asm/prom.h>
 #include <asm/hvsi.h>
 #include <asm/udbg.h>
-#include <asm/machdep.h>
 
 #include "hvc_console.h"
 
@@ -405,7 +404,7 @@ module_exit(hvc_vio_exit);
 void __init hvc_vio_init_early(void)
 {
 	struct device_node *stdout_node;
-	const __be32 *termno;
+	const u32 *termno;
 	const char *name;
 	const struct hv_ops *ops;
 
@@ -430,7 +429,7 @@ void __init hvc_vio_init_early(void)
 	termno = of_get_property(stdout_node, "reg", NULL);
 	if (termno == NULL)
 		goto out;
-	hvterm_priv0.termno = of_read_number(termno, 1);
+	hvterm_priv0.termno = *termno;
 	spin_lock_init(&hvterm_priv0.buf_lock);
 	hvterm_privs[0] = &hvterm_priv0;
 
@@ -458,9 +457,7 @@ void __init hvc_vio_init_early(void)
 	if (hvterm_priv0.proto == HV_PROTOCOL_HVSI)
 		goto out;
 #endif
-	/* Check whether the user has requested a different console. */
-	if (!strstr(cmd_line, "console="))
-		add_preferred_console("hvc", 0, NULL);
+	add_preferred_console("hvc", 0, NULL);
 	hvc_instantiate(0, 0, ops);
 out:
 	of_node_put(stdout_node);

@@ -15,7 +15,6 @@
 #include "musb_debug.h"
 #include "cppi_dma.h"
 
-
 /* CPPI DMA status 7-mar-2006:
  *
  * - See musb_{host,gadget}.c for more info
@@ -150,10 +149,13 @@ static void cppi_pool_free(struct cppi_channel *c)
 	c->last_processed = NULL;
 }
 
-static void cppi_controller_start(struct cppi *controller)
+static int cppi_controller_start(struct dma_controller *c)
 {
+	struct cppi	*controller;
 	void __iomem	*tibase;
 	int		i;
+
+	controller = container_of(c, struct cppi, controller);
 
 	/* do whatever is necessary to start controller */
 	for (i = 0; i < ARRAY_SIZE(controller->tx); i++) {
@@ -209,6 +211,8 @@ static void cppi_controller_start(struct cppi *controller)
 	/* disable RNDIS mode, also host rx RNDIS autorequest */
 	musb_writel(tibase, DAVINCI_RNDIS_REG, 0);
 	musb_writel(tibase, DAVINCI_AUTOREQ_REG, 0);
+
+	return 0;
 }
 
 /*
@@ -217,12 +221,14 @@ static void cppi_controller_start(struct cppi *controller)
  *  De-Init the DMA controller as necessary.
  */
 
-static void cppi_controller_stop(struct cppi *controller)
+static int cppi_controller_stop(struct dma_controller *c)
 {
+	struct cppi		*controller;
 	void __iomem		*tibase;
 	int			i;
 	struct musb		*musb;
 
+	controller = container_of(c, struct cppi, controller);
 	musb = controller->musb;
 
 	tibase = controller->tibase;
@@ -248,6 +254,8 @@ static void cppi_controller_stop(struct cppi *controller)
 	/*disable tx/rx cppi */
 	musb_writel(tibase, DAVINCI_TXCPPI_CTRL_REG, DAVINCI_DMA_CTRL_DISABLE);
 	musb_writel(tibase, DAVINCI_RXCPPI_CTRL_REG, DAVINCI_DMA_CTRL_DISABLE);
+
+	return 0;
 }
 
 /* While dma channel is allocated, we only want the core irqs active
@@ -267,7 +275,6 @@ static inline void core_rxirq_enable(void __iomem *tibase, unsigned epnum)
 {
 	musb_writel(tibase, DAVINCI_USB_INT_MASK_SET_REG, 1 << (epnum + 8));
 }
-
 
 /*
  * Allocate a CPPI Channel for DMA.  With CPPI, channels are bound to
@@ -446,7 +453,6 @@ static void cppi_dump_rxq(int level, const char *tag, struct cppi_channel *rx)
 		cppi_dump_rxbd("active", bd);
 }
 
-
 /* NOTE:  DaVinci autoreq is ignored except for host side "RNDIS" mode RX;
  * so we won't ever use it (see "CPPI RX Woes" below).
  */
@@ -505,7 +511,6 @@ static inline int cppi_autoreq_update(struct cppi_channel *rx,
 	}
 	return n_bds;
 }
-
 
 /* Buffer enqueuing Logic:
  *
@@ -713,7 +718,6 @@ cppi_next_tx_segment(struct musb *musb, struct cppi_channel *tx)
  * since CPPI penalizes our need for a "true RNDIS" default mode.
  */
 
-
 /* Heuristic, intended to kick in for ethernet/rndis peripheral ONLY
  *
  * IFF
@@ -740,7 +744,6 @@ static bool cppi_rx_rndis = 1;
 
 module_param(cppi_rx_rndis, bool, 0);
 MODULE_PARM_DESC(cppi_rx_rndis, "enable/disable RX RNDIS heuristic");
-
 
 /**
  * cppi_next_rx_segment - dma read for the next chunk of a buffer
@@ -1312,6 +1315,8 @@ struct dma_controller *dma_controller_create(struct musb *musb, void __iomem *mr
 	controller->tibase = mregs - DAVINCI_BASE_OFFSET;
 
 	controller->musb = musb;
+	controller->controller.start = cppi_controller_start;
+	controller->controller.stop = cppi_controller_stop;
 	controller->controller.channel_alloc = cppi_channel_allocate;
 	controller->controller.channel_release = cppi_channel_release;
 	controller->controller.channel_program = cppi_channel_program;
@@ -1340,7 +1345,6 @@ struct dma_controller *dma_controller_create(struct musb *musb, void __iomem *mr
 		controller->irq = irq;
 	}
 
-	cppi_controller_start(controller);
 	return &controller->controller;
 }
 
@@ -1352,8 +1356,6 @@ void dma_controller_destroy(struct dma_controller *c)
 	struct cppi	*cppi;
 
 	cppi = container_of(c, struct cppi, controller);
-
-	cppi_controller_stop(cppi);
 
 	if (cppi->irq)
 		free_irq(cppi->irq, cppi->musb);

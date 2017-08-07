@@ -33,6 +33,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/libata.h>
@@ -262,7 +263,6 @@ static int cs5536_init_one(struct pci_dev *dev, const struct pci_device_id *id)
 		.pio_mask = ATA_PIO4,
 		.port_ops = &cs5536_port_ops,
 	};
-
 
 	const struct ata_port_info *ppi[2];
 	u32 cfg;

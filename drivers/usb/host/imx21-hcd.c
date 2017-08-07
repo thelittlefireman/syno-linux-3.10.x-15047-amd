@@ -21,7 +21,6 @@
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-
  /*
   * The i.MX21 USB hardware contains
   *    * 32 transfer descriptors (called ETDs)
@@ -62,10 +61,6 @@
 
 #include "imx21-hcd.h"
 
-#ifdef CONFIG_DYNAMIC_DEBUG
-#define DEBUG
-#endif
-
 #ifdef DEBUG
 #define DEBUG_LOG_FRAME(imx21, etd, event) \
 	(etd)->event##_frame = readl((imx21)->regs + USBH_FRMNUB)
@@ -79,7 +74,6 @@ static inline struct imx21 *hcd_to_imx21(struct usb_hcd *hcd)
 {
 	return (struct imx21 *)hcd->hcd_priv;
 }
-
 
 /* =========================================== */
 /* Hardware access helpers			*/
@@ -222,7 +216,6 @@ static void free_etd(struct imx21 *imx21, int num)
 	reset_etd(imx21, num);
 	memset(&imx21->etd[num], 0, sizeof(imx21->etd[0]));
 }
-
 
 static void setup_etd_dword0(struct imx21 *imx21,
 	int etd_num, struct urb *urb,  u8 dir, u16 maxpacket)
@@ -473,7 +466,6 @@ static void free_epdmem(struct imx21 *imx21, struct usb_host_endpoint *ep)
 	}
 }
 
-
 /* ===========================================	*/
 /* End handling 				*/
 /* ===========================================	*/
@@ -555,7 +547,6 @@ static void nonisoc_urb_completed_for_etd(
 		schedule_nonisoc_etd(imx21, urb);
 	}
 }
-
 
 /* ===========================================	*/
 /* ISOC Handling ... 				*/
@@ -813,36 +804,26 @@ static int imx21_hc_urb_enqueue_isoc(struct usb_hcd *hcd,
 
 	/* calculate frame */
 	cur_frame = imx21_hc_get_frame(hcd);
-	i = 0;
-	if (list_empty(&ep_priv->td_list)) {
-		urb->start_frame = wrap_frame(cur_frame + 5);
-	} else {
-		urb->start_frame = wrap_frame(list_entry(ep_priv->td_list.prev,
-				struct td, list)->frame + urb->interval);
-
-		if (frame_after(cur_frame, urb->start_frame)) {
-			dev_dbg(imx21->dev,
-				"enqueue: adjusting iso start %d (cur=%d) asap=%d\n",
-				urb->start_frame, cur_frame,
-				(urb->transfer_flags & URB_ISO_ASAP) != 0);
-			i = DIV_ROUND_UP(wrap_frame(
-					cur_frame - urb->start_frame),
-					urb->interval);
-
-			/* Treat underruns as if URB_ISO_ASAP was set */
-			if ((urb->transfer_flags & URB_ISO_ASAP) ||
-					i >= urb->number_of_packets) {
-				urb->start_frame = wrap_frame(urb->start_frame
-						+ i * urb->interval);
-				i = 0;
-			}
-		}
+	if (urb->transfer_flags & URB_ISO_ASAP) {
+		if (list_empty(&ep_priv->td_list))
+			urb->start_frame = cur_frame + 5;
+		else
+			urb->start_frame = list_entry(
+				ep_priv->td_list.prev,
+				struct td, list)->frame + urb->interval;
+	}
+	urb->start_frame = wrap_frame(urb->start_frame);
+	if (frame_after(cur_frame, urb->start_frame)) {
+		dev_dbg(imx21->dev,
+			"enqueue: adjusting iso start %d (cur=%d) asap=%d\n",
+			urb->start_frame, cur_frame,
+			(urb->transfer_flags & URB_ISO_ASAP) != 0);
+		urb->start_frame = wrap_frame(cur_frame + 1);
 	}
 
 	/* set up transfers */
-	urb_priv->isoc_remaining = urb->number_of_packets - i;
 	td = urb_priv->isoc_td;
-	for (; i < urb->number_of_packets; i++, td++) {
+	for (i = 0; i < urb->number_of_packets; i++, td++) {
 		unsigned int offset = urb->iso_frame_desc[i].offset;
 		td->ep = ep;
 		td->urb = urb;
@@ -854,6 +835,7 @@ static int imx21_hc_urb_enqueue_isoc(struct usb_hcd *hcd,
 		list_add_tail(&td->list, &ep_priv->td_list);
 	}
 
+	urb_priv->isoc_remaining = urb->number_of_packets;
 	dev_vdbg(imx21->dev, "setup %d packets for iso frame %d->%d\n",
 		urb->number_of_packets, urb->start_frame, td->frame);
 
@@ -1145,7 +1127,6 @@ static void nonisoc_etd_done(struct usb_hcd *hcd, int etd_num)
 	}
 }
 
-
 static struct ep_priv *alloc_ep(void)
 {
 	int i;
@@ -1324,7 +1305,6 @@ static void process_etds(struct usb_hcd *hcd, struct imx21 *imx21, int sof)
 		u32 done = readl(imx21->regs + USBH_ETDDONESTAT) & etd_mask;
 		struct etd_priv *etd = &imx21->etd[etd_num];
 
-
 		if (done) {
 			DEBUG_LOG_FRAME(imx21, etd, last_int);
 		} else {
@@ -1402,7 +1382,6 @@ static void process_etds(struct usb_hcd *hcd, struct imx21 *imx21, int sof)
 		set_register_bits(imx21, USBH_SYSIEN, USBH_SYSIEN_SOFINT);
 	else
 		clear_register_bits(imx21, USBH_SYSIEN, USBH_SYSIEN_SOFINT);
-
 
 	spin_unlock_irqrestore(&imx21->lock, flags);
 }
@@ -1716,7 +1695,6 @@ static int imx21_hc_start(struct usb_hcd *hcd)
 	if (imx21->pdata->otg_ext_xcvr)
 		usb_control |= USBCTRL_OTC_RCV_RXDP;
 
-
 	spin_lock_irqsave(&imx21->lock, flags);
 
 	writel((USBOTG_CLK_CTRL_HST | USBOTG_CLK_CTRL_MAIN),
@@ -1747,7 +1725,6 @@ static int imx21_hc_start(struct usb_hcd *hcd)
 	if (imx21->pdata->enable_host2)
 		writel(USBH_PORTSTAT_PRTPWRST | USBH_PORTSTAT_PRTENABST,
 			imx21->regs + USBH_PORTSTAT(2));
-
 
 	hcd->state = HC_STATE_RUNNING;
 
@@ -1835,7 +1812,6 @@ static int imx21_remove(struct platform_device *pdev)
 	return 0;
 }
 
-
 static int imx21_probe(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd;
@@ -1864,7 +1840,7 @@ static int imx21_probe(struct platform_device *pdev)
 	imx21 = hcd_to_imx21(hcd);
 	imx21->hcd = hcd;
 	imx21->dev = &pdev->dev;
-	imx21->pdata = dev_get_platdata(&pdev->dev);
+	imx21->pdata = pdev->dev.platform_data;
 	if (!imx21->pdata)
 		imx21->pdata = &default_pdata;
 
@@ -1910,7 +1886,6 @@ static int imx21_probe(struct platform_device *pdev)
 		dev_err(imx21->dev, "usb_add_hcd() returned %d\n", ret);
 		goto failed_add_hcd;
 	}
-	device_wakeup_enable(hcd->self.controller);
 
 	return 0;
 
@@ -1931,7 +1906,7 @@ failed_request_mem:
 
 static struct platform_driver imx21_hcd_driver = {
 	.driver = {
-		   .name = hcd_name,
+		   .name = (char *)hcd_name,
 		   },
 	.probe = imx21_probe,
 	.remove = imx21_remove,

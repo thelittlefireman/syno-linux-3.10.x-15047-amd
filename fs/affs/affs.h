@@ -5,6 +5,14 @@
 #include <linux/mutex.h>
 #include <linux/workqueue.h>
 
+/* AmigaOS allows file names with up to 30 characters length.
+ * Names longer than that will be silently truncated. If you
+ * want to disallow this, comment out the following #define.
+ * Creating filesystem objects with longer names will then
+ * result in an error (ENAMETOOLONG).
+ */
+/*#define AFFS_NO_TRUNCATE */
+
 /* Ugly macros make the code more pretty. */
 
 #define GET_END_PTR(st,p,sz)		 ((st *)((char *)(p)+((sz)-sizeof(st))))
@@ -20,6 +28,7 @@
 
 #define AFFS_CACHE_SIZE		PAGE_SIZE
 
+#define AFFS_MAX_PREALLOC	32
 #define AFFS_LC_SIZE		(AFFS_CACHE_SIZE/sizeof(u32)/2)
 #define AFFS_AC_SIZE		(AFFS_CACHE_SIZE/sizeof(struct affs_ext_key)/2)
 #define AFFS_AC_MASK		(AFFS_AC_SIZE-1)
@@ -109,7 +118,6 @@ struct affs_sb_info {
 #define SF_OFS		0x0200		/* Old filesystem */
 #define SF_PREFIX	0x0400		/* Buffer for prefix is allocated */
 #define SF_VERBOSE	0x0800		/* Talk about fs when mounting */
-#define SF_NO_TRUNCATE	0x1000		/* Don't truncate filenames */
 
 /* short cut to get to the affs specific sb data */
 static inline struct affs_sb_info *AFFS_SB(struct super_block *sb)
@@ -129,13 +137,9 @@ extern void	affs_fix_checksum(struct super_block *sb, struct buffer_head *bh);
 extern void	secs_to_datestamp(time_t secs, struct affs_date *ds);
 extern umode_t	prot_to_mode(u32 prot);
 extern void	mode_to_prot(struct inode *inode);
-extern void	affs_error(struct super_block *sb, const char *function,
-			   const char *fmt, ...);
-extern void	affs_warning(struct super_block *sb, const char *function,
-			     const char *fmt, ...);
-extern bool	affs_nofilenametruncate(const struct dentry *dentry);
-extern int	affs_check_name(const unsigned char *name, int len,
-				bool notruncate);
+extern void	affs_error(struct super_block *sb, const char *function, const char *fmt, ...);
+extern void	affs_warning(struct super_block *sb, const char *function, const char *fmt, ...);
+extern int	affs_check_name(const unsigned char *name, int len);
 extern int	affs_copy_name(unsigned char *bstr, struct dentry *dentry);
 
 /* bitmap. c */

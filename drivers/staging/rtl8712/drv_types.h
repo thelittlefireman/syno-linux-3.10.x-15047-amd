@@ -168,7 +168,7 @@ struct _adapter {
 	struct task_struct *xmitThread;
 	pid_t recvThread;
 	uint(*dvobj_init)(struct _adapter *adapter);
-	void (*dvobj_deinit)(struct _adapter *adapter);
+	void  (*dvobj_deinit)(struct _adapter *adapter);
 	struct net_device *pnetdev;
 	int bup;
 	struct net_device_stats stats;
@@ -191,4 +191,3 @@ static inline u8 *myid(struct eeprom_priv *peepriv)
 u8 r8712_usb_hal_bus_init(struct _adapter *adapter);
 
 #endif /*__DRV_TYPES_H__*/
-

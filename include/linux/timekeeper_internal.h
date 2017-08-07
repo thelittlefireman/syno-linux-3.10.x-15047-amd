@@ -80,7 +80,6 @@ static inline struct timespec tk_xtime(struct timekeeper *tk)
 	return ts;
 }
 
-
 #ifdef CONFIG_GENERIC_TIME_VSYSCALL
 
 extern void update_vsyscall(struct timekeeper *tk);

@@ -76,7 +76,6 @@
 *
 **************************************************************************************************************/
 
-
 #ifdef _WIN32_WCE
 #include <windef.h>
 #endif
@@ -90,7 +89,6 @@
 #define GET_INFO(pp)  hcf_get_info(ifbp, (LTVP)pp)
 #define PUT_INFO(pp)  hcf_put_info(ifbp, (LTVP)pp)
 #endif
-
 
 /*---- Defines --------------------------------------------------------------*/
 #define CODEMASK				0x0000FFFFL    	/* Codemask for plug records */
@@ -106,7 +104,6 @@ typedef struct {
 	LTVP 	ltvp;
 	hcf_16	len;
 } LTV_INFO_STRUCT , *LTV_INFO_STRUCT_PTR;
-
 
 /*
  * Type: 	plugrecord
@@ -200,8 +197,6 @@ typedef struct {
 												 */
 } memimage;
 
-
-
 /*-----------------------------------------------------------------------------
  *
  * DHF function prototypes
@@ -210,7 +205,6 @@ typedef struct {
 
 EXTERN_C int dhf_download_fw(void *ifbp, memimage *fw);	/* ifbp, ignored when using the UIL */
 EXTERN_C int dhf_download_binary(memimage *fw);
-
 
 /*-----------------------------------------------------------------------------
  *
@@ -222,4 +216,3 @@ EXTERN_C int dhf_download_binary(memimage *fw);
 EXTERN_C hcf_16 *find_record_in_pda(hcf_16 *pdap, hcf_16 code);
 
 #endif  /* DHF_H */
-

@@ -9,7 +9,6 @@
  * Version 2.  See the file COPYING for more details.
  */
 
-
 #include <linux/kexec.h>
 #include <linux/smp.h>
 #include <linux/thread_info.h>
@@ -312,7 +311,7 @@ static union thread_union kexec_stack __init_task_data =
  */
 struct paca_struct kexec_paca;
 
-/* Our assembly helper, in misc_64.S */
+/* Our assembly helper, in kexec_stub.S */
 extern void kexec_sequence(void *newstack, unsigned long start,
 			   void *image, void *control,
 			   void (*clear_all)(void)) __noreturn;
@@ -369,7 +368,6 @@ void default_machine_kexec(struct kimage *image)
 
 /* Values we need to export to the second kernel via the device tree. */
 static unsigned long htab_base;
-static unsigned long htab_size;
 
 static struct property htab_base_prop = {
 	.name = "linux,htab-base",
@@ -380,7 +378,7 @@ static struct property htab_base_prop = {
 static struct property htab_size_prop = {
 	.name = "linux,htab-size",
 	.length = sizeof(unsigned long),
-	.value = &htab_size,
+	.value = &htab_size_bytes,
 };
 
 static int __init export_htab_values(void)
@@ -404,9 +402,8 @@ static int __init export_htab_values(void)
 	if (prop)
 		of_remove_property(node, prop);
 
-	htab_base = cpu_to_be64(__pa(htab_address));
+	htab_base = __pa(htab_address);
 	of_add_property(node, &htab_base_prop);
-	htab_size = cpu_to_be64(htab_size_bytes);
 	of_add_property(node, &htab_size_prop);
 
 	of_node_put(node);

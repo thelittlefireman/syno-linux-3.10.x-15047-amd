@@ -32,7 +32,6 @@
 #include <asm/hardwall.h>
 #include <arch/chip.h>
 
-
 /*
  * Support /proc/cpuinfo
  */
@@ -113,6 +112,7 @@ arch_initcall(proc_tile_init);
  * Support /proc/sys/tile directory
  */
 
+#ifndef __tilegx__  /* FIXME: GX: no support for unaligned access yet */
 static ctl_table unaligned_subtable[] = {
 	{
 		.procname	= "enabled",
@@ -159,3 +159,4 @@ static int __init proc_sys_tile_init(void)
 }
 
 arch_initcall(proc_sys_tile_init);
+#endif

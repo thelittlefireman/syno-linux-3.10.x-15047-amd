@@ -8,12 +8,12 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/init.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/input-polldev.h>
 #include <linux/gpio.h>
 #include <linux/gpio_mouse.h>
-
 
 /*
  * Timer function which is run every scan_ms ms when the device is opened.
@@ -47,7 +47,7 @@ static void gpio_mouse_scan(struct input_polled_dev *dev)
 
 static int gpio_mouse_probe(struct platform_device *pdev)
 {
-	struct gpio_mouse_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct gpio_mouse_platform_data *pdata = pdev->dev.platform_data;
 	struct input_polled_dev *input_poll;
 	struct input_dev *input;
 	int pin, i;
@@ -137,6 +137,7 @@ static int gpio_mouse_probe(struct platform_device *pdev)
 
  out_free_polldev:
 	input_free_polled_device(input_poll);
+	platform_set_drvdata(pdev, NULL);
 
  out_free_gpios:
 	while (--i >= 0) {
@@ -163,6 +164,8 @@ static int gpio_mouse_remove(struct platform_device *pdev)
 			gpio_free(pin);
 	}
 
+	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
 
@@ -180,4 +183,3 @@ MODULE_AUTHOR("Hans-Christian Egtvedt <egtvedt@samfundet.no>");
 MODULE_DESCRIPTION("GPIO mouse driver");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:gpio_mouse"); /* work with hotplug and coldplug */
-

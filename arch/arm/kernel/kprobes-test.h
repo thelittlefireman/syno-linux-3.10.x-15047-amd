@@ -16,7 +16,6 @@
 #define NORMAL_ISA "32"
 #endif
 
-
 /* Flags used in kprobe_test_flags */
 #define TEST_FLAG_NO_ITBLOCK	(1<<0)
 #define TEST_FLAG_FULL_ITBLOCK	(1<<1)
@@ -25,9 +24,7 @@
 extern int kprobe_test_flags;
 extern int kprobe_test_cc_position;
 
-
 #define TEST_MEMORY_SIZE 256
-
 
 /*
  * Test case structures.
@@ -82,7 +79,6 @@ struct test_arg_end {
 	u16	end_offset;
 };
 
-
 /*
  * Building blocks for test cases.
  *
@@ -115,7 +111,7 @@ struct test_arg_end {
 	/* multiple strings to be concatenated.  */		\
 	".ascii "#title"				\n\t"	\
 	".byte	0					\n\t"	\
-	".align	2, 0					\n\t"
+	".align	2					\n\t"
 
 #define	TEST_ARG_REG(reg, val)					\
 	".byte	"__stringify(ARG_TYPE_REG)"		\n\t"	\
@@ -184,7 +180,6 @@ struct test_arg_end {
 	: :							\
 	: "r0", "r1", "r2", "r3", "ip", "lr", "memory", "cc"	\
 	);
-
 
 /*
  * Macros to define test cases.
@@ -392,7 +387,6 @@ struct test_arg_end {
 	"	"codex"			\n\t"					\
 	TESTCASE_END
 
-
 /*
  * Macros for defining space directives spread over multiple lines.
  * These are required so the compiler guesses better the length of inline asm
@@ -411,7 +405,6 @@ struct test_arg_end {
 #define SPACE_0x800	TWICE(SPACE_0x400)
 #define SPACE_0x1000	TWICE(SPACE_0x800)
 
-
 /* Various values used in test cases... */
 #define N(val)	(val ^ 0xffffffff)
 #define VAL1	0x12345678
@@ -422,7 +415,6 @@ struct test_arg_end {
 #define VALR	0xdeaddead
 #define HH1	0x0123fecb
 #define HH2	0xa9874567
-
 
 #ifdef CONFIG_THUMB2_KERNEL
 void kprobe_thumb16_test_cases(void);

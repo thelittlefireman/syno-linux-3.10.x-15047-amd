@@ -3,7 +3,6 @@
 
 #include <uapi/linux/netfilter_bridge.h>
 
-
 enum nf_br_hook_priorities {
 	NF_BR_PRI_FIRST = INT_MIN,
 	NF_BR_PRI_NAT_DST_BRIDGED = -300,
@@ -25,7 +24,7 @@ enum nf_br_hook_priorities {
 #define BRNF_PPPoE			0x20
 
 /* Only used in br_forward.c */
-int nf_bridge_copy_header(struct sk_buff *skb);
+extern int nf_bridge_copy_header(struct sk_buff *skb);
 static inline int nf_bridge_maybe_copy_header(struct sk_buff *skb)
 {
 	if (skb->nf_bridge &&
@@ -53,7 +52,7 @@ static inline unsigned int nf_bridge_mtu_reduction(const struct sk_buff *skb)
 	return 0;
 }
 
-int br_handle_frame_finish(struct sk_buff *skb);
+extern int br_handle_frame_finish(struct sk_buff *skb);
 /* Only used in br_device.c */
 static inline int br_nf_pre_routing_finish_bridge_slow(struct sk_buff *skb)
 {

@@ -84,6 +84,8 @@ enum {
 	STAC_DELL_EQ,
 	STAC_ALIENWARE_M17X,
 	STAC_92HD89XX_HP_FRONT_JACK,
+	STAC_92HD89XX_HP_Z1_G2_RIGHT_MIC_JACK,
+	STAC_92HD73XX_ASUS_MOBO,
 	STAC_92HD73XX_MODELS
 };
 
@@ -102,7 +104,6 @@ enum {
 	STAC_92HD83XXX_HEADSET_JACK,
 	STAC_92HD83XXX_HP,
 	STAC_HP_ENVY_BASS,
-	STAC_HP_BNB13_EQ,
 	STAC_92HD83XXX_MODELS
 };
 
@@ -161,7 +162,6 @@ enum {
 	STAC_D965_VERBS,
 	STAC_DELL_3ST,
 	STAC_DELL_BIOS,
-	STAC_DELL_BIOS_AMIC,
 	STAC_DELL_BIOS_SPDIF,
 	STAC_927X_DELL_DMIC,
 	STAC_927X_VOLKNOB,
@@ -196,7 +196,7 @@ struct sigmatel_spec {
 	int default_polarity;
 
 	unsigned int mic_mute_led_gpio; /* capture mute LED GPIO */
-	unsigned int mic_enabled; /* current mic mute state (bitmask) */
+	bool mic_mute_led_on; /* current mic mute state */
 
 	/* stream */
 	unsigned int stream_delay;
@@ -238,7 +238,6 @@ static const hda_nid_t stac92hd83xxx_pwr_nids[7] = {
 static const hda_nid_t stac92hd71bxx_pwr_nids[3] = {
 	0x0a, 0x0d, 0x0f
 };
-
 
 /*
  * PCM hooks
@@ -296,7 +295,7 @@ static void stac_gpio_set(struct hda_codec *codec, unsigned int mask,
 {
 	unsigned int gpiostate, gpiomask, gpiodir;
 
-	codec_dbg(codec, "%s msk %x dir %x gpio %x\n", __func__, mask, dir_mask, data);
+	snd_printdd("%s msk %x dir %x gpio %x\n", __func__, mask, dir_mask, data);
 
 	gpiostate = snd_hda_codec_read(codec, codec->afg, 0,
 				       AC_VERB_GET_GPIO_DATA, 0);
@@ -326,26 +325,19 @@ static void stac_gpio_set(struct hda_codec *codec, unsigned int mask,
 
 /* hook for controlling mic-mute LED GPIO */
 static void stac_capture_led_hook(struct hda_codec *codec,
-				  struct snd_kcontrol *kcontrol,
-				  struct snd_ctl_elem_value *ucontrol)
+			       struct snd_ctl_elem_value *ucontrol)
 {
 	struct sigmatel_spec *spec = codec->spec;
-	unsigned int mask;
-	bool cur_mute, prev_mute;
+	bool mute;
 
-	if (!kcontrol || !ucontrol)
+	if (!ucontrol)
 		return;
 
-	mask = 1U << snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
-	prev_mute = !spec->mic_enabled;
-	if (ucontrol->value.integer.value[0] ||
-	    ucontrol->value.integer.value[1])
-		spec->mic_enabled |= mask;
-	else
-		spec->mic_enabled &= ~mask;
-	cur_mute = !spec->mic_enabled;
-	if (cur_mute != prev_mute) {
-		if (cur_mute)
+	mute = !(ucontrol->value.integer.value[0] ||
+		 ucontrol->value.integer.value[1]);
+	if (spec->mic_mute_led_on != mute) {
+		spec->mic_mute_led_on = mute;
+		if (mute)
 			spec->gpio_data |= spec->mic_mute_led_gpio;
 		else
 			spec->gpio_data &= ~spec->mic_mute_led_gpio;
@@ -359,7 +351,7 @@ static int stac_vrefout_set(struct hda_codec *codec,
 {
 	int error, pinctl;
 
-	codec_dbg(codec, "%s, nid %x ctl %x\n", __func__, nid, new_vref);
+	snd_printdd("%s, nid %x ctl %x\n", __func__, nid, new_vref);
 	pinctl = snd_hda_codec_read(codec, nid, 0,
 				AC_VERB_GET_PIN_WIDGET_CONTROL, 0);
 
@@ -375,17 +367,6 @@ static int stac_vrefout_set(struct hda_codec *codec,
 		return error;
 
 	return 1;
-}
-
-/* prevent codec AFG to D3 state when vref-out pin is used for mute LED */
-/* this hook is set in stac_setup_gpio() */
-static unsigned int stac_vref_led_power_filter(struct hda_codec *codec,
-					       hda_nid_t nid,
-					       unsigned int power_state)
-{
-	if (nid == codec->afg && power_state == AC_PWRST_D3)
-		return AC_PWRST_D1;
-	return snd_hda_gen_path_power_filter(codec, nid, power_state);
 }
 
 /* update mute-LED accoring to the master switch */
@@ -558,8 +539,8 @@ static void stac_init_power_map(struct hda_codec *codec)
 		if (snd_hda_jack_tbl_get(codec, nid))
 			continue;
 		if (def_conf == AC_JACK_PORT_COMPLEX &&
-		    !(spec->vref_mute_led_nid == nid ||
-		      is_jack_detectable(codec, nid))) {
+		    spec->vref_mute_led_nid != nid &&
+		    is_jack_detectable(codec, nid)) {
 			snd_hda_jack_detect_enable_callback(codec, nid,
 							    STAC_PWR_EVENT,
 							    jack_update_power);
@@ -592,9 +573,9 @@ static void stac_store_hints(struct hda_codec *codec)
 			spec->gpio_mask;
 	}
 	if (get_int_hint(codec, "gpio_dir", &spec->gpio_dir))
-		spec->gpio_mask &= spec->gpio_mask;
-	if (get_int_hint(codec, "gpio_data", &spec->gpio_data))
 		spec->gpio_dir &= spec->gpio_mask;
+	if (get_int_hint(codec, "gpio_data", &spec->gpio_data))
+		spec->gpio_data &= spec->gpio_mask;
 	if (get_int_hint(codec, "eapd_mask", &spec->eapd_mask))
 		spec->eapd_mask &= spec->gpio_mask;
 	if (get_int_hint(codec, "gpio_mute", &spec->gpio_mute))
@@ -721,6 +702,7 @@ static bool hp_bnb2011_with_dock(struct hda_codec *codec)
 static bool hp_blike_system(u32 subsystem_id)
 {
 	switch (subsystem_id) {
+	case 0x103c1473: /* HP ProBook 6550b */
 	case 0x103c1520:
 	case 0x103c1521:
 	case 0x103c1523:
@@ -1244,7 +1226,6 @@ static const struct hda_pintbl dell9200_d23_pin_configs[] = {
 	{}
 };
 
-
 /* 
     STAC 9200-32 pin configs for
     102801B5 (Dell Inspiron 630m)
@@ -1381,7 +1362,6 @@ static const struct hda_pintbl oqo9200_pin_configs[] = {
 	{}
 };
 
-
 static void stac9200_fixup_panasonic(struct hda_codec *codec,
 				     const struct hda_fixup *fix, int action)
 {
@@ -1396,7 +1376,6 @@ static void stac9200_fixup_panasonic(struct hda_codec *codec,
 		spec->gen.suppress_auto_mute = 1;
 	}
 }
-
 
 static const struct hda_fixup stac9200_fixups[] = {
 	[STAC_REF] = {
@@ -1803,6 +1782,11 @@ static const struct hda_pintbl stac92hd89xx_hp_front_jack_pin_configs[] = {
 	{}
 };
 
+static const struct hda_pintbl stac92hd89xx_hp_z1_g2_right_mic_jack_pin_configs[] = {
+	{ 0x0e, 0x400000f0 },
+	{}
+};
+
 static void stac92hd73xx_fixup_ref(struct hda_codec *codec,
 				   const struct hda_fixup *fix, int action)
 {
@@ -1925,7 +1909,22 @@ static const struct hda_fixup stac92hd73xx_fixups[] = {
 	[STAC_92HD89XX_HP_FRONT_JACK] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = stac92hd89xx_hp_front_jack_pin_configs,
-	}
+	},
+	[STAC_92HD89XX_HP_Z1_G2_RIGHT_MIC_JACK] = {
+		.type = HDA_FIXUP_PINS,
+		.v.pins = stac92hd89xx_hp_z1_g2_right_mic_jack_pin_configs,
+	},
+	[STAC_92HD73XX_ASUS_MOBO] = {
+		.type = HDA_FIXUP_PINS,
+		.v.pins = (const struct hda_pintbl[]) {
+			/* enable 5.1 and SPDIF out */
+			{ 0x0c, 0x01014411 },
+			{ 0x0d, 0x01014410 },
+			{ 0x0e, 0x01014412 },
+			{ 0x22, 0x014b1180 },
+			{ }
+		}
+	},
 };
 
 static const struct hda_model_fixup stac92hd73xx_models[] = {
@@ -1937,6 +1936,7 @@ static const struct hda_model_fixup stac92hd73xx_models[] = {
 	{ .id = STAC_DELL_M6_BOTH, .name = "dell-m6" },
 	{ .id = STAC_DELL_EQ, .name = "dell-eq" },
 	{ .id = STAC_ALIENWARE_M17X, .name = "alienware" },
+	{ .id = STAC_92HD73XX_ASUS_MOBO, .name = "asus-mobo" },
 	{}
 };
 
@@ -1985,8 +1985,12 @@ static const struct snd_pci_quirk stac92hd73xx_fixup_tbl[] = {
 		      "Alienware M17x", STAC_ALIENWARE_M17X),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_DELL, 0x0490,
 		      "Alienware M17x R3", STAC_DELL_EQ),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1927,
+				"HP Z1 G2", STAC_92HD89XX_HP_Z1_G2_RIGHT_MIC_JACK),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2b17,
 				"unknown HP", STAC_92HD89XX_HP_FRONT_JACK),
+	SND_PCI_QUIRK(PCI_VENDOR_ID_ASUSTEK, 0x83f8, "ASUS AT4NM10",
+		      STAC_92HD73XX_ASUS_MOBO),
 	{} /* terminator */
 };
 
@@ -2086,12 +2090,9 @@ static void stac92hd83xxx_fixup_hp(struct hda_codec *codec,
 	}
 
 	if (find_mute_led_cfg(codec, spec->default_polarity))
-		codec_dbg(codec, "mute LED gpio %d polarity %d\n",
+		snd_printd("mute LED gpio %d polarity %d\n",
 				spec->gpio_led,
 				spec->gpio_led_polarity);
-
-	/* allow auto-switching of dock line-in */
-	spec->gen.line_in_auto_switch = true;
 }
 
 static void stac92hd83xxx_fixup_hp_zephyr(struct hda_codec *codec,
@@ -2127,11 +2128,8 @@ static void stac92hd83xxx_fixup_hp_mic_led(struct hda_codec *codec,
 {
 	struct sigmatel_spec *spec = codec->spec;
 
-	if (action == HDA_FIXUP_ACT_PRE_PROBE) {
+	if (action == HDA_FIXUP_ACT_PRE_PROBE)
 		spec->mic_mute_led_gpio = 0x08; /* GPIO3 */
-		/* resetting controller clears GPIO, so we need to keep on */
-		codec->bus->power_keep_link_on = 1;
-	}
 }
 
 static void stac92hd83xxx_fixup_hp_led_gpio10(struct hda_codec *codec,
@@ -2153,434 +2151,6 @@ static void stac92hd83xxx_fixup_headset_jack(struct hda_codec *codec,
 	if (action == HDA_FIXUP_ACT_PRE_PROBE)
 		spec->headset_jack = 1;
 }
-
-static const struct hda_verb hp_bnb13_eq_verbs[] = {
-	/* 44.1KHz base */
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x68 },
-	{ 0x22, 0x7A8, 0x17 },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x68 },
-	{ 0x22, 0x7AB, 0x17 },
-	{ 0x22, 0x7AC, 0x00 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x83 },
-	{ 0x22, 0x7A7, 0x2F },
-	{ 0x22, 0x7A8, 0xD1 },
-	{ 0x22, 0x7A9, 0x83 },
-	{ 0x22, 0x7AA, 0x2F },
-	{ 0x22, 0x7AB, 0xD1 },
-	{ 0x22, 0x7AC, 0x01 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x68 },
-	{ 0x22, 0x7A8, 0x17 },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x68 },
-	{ 0x22, 0x7AB, 0x17 },
-	{ 0x22, 0x7AC, 0x02 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x7C },
-	{ 0x22, 0x7A7, 0xC6 },
-	{ 0x22, 0x7A8, 0x0C },
-	{ 0x22, 0x7A9, 0x7C },
-	{ 0x22, 0x7AA, 0xC6 },
-	{ 0x22, 0x7AB, 0x0C },
-	{ 0x22, 0x7AC, 0x03 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC3 },
-	{ 0x22, 0x7A7, 0x25 },
-	{ 0x22, 0x7A8, 0xAF },
-	{ 0x22, 0x7A9, 0xC3 },
-	{ 0x22, 0x7AA, 0x25 },
-	{ 0x22, 0x7AB, 0xAF },
-	{ 0x22, 0x7AC, 0x04 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x85 },
-	{ 0x22, 0x7A8, 0x73 },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x85 },
-	{ 0x22, 0x7AB, 0x73 },
-	{ 0x22, 0x7AC, 0x05 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x85 },
-	{ 0x22, 0x7A7, 0x39 },
-	{ 0x22, 0x7A8, 0xC7 },
-	{ 0x22, 0x7A9, 0x85 },
-	{ 0x22, 0x7AA, 0x39 },
-	{ 0x22, 0x7AB, 0xC7 },
-	{ 0x22, 0x7AC, 0x06 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3C },
-	{ 0x22, 0x7A7, 0x90 },
-	{ 0x22, 0x7A8, 0xB0 },
-	{ 0x22, 0x7A9, 0x3C },
-	{ 0x22, 0x7AA, 0x90 },
-	{ 0x22, 0x7AB, 0xB0 },
-	{ 0x22, 0x7AC, 0x07 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x7A },
-	{ 0x22, 0x7A7, 0xC6 },
-	{ 0x22, 0x7A8, 0x39 },
-	{ 0x22, 0x7A9, 0x7A },
-	{ 0x22, 0x7AA, 0xC6 },
-	{ 0x22, 0x7AB, 0x39 },
-	{ 0x22, 0x7AC, 0x08 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC4 },
-	{ 0x22, 0x7A7, 0xE9 },
-	{ 0x22, 0x7A8, 0xDC },
-	{ 0x22, 0x7A9, 0xC4 },
-	{ 0x22, 0x7AA, 0xE9 },
-	{ 0x22, 0x7AB, 0xDC },
-	{ 0x22, 0x7AC, 0x09 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3D },
-	{ 0x22, 0x7A7, 0xE1 },
-	{ 0x22, 0x7A8, 0x0D },
-	{ 0x22, 0x7A9, 0x3D },
-	{ 0x22, 0x7AA, 0xE1 },
-	{ 0x22, 0x7AB, 0x0D },
-	{ 0x22, 0x7AC, 0x0A },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x89 },
-	{ 0x22, 0x7A7, 0xB6 },
-	{ 0x22, 0x7A8, 0xEB },
-	{ 0x22, 0x7A9, 0x89 },
-	{ 0x22, 0x7AA, 0xB6 },
-	{ 0x22, 0x7AB, 0xEB },
-	{ 0x22, 0x7AC, 0x0B },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x39 },
-	{ 0x22, 0x7A7, 0x9D },
-	{ 0x22, 0x7A8, 0xFE },
-	{ 0x22, 0x7A9, 0x39 },
-	{ 0x22, 0x7AA, 0x9D },
-	{ 0x22, 0x7AB, 0xFE },
-	{ 0x22, 0x7AC, 0x0C },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x76 },
-	{ 0x22, 0x7A7, 0x49 },
-	{ 0x22, 0x7A8, 0x15 },
-	{ 0x22, 0x7A9, 0x76 },
-	{ 0x22, 0x7AA, 0x49 },
-	{ 0x22, 0x7AB, 0x15 },
-	{ 0x22, 0x7AC, 0x0D },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC8 },
-	{ 0x22, 0x7A7, 0x80 },
-	{ 0x22, 0x7A8, 0xF5 },
-	{ 0x22, 0x7A9, 0xC8 },
-	{ 0x22, 0x7AA, 0x80 },
-	{ 0x22, 0x7AB, 0xF5 },
-	{ 0x22, 0x7AC, 0x0E },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x0F },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x90 },
-	{ 0x22, 0x7A7, 0x68 },
-	{ 0x22, 0x7A8, 0xF1 },
-	{ 0x22, 0x7A9, 0x90 },
-	{ 0x22, 0x7AA, 0x68 },
-	{ 0x22, 0x7AB, 0xF1 },
-	{ 0x22, 0x7AC, 0x10 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x34 },
-	{ 0x22, 0x7A7, 0x47 },
-	{ 0x22, 0x7A8, 0x6C },
-	{ 0x22, 0x7A9, 0x34 },
-	{ 0x22, 0x7AA, 0x47 },
-	{ 0x22, 0x7AB, 0x6C },
-	{ 0x22, 0x7AC, 0x11 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x6F },
-	{ 0x22, 0x7A7, 0x97 },
-	{ 0x22, 0x7A8, 0x0F },
-	{ 0x22, 0x7A9, 0x6F },
-	{ 0x22, 0x7AA, 0x97 },
-	{ 0x22, 0x7AB, 0x0F },
-	{ 0x22, 0x7AC, 0x12 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xCB },
-	{ 0x22, 0x7A7, 0xB8 },
-	{ 0x22, 0x7A8, 0x94 },
-	{ 0x22, 0x7A9, 0xCB },
-	{ 0x22, 0x7AA, 0xB8 },
-	{ 0x22, 0x7AB, 0x94 },
-	{ 0x22, 0x7AC, 0x13 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x14 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x95 },
-	{ 0x22, 0x7A7, 0x76 },
-	{ 0x22, 0x7A8, 0x5B },
-	{ 0x22, 0x7A9, 0x95 },
-	{ 0x22, 0x7AA, 0x76 },
-	{ 0x22, 0x7AB, 0x5B },
-	{ 0x22, 0x7AC, 0x15 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x31 },
-	{ 0x22, 0x7A7, 0xAC },
-	{ 0x22, 0x7A8, 0x31 },
-	{ 0x22, 0x7A9, 0x31 },
-	{ 0x22, 0x7AA, 0xAC },
-	{ 0x22, 0x7AB, 0x31 },
-	{ 0x22, 0x7AC, 0x16 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x6A },
-	{ 0x22, 0x7A7, 0x89 },
-	{ 0x22, 0x7A8, 0xA5 },
-	{ 0x22, 0x7A9, 0x6A },
-	{ 0x22, 0x7AA, 0x89 },
-	{ 0x22, 0x7AB, 0xA5 },
-	{ 0x22, 0x7AC, 0x17 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xCE },
-	{ 0x22, 0x7A7, 0x53 },
-	{ 0x22, 0x7A8, 0xCF },
-	{ 0x22, 0x7A9, 0xCE },
-	{ 0x22, 0x7AA, 0x53 },
-	{ 0x22, 0x7AB, 0xCF },
-	{ 0x22, 0x7AC, 0x18 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x19 },
-	{ 0x22, 0x7AD, 0x80 },
-	/* 48KHz base */
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x88 },
-	{ 0x22, 0x7A8, 0xDC },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x88 },
-	{ 0x22, 0x7AB, 0xDC },
-	{ 0x22, 0x7AC, 0x1A },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x82 },
-	{ 0x22, 0x7A7, 0xEE },
-	{ 0x22, 0x7A8, 0x46 },
-	{ 0x22, 0x7A9, 0x82 },
-	{ 0x22, 0x7AA, 0xEE },
-	{ 0x22, 0x7AB, 0x46 },
-	{ 0x22, 0x7AC, 0x1B },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x88 },
-	{ 0x22, 0x7A8, 0xDC },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x88 },
-	{ 0x22, 0x7AB, 0xDC },
-	{ 0x22, 0x7AC, 0x1C },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x7D },
-	{ 0x22, 0x7A7, 0x09 },
-	{ 0x22, 0x7A8, 0x28 },
-	{ 0x22, 0x7A9, 0x7D },
-	{ 0x22, 0x7AA, 0x09 },
-	{ 0x22, 0x7AB, 0x28 },
-	{ 0x22, 0x7AC, 0x1D },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC2 },
-	{ 0x22, 0x7A7, 0xE5 },
-	{ 0x22, 0x7A8, 0xB4 },
-	{ 0x22, 0x7A9, 0xC2 },
-	{ 0x22, 0x7AA, 0xE5 },
-	{ 0x22, 0x7AB, 0xB4 },
-	{ 0x22, 0x7AC, 0x1E },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0xA3 },
-	{ 0x22, 0x7A8, 0x1F },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0xA3 },
-	{ 0x22, 0x7AB, 0x1F },
-	{ 0x22, 0x7AC, 0x1F },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x84 },
-	{ 0x22, 0x7A7, 0xCA },
-	{ 0x22, 0x7A8, 0xF1 },
-	{ 0x22, 0x7A9, 0x84 },
-	{ 0x22, 0x7AA, 0xCA },
-	{ 0x22, 0x7AB, 0xF1 },
-	{ 0x22, 0x7AC, 0x20 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3C },
-	{ 0x22, 0x7A7, 0xD5 },
-	{ 0x22, 0x7A8, 0x9C },
-	{ 0x22, 0x7A9, 0x3C },
-	{ 0x22, 0x7AA, 0xD5 },
-	{ 0x22, 0x7AB, 0x9C },
-	{ 0x22, 0x7AC, 0x21 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x7B },
-	{ 0x22, 0x7A7, 0x35 },
-	{ 0x22, 0x7A8, 0x0F },
-	{ 0x22, 0x7A9, 0x7B },
-	{ 0x22, 0x7AA, 0x35 },
-	{ 0x22, 0x7AB, 0x0F },
-	{ 0x22, 0x7AC, 0x22 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC4 },
-	{ 0x22, 0x7A7, 0x87 },
-	{ 0x22, 0x7A8, 0x45 },
-	{ 0x22, 0x7A9, 0xC4 },
-	{ 0x22, 0x7AA, 0x87 },
-	{ 0x22, 0x7AB, 0x45 },
-	{ 0x22, 0x7AC, 0x23 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3E },
-	{ 0x22, 0x7A7, 0x0A },
-	{ 0x22, 0x7A8, 0x78 },
-	{ 0x22, 0x7A9, 0x3E },
-	{ 0x22, 0x7AA, 0x0A },
-	{ 0x22, 0x7AB, 0x78 },
-	{ 0x22, 0x7AC, 0x24 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x88 },
-	{ 0x22, 0x7A7, 0xE2 },
-	{ 0x22, 0x7A8, 0x05 },
-	{ 0x22, 0x7A9, 0x88 },
-	{ 0x22, 0x7AA, 0xE2 },
-	{ 0x22, 0x7AB, 0x05 },
-	{ 0x22, 0x7AC, 0x25 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x3A },
-	{ 0x22, 0x7A7, 0x1A },
-	{ 0x22, 0x7A8, 0xA3 },
-	{ 0x22, 0x7A9, 0x3A },
-	{ 0x22, 0x7AA, 0x1A },
-	{ 0x22, 0x7AB, 0xA3 },
-	{ 0x22, 0x7AC, 0x26 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x77 },
-	{ 0x22, 0x7A7, 0x1D },
-	{ 0x22, 0x7A8, 0xFB },
-	{ 0x22, 0x7A9, 0x77 },
-	{ 0x22, 0x7AA, 0x1D },
-	{ 0x22, 0x7AB, 0xFB },
-	{ 0x22, 0x7AC, 0x27 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xC7 },
-	{ 0x22, 0x7A7, 0xDA },
-	{ 0x22, 0x7A8, 0xE5 },
-	{ 0x22, 0x7A9, 0xC7 },
-	{ 0x22, 0x7AA, 0xDA },
-	{ 0x22, 0x7AB, 0xE5 },
-	{ 0x22, 0x7AC, 0x28 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x29 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x8E },
-	{ 0x22, 0x7A7, 0xD7 },
-	{ 0x22, 0x7A8, 0x22 },
-	{ 0x22, 0x7A9, 0x8E },
-	{ 0x22, 0x7AA, 0xD7 },
-	{ 0x22, 0x7AB, 0x22 },
-	{ 0x22, 0x7AC, 0x2A },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x35 },
-	{ 0x22, 0x7A7, 0x26 },
-	{ 0x22, 0x7A8, 0xC6 },
-	{ 0x22, 0x7A9, 0x35 },
-	{ 0x22, 0x7AA, 0x26 },
-	{ 0x22, 0x7AB, 0xC6 },
-	{ 0x22, 0x7AC, 0x2B },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x71 },
-	{ 0x22, 0x7A7, 0x28 },
-	{ 0x22, 0x7A8, 0xDE },
-	{ 0x22, 0x7A9, 0x71 },
-	{ 0x22, 0x7AA, 0x28 },
-	{ 0x22, 0x7AB, 0xDE },
-	{ 0x22, 0x7AC, 0x2C },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xCA },
-	{ 0x22, 0x7A7, 0xD9 },
-	{ 0x22, 0x7A8, 0x3A },
-	{ 0x22, 0x7A9, 0xCA },
-	{ 0x22, 0x7AA, 0xD9 },
-	{ 0x22, 0x7AB, 0x3A },
-	{ 0x22, 0x7AC, 0x2D },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x2E },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x93 },
-	{ 0x22, 0x7A7, 0x5E },
-	{ 0x22, 0x7A8, 0xD8 },
-	{ 0x22, 0x7A9, 0x93 },
-	{ 0x22, 0x7AA, 0x5E },
-	{ 0x22, 0x7AB, 0xD8 },
-	{ 0x22, 0x7AC, 0x2F },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x32 },
-	{ 0x22, 0x7A7, 0xB7 },
-	{ 0x22, 0x7A8, 0xB1 },
-	{ 0x22, 0x7A9, 0x32 },
-	{ 0x22, 0x7AA, 0xB7 },
-	{ 0x22, 0x7AB, 0xB1 },
-	{ 0x22, 0x7AC, 0x30 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x6C },
-	{ 0x22, 0x7A7, 0xA1 },
-	{ 0x22, 0x7A8, 0x28 },
-	{ 0x22, 0x7A9, 0x6C },
-	{ 0x22, 0x7AA, 0xA1 },
-	{ 0x22, 0x7AB, 0x28 },
-	{ 0x22, 0x7AC, 0x31 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0xCD },
-	{ 0x22, 0x7A7, 0x48 },
-	{ 0x22, 0x7A8, 0x4F },
-	{ 0x22, 0x7A9, 0xCD },
-	{ 0x22, 0x7AA, 0x48 },
-	{ 0x22, 0x7AB, 0x4F },
-	{ 0x22, 0x7AC, 0x32 },
-	{ 0x22, 0x7AD, 0x80 },
-	{ 0x22, 0x7A6, 0x40 },
-	{ 0x22, 0x7A7, 0x00 },
-	{ 0x22, 0x7A8, 0x00 },
-	{ 0x22, 0x7A9, 0x40 },
-	{ 0x22, 0x7AA, 0x00 },
-	{ 0x22, 0x7AB, 0x00 },
-	{ 0x22, 0x7AC, 0x33 },
-	{ 0x22, 0x7AD, 0x80 },
-	/* common */
-	{ 0x22, 0x782, 0xC1 },
-	{ 0x22, 0x771, 0x2C },
-	{ 0x22, 0x772, 0x2C },
-	{ 0x22, 0x788, 0x04 },
-	{ 0x01, 0x7B0, 0x08 },
-	{}
-};
 
 static const struct hda_fixup stac92hd83xxx_fixups[] = {
 	[STAC_92HD83XXX_REF] = {
@@ -2656,12 +2226,6 @@ static const struct hda_fixup stac92hd83xxx_fixups[] = {
 			{}
 		},
 	},
-	[STAC_HP_BNB13_EQ] = {
-		.type = HDA_FIXUP_VERBS,
-		.v.verbs = hp_bnb13_eq_verbs,
-		.chained = true,
-		.chain_id = STAC_92HD83XXX_HP_MIC_LED,
-	},
 };
 
 static const struct hda_model_fixup stac92hd83xxx_models[] = {
@@ -2677,7 +2241,6 @@ static const struct hda_model_fixup stac92hd83xxx_models[] = {
 	{ .id = STAC_92HD83XXX_HP_MIC_LED, .name = "hp-mic-led" },
 	{ .id = STAC_92HD83XXX_HEADSET_JACK, .name = "headset-jack" },
 	{ .id = STAC_HP_ENVY_BASS, .name = "hp-envy-bass" },
-	{ .id = STAC_HP_BNB13_EQ, .name = "hp-bnb13-eq" },
 	{}
 };
 
@@ -2726,106 +2289,8 @@ static const struct snd_pci_quirk stac92hd83xxx_fixup_tbl[] = {
 	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1899,
 			  "HP Folio 13", STAC_HP_LED_GPIO10),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x18df,
-			  "HP Folio", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x18F8,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1909,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x190A,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1940,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1941,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1942,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1943,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1944,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1945,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1946,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1948,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1949,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x194A,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x194B,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x194C,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x194E,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x194F,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1950,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1951,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x195A,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x195B,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x195C,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x1991,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2103,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2104,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2105,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2106,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2107,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2108,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2109,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x210A,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x210B,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x211C,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x211D,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x211E,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x211F,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2120,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2121,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2122,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2123,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x213E,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x213F,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x2140,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x21B2,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x21B3,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x21B5,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
-	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x21B6,
-			  "HP bNB13", STAC_HP_BNB13_EQ),
+			  "HP Folio", STAC_92HD83XXX_HP_MIC_LED),
 	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_HP, 0xff00, 0x1900,
-			  "HP", STAC_92HD83XXX_HP_MIC_LED),
-	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_HP, 0xff00, 0x2000,
-			  "HP", STAC_92HD83XXX_HP_MIC_LED),
-	SND_PCI_QUIRK_MASK(PCI_VENDOR_ID_HP, 0xff00, 0x2100,
 			  "HP", STAC_92HD83XXX_HP_MIC_LED),
 	SND_PCI_QUIRK(PCI_VENDOR_ID_HP, 0x3388,
 			  "HP", STAC_92HD83XXX_HP_cNB11_INTQUAD),
@@ -3052,7 +2517,6 @@ static void stac92hd71bxx_fixup_hp_hdx(struct hda_codec *codec,
 	spec->gpio_led = 0x08;
 }
 
-
 static void stac92hd71bxx_fixup_hp(struct hda_codec *codec,
 				   const struct hda_fixup *fix, int action)
 {
@@ -3080,7 +2544,7 @@ static void stac92hd71bxx_fixup_hp(struct hda_codec *codec,
 	}
 
 	if (find_mute_led_cfg(codec, 1))
-		codec_dbg(codec, "mute LED gpio %d polarity %d\n",
+		snd_printd("mute LED gpio %d polarity %d\n",
 				spec->gpio_led,
 				spec->gpio_led_polarity);
 
@@ -3819,6 +3283,8 @@ static const struct hda_fixup stac927x_fixups[] = {
 	[STAC_DELL_BIOS] = {
 		.type = HDA_FIXUP_PINS,
 		.v.pins = (const struct hda_pintbl[]) {
+			/* configure the analog microphone on some laptops */
+			{ 0x0c, 0x90a79130 },
 			/* correct the front output jack as a hp out */
 			{ 0x0f, 0x0221101f },
 			/* correct the front input jack as a mic */
@@ -3827,16 +3293,6 @@ static const struct hda_fixup stac927x_fixups[] = {
 		},
 		.chained = true,
 		.chain_id = STAC_927X_DELL_DMIC,
-	},
-	[STAC_DELL_BIOS_AMIC] = {
-		.type = HDA_FIXUP_PINS,
-		.v.pins = (const struct hda_pintbl[]) {
-			/* configure the analog microphone on some laptops */
-			{ 0x0c, 0x90a79130 },
-			{}
-		},
-		.chained = true,
-		.chain_id = STAC_DELL_BIOS,
 	},
 	[STAC_DELL_BIOS_SPDIF] = {
 		.type = HDA_FIXUP_PINS,
@@ -3866,7 +3322,6 @@ static const struct hda_model_fixup stac927x_models[] = {
 	{ .id = STAC_D965_5ST_NO_FP, .name = "5stack-no-fp" },
 	{ .id = STAC_DELL_3ST, .name = "dell-3stack" },
 	{ .id = STAC_DELL_BIOS, .name = "dell-bios" },
-	{ .id = STAC_DELL_BIOS_AMIC, .name = "dell-bios-amic" },
 	{ .id = STAC_927X_VOLKNOB, .name = "volknob" },
 	{}
 };
@@ -4203,11 +3658,18 @@ static int stac_parse_auto_config(struct hda_codec *codec)
 			return err;
 	}
 
-	stac_init_power_map(codec);
-
 	return 0;
 }
 
+static int stac_build_controls(struct hda_codec *codec)
+{
+	int err = snd_hda_gen_build_controls(codec);
+
+	if (err < 0)
+		return err;
+	stac_init_power_map(codec);
+	return 0;
+}
 
 static int stac_init(struct hda_codec *codec)
 {
@@ -4309,23 +3771,55 @@ static void stac927x_proc_hook(struct snd_info_buffer *buffer,
 #endif
 
 #ifdef CONFIG_PM
+static int stac_resume(struct hda_codec *codec)
+{
+	codec->patch_ops.init(codec);
+	snd_hda_codec_resume_amp(codec);
+	snd_hda_codec_resume_cache(codec);
+	return 0;
+}
+
 static int stac_suspend(struct hda_codec *codec)
 {
 	stac_shutup(codec);
 	return 0;
 }
+
+static void stac_set_power_state(struct hda_codec *codec, hda_nid_t fg,
+				 unsigned int power_state)
+{
+	unsigned int afg_power_state = power_state;
+	struct sigmatel_spec *spec = codec->spec;
+
+	if (power_state == AC_PWRST_D3) {
+		if (spec->vref_mute_led_nid) {
+			/* with vref-out pin used for mute led control
+			 * codec AFG is prevented from D3 state
+			 */
+			afg_power_state = AC_PWRST_D1;
+		}
+		/* this delay seems necessary to avoid click noise at power-down */
+		msleep(100);
+	}
+	snd_hda_codec_read(codec, fg, 0, AC_VERB_SET_POWER_STATE,
+			afg_power_state);
+	snd_hda_codec_set_power_to_all(codec, fg, power_state);
+}
 #else
 #define stac_suspend		NULL
+#define stac_resume		NULL
+#define stac_set_power_state	NULL
 #endif /* CONFIG_PM */
 
 static const struct hda_codec_ops stac_patch_ops = {
-	.build_controls = snd_hda_gen_build_controls,
+	.build_controls = stac_build_controls,
 	.build_pcms = snd_hda_gen_build_pcms,
 	.init = stac_init,
 	.free = stac_free,
 	.unsol_event = snd_hda_jack_unsol_event,
 #ifdef CONFIG_PM
 	.suspend = stac_suspend,
+	.resume = stac_resume,
 #endif
 	.reboot_notify = stac_shutup,
 };
@@ -4425,8 +3919,8 @@ static int patch_stac92hd73xx(struct hda_codec *codec)
 
 	num_dacs = snd_hda_get_num_conns(codec, 0x0a) - 1;
 	if (num_dacs < 3 || num_dacs > 5) {
-		codec_warn(codec,
-			   "Could not determine number of channels defaulting to DAC count\n");
+		printk(KERN_WARNING "hda_codec: Could not determine "
+		       "number of channels defaulting to DAC count\n");
 		num_dacs = 5;
 	}
 
@@ -4498,14 +3992,15 @@ static void stac_setup_gpio(struct hda_codec *codec)
 			spec->gpio_dir |= spec->gpio_led;
 			spec->gpio_data |= spec->gpio_led;
 		} else {
-			codec->power_filter = stac_vref_led_power_filter;
+			codec->patch_ops.set_power_state =
+					stac_set_power_state;
 		}
 	}
 
 	if (spec->mic_mute_led_gpio) {
 		spec->gpio_mask |= spec->mic_mute_led_gpio;
 		spec->gpio_dir |= spec->mic_mute_led_gpio;
-		spec->mic_enabled = 0;
+		spec->mic_mute_led_on = true;
 		spec->gpio_data |= spec->mic_mute_led_gpio;
 
 		spec->gen.cap_sync_hook = stac_capture_led_hook;
@@ -4899,7 +4394,6 @@ static int patch_stac9872(struct hda_codec *codec)
 
 	return 0;
 }
-
 
 /*
  * patch entries

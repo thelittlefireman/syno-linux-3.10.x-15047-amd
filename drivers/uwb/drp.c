@@ -24,7 +24,6 @@
 #include <linux/delay.h>
 #include "uwb-internal.h"
 
-
 /* DRP Conflict Actions ([ECMA-368 2nd Edition] 17.4.6) */
 enum uwb_drp_conflict_action {
 	/* Reservation is maintained, no action needed */
@@ -54,7 +53,6 @@ enum uwb_drp_conflict_action {
 	UWB_DRP_CONFLICT_ACT3,
 };
 
-
 static void uwb_rc_set_drp_cmd_done(struct uwb_rc *rc, void *arg,
 				    struct uwb_rceb *reply, ssize_t reply_size)
 {
@@ -67,14 +65,14 @@ static void uwb_rc_set_drp_cmd_done(struct uwb_rc *rc, void *arg,
 	} else
 		dev_err(&rc->uwb_dev.dev, "SET-DRP-IE: timeout\n");
 
-	spin_lock_irq(&rc->rsvs_lock);
+	spin_lock_bh(&rc->rsvs_lock);
 	if (rc->set_drp_ie_pending > 1) {
 		rc->set_drp_ie_pending = 0;
 		uwb_rsv_queue_update(rc);	
 	} else {
 		rc->set_drp_ie_pending = 0;	
 	}
-	spin_unlock_irq(&rc->rsvs_lock);
+	spin_unlock_bh(&rc->rsvs_lock);
 }
 
 /**
@@ -175,7 +173,6 @@ static int evaluate_conflict_action(struct uwb_ie_drp *ext_drp_ie, int ext_beaco
 	int ext_tie_breaker = uwb_ie_drp_tiebreaker(ext_drp_ie);
 	int ext_status      = uwb_ie_drp_status(ext_drp_ie);
 	int ext_type        = uwb_ie_drp_type(ext_drp_ie);
-	
 	
 	/* [ECMA-368 2nd Edition] 17.4.6 */
 	if (ext_type == UWB_DRP_TYPE_PCA && our_type == UWB_DRP_TYPE_PCA) {
@@ -599,11 +596,8 @@ static void uwb_drp_handle_alien_drp(struct uwb_rc *rc, struct uwb_ie_drp *drp_i
 
 	/* alloc and initialize new uwb_cnflt_alien */
 	cnflt = kzalloc(sizeof(struct uwb_cnflt_alien), GFP_KERNEL);
-	if (!cnflt) {
+	if (!cnflt)
 		dev_err(dev, "failed to alloc uwb_cnflt_alien struct\n");
-		return;
-	}
-
 	INIT_LIST_HEAD(&cnflt->rc_node);
 	init_timer(&cnflt->timer);
 	cnflt->timer.function = uwb_cnflt_timer;
@@ -666,7 +660,6 @@ static void uwb_drp_process_involved(struct uwb_rc *rc, struct uwb_dev *src,
 		uwb_drp_process_owner(rc, rsv, src, drp_ie, drp_evt);
 	
 }
-
 
 static bool uwb_drp_involves_us(struct uwb_rc *rc, struct uwb_ie_drp *drp_ie)
 {

@@ -24,7 +24,8 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/types.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 
 MODULE_AUTHOR("Hu Tao <hutao@cn.fujitsu.com>");
 MODULE_DESCRIPTION("pvpanic device driver");
@@ -71,7 +72,6 @@ pvpanic_panic_notify(struct notifier_block *nb, unsigned long code,
 static struct notifier_block pvpanic_panic_nb = {
 	.notifier_call = pvpanic_panic_notify,
 };
-
 
 static acpi_status
 pvpanic_walk_resources(struct acpi_resource *res, void *context)

@@ -1,58 +1,29 @@
-/*
- * Copyright (C) 2008 Oracle.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License v2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 021110-1307, USA.
- */
+ 
 #ifndef __DELAYED_REF__
 #define __DELAYED_REF__
 
-/* these are the possible values of struct btrfs_delayed_ref_node->action */
-#define BTRFS_ADD_DELAYED_REF    1 /* add one backref to the tree */
-#define BTRFS_DROP_DELAYED_REF   2 /* delete one backref from the tree */
-#define BTRFS_ADD_DELAYED_EXTENT 3 /* record a full extent allocation */
-#define BTRFS_UPDATE_DELAYED_HEAD 4 /* not changing ref count on head ref */
+#define BTRFS_ADD_DELAYED_REF    1  
+#define BTRFS_DROP_DELAYED_REF   2  
+#define BTRFS_ADD_DELAYED_EXTENT 3  
+#define BTRFS_UPDATE_DELAYED_HEAD 4  
 
 struct btrfs_delayed_ref_node {
 	struct rb_node rb_node;
 
-	/* the starting bytenr of the extent */
 	u64 bytenr;
 
-	/* the size of the extent */
 	u64 num_bytes;
 
-	/* seq number to keep track of insertion order */
 	u64 seq;
 
-	/* ref count on this data structure */
 	atomic_t refs;
 
-	/*
-	 * how many refs is this entry adding or deleting.  For
-	 * head refs, this may be a negative number because it is keeping
-	 * track of the total mods done to the reference count.
-	 * For individual refs, this will always be a positive number
-	 *
-	 * It may be more than one, since it is possible for a single
-	 * parent to have more than one ref on an extent
-	 */
 	int ref_mod;
 
 	unsigned int action:8;
 	unsigned int type:8;
-	/* is this node still in the rbtree? */
+	unsigned int no_quota:1;
+	 
 	unsigned int is_head:1;
 	unsigned int in_tree:1;
 };
@@ -66,19 +37,9 @@ struct btrfs_delayed_extent_op {
 	unsigned int is_data:1;
 };
 
-/*
- * the head refs are used to hold a lock on a given extent, which allows us
- * to make sure that only one process is running the delayed refs
- * at a time for a single extent.  They also store the sum of all the
- * reference count modifications we've queued up.
- */
 struct btrfs_delayed_ref_head {
 	struct btrfs_delayed_ref_node node;
 
-	/*
-	 * the mutex is held while running the refs, and it is also
-	 * held when checking the sum of reference modifications.
-	 */
 	struct mutex mutex;
 
 	spinlock_t lock;
@@ -87,18 +48,7 @@ struct btrfs_delayed_ref_head {
 	struct rb_node href_node;
 
 	struct btrfs_delayed_extent_op *extent_op;
-	/*
-	 * when a new extent is allocated, it is just reserved in memory
-	 * The actual extent isn't inserted into the extent allocation tree
-	 * until the delayed ref is processed.  must_insert_reserved is
-	 * used to flag a delayed ref so the accounting can be updated
-	 * when a full insert is done.
-	 *
-	 * It is possible the extent will be freed before it is ever
-	 * inserted into the extent allocation tree.  In this case
-	 * we need to update the in ram accounting to properly reflect
-	 * the free has happened.
-	 */
+	 
 	unsigned int must_insert_reserved:1;
 	unsigned int is_data:1;
 	unsigned int processing:1;
@@ -120,28 +70,17 @@ struct btrfs_delayed_data_ref {
 };
 
 struct btrfs_delayed_ref_root {
-	/* head ref rbtree */
+	 
 	struct rb_root href_root;
 
-	/* this spin lock protects the rbtree and the entries inside */
 	spinlock_t lock;
 
-	/* how many delayed ref updates we've queued, used by the
-	 * throttling code
-	 */
 	atomic_t num_entries;
 
-	/* total number of head nodes in tree */
 	unsigned long num_heads;
 
-	/* total number of head nodes ready for processing */
 	unsigned long num_heads_ready;
 
-	/*
-	 * set when the tree is flushing before a transaction commit,
-	 * used by the throttling code to decide if new updates need
-	 * to be run right away
-	 */
 	int flushing;
 
 	u64 run_delayed_start;
@@ -196,14 +135,14 @@ int btrfs_add_delayed_tree_ref(struct btrfs_fs_info *fs_info,
 			       u64 bytenr, u64 num_bytes, u64 parent,
 			       u64 ref_root, int level, int action,
 			       struct btrfs_delayed_extent_op *extent_op,
-			       int for_cow);
+			       int no_quota);
 int btrfs_add_delayed_data_ref(struct btrfs_fs_info *fs_info,
 			       struct btrfs_trans_handle *trans,
 			       u64 bytenr, u64 num_bytes,
 			       u64 parent, u64 ref_root,
 			       u64 owner, u64 offset, int action,
 			       struct btrfs_delayed_extent_op *extent_op,
-			       int for_cow);
+			       int no_quota);
 int btrfs_add_delayed_extent_op(struct btrfs_fs_info *fs_info,
 				struct btrfs_trans_handle *trans,
 				u64 bytenr, u64 num_bytes,
@@ -222,7 +161,6 @@ static inline void btrfs_delayed_ref_unlock(struct btrfs_delayed_ref_head *head)
 	mutex_unlock(&head->mutex);
 }
 
-
 struct btrfs_delayed_ref_head *
 btrfs_select_ref_head(struct btrfs_trans_handle *trans);
 
@@ -230,37 +168,11 @@ int btrfs_check_delayed_seq(struct btrfs_fs_info *fs_info,
 			    struct btrfs_delayed_ref_root *delayed_refs,
 			    u64 seq);
 
-/*
- * delayed refs with a ref_seq > 0 must be held back during backref walking.
- * this only applies to items in one of the fs-trees. for_cow items never need
- * to be held back, so they won't get a ref_seq number.
- */
-static inline int need_ref_seq(int for_cow, u64 rootid)
-{
-	if (for_cow)
-		return 0;
-
-	if (rootid == BTRFS_FS_TREE_OBJECTID)
-		return 1;
-
-	if ((s64)rootid >= (s64)BTRFS_FIRST_FREE_OBJECTID)
-		return 1;
-
-	return 0;
-}
-
-/*
- * a node might live in a head or a regular ref, this lets you
- * test for the proper type to use.
- */
 static int btrfs_delayed_ref_is_head(struct btrfs_delayed_ref_node *node)
 {
 	return node->is_head;
 }
 
-/*
- * helper functions to cast a node into its container
- */
 static inline struct btrfs_delayed_tree_ref *
 btrfs_delayed_node_to_tree_ref(struct btrfs_delayed_ref_node *node)
 {

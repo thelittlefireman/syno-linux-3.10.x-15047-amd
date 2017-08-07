@@ -65,7 +65,6 @@ static void tx39h_dma_cache_wback_inv(unsigned long addr, unsigned long size)
 	blast_inv_dcache_range(addr, addr + size);
 }
 
-
 /* TX39H2,TX39H3 */
 static inline void tx39_blast_dcache_page(unsigned long addr)
 {
@@ -344,7 +343,7 @@ static __init void tx39_probe_cache(void)
 	}
 }
 
-void tx39_cache_init(void)
+void __cpuinit tx39_cache_init(void)
 {
 	extern void build_clear_page(void);
 	extern void build_copy_page(void);

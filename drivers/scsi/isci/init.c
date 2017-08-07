@@ -66,7 +66,7 @@
 #include "probe_roms.h"
 
 #define MAJ 1
-#define MIN 2
+#define MIN 1
 #define BUILD 0
 #define DRV_VERSION __stringify(MAJ) "." __stringify(MIN) "." \
 	__stringify(BUILD)
@@ -208,12 +208,9 @@ static struct sas_domain_function_template isci_transport_ops  = {
 	.lldd_write_gpio	= isci_gpio_write,
 };
 
-
 /******************************************************************************
 * P R O T E C T E D  M E T H O D S
 ******************************************************************************/
-
-
 
 /**
  * isci_register_sas_ha() - This method initializes various lldd

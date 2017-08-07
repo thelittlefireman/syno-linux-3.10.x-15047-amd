@@ -18,65 +18,102 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 
 #include <errno.h>
 #include <unistd.h>
 
-#include <libudev.h>
-
 #include "usbip_common.h"
 #include "usbip_host_driver.h"
-#include "list.h"
-#include "sysfs_utils.h"
 
 #undef  PROGNAME
 #define PROGNAME "libusbip"
 
 struct usbip_host_driver *host_driver;
-struct udev *udev_context;
 
+#define SYSFS_OPEN_RETRIES 100
+
+/* only the first interface value is true! */
 static int32_t read_attr_usbip_status(struct usbip_usb_device *udev)
 {
-	char status_attr_path[SYSFS_PATH_MAX];
-	int fd;
-	int length;
-	char status;
+	char attrpath[SYSFS_PATH_MAX];
+	struct sysfs_attribute *attr;
 	int value = 0;
+	int rc;
+	struct stat s;
+	int retries = SYSFS_OPEN_RETRIES;
 
-	snprintf(status_attr_path, SYSFS_PATH_MAX, "%s/usbip_status",
-		 udev->path);
+	/* This access is racy!
+	 *
+	 * Just after detach, our driver removes the sysfs
+	 * files and recreates them.
+	 *
+	 * We may try and fail to open the usbip_status of
+	 * an exported device in the (short) window where
+	 * it has been removed and not yet recreated.
+	 *
+	 * This is a bug in the interface. Nothing we can do
+	 * except work around it here by polling for the sysfs
+	 * usbip_status to reappear.
+	 */
 
-	if ((fd = open(status_attr_path, O_RDONLY)) < 0) {
-		err("error opening attribute %s", status_attr_path);
+	snprintf(attrpath, SYSFS_PATH_MAX, "%s/%s:%d.%d/usbip_status",
+		 udev->path, udev->busid, udev->bConfigurationValue, 0);
+
+	while (retries > 0) {
+		if (stat(attrpath, &s) == 0)
+			break;
+
+		if (errno != ENOENT) {
+			dbg("stat failed: %s", attrpath);
+			return -1;
+		}
+
+		usleep(10000); /* 10ms */
+		retries--;
+	}
+
+	if (retries == 0)
+		dbg("usbip_status not ready after %d retries",
+		    SYSFS_OPEN_RETRIES);
+	else if (retries < SYSFS_OPEN_RETRIES)
+		dbg("warning: usbip_status ready after %d retries",
+		    SYSFS_OPEN_RETRIES - retries);
+
+	attr = sysfs_open_attribute(attrpath);
+	if (!attr) {
+		dbg("sysfs_open_attribute failed: %s", attrpath);
 		return -1;
 	}
 
-	length = read(fd, &status, 1);
-	if (length < 0) {
-		err("error reading attribute %s", status_attr_path);
-		close(fd);
+	rc = sysfs_read_attribute(attr);
+	if (rc) {
+		dbg("sysfs_read_attribute failed: %s", attrpath);
+		sysfs_close_attribute(attr);
 		return -1;
 	}
 
-	value = atoi(&status);
+	value = atoi(attr->value);
+
+	sysfs_close_attribute(attr);
 
 	return value;
 }
 
-static
-struct usbip_exported_device *usbip_exported_device_new(const char *sdevpath)
+static struct usbip_exported_device *usbip_exported_device_new(char *sdevpath)
 {
 	struct usbip_exported_device *edev = NULL;
-	struct usbip_exported_device *edev_old;
 	size_t size;
 	int i;
 
-	edev = calloc(1, sizeof(struct usbip_exported_device));
+	edev = calloc(1, sizeof(*edev));
+	if (!edev) {
+		dbg("calloc failed");
+		return NULL;
+	}
 
-	edev->sudev = udev_device_new_from_syspath(udev_context, sdevpath);
+	edev->sudev = sysfs_open_device_path(sdevpath);
 	if (!edev->sudev) {
-		err("udev_device_new_from_syspath: %s", sdevpath);
+		dbg("sysfs_open_device_path failed: %s", sdevpath);
 		goto err;
 	}
 
@@ -87,13 +124,11 @@ struct usbip_exported_device *usbip_exported_device_new(const char *sdevpath)
 		goto err;
 
 	/* reallocate buffer to include usb interface data */
-	size = sizeof(struct usbip_exported_device) + edev->udev.bNumInterfaces *
+	size = sizeof(*edev) + edev->udev.bNumInterfaces *
 		sizeof(struct usbip_usb_interface);
 
-	edev_old = edev;
 	edev = realloc(edev, size);
 	if (!edev) {
-		edev = edev_old;
 		dbg("realloc failed");
 		goto err;
 	}
@@ -103,90 +138,159 @@ struct usbip_exported_device *usbip_exported_device_new(const char *sdevpath)
 
 	return edev;
 err:
-	if (edev->sudev)
-		udev_device_unref(edev->sudev);
+	if (edev && edev->sudev)
+		sysfs_close_device(edev->sudev);
 	if (edev)
 		free(edev);
 
 	return NULL;
 }
 
+static int check_new(struct dlist *dlist, struct sysfs_device *target)
+{
+	struct sysfs_device *dev;
+
+	dlist_for_each_data(dlist, dev, struct sysfs_device) {
+		if (!strncmp(dev->bus_id, target->bus_id, SYSFS_BUS_ID_SIZE))
+			/* device found and is not new */
+			return 0;
+	}
+	return 1;
+}
+
+static void delete_nothing(void *unused_data)
+{
+	/*
+	 * NOTE: Do not delete anything, but the container will be deleted.
+	 */
+	(void) unused_data;
+}
+
 static int refresh_exported_devices(void)
 {
+	/* sysfs_device of usb_interface */
+	struct sysfs_device	*suintf;
+	struct dlist		*suintf_list;
+	/* sysfs_device of usb_device */
+	struct sysfs_device	*sudev;
+	struct dlist		*sudev_list;
 	struct usbip_exported_device *edev;
-	struct udev_enumerate *enumerate;
-	struct udev_list_entry *devices, *dev_list_entry;
-	struct udev_device *dev;
-	const char *path;
-	const char *driver;
 
-	enumerate = udev_enumerate_new(udev_context);
-	udev_enumerate_add_match_subsystem(enumerate, "usb");
-	udev_enumerate_scan_devices(enumerate);
+	sudev_list = dlist_new_with_delete(sizeof(struct sysfs_device),
+					   delete_nothing);
 
-	devices = udev_enumerate_get_list_entry(enumerate);
+	suintf_list = sysfs_get_driver_devices(host_driver->sysfs_driver);
+	if (!suintf_list) {
+		/*
+		 * Not an error condition. There are simply no devices bound to
+		 * the driver yet.
+		 */
+		dbg("bind " USBIP_HOST_DRV_NAME ".ko to a usb device to be "
+		    "exportable!");
+		return 0;
+	}
 
-	udev_list_entry_foreach(dev_list_entry, devices) {
-		path = udev_list_entry_get_name(dev_list_entry);
-		dev = udev_device_new_from_syspath(udev_context, path);
-		if (dev == NULL)
+	/* collect unique USB devices (not interfaces) */
+	dlist_for_each_data(suintf_list, suintf, struct sysfs_device) {
+		/* get usb device of this usb interface */
+		sudev = sysfs_get_device_parent(suintf);
+		if (!sudev) {
+			dbg("sysfs_get_device_parent failed: %s", suintf->name);
 			continue;
+		}
 
-		/* Check whether device uses usbip-host driver. */
-		driver = udev_device_get_driver(dev);
-		if (driver != NULL && !strcmp(driver, USBIP_HOST_DRV_NAME)) {
-			edev = usbip_exported_device_new(path);
-			if (!edev) {
-				dbg("usbip_exported_device_new failed");
-				continue;
-			}
-
-			list_add(&edev->node, &host_driver->edev_list);
-			host_driver->ndevs++;
+		if (check_new(sudev_list, sudev)) {
+			/* insert item at head of list */
+			dlist_unshift(sudev_list, sudev);
 		}
 	}
+
+	dlist_for_each_data(sudev_list, sudev, struct sysfs_device) {
+		edev = usbip_exported_device_new(sudev->path);
+		if (!edev) {
+			dbg("usbip_exported_device_new failed");
+			continue;
+		}
+
+		dlist_unshift(host_driver->edev_list, edev);
+		host_driver->ndevs++;
+	}
+
+	dlist_destroy(sudev_list);
 
 	return 0;
 }
 
-static void usbip_exported_device_destroy(void)
+static struct sysfs_driver *open_sysfs_host_driver(void)
 {
-	struct list_head *i, *tmp;
-	struct usbip_exported_device *edev;
+	char bus_type[] = "usb";
+	char sysfs_mntpath[SYSFS_PATH_MAX];
+	char host_drv_path[SYSFS_PATH_MAX];
+	struct sysfs_driver *host_drv;
+	int rc;
 
-	list_for_each_safe(i, tmp, &host_driver->edev_list) {
-		edev = list_entry(i, struct usbip_exported_device, node);
-		list_del(i);
-		free(edev);
+	rc = sysfs_get_mnt_path(sysfs_mntpath, SYSFS_PATH_MAX);
+	if (rc < 0) {
+		dbg("sysfs_get_mnt_path failed");
+		return NULL;
 	}
+
+	snprintf(host_drv_path, SYSFS_PATH_MAX, "%s/%s/%s/%s/%s",
+		 sysfs_mntpath, SYSFS_BUS_NAME, bus_type, SYSFS_DRIVERS_NAME,
+		 USBIP_HOST_DRV_NAME);
+
+	host_drv = sysfs_open_driver_path(host_drv_path);
+	if (!host_drv) {
+		dbg("sysfs_open_driver_path failed");
+		return NULL;
+	}
+
+	return host_drv;
+}
+
+static void usbip_exported_device_delete(void *dev)
+{
+	struct usbip_exported_device *edev = dev;
+	sysfs_close_device(edev->sudev);
+	free(dev);
 }
 
 int usbip_host_driver_open(void)
 {
 	int rc;
 
-	udev_context = udev_new();
-	if (!udev_context) {
-		err("udev_new failed");
+	host_driver = calloc(1, sizeof(*host_driver));
+	if (!host_driver) {
+		dbg("calloc failed");
 		return -1;
 	}
 
-	host_driver = calloc(1, sizeof(*host_driver));
-
 	host_driver->ndevs = 0;
-	INIT_LIST_HEAD(&host_driver->edev_list);
+	host_driver->edev_list =
+		dlist_new_with_delete(sizeof(struct usbip_exported_device),
+				      usbip_exported_device_delete);
+	if (!host_driver->edev_list) {
+		dbg("dlist_new_with_delete failed");
+		goto err_free_host_driver;
+	}
+
+	host_driver->sysfs_driver = open_sysfs_host_driver();
+	if (!host_driver->sysfs_driver)
+		goto err_destroy_edev_list;
 
 	rc = refresh_exported_devices();
 	if (rc < 0)
-		goto err_free_host_driver;
+		goto err_close_sysfs_driver;
 
 	return 0;
 
+err_close_sysfs_driver:
+	sysfs_close_driver(host_driver->sysfs_driver);
+err_destroy_edev_list:
+	dlist_destroy(host_driver->edev_list);
 err_free_host_driver:
 	free(host_driver);
 	host_driver = NULL;
-
-	udev_unref(udev_context);
 
 	return -1;
 }
@@ -196,22 +300,30 @@ void usbip_host_driver_close(void)
 	if (!host_driver)
 		return;
 
-	usbip_exported_device_destroy();
+	if (host_driver->edev_list)
+		dlist_destroy(host_driver->edev_list);
+	if (host_driver->sysfs_driver)
+		sysfs_close_driver(host_driver->sysfs_driver);
 
 	free(host_driver);
 	host_driver = NULL;
-
-	udev_unref(udev_context);
 }
 
 int usbip_host_refresh_device_list(void)
 {
 	int rc;
 
-	usbip_exported_device_destroy();
+	if (host_driver->edev_list)
+		dlist_destroy(host_driver->edev_list);
 
 	host_driver->ndevs = 0;
-	INIT_LIST_HEAD(&host_driver->edev_list);
+	host_driver->edev_list =
+		dlist_new_with_delete(sizeof(struct usbip_exported_device),
+				      usbip_exported_device_delete);
+	if (!host_driver->edev_list) {
+		dbg("dlist_new_with_delete failed");
+		return -1;
+	}
 
 	rc = refresh_exported_devices();
 	if (rc < 0)
@@ -223,7 +335,8 @@ int usbip_host_refresh_device_list(void)
 int usbip_host_export_device(struct usbip_exported_device *edev, int sockfd)
 {
 	char attr_name[] = "usbip_sockfd";
-	char sockfd_attr_path[SYSFS_PATH_MAX];
+	char attr_path[SYSFS_PATH_MAX];
+	struct sysfs_attribute *attr;
 	char sockfd_buff[30];
 	int ret;
 
@@ -243,32 +356,41 @@ int usbip_host_export_device(struct usbip_exported_device *edev, int sockfd)
 	}
 
 	/* only the first interface is true */
-	snprintf(sockfd_attr_path, sizeof(sockfd_attr_path), "%s/%s",
-		 edev->udev.path, attr_name);
+	snprintf(attr_path, sizeof(attr_path), "%s/%s:%d.%d/%s",
+		 edev->udev.path, edev->udev.busid,
+		 edev->udev.bConfigurationValue, 0, attr_name);
 
-	snprintf(sockfd_buff, sizeof(sockfd_buff), "%d\n", sockfd);
-
-	ret = write_sysfs_attribute(sockfd_attr_path, sockfd_buff,
-				    strlen(sockfd_buff));
-	if (ret < 0) {
-		err("write_sysfs_attribute failed: sockfd %s to %s",
-		    sockfd_buff, sockfd_attr_path);
-		return ret;
+	attr = sysfs_open_attribute(attr_path);
+	if (!attr) {
+		dbg("sysfs_open_attribute failed: %s", attr_path);
+		return -1;
 	}
 
-	info("connect: %s", edev->udev.busid);
+	snprintf(sockfd_buff, sizeof(sockfd_buff), "%d\n", sockfd);
+	dbg("write: %s", sockfd_buff);
+
+	ret = sysfs_write_attribute(attr, sockfd_buff, strlen(sockfd_buff));
+	if (ret < 0) {
+		dbg("sysfs_write_attribute failed: sockfd %s to %s",
+		    sockfd_buff, attr_path);
+		goto err_write_sockfd;
+	}
+
+	dbg("connect: %s", edev->udev.busid);
+
+err_write_sockfd:
+	sysfs_close_attribute(attr);
 
 	return ret;
 }
 
 struct usbip_exported_device *usbip_host_get_device(int num)
 {
-	struct list_head *i;
 	struct usbip_exported_device *edev;
+	struct dlist *dlist = host_driver->edev_list;
 	int cnt = 0;
 
-	list_for_each(i, &host_driver->edev_list) {
-		edev = list_entry(i, struct usbip_exported_device, node);
+	dlist_for_each_data(dlist, edev, struct usbip_exported_device) {
 		if (num == cnt)
 			return edev;
 		else

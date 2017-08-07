@@ -9,7 +9,6 @@
 #include <linux/module.h>
 #include <net/tcp.h>
 
-
 /* From AIMD tables from RFC 3649 appendix B,
  * with fixed-point MD scaled <<8.
  */
@@ -109,7 +108,7 @@ static void hstcp_init(struct sock *sk)
 	tp->snd_cwnd_clamp = min_t(u32, tp->snd_cwnd_clamp, 0xffffffff/128);
 }
 
-static void hstcp_cong_avoid(struct sock *sk, u32 ack, u32 acked, u32 in_flight)
+static void hstcp_cong_avoid(struct sock *sk, u32 adk, u32 in_flight)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct hstcp *ca = inet_csk_ca(sk);
@@ -118,7 +117,7 @@ static void hstcp_cong_avoid(struct sock *sk, u32 ack, u32 acked, u32 in_flight)
 		return;
 
 	if (tp->snd_cwnd <= tp->snd_ssthresh)
-		tcp_slow_start(tp, acked);
+		tcp_slow_start(tp);
 	else {
 		/* Update AIMD parameters.
 		 *
@@ -157,11 +156,11 @@ static u32 hstcp_ssthresh(struct sock *sk)
 	return max(tp->snd_cwnd - ((tp->snd_cwnd * hstcp_aimd_vals[ca->ai].md) >> 8), 2U);
 }
 
-
 static struct tcp_congestion_ops tcp_highspeed __read_mostly = {
 	.init		= hstcp_init,
 	.ssthresh	= hstcp_ssthresh,
 	.cong_avoid	= hstcp_cong_avoid,
+	.min_cwnd	= tcp_reno_min_cwnd,
 
 	.owner		= THIS_MODULE,
 	.name		= "highspeed"

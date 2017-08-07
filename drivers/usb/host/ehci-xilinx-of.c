@@ -69,7 +69,6 @@ static int ehci_xilinx_port_handed_over(struct usb_hcd *hcd, int portnum)
 	return 0;
 }
 
-
 static const struct hc_driver ehci_xilinx_of_hc_driver = {
 	.description		= hcd_name,
 	.product_desc		= "OF EHCI",
@@ -79,7 +78,7 @@ static const struct hc_driver ehci_xilinx_of_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq			= ehci_irq,
-	.flags			= HCD_MEMORY | HCD_USB2 | HCD_BH,
+	.flags			= HCD_MEMORY | HCD_USB2,
 
 	/*
 	 * basic lifecycle operations
@@ -155,8 +154,7 @@ static int ehci_hcd_xilinx_of_probe(struct platform_device *op)
 
 	irq = irq_of_parse_and_map(dn, 0);
 	if (!irq) {
-		dev_err(&op->dev, "%s: irq_of_parse_and_map failed\n",
-			__FILE__);
+		printk(KERN_ERR "%s: irq_of_parse_and_map failed\n", __FILE__);
 		rv = -EBUSY;
 		goto err_irq;
 	}
@@ -192,10 +190,8 @@ static int ehci_hcd_xilinx_of_probe(struct platform_device *op)
 	ehci->caps = hcd->regs + 0x100;
 
 	rv = usb_add_hcd(hcd, irq, 0);
-	if (rv == 0) {
-		device_wakeup_enable(hcd->self.controller);
+	if (rv == 0)
 		return 0;
-	}
 
 err_irq:
 	usb_put_hcd(hcd);
@@ -212,7 +208,8 @@ err_irq:
  */
 static int ehci_hcd_xilinx_of_remove(struct platform_device *op)
 {
-	struct usb_hcd *hcd = platform_get_drvdata(op);
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
+	dev_set_drvdata(&op->dev, NULL);
 
 	dev_dbg(&op->dev, "stopping XILINX-OF USB Controller\n");
 
@@ -221,6 +218,20 @@ static int ehci_hcd_xilinx_of_remove(struct platform_device *op)
 	usb_put_hcd(hcd);
 
 	return 0;
+}
+
+/**
+ * ehci_hcd_xilinx_of_shutdown - shutdown the hcd
+ * @op:		pointer to platform_device structure that is to be removed
+ *
+ * Properly shutdown the hcd, call driver's shutdown routine.
+ */
+static void ehci_hcd_xilinx_of_shutdown(struct platform_device *op)
+{
+	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
+
+	if (hcd->driver->shutdown)
+		hcd->driver->shutdown(hcd);
 }
 
 static const struct of_device_id ehci_hcd_xilinx_of_match[] = {
@@ -232,7 +243,7 @@ MODULE_DEVICE_TABLE(of, ehci_hcd_xilinx_of_match);
 static struct platform_driver ehci_hcd_xilinx_of_driver = {
 	.probe		= ehci_hcd_xilinx_of_probe,
 	.remove		= ehci_hcd_xilinx_of_remove,
-	.shutdown	= usb_hcd_platform_shutdown,
+	.shutdown	= ehci_hcd_xilinx_of_shutdown,
 	.driver = {
 		.name = "xilinx-of-ehci",
 		.owner = THIS_MODULE,

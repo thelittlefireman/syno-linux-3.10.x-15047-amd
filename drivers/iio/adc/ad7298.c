@@ -159,14 +159,20 @@ static irqreturn_t ad7298_trigger_handler(int irq, void *p)
 	struct iio_poll_func *pf = p;
 	struct iio_dev *indio_dev = pf->indio_dev;
 	struct ad7298_state *st = iio_priv(indio_dev);
+	s64 time_ns = 0;
 	int b_sent;
 
 	b_sent = spi_sync(st->spi, &st->ring_msg);
 	if (b_sent)
 		goto done;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, st->rx_buf,
-		iio_get_time_ns());
+	if (indio_dev->scan_timestamp) {
+		time_ns = iio_get_time_ns();
+		memcpy((u8 *)st->rx_buf + indio_dev->scan_bytes - sizeof(s64),
+			&time_ns, sizeof(time_ns));
+	}
+
+	iio_push_to_buffers(indio_dev, (u8 *)st->rx_buf);
 
 done:
 	iio_trigger_notify_done(indio_dev->trig);
@@ -290,10 +296,9 @@ static int ad7298_probe(struct spi_device *spi)
 {
 	struct ad7298_platform_data *pdata = spi->dev.platform_data;
 	struct ad7298_state *st;
-	struct iio_dev *indio_dev;
+	struct iio_dev *indio_dev = iio_device_alloc(sizeof(*st));
 	int ret;
 
-	indio_dev = devm_iio_device_alloc(&spi->dev, sizeof(*st));
 	if (indio_dev == NULL)
 		return -ENOMEM;
 
@@ -303,13 +308,14 @@ static int ad7298_probe(struct spi_device *spi)
 		st->ext_ref = AD7298_EXTREF;
 
 	if (st->ext_ref) {
-		st->reg = devm_regulator_get(&spi->dev, "vref");
-		if (IS_ERR(st->reg))
-			return PTR_ERR(st->reg);
-
+		st->reg = regulator_get(&spi->dev, "vref");
+		if (IS_ERR(st->reg)) {
+			ret = PTR_ERR(st->reg);
+			goto error_free;
+		}
 		ret = regulator_enable(st->reg);
 		if (ret)
-			return ret;
+			goto error_put_reg;
 	}
 
 	spi_set_drvdata(spi, indio_dev);
@@ -355,6 +361,11 @@ error_cleanup_ring:
 error_disable_reg:
 	if (st->ext_ref)
 		regulator_disable(st->reg);
+error_put_reg:
+	if (st->ext_ref)
+		regulator_put(st->reg);
+error_free:
+	iio_device_free(indio_dev);
 
 	return ret;
 }
@@ -366,8 +377,11 @@ static int ad7298_remove(struct spi_device *spi)
 
 	iio_device_unregister(indio_dev);
 	iio_triggered_buffer_cleanup(indio_dev);
-	if (st->ext_ref)
+	if (st->ext_ref) {
 		regulator_disable(st->reg);
+		regulator_put(st->reg);
+	}
+	iio_device_free(indio_dev);
 
 	return 0;
 }

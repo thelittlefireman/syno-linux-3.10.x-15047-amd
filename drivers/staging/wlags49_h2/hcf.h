@@ -78,10 +78,8 @@
 *
 *************************************************************************************************************/
 
-
 #include "hcfcfg.h"	// System Constants to be defined by the MSF-programmer to tailor the HCF
 #include "mdd.h"	// Include file common for HCF, MSF
-
 
 /************************************************************************************************/
 /**************************************  MACROS  ************************************************/
@@ -156,7 +154,6 @@
 #define HFS_LEN					(HFS_ADDR_SRC  + 6)		// 0x003A  0x0046
 #define HFS_DAT					(HFS_LEN       + 2)		// 0x003C  0x0048
 #define HFS_TYPE				(HFS_DAT       + 6)		// 0x0042  0x004E
-
 
 //=============================  D E S C R I P T O R   S T R U C T U R E  ==============================
 //;?MDD.H stuff ;?
@@ -251,7 +248,6 @@ typedef struct  {  //HCF Tallies (IFB substructure)
 #endif // HCF_TALLIES
 #define HCF_TOT_TAL_CNT ( HCF_NIC_TAL_CNT + HCF_NIC_TAL_CNT )
 #endif // HCF_TALLIES_NIC / HCF_TALLIES_HCF
-
 
 /***********************************************************************************************************/
 /********************************** I N T E R F A C E   B L O C K ******************************************/
@@ -367,28 +363,26 @@ typedef struct  {
 
 typedef IFB_STRCT*	IFBP;
 
-
 /***********************************************************************************************************/
 /**********************   W C I    F U N C T I O N S    P R O T O T Y P E S   ******************************/
 /***********************************************************************************************************/
 
-EXTERN_C int hcf_action(IFBP ifbp, hcf_16 cmd);
-EXTERN_C int hcf_connect(IFBP ifbp, hcf_io io_base);
-EXTERN_C int hcf_get_info(IFBP ifbp, LTVP ltvp);
-EXTERN_C int hcf_service_nic(IFBP ifbp, wci_bufp bufp, unsigned int len);
-EXTERN_C int hcf_cntl(IFBP ifbp, hcf_16 cmd);
-EXTERN_C int hcf_put_info(IFBP ifbp, LTVP ltvp);
-EXTERN_C int hcf_rcv_msg(IFBP ifbp, DESC_STRCT *descp, unsigned int offset);
-EXTERN_C int hcf_send_msg(IFBP ifbp, DESC_STRCT *dp, hcf_16 tx_cntl);
+EXTERN_C int		 hcf_action			(IFBP ifbp, hcf_16 cmd );
+EXTERN_C int		 hcf_connect		(IFBP ifbp, hcf_io io_base );
+EXTERN_C int		 hcf_get_info		(IFBP ifbp, LTVP ltvp );
+EXTERN_C int		 hcf_service_nic	(IFBP ifbp, wci_bufp bufp, unsigned int len );
+EXTERN_C int		 hcf_cntl			(IFBP ifbp, hcf_16 cmd );
+EXTERN_C int		 hcf_put_info		(IFBP ifbp, LTVP ltvp );
+EXTERN_C int		 hcf_rcv_msg		(IFBP ifbp, DESC_STRCT *descp, unsigned int offset );
+EXTERN_C int		 hcf_send_msg       (IFBP ifbp, DESC_STRCT *dp, hcf_16 tx_cntl );
 #if HCF_DMA
-EXTERN_C void hcf_dma_tx_put(IFBP ifbp, DESC_STRCT *d, hcf_16 tx_cntl);
+EXTERN_C void		 hcf_dma_tx_put 	(IFBP ifbp, DESC_STRCT *d, hcf_16 tx_cntl );
 EXTERN_C DESC_STRCT* hcf_dma_tx_get		(IFBP ifbp );
 EXTERN_C DESC_STRCT* hcf_dma_rx_get		(IFBP ifbp );
-EXTERN_C void hcf_dma_rx_put(IFBP ifbp, DESC_STRCT *d);
+EXTERN_C void		 hcf_dma_rx_put		(IFBP ifbp, DESC_STRCT *d );
 #endif // HCF_DMA
 #if (HCF_ASSERT) & HCF_ASSERT_LNK_MSF_RTN
-EXTERN_C void msf_assert(unsigned int line_number, hcf_16 trace, hcf_32 qual);
+EXTERN_C void		 msf_assert	 		(unsigned int line_number, hcf_16 trace, hcf_32 qual );
 #endif // HCF_ASSERT_LNK_MSF_RTN
 
 #endif  // HCF_H
-

@@ -63,3 +63,19 @@ do {								\
 	__set_current_state(TASK_RUNNING);			\
 	remove_wait_queue(&(queue), &entry);			\
 } while (0)
+
+#if !(__OS_HAS_MTRR)
+static __inline__ int mtrr_add(unsigned long base, unsigned long size,
+							unsigned int type, char increment)
+{
+	return -ENODEV;
+}
+
+static __inline__ int mtrr_del(int reg, unsigned long base, unsigned long size)
+{
+	return -ENODEV;
+}
+
+#define MTRR_TYPE_WRCOMB     1
+
+#endif

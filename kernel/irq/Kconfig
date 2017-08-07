@@ -1,4 +1,15 @@
+# Select this to activate the generic irq options below
+config HAVE_GENERIC_HARDIRQS
+	bool
+
+if HAVE_GENERIC_HARDIRQS
 menu "IRQ subsystem"
+#
+# Interrupt subsystem related configuration options
+#
+config GENERIC_HARDIRQS
+       def_bool y
+
 # Options selectable by the architecture code
 
 # Make sparse irq Kconfig switch below available
@@ -40,7 +51,6 @@ config IRQ_EDGE_EOI_HANDLER
 # Generic configurable interrupt chip implementation
 config GENERIC_IRQ_CHIP
        bool
-       select IRQ_DOMAIN
 
 # Generic irq_domain hw <--> linux irq number translation
 config IRQ_DOMAIN
@@ -74,3 +84,4 @@ config SPARSE_IRQ
 	  If you don't know what to do here, say N.
 
 endmenu
+endif

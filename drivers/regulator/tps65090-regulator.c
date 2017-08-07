@@ -168,15 +168,19 @@ static struct tps65090_platform_data *tps65090_parse_dt_reg_data(
 
 	tps65090_pdata = devm_kzalloc(&pdev->dev, sizeof(*tps65090_pdata),
 				GFP_KERNEL);
-	if (!tps65090_pdata)
+	if (!tps65090_pdata) {
+		dev_err(&pdev->dev, "Memory alloc for tps65090_pdata failed\n");
 		return ERR_PTR(-ENOMEM);
+	}
 
 	reg_pdata = devm_kzalloc(&pdev->dev, TPS65090_REGULATOR_MAX *
 				sizeof(*reg_pdata), GFP_KERNEL);
-	if (!reg_pdata)
+	if (!reg_pdata) {
+		dev_err(&pdev->dev, "Memory alloc for reg_pdata failed\n");
 		return ERR_PTR(-ENOMEM);
+	}
 
-	regulators = of_get_child_by_name(np, "regulators");
+	regulators = of_find_node_by_name(np, "regulators");
 	if (!regulators) {
 		dev_err(&pdev->dev, "regulator node not found\n");
 		return ERR_PTR(-ENODEV);
@@ -184,7 +188,6 @@ static struct tps65090_platform_data *tps65090_parse_dt_reg_data(
 
 	ret = of_regulator_match(&pdev->dev, regulators, tps65090_matches,
 			ARRAY_SIZE(tps65090_matches));
-	of_node_put(regulators);
 	if (ret < 0) {
 		dev_err(&pdev->dev,
 			"Error parsing regulator init data: %d\n", ret);
@@ -249,8 +252,10 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 
 	pmic = devm_kzalloc(&pdev->dev, TPS65090_REGULATOR_MAX * sizeof(*pmic),
 			GFP_KERNEL);
-	if (!pmic)
+	if (!pmic) {
+		dev_err(&pdev->dev, "mem alloc for pmic failed\n");
 		return -ENOMEM;
+	}
 
 	for (num = 0; num < TPS65090_REGULATOR_MAX; num++) {
 		tps_pdata = tps65090_pdata->reg_pdata[num];
@@ -274,7 +279,7 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 				if (ret < 0) {
 					dev_err(&pdev->dev,
 						"failed disable ext control\n");
-					return ret;
+					goto scrub;
 				}
 			}
 		}
@@ -291,11 +296,12 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 		else
 			config.of_node = NULL;
 
-		rdev = devm_regulator_register(&pdev->dev, ri->desc, &config);
+		rdev = regulator_register(ri->desc, &config);
 		if (IS_ERR(rdev)) {
 			dev_err(&pdev->dev, "failed to register regulator %s\n",
 				ri->desc->name);
-			return PTR_ERR(rdev);
+			ret = PTR_ERR(rdev);
+			goto scrub;
 		}
 		ri->rdev = rdev;
 
@@ -303,12 +309,35 @@ static int tps65090_regulator_probe(struct platform_device *pdev)
 		if (tps_pdata && is_dcdc(num) && tps_pdata->reg_init_data &&
 				tps_pdata->enable_ext_control) {
 			ret = tps65090_config_ext_control(ri, true);
-			if (ret < 0)
-				return ret;
+			if (ret < 0) {
+				/* Increment num to get unregister rdev */
+				num++;
+				goto scrub;
+			}
 		}
 	}
 
 	platform_set_drvdata(pdev, pmic);
+	return 0;
+
+scrub:
+	while (--num >= 0) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
+	return ret;
+}
+
+static int tps65090_regulator_remove(struct platform_device *pdev)
+{
+	struct tps65090_regulator *pmic = platform_get_drvdata(pdev);
+	struct tps65090_regulator *ri;
+	int num;
+
+	for (num = 0; num < TPS65090_REGULATOR_MAX; ++num) {
+		ri = &pmic[num];
+		regulator_unregister(ri->rdev);
+	}
 	return 0;
 }
 
@@ -318,6 +347,7 @@ static struct platform_driver tps65090_regulator_driver = {
 		.owner	= THIS_MODULE,
 	},
 	.probe		= tps65090_regulator_probe,
+	.remove		= tps65090_regulator_remove,
 };
 
 static int __init tps65090_regulator_init(void)

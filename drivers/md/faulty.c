@@ -16,7 +16,6 @@
  * Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-
 /*
  * The "faulty" personality causes some requests to fail.
  *
@@ -69,13 +68,12 @@
 #include "md.h"
 #include <linux/seq_file.h>
 
-
 static void faulty_fail(struct bio *bio, int error)
 {
 	struct bio *b = bio->bi_private;
 
-	b->bi_iter.bi_size = bio->bi_iter.bi_size;
-	b->bi_iter.bi_sector = bio->bi_iter.bi_sector;
+	b->bi_size = bio->bi_size;
+	b->bi_sector = bio->bi_sector;
 
 	bio_put(bio);
 
@@ -96,7 +94,6 @@ static int check_mode(struct faulty_conf *conf, int mode)
 	if (conf->period[mode] == 0 &&
 	    atomic_read(&conf->counters[mode]) <= 0)
 		return 0; /* no failure, no decrement */
-
 
 	if (atomic_dec_and_test(&conf->counters[mode])) {
 		if (conf->period[mode])
@@ -185,31 +182,26 @@ static void make_request(struct mddev *mddev, struct bio *bio)
 			return;
 		}
 
-		if (check_sector(conf, bio->bi_iter.bi_sector,
-				 bio_end_sector(bio), WRITE))
+		if (check_sector(conf, bio->bi_sector, bio_end_sector(bio), WRITE))
 			failit = 1;
 		if (check_mode(conf, WritePersistent)) {
-			add_sector(conf, bio->bi_iter.bi_sector,
-				   WritePersistent);
+			add_sector(conf, bio->bi_sector, WritePersistent);
 			failit = 1;
 		}
 		if (check_mode(conf, WriteTransient))
 			failit = 1;
 	} else {
 		/* read request */
-		if (check_sector(conf, bio->bi_iter.bi_sector,
-				 bio_end_sector(bio), READ))
+		if (check_sector(conf, bio->bi_sector, bio_end_sector(bio), READ))
 			failit = 1;
 		if (check_mode(conf, ReadTransient))
 			failit = 1;
 		if (check_mode(conf, ReadPersistent)) {
-			add_sector(conf, bio->bi_iter.bi_sector,
-				   ReadPersistent);
+			add_sector(conf, bio->bi_sector, ReadPersistent);
 			failit = 1;
 		}
 		if (check_mode(conf, ReadFixable)) {
-			add_sector(conf, bio->bi_iter.bi_sector,
-				   ReadFixable);
+			add_sector(conf, bio->bi_sector, ReadFixable);
 			failit = 1;
 		}
 	}
@@ -247,7 +239,6 @@ static void status(struct seq_file *seq, struct mddev *mddev)
 		seq_printf(seq, " ReadPersistent=%d(%d)",
 			   n, conf->period[ReadPersistent]);
 
-
 	if ((n=atomic_read(&conf->counters[ReadFixable])) != 0)
 		seq_printf(seq, " ReadFixable=%d(%d)",
 			   n, conf->period[ReadFixable]);
@@ -257,7 +248,6 @@ static void status(struct seq_file *seq, struct mddev *mddev)
 
 	seq_printf(seq, " nfaults=%d", conf->nfaults);
 }
-
 
 static int reshape(struct mddev *mddev)
 {

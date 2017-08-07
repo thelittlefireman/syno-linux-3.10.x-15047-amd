@@ -16,7 +16,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #include <linux/netdevice.h>
@@ -362,7 +363,6 @@ void zd_op_stop(struct ieee80211_hw *hw)
 	zd_chip_switch_radio_off(chip);
 	zd_chip_disable_int(chip);
 
-
 	while ((skb = skb_dequeue(ack_wait_queue)))
 		dev_kfree_skb_any(skb);
 }
@@ -532,8 +532,9 @@ void zd_mac_tx_failed(struct urb *urb)
 		tx_hdr = (struct ieee80211_hdr *)skb->data;
 
 		/* we skip all frames not matching the reported destination */
-		if (unlikely(!ether_addr_equal(tx_hdr->addr1, tx_status->mac)))
+		if (unlikely(memcmp(tx_hdr->addr1, tx_status->mac, ETH_ALEN))) {
 			continue;
+		}
 
 		/* we skip all frames not matching the reported final rate */
 
@@ -996,7 +997,7 @@ static int filter_ack(struct ieee80211_hw *hw, struct ieee80211_hdr *rx_hdr,
 		    continue;
 
 		tx_hdr = (struct ieee80211_hdr *)skb->data;
-		if (likely(ether_addr_equal(tx_hdr->addr2, rx_hdr->addr1)))
+		if (likely(!memcmp(tx_hdr->addr2, rx_hdr->addr1, ETH_ALEN)))
 		{
 			found = 1;
 			break;
@@ -1210,7 +1211,6 @@ static void zd_process_intr(struct work_struct *work)
 
 	zd_chip_enable_hwint(&mac->chip);
 }
-
 
 static u64 zd_op_prepare_multicast(struct ieee80211_hw *hw,
 				   struct netdev_hw_addr_list *mc_list)

@@ -42,11 +42,9 @@
 #define DP_HIDDEN_BIT	DP_MBIT(DP_FBITS)
 #define DP_SIGN_BIT	DP_MBIT(63)
 
-
 #define SP_MBIT(x)	((u32)1 << (x))
 #define SP_HIDDEN_BIT	SP_MBIT(SP_FBITS)
 #define SP_SIGN_BIT	SP_MBIT(31)
-
 
 #define SPSIGN(sp)	(sp.parts.sign)
 #define SPBEXP(sp)	(sp.parts.bexp)

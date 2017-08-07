@@ -24,6 +24,7 @@
 #include <linux/sched.h>
 #include <linux/string.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/errno.h>
 #include <linux/pci.h>
 #include <linux/dma-mapping.h>
@@ -688,7 +689,7 @@ static __inline__ void gem_tx(struct net_device *dev, struct gem *gp, u32 gem_st
 		}
 
 		dev->stats.tx_packets++;
-		dev_consume_skb_any(skb);
+		dev_kfree_skb(skb);
 	}
 	gp->tx_old = entry;
 
@@ -1249,7 +1250,6 @@ static void gem_stop_dma(struct gem *gp)
 	/* Need to wait a bit ... done by the caller */
 }
 
-
 // XXX dbl check what that function should do when called on PCS PHY
 static void gem_begin_auto_negotiation(struct gem *gp, struct ethtool_cmd *ep)
 {
@@ -1363,7 +1363,6 @@ static int gem_set_link_modes(struct gem *gp)
 
 	netif_info(gp, link, gp->dev, "Link is up at %d Mbps, %s-duplex\n",
 		   speed, (full_duplex ? "full" : "half"));
-
 
 	/* We take the tx queue lock to avoid collisions between
 	 * this code, the tx path and the NAPI-driven error path
@@ -1911,7 +1910,6 @@ static void gem_init_pause_thresholds(struct gem *gp)
 		gp->rx_pause_on = on;
 	}
 
-
 	/* Configure the chip "burst" DMA mode & enable some
 	 * HW bug fixes on Apple version
 	 */
@@ -2069,7 +2067,6 @@ static void gem_reinit_chip(struct gem *gp)
 	gem_init_dma(gp);
 	gem_init_mac(gp);
 }
-
 
 static void gem_stop_phy(struct gem *gp, int wol)
 {
@@ -2637,7 +2634,6 @@ static void gem_set_msglevel(struct net_device *dev, u32 value)
 	gp->msg_enable = value;
 }
 
-
 /* Add more when I understand how to program the chip */
 /* like WAKE_UCAST | WAKE_MCAST | WAKE_BCAST */
 
@@ -2778,7 +2774,7 @@ static int gem_get_device_address(struct gem *gp)
 		return -1;
 #endif
 	}
-	memcpy(dev->dev_addr, addr, ETH_ALEN);
+	memcpy(dev->dev_addr, addr, 6);
 #else
 	get_gem_mac_nonobp(gp->pdev, gp->dev->dev_addr);
 #endif
@@ -2805,6 +2801,8 @@ static void gem_remove_one(struct pci_dev *pdev)
 		iounmap(gp->regs);
 		pci_release_regions(pdev);
 		free_netdev(dev);
+
+		pci_set_drvdata(pdev, NULL);
 	}
 }
 
@@ -3013,7 +3011,6 @@ err_disable_device:
 
 }
 
-
 static struct pci_driver gem_driver = {
 	.name		= GEM_MODULE_NAME,
 	.id_table	= gem_pci_tbl,
@@ -3025,4 +3022,15 @@ static struct pci_driver gem_driver = {
 #endif /* CONFIG_PM */
 };
 
-module_pci_driver(gem_driver);
+static int __init gem_init(void)
+{
+	return pci_register_driver(&gem_driver);
+}
+
+static void __exit gem_cleanup(void)
+{
+	pci_unregister_driver(&gem_driver);
+}
+
+module_init(gem_init);
+module_exit(gem_cleanup);

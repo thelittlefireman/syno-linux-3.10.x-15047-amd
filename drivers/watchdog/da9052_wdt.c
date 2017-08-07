@@ -50,7 +50,6 @@ static const struct {
 	{ 7, 131 },
 };
 
-
 static void da9052_wdt_release_resources(struct kref *r)
 {
 }
@@ -174,7 +173,6 @@ static const struct watchdog_ops da9052_wdt_ops = {
 	.unref = da9052_wdt_unref,
 };
 
-
 static int da9052_wdt_probe(struct platform_device *pdev)
 {
 	struct da9052 *da9052 = dev_get_drvdata(pdev->dev.parent);
@@ -185,6 +183,7 @@ static int da9052_wdt_probe(struct platform_device *pdev)
 	driver_data = devm_kzalloc(&pdev->dev, sizeof(*driver_data),
 				   GFP_KERNEL);
 	if (!driver_data) {
+		dev_err(da9052->dev, "Unable to alloacate watchdog device\n");
 		ret = -ENOMEM;
 		goto err;
 	}
@@ -214,14 +213,14 @@ static int da9052_wdt_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	platform_set_drvdata(pdev, driver_data);
+	dev_set_drvdata(&pdev->dev, driver_data);
 err:
 	return ret;
 }
 
 static int da9052_wdt_remove(struct platform_device *pdev)
 {
-	struct da9052_wdt_data *driver_data = platform_get_drvdata(pdev);
+	struct da9052_wdt_data *driver_data = dev_get_drvdata(&pdev->dev);
 
 	watchdog_unregister_device(&driver_data->wdt);
 	kref_put(&driver_data->kref, da9052_wdt_release_resources);

@@ -71,7 +71,6 @@ static int lm77_write_value(struct i2c_client *client, u8 reg, u16 value);
 
 static struct lm77_data *lm77_update_device(struct device *dev);
 
-
 static const struct i2c_device_id lm77_id[] = {
 	{ "lm77", 0 },
 	{ }
@@ -348,6 +347,7 @@ static int lm77_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		return -ENOMEM;
 
 	i2c_set_clientdata(client, data);
+	data->valid = 0;
 	mutex_init(&data->update_lock);
 
 	/* Initialize the LM77 chip */

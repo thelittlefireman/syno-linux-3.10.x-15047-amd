@@ -30,6 +30,7 @@
 
 #include "common.h"
 #include "clock.h"
+#include "dma.h"
 #include "mmc.h"
 #include "sram.h"
 
@@ -222,16 +223,16 @@ void __init omap1_init_mmc(struct omap_mmc_platform_data **mmc_data,
 		case 0:
 			base = OMAP1_MMC1_BASE;
 			irq = INT_MMC;
-			rx_req = 22;
-			tx_req = 21;
+			rx_req = OMAP_DMA_MMC_RX;
+			tx_req = OMAP_DMA_MMC_TX;
 			break;
 		case 1:
 			if (!cpu_is_omap16xx())
 				return;
 			base = OMAP1_MMC2_BASE;
 			irq = INT_1610_MMC2;
-			rx_req = 55;
-			tx_req = 54;
+			rx_req = OMAP_DMA_MMC2_RX;
+			tx_req = OMAP_DMA_MMC2_TX;
 			break;
 		default:
 			continue;
@@ -277,7 +278,6 @@ static inline void omap_init_spi100k(void)
 }
 #endif
 
-
 #define OMAP1_CAMERA_BASE	0xfffb6800
 #define OMAP1_CAMERA_IOSIZE	0x1c
 
@@ -317,7 +317,6 @@ void __init omap1_camera_init(void *info)
 	if (ret)
 		dev_err(&dev->dev, "unable to register device: %d\n", ret);
 }
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -364,7 +363,6 @@ static void omap_init_uwire(void)
 #else
 static inline void omap_init_uwire(void) {}
 #endif
-
 
 #define OMAP1_RNG_BASE		0xfffe5000
 

@@ -11,7 +11,6 @@
 
 #include <linux/types.h>
 
-
 #ifdef CONFIG_32BIT
 struct mips_vdso {
 	u32 signal_trampoline[2];

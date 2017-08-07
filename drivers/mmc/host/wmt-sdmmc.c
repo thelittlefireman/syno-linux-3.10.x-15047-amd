@@ -32,9 +32,7 @@
 
 #include <asm/byteorder.h>
 
-
 #define DRIVER_NAME "wmt-sdhc"
-
 
 /* MMC/SD controller registers */
 #define SDMMC_CTLR			0x00
@@ -57,7 +55,6 @@
 #define SDMMC_EXTCTRL			0x34
 #define SDMMC_SBLKLEN			0x38
 #define SDMMC_DMATIMEOUT		0x3C
-
 
 /* SDMMC_CTLR bit fields */
 #define CTLR_CMD_START			0x01
@@ -120,7 +117,6 @@
 #define STS2_DATARSP_BUSY		0x20
 #define STS2_DIS_FORCECLK		0x80
 
-
 /* MMC/SD DMA Controller Registers */
 #define SDDMA_GCR			0x100
 #define SDDMA_IER			0x104
@@ -131,7 +127,6 @@
 #define SDDMA_BAR			0x118
 #define SDDMA_CPR			0x11C
 #define SDDMA_CCR			0x120
-
 
 /* SDDMA_GCR bit fields */
 #define DMA_GCR_DMA_EN			0x00000001
@@ -212,14 +207,28 @@ struct wmt_mci_priv {
 
 static void wmt_set_sd_power(struct wmt_mci_priv *priv, int enable)
 {
-	u32 reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
-
-	if (enable ^ priv->power_inverted)
-		reg_tmp &= ~BM_SD_OFF;
-	else
-		reg_tmp |= BM_SD_OFF;
-
-	writeb(reg_tmp, priv->sdmmc_base + SDMMC_BUSMODE);
+	u32 reg_tmp;
+	if (enable) {
+		if (priv->power_inverted) {
+			reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
+			writeb(reg_tmp | BM_SD_OFF,
+			       priv->sdmmc_base + SDMMC_BUSMODE);
+		} else {
+			reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
+			writeb(reg_tmp & (~BM_SD_OFF),
+			       priv->sdmmc_base + SDMMC_BUSMODE);
+		}
+	} else {
+		if (priv->power_inverted) {
+			reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
+			writeb(reg_tmp & (~BM_SD_OFF),
+			       priv->sdmmc_base + SDMMC_BUSMODE);
+		} else {
+			reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
+			writeb(reg_tmp | BM_SD_OFF,
+			       priv->sdmmc_base + SDMMC_BUSMODE);
+		}
+	}
 }
 
 static void wmt_mci_read_response(struct mmc_host *mmc)
@@ -757,7 +766,7 @@ static int wmt_mci_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	const struct of_device_id *of_id =
 		of_match_device(wmt_mci_dt_ids, &pdev->dev);
-	const struct wmt_mci_caps *wmt_caps;
+	const struct wmt_mci_caps *wmt_caps = of_id->data;
 	int ret;
 	int regular_irq, dma_irq;
 
@@ -765,8 +774,6 @@ static int wmt_mci_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Controller capabilities data missing\n");
 		return -EFAULT;
 	}
-
-	wmt_caps = of_id->data;
 
 	if (!np) {
 		dev_err(&pdev->dev, "Missing SDMMC description in devicetree\n");
@@ -915,6 +922,8 @@ static int wmt_mci_remove(struct platform_device *pdev)
 
 	mmc_free_host(mmc);
 
+	platform_set_drvdata(pdev, NULL);
+
 	dev_info(&pdev->dev, "WMT MCI device removed\n");
 
 	return 0;
@@ -927,23 +936,28 @@ static int wmt_mci_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct mmc_host *mmc = platform_get_drvdata(pdev);
 	struct wmt_mci_priv *priv;
+	int ret;
 
 	if (!mmc)
 		return 0;
 
 	priv = mmc_priv(mmc);
-	reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
-	writeb(reg_tmp | BM_SOFT_RESET, priv->sdmmc_base +
-	       SDMMC_BUSMODE);
+	ret = mmc_suspend_host(mmc);
 
-	reg_tmp = readw(priv->sdmmc_base + SDMMC_BLKLEN);
-	writew(reg_tmp & 0x5FFF, priv->sdmmc_base + SDMMC_BLKLEN);
+	if (!ret) {
+		reg_tmp = readb(priv->sdmmc_base + SDMMC_BUSMODE);
+		writeb(reg_tmp | BM_SOFT_RESET, priv->sdmmc_base +
+		       SDMMC_BUSMODE);
 
-	writeb(0xFF, priv->sdmmc_base + SDMMC_STS0);
-	writeb(0xFF, priv->sdmmc_base + SDMMC_STS1);
+		reg_tmp = readw(priv->sdmmc_base + SDMMC_BLKLEN);
+		writew(reg_tmp & 0x5FFF, priv->sdmmc_base + SDMMC_BLKLEN);
 
-	clk_disable(priv->clk_sdmmc);
-	return 0;
+		writeb(0xFF, priv->sdmmc_base + SDMMC_STS0);
+		writeb(0xFF, priv->sdmmc_base + SDMMC_STS1);
+
+		clk_disable(priv->clk_sdmmc);
+	}
+	return ret;
 }
 
 static int wmt_mci_resume(struct device *dev)
@@ -952,6 +966,7 @@ static int wmt_mci_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct mmc_host *mmc = platform_get_drvdata(pdev);
 	struct wmt_mci_priv *priv;
+	int ret = 0;
 
 	if (mmc) {
 		priv = mmc_priv(mmc);
@@ -969,9 +984,10 @@ static int wmt_mci_resume(struct device *dev)
 		writeb(reg_tmp | INT0_DI_INT_EN, priv->sdmmc_base +
 		       SDMMC_INTMASK0);
 
+		ret = mmc_resume_host(mmc);
 	}
 
-	return 0;
+	return ret;
 }
 
 static const struct dev_pm_ops wmt_mci_pm = {

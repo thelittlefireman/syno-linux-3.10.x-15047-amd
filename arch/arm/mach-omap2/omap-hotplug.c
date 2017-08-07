@@ -42,7 +42,6 @@ void __ref omap4_cpu_die(unsigned int cpu)
 		__raw_writel(0, base + OMAP_AUX_CORE_BOOT_0);
 	}
 
-
 	for (;;) {
 		/*
 		 * Enter into low power state

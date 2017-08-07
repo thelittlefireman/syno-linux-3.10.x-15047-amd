@@ -38,7 +38,6 @@
 #include "isdn_concap.h"
 #endif
 
-
 /*
  * Outline of new tbusy handling:
  *
@@ -885,7 +884,7 @@ isdn_net_log_skb(struct sk_buff *skb, isdn_net_local *lp)
 
 	addinfo[0] = '\0';
 	/* This check stolen from 2.1.72 dev_queue_xmit_nit() */
-	if (p < skb->data || skb_network_header(skb) >= skb_tail_pointer(skb)) {
+	if (p < skb->data || skb->network_header >= skb->tail) {
 		/* fall back to old isdn_net_log_packet method() */
 		char *buf = skb->data;
 
@@ -1035,7 +1034,6 @@ error:
 
 }
 
-
 /*
  *  Helper function for isdn_net_start_xmit.
  *  When called, the connection is already established.
@@ -1127,7 +1125,6 @@ isdn_net_adjust_hdr(struct sk_buff *skb, struct net_device *dev)
 		}
 	}
 }
-
 
 static void isdn_net_tx_timeout(struct net_device *ndev)
 {
@@ -1371,7 +1368,7 @@ isdn_net_type_trans(struct sk_buff *skb, struct net_device *dev)
 	eth = eth_hdr(skb);
 
 	if (*eth->h_dest & 1) {
-		if (ether_addr_equal(eth->h_dest, dev->broadcast))
+		if (memcmp(eth->h_dest, dev->broadcast, ETH_ALEN) == 0)
 			skb->pkt_type = PACKET_BROADCAST;
 		else
 			skb->pkt_type = PACKET_MULTICAST;
@@ -1382,7 +1379,7 @@ isdn_net_type_trans(struct sk_buff *skb, struct net_device *dev)
 	 */
 
 	else if (dev->flags & (IFF_PROMISC /*| IFF_ALLMULTI*/)) {
-		if (!ether_addr_equal(eth->h_dest, dev->dev_addr))
+		if (memcmp(eth->h_dest, dev->dev_addr, ETH_ALEN))
 			skb->pkt_type = PACKET_OTHERHOST;
 	}
 	if (ntohs(eth->h_proto) >= ETH_P_802_3_MIN)
@@ -1403,7 +1400,6 @@ isdn_net_type_trans(struct sk_buff *skb, struct net_device *dev)
 	 */
 	return htons(ETH_P_802_2);
 }
-
 
 /*
  * CISCO HDLC keepalive specific stuff
@@ -1488,7 +1484,6 @@ isdn_ciscohdlck_dev_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 	}
 	return (rc);
 }
-
 
 static int isdn_net_ioctl(struct net_device *dev,
 			  struct ifreq *ifr, int cmd)

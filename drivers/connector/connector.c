@@ -50,7 +50,7 @@ static int cn_already_initialized;
  *
  * Sequence number is incremented with each message to be sent.
  *
- * If we expect a reply to our message then the sequence number in
+ * If we expect reply to our message then the sequence number in
  * received message MUST be the same as in original message, and
  * acknowledge number MUST be the same + 1.
  *
@@ -62,11 +62,8 @@ static int cn_already_initialized;
  * the acknowledgement number in the original message + 1, then it is
  * a new message.
  *
- * The message is sent to, the portid if given, the group if given, both if
- * both, or if both are zero then the group is looked up and sent there.
  */
-int cn_netlink_send(struct cn_msg *msg, u32 portid, u32 __group,
-	gfp_t gfp_mask)
+int cn_netlink_send(struct cn_msg *msg, u32 __group, gfp_t gfp_mask)
 {
 	struct cn_callback_entry *__cbq;
 	unsigned int size;
@@ -77,9 +74,7 @@ int cn_netlink_send(struct cn_msg *msg, u32 portid, u32 __group,
 	u32 group = 0;
 	int found = 0;
 
-	if (portid || __group) {
-		group = __group;
-	} else {
+	if (!__group) {
 		spin_lock_bh(&dev->cbdev->queue_lock);
 		list_for_each_entry(__cbq, &dev->cbdev->queue_list,
 				    callback_entry) {
@@ -93,9 +88,11 @@ int cn_netlink_send(struct cn_msg *msg, u32 portid, u32 __group,
 
 		if (!found)
 			return -ENODEV;
+	} else {
+		group = __group;
 	}
 
-	if (!portid && !netlink_has_listeners(dev->nls, group))
+	if (!netlink_has_listeners(dev->nls, group))
 		return -ESRCH;
 
 	size = sizeof(*msg) + msg->len;
@@ -112,14 +109,11 @@ int cn_netlink_send(struct cn_msg *msg, u32 portid, u32 __group,
 
 	data = nlmsg_data(nlh);
 
-	memcpy(data, msg, size);
+	memcpy(data, msg, sizeof(*data) + msg->len);
 
 	NETLINK_CB(skb).dst_group = group;
 
-	if (group)
-		return netlink_broadcast(dev->nls, skb, portid, group,
-					 gfp_mask);
-	return netlink_unicast(dev->nls, skb, portid, !(gfp_mask&__GFP_WAIT));
+	return netlink_broadcast(dev->nls, skb, 0, group, gfp_mask);
 }
 EXPORT_SYMBOL_GPL(cn_netlink_send);
 
@@ -145,6 +139,7 @@ static int cn_call_callback(struct sk_buff *skb)
 	spin_unlock_bh(&dev->cbdev->queue_lock);
 
 	if (cbq != NULL) {
+		err = 0;
 		cbq->callback(msg, nsp);
 		kfree_skb(skb);
 		cn_queue_release_callback(cbq);
@@ -159,13 +154,10 @@ static int cn_call_callback(struct sk_buff *skb)
  *
  * It checks skb, netlink header and msg sizes, and calls callback helper.
  */
-static void cn_rx_skb(struct sk_buff *__skb)
+static void cn_rx_skb(struct sk_buff *skb)
 {
 	struct nlmsghdr *nlh;
-	struct sk_buff *skb;
 	int len, err;
-
-	skb = skb_get(__skb);
 
 	if (skb->len >= NLMSG_HDRLEN) {
 		nlh = nlmsg_hdr(skb);
@@ -173,12 +165,10 @@ static void cn_rx_skb(struct sk_buff *__skb)
 
 		if (len < (int)sizeof(struct cn_msg) ||
 		    skb->len < nlh->nlmsg_len ||
-		    len > CONNECTOR_MAX_MSG_SIZE) {
-			kfree_skb(skb);
+		    len > CONNECTOR_MAX_MSG_SIZE)
 			return;
-		}
 
-		err = cn_call_callback(skb);
+		err = cn_call_callback(skb_get(skb));
 		if (err < 0)
 			kfree_skb(skb);
 	}

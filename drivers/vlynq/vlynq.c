@@ -584,7 +584,6 @@ int vlynq_enable_device(struct vlynq_device *dev)
 }
 EXPORT_SYMBOL(vlynq_enable_device);
 
-
 void vlynq_disable_device(struct vlynq_device *dev)
 {
 	struct plat_vlynq_ops *ops = dev->dev.platform_data;
@@ -762,8 +761,7 @@ static int vlynq_remove(struct platform_device *pdev)
 
 	device_unregister(&dev->dev);
 	iounmap(dev->local);
-	release_mem_region(dev->regs_start,
-			   dev->regs_end - dev->regs_start + 1);
+	release_mem_region(dev->regs_start, dev->regs_end - dev->regs_start);
 
 	kfree(dev);
 

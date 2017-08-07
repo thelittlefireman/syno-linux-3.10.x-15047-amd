@@ -31,7 +31,7 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/types.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_drivers.h>
 #include <linux/platform_device.h>
 #include <linux/input.h>
 
@@ -71,8 +71,9 @@ static struct quickstart_button *pressed;
 static struct input_dev *quickstart_input;
 
 /* Platform driver functions */
-static ssize_t buttons_show(struct device *dev, struct device_attribute *attr,
-			    char *buf)
+static ssize_t quickstart_buttons_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
 {
 	int count = 0;
 	struct quickstart_button *b;
@@ -93,17 +94,17 @@ static ssize_t buttons_show(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-static ssize_t pressed_button_show(struct device *dev,
-				   struct device_attribute *attr, char *buf)
+static ssize_t quickstart_pressed_button_show(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%s\n",
 					(pressed ? pressed->name : "none"));
 }
 
-
-static ssize_t pressed_button_store(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t quickstart_pressed_button_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
 {
 	if (count < 2)
 		return -EINVAL;
@@ -317,8 +318,9 @@ static int quickstart_acpi_remove(struct acpi_device *device)
 }
 
 /* Platform driver structs */
-static DEVICE_ATTR_RW(pressed_button);
-static DEVICE_ATTR_RO(buttons);
+static DEVICE_ATTR(pressed_button, 0666, quickstart_pressed_button_show,
+					 quickstart_pressed_button_store);
+static DEVICE_ATTR(buttons, 0444, quickstart_buttons_show, NULL);
 static struct platform_device *pf_device;
 static struct platform_driver pf_driver = {
 	.driver = {
@@ -389,6 +391,10 @@ static int __init quickstart_init_input(void)
 static int __init quickstart_init(void)
 {
 	int ret;
+
+	/* ACPI Check */
+	if (acpi_disabled)
+		return -ENODEV;
 
 	/* ACPI driver register */
 	ret = acpi_bus_register_driver(&quickstart_acpi_driver);

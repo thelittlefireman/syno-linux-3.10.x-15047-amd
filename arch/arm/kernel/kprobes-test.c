@@ -113,7 +113,7 @@
  *	@ start of inline data...
  *	.ascii "mov r0, r7"	@ text title for test case
  *	.byte	0
- *	.align	2, 0
+ *	.align	2
  *
  *	@ TEST_ARG_REG
  *	.byte	ARG_TYPE_REG
@@ -201,19 +201,13 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/kprobes.h>
-#include <linux/errno.h>
-#include <linux/stddef.h>
-#include <linux/bug.h>
+
 #include <asm/opcodes.h>
 
 #include "kprobes.h"
-#include "probes-arm.h"
-#include "probes-thumb.h"
 #include "kprobes-test.h"
 
-
 #define BENCHMARKING	1
-
 
 /*
  * Test basic API
@@ -228,7 +222,6 @@ static int kretprobe_handler_called;
 
 #define FUNC_ARG1 0x12345678
 #define FUNC_ARG2 0xabcdef
-
 
 #ifndef CONFIG_THUMB2_KERNEL
 
@@ -279,7 +272,6 @@ static void __used __naked __thumb_kprobes_test_funcs(void)
 }
 
 #endif /* CONFIG_THUMB2_KERNEL */
-
 
 static int call_test_func(long (*func)(long, long), bool check_test_regs)
 {
@@ -472,7 +464,6 @@ static int run_api_tests(long (*func)(long, long))
 	return 0;
 }
 
-
 /*
  * Benchmarking
  */
@@ -524,7 +515,6 @@ static void __naked benchmark_pushpop4(void)
 		"ldmia"wide"	sp!, {r0,pc}"
 	);
 }
-
 
 #ifdef CONFIG_THUMB2_KERNEL
 
@@ -623,7 +613,6 @@ static int run_benchmarks(void)
 
 #endif /* BENCHMARKING */
 
-
 /*
  * Decoding table self-consistency tests
  */
@@ -708,7 +697,6 @@ static int table_test(const union decode_item *table)
 	};
 	return table_iter(args.root_table, table_test_fn, &args);
 }
-
 
 /*
  * Decoding table test coverage analysis
@@ -953,7 +941,6 @@ static void coverage_end(void)
 	kfree(coverage.base);
 }
 
-
 /*
  * Framework for instruction set test cases
  */
@@ -1015,7 +1002,6 @@ void __naked __kprobes_test_case_end_32(void)
 
 #endif
 
-
 int kprobe_test_flags;
 int kprobe_test_cc_position;
 
@@ -1036,7 +1022,6 @@ static uintptr_t current_branch_target;
 
 static uintptr_t current_code_start;
 static kprobe_opcode_t current_instruction;
-
 
 #define TEST_CASE_PASSED -1
 #define TEST_CASE_FAILED -2
@@ -1333,8 +1318,7 @@ static void test_case_failed(const char *message)
 static unsigned long next_instruction(unsigned long pc)
 {
 #ifdef CONFIG_THUMB2_KERNEL
-	if ((pc & 1) &&
-	    !is_wide_instruction(__mem_to_opcode_thumb16(*(u16 *)(pc - 1))))
+	if ((pc & 1) && !is_wide_instruction(*(u16 *)(pc - 1)))
 		return pc + 2;
 	else
 #endif
@@ -1379,13 +1363,13 @@ static uintptr_t __used kprobes_test_case_start(const char *title, void *stack)
 
 	if (test_case_is_thumb) {
 		u16 *p = (u16 *)(test_code & ~1);
-		current_instruction = __mem_to_opcode_thumb16(p[0]);
+		current_instruction = p[0];
 		if (is_wide_instruction(current_instruction)) {
-			u16 instr2 = __mem_to_opcode_thumb16(p[1]);
-			current_instruction = __opcode_thumb32_compose(current_instruction, instr2);
+			current_instruction <<= 16;
+			current_instruction |= p[1];
 		}
 	} else {
-		current_instruction = __mem_to_opcode_arm(*(u32 *)test_code);
+		current_instruction = *(u32 *)test_code;
 	}
 
 	if (current_title[0] == '.')
@@ -1573,7 +1557,6 @@ end:
 	return 0;
 }
 
-
 /*
  * Top level test functions
  */
@@ -1598,7 +1581,6 @@ static int run_test_cases(void (*tests)(void), const union decode_item *table)
 	return 0;
 }
 
-
 static int __init run_all_tests(void)
 {
 	int ret = 0;
@@ -1613,7 +1595,7 @@ static int __init run_all_tests(void)
 		goto out;
 
 	pr_info("ARM instruction simulation\n");
-	ret = run_test_cases(kprobe_arm_test_cases, probes_decode_arm_table);
+	ret = run_test_cases(kprobe_arm_test_cases, kprobe_decode_arm_table);
 	if (ret)
 		goto out;
 
@@ -1636,13 +1618,13 @@ static int __init run_all_tests(void)
 
 	pr_info("16-bit Thumb instruction simulation\n");
 	ret = run_test_cases(kprobe_thumb16_test_cases,
-				probes_decode_thumb16_table);
+				kprobe_decode_thumb16_table);
 	if (ret)
 		goto out;
 
 	pr_info("32-bit Thumb instruction simulation\n");
 	ret = run_test_cases(kprobe_thumb32_test_cases,
-				probes_decode_thumb32_table);
+				kprobe_decode_thumb32_table);
 	if (ret)
 		goto out;
 #endif
@@ -1678,7 +1660,6 @@ out:
 
 	return ret;
 }
-
 
 /*
  * Module setup

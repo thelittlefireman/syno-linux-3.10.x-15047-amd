@@ -1189,7 +1189,6 @@ static int check_for_left_cqes(struct ehca_qp *my_qp, struct ehca_shca *shca)
 		if (ret)
 			return ret;
 
-
 		spin_lock_irqsave(&my_qp->recv_cq->spinlock, flags);
 		ret = calc_left_cqes((u64)recv_wqe_p, &my_qp->ipz_rqueue,
 				&my_qp->rq_map);
@@ -1329,7 +1328,7 @@ static int internal_modify_qp(struct ib_qp *ibqp,
 	qp_new_state = attr_mask & IB_QP_STATE ? attr->qp_state : qp_cur_state;
 	if (!smi_reset2init &&
 	    !ib_modify_qp_is_ok(qp_cur_state, qp_new_state, ibqp->qp_type,
-				attr_mask, IB_LINK_LAYER_UNSPECIFIED)) {
+				attr_mask)) {
 		ret = -EINVAL;
 		ehca_err(ibqp->device,
 			 "Invalid qp transition new_state=%x cur_state=%x "

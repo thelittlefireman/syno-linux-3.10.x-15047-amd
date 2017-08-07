@@ -17,6 +17,11 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
 */
 /*
  * Driver: amplc_dio200
@@ -192,7 +197,8 @@
  * order they appear in the channel list.
  */
 
-#include <linux/module.h>
+#include <linux/slab.h>
+
 #include "../comedidev.h"
 
 #include "amplc_dio200.h"
@@ -271,9 +277,10 @@ static int dio200_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 
 	irq = it->options[1];
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	ret = comedi_request_region(dev, it->options[0], thisboard->mainsize);
 	if (ret)

@@ -180,7 +180,6 @@ static inline void format_mod_start(void) { }
 static inline void format_mod_stop(void) { }
 #endif /* CONFIG_MODULES */
 
-
 __initdata_or_module static
 struct notifier_block module_trace_bprintk_format_nb = {
 	.notifier_call = module_trace_bprintk_format_notify,
@@ -244,30 +243,11 @@ static const char **find_next(void *v, loff_t *pos)
 {
 	const char **fmt = v;
 	int start_index;
-	int last_index;
 
 	start_index = __stop___trace_bprintk_fmt - __start___trace_bprintk_fmt;
 
 	if (*pos < start_index)
 		return __start___trace_bprintk_fmt + *pos;
-
-	/*
-	 * The __tracepoint_str section is treated the same as the
-	 * __trace_printk_fmt section. The difference is that the
-	 * __trace_printk_fmt section should only be used by trace_printk()
-	 * in a debugging environment, as if anything exists in that section
-	 * the trace_prink() helper buffers are allocated, which would just
-	 * waste space in a production environment.
-	 *
-	 * The __tracepoint_str sections on the other hand are used by
-	 * tracepoints which need to map pointers to their strings to
-	 * the ASCII text for userspace.
-	 */
-	last_index = start_index;
-	start_index = __stop___tracepoint_str - __start___tracepoint_str;
-
-	if (*pos < last_index + start_index)
-		return __start___tracepoint_str + (*pos - last_index);
 
 	return find_next_mod_format(start_index, v, fmt, pos);
 }
@@ -290,6 +270,9 @@ static int t_show(struct seq_file *m, void *v)
 	const char **fmt = v;
 	const char *str = *fmt;
 	int i;
+
+	if (!*fmt)
+		return 0;
 
 	seq_printf(m, "0x%lx : \"", *(unsigned long *)fmt);
 

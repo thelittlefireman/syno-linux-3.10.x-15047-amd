@@ -339,7 +339,6 @@ static inline pte_t pte_modify(pte_t pte, pgprot_t newprot)
 	return pte;
 }
 
-
 /*
  * pte_val refers to a page in the 0x0xxxxxxx physical DRAM interval
  * __pte_page(pte_val) refers to the "virtual" DRAM interval
@@ -445,6 +444,9 @@ static inline void update_mmu_cache(struct vm_area_struct *vma,
 #define pgoff_to_pte(x)	                __pte(((x) << 6) | _PAGE_FILE)
 
 #define kern_addr_valid(addr)           (1)
+
+#define io_remap_pfn_range(vma, vaddr, pfn, size, prot)         \
+	remap_pfn_range(vma, vaddr, pfn, size, prot)
 
 #include <asm-generic/pgtable.h>
 

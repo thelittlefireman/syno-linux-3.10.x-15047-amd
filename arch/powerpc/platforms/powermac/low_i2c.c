@@ -69,7 +69,6 @@
 #define DBG_LOW(x...)
 #endif
 
-
 static int pmac_i2c_force_poll = 1;
 
 /*
@@ -238,7 +237,6 @@ static void kw_i2c_do_stop(struct pmac_i2c_host_kw *host, int result)
 	host->state = state_stop;
 	host->result = result;
 }
-
 
 static void kw_i2c_handle_interrupt(struct pmac_i2c_host_kw *host, u8 isr)
 {
@@ -452,7 +450,7 @@ static int kw_i2c_xfer(struct pmac_i2c_bus *bus, u8 addrdir, int subsize,
 	 */
 	if (use_irq) {
 		/* Clear completion */
-		reinit_completion(&host->complete);
+		INIT_COMPLETION(host->complete);
 		/* Ack stale interrupts */
 		kw_write_reg(reg_isr, kw_read_reg(reg_isr));
 		/* Arm timeout */
@@ -565,7 +563,6 @@ static struct pmac_i2c_host_kw *__init kw_i2c_host_init(struct device_node *np)
 	return host;
 }
 
-
 static void __init kw_i2c_add(struct pmac_i2c_host_kw *host,
 			      struct device_node *controller,
 			      struct device_node *busnode,
@@ -645,7 +642,6 @@ static void __init kw_i2c_probe(void)
 	}
 }
 
-
 /*
  *
  * PMU implementation
@@ -717,7 +713,7 @@ static int pmu_i2c_xfer(struct pmac_i2c_bus *bus, u8 addrdir, int subsize,
 			return -EINVAL;
 		}
 
-		reinit_completion(&comp);
+		INIT_COMPLETION(comp);
 		req->data[0] = PMU_I2C_CMD;
 		req->reply[0] = 0xff;
 		req->nbytes = sizeof(struct pmu_i2c_hdr) + 1;
@@ -748,7 +744,7 @@ static int pmu_i2c_xfer(struct pmac_i2c_bus *bus, u8 addrdir, int subsize,
 
 		hdr->bus = PMU_I2C_BUS_STATUS;
 
-		reinit_completion(&comp);
+		INIT_COMPLETION(comp);
 		req->data[0] = PMU_I2C_CMD;
 		req->reply[0] = 0xff;
 		req->nbytes = 2;
@@ -823,7 +819,6 @@ static void __init pmu_i2c_probe(void)
 }
 
 #endif /* CONFIG_ADB_PMU */
-
 
 /*
  *
@@ -954,7 +949,6 @@ static void __init smu_i2c_probe(void)
  *
  */
 
-
 struct pmac_i2c_bus *pmac_i2c_find_bus(struct device_node *node)
 {
 	struct device_node *p = of_node_get(node);
@@ -1027,7 +1021,6 @@ int pmac_i2c_get_channel(struct pmac_i2c_bus *bus)
 }
 EXPORT_SYMBOL_GPL(pmac_i2c_get_channel);
 
-
 struct i2c_adapter *pmac_i2c_get_adapter(struct pmac_i2c_bus *bus)
 {
 	return &bus->adapter;
@@ -1087,7 +1080,6 @@ int pmac_low_i2c_unlock(struct device_node *np)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pmac_low_i2c_unlock);
-
 
 int pmac_i2c_open(struct pmac_i2c_bus *bus, int polled)
 {
@@ -1395,7 +1387,6 @@ static int pmac_i2c_do_delay(PMF_STD_ARGS, u32 duration)
 	msleep((duration + 999) / 1000);
 	return 0;
 }
-
 
 static struct pmf_handlers pmac_i2c_pfunc_handlers = {
 	.begin			= pmac_i2c_do_begin,

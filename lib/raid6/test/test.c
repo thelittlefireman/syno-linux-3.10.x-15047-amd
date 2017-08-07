@@ -1,25 +1,13 @@
-/* -*- linux-c -*- ------------------------------------------------------- *
- *
- *   Copyright 2002-2007 H. Peter Anvin - All Rights Reserved
- *
- *   This file is part of the Linux kernel, and is made available under
- *   the terms of the GNU General Public License version 2 or (at your
- *   option) any later version; incorporated herein by reference.
- *
- * ----------------------------------------------------------------------- */
-
-/*
- * raid6test.c
- *
- * Test RAID-6 recovery with various algorithms
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <linux/raid/pq.h>
 
-#define NDISKS		16	/* Including P and Q */
+#define NDISKS		16	 
 
 const char raid6_empty_zero_page[PAGE_SIZE] __attribute__((aligned(256)));
 struct raid6_calls raid6_call;
@@ -28,11 +16,19 @@ char *dataptrs[NDISKS];
 char data[NDISKS][PAGE_SIZE];
 char recovi[PAGE_SIZE], recovj[PAGE_SIZE];
 
+#ifdef MY_ABC_HERE
+static void makedata(int start, int stop)
+#else  
 static void makedata(void)
+#endif  
 {
 	int i, j;
 
+#ifdef MY_ABC_HERE
+	for (i = start; i <= stop; i++) {
+#else  
 	for (i = 0; i < NDISKS; i++) {
+#endif  
 		for (j = 0; j < PAGE_SIZE; j++)
 			data[i][j] = rand();
 
@@ -68,8 +64,7 @@ static int test_disks(int i, int j)
 	errb = memcmp(data[j], recovj, PAGE_SIZE);
 
 	if (i < NDISKS-2 && j == NDISKS-1) {
-		/* We don't implement the DQ failure scenario, since it's
-		   equivalent to a RAID-5 failure (XOR, then recompute Q) */
+		 
 		erra = errb = 0;
 	} else {
 		printf("algo=%-8s  faila=%3d(%c)  failb=%3d(%c)  %s\n",
@@ -91,27 +86,67 @@ int main(int argc, char *argv[])
 {
 	const struct raid6_calls *const *algo;
 	const struct raid6_recov_calls *const *ra;
+#ifdef MY_ABC_HERE
+	int i, j, p1, p2;
+#else  
 	int i, j;
+#endif  
 	int err = 0;
 
+#ifdef MY_ABC_HERE
+	makedata(0, NDISKS-1);
+#else  
 	makedata();
+#endif  
 
 	for (ra = raid6_recov_algos; *ra; ra++) {
 		if ((*ra)->valid  && !(*ra)->valid())
 			continue;
+
 		raid6_2data_recov = (*ra)->data2;
 		raid6_datap_recov = (*ra)->datap;
 
 		printf("using recovery %s\n", (*ra)->name);
 
 		for (algo = raid6_algos; *algo; algo++) {
+#ifdef MY_ABC_HERE
+			if ((*algo)->valid && !(*algo)->valid())
+				continue;
+
+			raid6_call = **algo;
+
+			memset(data[NDISKS-2], 0xee, 2*PAGE_SIZE);
+
+			raid6_call.gen_syndrome(NDISKS, PAGE_SIZE,
+						(void **)&dataptrs);
+
+			for (i = 0; i < NDISKS-1; i++)
+				for (j = i+1; j < NDISKS; j++)
+					err += test_disks(i, j);
+
+			if (!raid6_call.xor_syndrome)
+				continue;
+
+			for (p1 = 0; p1 < NDISKS-2; p1++)
+				for (p2 = p1; p2 < NDISKS-2; p2++) {
+
+					raid6_call.xor_syndrome(NDISKS, p1, p2, PAGE_SIZE,
+								(void **)&dataptrs);
+					makedata(p1, p2);
+					raid6_call.xor_syndrome(NDISKS, p1, p2, PAGE_SIZE,
+                                                                (void **)&dataptrs);
+
+					for (i = 0; i < NDISKS-1; i++)
+						for (j = i+1; j < NDISKS; j++)
+							err += test_disks(i, j);
+				}
+
+#else  
 			if (!(*algo)->valid || (*algo)->valid()) {
 				raid6_call = **algo;
 
-				/* Nuke syndromes */
 				memset(data[NDISKS-2], 0xee, 2*PAGE_SIZE);
 
-				/* Generate assumed good syndrome */
 				raid6_call.gen_syndrome(NDISKS, PAGE_SIZE,
 							(void **)&dataptrs);
 
@@ -119,12 +154,13 @@ int main(int argc, char *argv[])
 					for (j = i+1; j < NDISKS; j++)
 						err += test_disks(i, j);
 			}
+#endif  
 		}
 		printf("\n");
 	}
 
 	printf("\n");
-	/* Pick the best algorithm test */
+	 
 	raid6_select_algo();
 
 	if (err)

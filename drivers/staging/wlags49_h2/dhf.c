@@ -106,7 +106,7 @@
  *---------------------------------------------------------------------------*/
 
 /*                    12345678901234 */
-static char signature[14] = "FUPU7D37dhfwci";
+char signature[14] = "FUPU7D37dhfwci";
 
 /*-----------------------------------------------------------------------------
  *
@@ -123,8 +123,8 @@ static char signature[14] = "FUPU7D37dhfwci";
 #define DL_SIZE 2000
 
 /* CFG_IDENTITY_STRCT   	pri_identity	= { LOF(CFG_IDENTITY_STRCT), CFG_PRI_IDENTITY }; */
-static CFG_SUP_RANGE_STRCT 	mfi_sup        	= { LOF(CFG_SUP_RANGE_STRCT), CFG_NIC_MFI_SUP_RANGE };
-static CFG_SUP_RANGE_STRCT 	cfi_sup        	= { LOF(CFG_SUP_RANGE_STRCT), CFG_NIC_CFI_SUP_RANGE };
+CFG_SUP_RANGE_STRCT 	mfi_sup        	= { LOF(CFG_SUP_RANGE_STRCT), CFG_NIC_MFI_SUP_RANGE };
+CFG_SUP_RANGE_STRCT 	cfi_sup        	= { LOF(CFG_SUP_RANGE_STRCT), CFG_NIC_CFI_SUP_RANGE };
 /* Note: could be used rather than the above explained and defined DL_SIZE if need arises
  * CFG_DL_BUF_STRCT    	dl_buf         	= { LOF(CFG_DL_BUF_STRCT), CFG_DL_BUF };
 */
@@ -139,18 +139,16 @@ static CFG_SUP_RANGE_STRCT 	cfi_sup        	= { LOF(CFG_SUP_RANGE_STRCT), CFG_NI
  * This is only relevant if the DHF used without reloading the driver/utility.
  */
 
-static LTV_INFO_STRUCT ltv_info[] = {
+LTV_INFO_STRUCT ltv_info[] = {
 	{ (LTVP)&mfi_sup,			LOF(CFG_SUP_RANGE_STRCT) } ,
 	{ (LTVP)&cfi_sup,			LOF(CFG_SUP_RANGE_STRCT) } ,
 	{ (LTVP) NULL, 				0 }
 };
 
-
 /***********************************************************************************************************/
 /***************************************  PROTOTYPES  ******************************************************/
 /***********************************************************************************************************/
 static int				check_comp_fw(memimage *fw);
-
 
 /************************************************************************************************************
 *.SUBMODULE		int check_comp_fw( memimage *fw )
@@ -169,7 +167,7 @@ static int				check_comp_fw(memimage *fw);
 *   station firmware image to be downloaded is compatible.
 *.ENDDOC				END DOCUMENTATION
 *************************************************************************************************************/
-static int
+int
 check_comp_fw(memimage *fw)
 {
 CFG_RANGE20_STRCT  		*p;
@@ -213,17 +211,11 @@ CFG_RANGE_SPEC_STRCT *i;
 	return rc;
 } /* check_comp_fw */
 
-
-
-
-
 /*-----------------------------------------------------------------------------
  *
  * Exported functions
  *
  *---------------------------------------------------------------------------*/
-
-
 
 /*************************************************************************************************************
 *
@@ -284,7 +276,6 @@ int				i;
 	}
 	return rc;
 }   /* dhf_download_binary */
-
 
 /*************************************************************************************************************
 *
@@ -376,5 +367,3 @@ int					i;
 	MMDASSERT(rc == HCF_SUCCESS, rc)
 	return rc;
 }   /* dhf_download_fw */
-
-

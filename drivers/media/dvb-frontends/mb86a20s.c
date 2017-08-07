@@ -1,7 +1,7 @@
 /*
  *   Fujitu mb86a20s ISDB-T/ISDB-Tsb Module driver
  *
- *   Copyright (C) 2010-2013 Mauro Carvalho Chehab
+ *   Copyright (C) 2010-2013 Mauro Carvalho Chehab <mchehab@redhat.com>
  *   Copyright (C) 2009-2010 Douglas Landgraf <dougsland@redhat.com>
  *
  *   This program is free software; you can redistribute it and/or
@@ -890,7 +890,6 @@ static int mb86a20s_get_pre_ber(struct dvb_frontend *fe,
 	dev_dbg(&state->i2c->dev,
 		"%s: bit count before Viterbi for layer %c: %d.\n",
 		__func__, 'A' + layer, *count);
-
 
 	/*
 	 * As we get TMCC data from the frontend, we can better estimate the
@@ -1873,7 +1872,6 @@ static int mb86a20s_initfe(struct dvb_frontend *fe)
 	if (rc < 0)
 		goto err;
 
-
 err:
 	if (fe->ops.i2c_gate_ctrl)
 		fe->ops.i2c_gate_ctrl(fe, 1);
@@ -2035,7 +2033,6 @@ static int mb86a20s_read_signal_strength_from_cache(struct dvb_frontend *fe,
 {
 	struct dtv_frontend_properties *c = &fe->dtv_property_cache;
 
-
 	*strength = c->strength.stat[0].uvalue;
 
 	return 0;
@@ -2156,5 +2153,5 @@ static struct dvb_frontend_ops mb86a20s_ops = {
 };
 
 MODULE_DESCRIPTION("DVB Frontend module for Fujitsu mb86A20s hardware");
-MODULE_AUTHOR("Mauro Carvalho Chehab");
+MODULE_AUTHOR("Mauro Carvalho Chehab <mchehab@redhat.com>");
 MODULE_LICENSE("GPL");

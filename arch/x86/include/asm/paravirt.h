@@ -712,16 +712,36 @@ static inline void __set_fixmap(unsigned /* enum fixed_addresses */ idx,
 
 #if defined(CONFIG_SMP) && defined(CONFIG_PARAVIRT_SPINLOCKS)
 
-static __always_inline void __ticket_lock_spinning(struct arch_spinlock *lock,
-							__ticket_t ticket)
+static inline int arch_spin_is_locked(struct arch_spinlock *lock)
 {
-	PVOP_VCALLEE2(pv_lock_ops.lock_spinning, lock, ticket);
+	return PVOP_CALL1(int, pv_lock_ops.spin_is_locked, lock);
 }
 
-static __always_inline void __ticket_unlock_kick(struct arch_spinlock *lock,
-							__ticket_t ticket)
+static inline int arch_spin_is_contended(struct arch_spinlock *lock)
 {
-	PVOP_VCALL2(pv_lock_ops.unlock_kick, lock, ticket);
+	return PVOP_CALL1(int, pv_lock_ops.spin_is_contended, lock);
+}
+#define arch_spin_is_contended	arch_spin_is_contended
+
+static __always_inline void arch_spin_lock(struct arch_spinlock *lock)
+{
+	PVOP_VCALL1(pv_lock_ops.spin_lock, lock);
+}
+
+static __always_inline void arch_spin_lock_flags(struct arch_spinlock *lock,
+						  unsigned long flags)
+{
+	PVOP_VCALL2(pv_lock_ops.spin_lock_flags, lock, flags);
+}
+
+static __always_inline int arch_spin_trylock(struct arch_spinlock *lock)
+{
+	return PVOP_CALL1(int, pv_lock_ops.spin_trylock, lock);
+}
+
+static __always_inline void arch_spin_unlock(struct arch_spinlock *lock)
+{
+	PVOP_VCALL1(pv_lock_ops.spin_unlock, lock);
 }
 
 #endif
@@ -781,9 +801,9 @@ static __always_inline void __ticket_unlock_kick(struct arch_spinlock *lock,
  */
 #define PV_CALLEE_SAVE_REGS_THUNK(func)					\
 	extern typeof(func) __raw_callee_save_##func;			\
+	static void *__##func##__ __used = func;			\
 									\
 	asm(".pushsection .text;"					\
-	    ".globl __raw_callee_save_" #func " ; "			\
 	    "__raw_callee_save_" #func ": "				\
 	    PV_SAVE_ALL_CALLER_REGS					\
 	    "call " #func ";"						\
@@ -828,7 +848,6 @@ static inline notrace unsigned long arch_local_irq_save(void)
 	return f;
 }
 
-
 /* Make sure as little as possible of this mess escapes. */
 #undef PARAVIRT_CALL
 #undef __PVOP_CALL
@@ -859,7 +878,6 @@ extern void default_banner(void);
 	 .byte 772b-771b;			\
 	 .short clobbers;			\
 	.popsection
-
 
 #define COND_PUSH(set, mask, reg)			\
 	.if ((~(set)) & mask); push %reg; .endif
@@ -940,7 +958,6 @@ extern void default_banner(void);
 	PARA_SITE(PARA_PATCH(pv_cpu_ops, PV_CPU_irq_enable_sysexit),	\
 		  CLBR_NONE,						\
 		  jmp PARA_INDIRECT(pv_cpu_ops+PV_CPU_irq_enable_sysexit))
-
 
 #else	/* !CONFIG_X86_32 */
 

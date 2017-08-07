@@ -41,6 +41,7 @@
 #include <linux/stddef.h>
 #include <linux/ioport.h>
 #include <linux/i2c.h>
+#include <linux/init.h>
 #include <linux/acpi.h>
 #include <linux/io.h>
 
@@ -103,7 +104,6 @@ static unsigned short amd756_ioport;
 #define GE_CYC_TYPE_MASK	(7)
 #define GE_HOST_STC		(1 << 3)
 #define GE_ABORT		(1 << 5)
-
 
 static int amd756_transaction(struct i2c_adapter *adap)
 {
@@ -259,7 +259,6 @@ static s32 amd756_access(struct i2c_adapter * adap, u16 addr,
 	if ((read_write == I2C_SMBUS_WRITE) || (size == AMD756_QUICK))
 		return 0;
 
-
 	switch (size) {
 	case AMD756_BYTE:
 		data->byte = inw_p(SMB_HOST_DATA);
@@ -307,7 +306,7 @@ static const char* chipname[] = {
 	"nVidia nForce", "AMD8111",
 };
 
-static const struct pci_device_id amd756_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(amd756_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_VIPER_740B),
 	  .driver_data = AMD756 },
 	{ PCI_DEVICE(PCI_VENDOR_ID_AMD, PCI_DEVICE_ID_AMD_VIPER_7413),

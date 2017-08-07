@@ -26,7 +26,6 @@
 #include <linux/kernel.h>
 #include <linux/mm.h>
 #include <linux/hyperv.h>
-#include <linux/uio.h>
 
 #include "hyperv_vmbus.h"
 
@@ -76,8 +75,6 @@ static bool hv_need_to_signal(u32 old_write, struct hv_ring_buffer_info *rbi)
 	if (rbi->ring_buffer->interrupt_mask)
 		return false;
 
-	/* check interrupt_mask before read_index */
-	rmb();
 	/*
 	 * This is the only case we need to signal when the
 	 * ring transitions from being empty to non-empty.
@@ -125,7 +122,6 @@ static bool hv_need_to_signal_on_read(u32 old_rd,
 
 	prev_write_sz = write_loc >= old_rd ? r_size - (write_loc - old_rd) :
 			old_rd - write_loc;
-
 
 	if ((prev_write_sz < pending_sz) && (cur_write_sz >= pending_sz))
 		return true;
@@ -205,7 +201,6 @@ hv_set_next_read_location(struct hv_ring_buffer_info *ring_info,
 	ring_info->ring_buffer->read_index = next_read_location;
 }
 
-
 /*
  *
  * hv_get_ring_buffer()
@@ -217,7 +212,6 @@ hv_get_ring_buffer(struct hv_ring_buffer_info *ring_info)
 {
 	return (void *)ring_info->ring_buffer->buffer;
 }
-
 
 /*
  *
@@ -273,13 +267,11 @@ static u32 hv_copyfrom_ringbuffer(
 
 		memcpy(dest, ring_buffer + start_read_offset, destlen);
 
-
 	start_read_offset += destlen;
 	start_read_offset %= ring_buffer_size;
 
 	return start_read_offset;
 }
-
 
 /*
  *
@@ -388,20 +380,23 @@ void hv_ringbuffer_cleanup(struct hv_ring_buffer_info *ring_info)
  *
  */
 int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
-		    struct kvec *kv_list, u32 kv_count, bool *signal)
+		    struct scatterlist *sglist, u32 sgcount, bool *signal)
 {
 	int i = 0;
 	u32 bytes_avail_towrite;
 	u32 bytes_avail_toread;
 	u32 totalbytes_towrite = 0;
 
+	struct scatterlist *sg;
 	u32 next_write_location;
 	u32 old_write;
 	u64 prev_indices = 0;
 	unsigned long flags;
 
-	for (i = 0; i < kv_count; i++)
-		totalbytes_towrite += kv_list[i].iov_len;
+	for_each_sg(sglist, sg, sgcount, i)
+	{
+		totalbytes_towrite += sg->length;
+	}
 
 	totalbytes_towrite += sizeof(u64);
 
@@ -410,7 +405,6 @@ int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
 	hv_get_ringbuffer_availbytes(outring_info,
 				&bytes_avail_toread,
 				&bytes_avail_towrite);
-
 
 	/* If there is only room for the packet, assume it is full. */
 	/* Otherwise, the next time around, we think the ring buffer */
@@ -425,11 +419,12 @@ int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
 
 	old_write = next_write_location;
 
-	for (i = 0; i < kv_count; i++) {
+	for_each_sg(sglist, sg, sgcount, i)
+	{
 		next_write_location = hv_copyto_ringbuffer(outring_info,
 						     next_write_location,
-						     kv_list[i].iov_base,
-						     kv_list[i].iov_len);
+						     sg_virt(sg),
+						     sg->length);
 	}
 
 	/* Set previous packet start */
@@ -446,13 +441,11 @@ int hv_ringbuffer_write(struct hv_ring_buffer_info *outring_info,
 	/* Now, update the write location */
 	hv_set_next_write_location(outring_info, next_write_location);
 
-
 	spin_unlock_irqrestore(&outring_info->ring_lock, flags);
 
 	*signal = hv_need_to_signal(old_write, outring_info);
 	return 0;
 }
-
 
 /*
  *
@@ -495,7 +488,6 @@ int hv_ringbuffer_peek(struct hv_ring_buffer_info *Inring_info,
 
 	return 0;
 }
-
 
 /*
  *

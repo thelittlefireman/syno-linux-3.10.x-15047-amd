@@ -69,7 +69,6 @@
 #include <linux/io.h>
 #include <linux/uaccess.h>
 
-
 /*
  * The AMD Elan SC520 timeout value is 492us times a power of 2 (0-7)
  *
@@ -158,11 +157,12 @@ static void wdt_timer_ping(unsigned long data)
 
 static void wdt_config(int writeval)
 {
+	__u16 dummy;
 	unsigned long flags;
 
 	/* buy some time (ping) */
 	spin_lock_irqsave(&wdt_spinlock, flags);
-	readw(wdtmrctl);	/* ensure write synchronization */
+	dummy = readw(wdtmrctl);	/* ensure write synchronization */
 	writew(0xAAAA, wdtmrctl);
 	writew(0x5555, wdtmrctl);
 	/* unlock WDT = make WDT configuration register writable one time */
@@ -432,3 +432,4 @@ MODULE_AUTHOR("Scott and Bill Jennings");
 MODULE_DESCRIPTION(
 	"Driver for watchdog timer in AMD \"Elan\" SC520 uProcessor");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS_MISCDEV(WATCHDOG_MINOR);

@@ -31,7 +31,6 @@
 #include <asm/mach/arch.h>
 
 #include <mach/at91sam9_smc.h>
-#include <mach/hardware.h>
 
 #include "at91_aic.h"
 #include "board.h"

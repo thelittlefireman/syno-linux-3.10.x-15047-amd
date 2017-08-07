@@ -274,7 +274,6 @@ static void ptd_write(void __iomem *base, u32 ptd_offset, u32 slot,
 							sizeof(ptd->dw0));
 }
 
-
 /* memory management of the 60kb on the chip from 0x1000 to 0xffff */
 static void init_memory(struct isp1760_hcd *priv)
 {
@@ -1939,7 +1938,6 @@ static int isp1760_hub_control(struct usb_hcd *hcd, u16 typeReq,
 		if (temp & PORT_CSC)
 			status |= USB_PORT_STAT_C_CONNECTION << 16;
 
-
 		/* whoever resumes must GetPortStatus to complete it!! */
 		if (temp & PORT_RESUME) {
 			dev_err(hcd->self.controller, "Port resume should be skipped.\n");
@@ -2159,7 +2157,6 @@ static void isp1760_clear_tt_buffer_complete(struct usb_hcd *hcd,
 	spin_unlock_irqrestore(&priv->lock, spinflags);
 }
 
-
 static const struct hc_driver isp1760_hc_driver = {
 	.description		= "isp1760-hcd",
 	.product_desc		= "NXP ISP1760 USB Host Controller",
@@ -2250,7 +2247,6 @@ struct usb_hcd *isp1760_register(phys_addr_t res_start, resource_size_t res_len,
 	ret = usb_add_hcd(hcd, irq, irqflags);
 	if (ret)
 		goto err_unmap;
-	device_wakeup_enable(hcd->self.controller);
 
 	return hcd;
 

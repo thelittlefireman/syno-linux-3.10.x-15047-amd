@@ -50,6 +50,8 @@
 #include <linux/platform_device.h>
 #include <linux/dmi.h>
 #include <linux/rfkill.h>
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 
 #define DRIVER_NAME	"intel_oaktrail"
 #define DRIVER_VERSION	"0.4ac1"
@@ -91,7 +93,6 @@
 #define OT_EC_BL_CONTROL_ADDRESS	0x3A
 #define OT_EC_BL_CONTROL_ON_DATA	0x1A
 
-
 static bool force;
 module_param(force, bool, 0);
 MODULE_PARM_DESC(force, "Force driver load, ignore DMI data");
@@ -102,7 +103,6 @@ static struct rfkill *bt_rfkill;
 static struct rfkill *gps_rfkill;
 static struct rfkill *wifi_rfkill;
 static struct rfkill *wwan_rfkill;
-
 
 /* rfkill */
 static int oaktrail_rfkill_set(void *data, bool blocked)
@@ -213,7 +213,6 @@ cleanup:
 	oaktrail_rfkill_cleanup();
 	return ret;
 }
-
 
 /* backlight */
 static int get_backlight_brightness(struct backlight_device *b)

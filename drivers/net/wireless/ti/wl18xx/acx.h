@@ -87,7 +87,6 @@ struct wl18xx_acx_checksum_state {
 	u8 pad[3];
 } __packed;
 
-
 struct wl18xx_acx_error_stats {
 	u32 error_frame;
 	u32 error_null_Frame_tx_start;

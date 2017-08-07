@@ -10,11 +10,8 @@
 
 #ifndef __ASSEMBLY__
 
-#define PSW_KERNEL_BITS	(PSW_DEFAULT_KEY | PSW_MASK_BASE | PSW_ASC_HOME | \
-			 PSW_MASK_EA | PSW_MASK_BA)
-#define PSW_USER_BITS	(PSW_MASK_DAT | PSW_MASK_IO | PSW_MASK_EXT | \
-			 PSW_DEFAULT_KEY | PSW_MASK_BASE | PSW_MASK_MCHECK | \
-			 PSW_MASK_PSTATE | PSW_ASC_PRIMARY)
+extern long psw_kernel_bits;
+extern long psw_user_bits;
 
 /*
  * The pt_regs struct defines the way the registers are stored on
@@ -27,7 +24,6 @@ struct pt_regs
 	unsigned long gprs[NUM_GPRS];
 	unsigned long orig_gpr2;
 	unsigned int int_code;
-	unsigned int int_parm;
 	unsigned long int_parm_long;
 };
 
@@ -83,7 +79,6 @@ struct per_struct_kernel {
  * These are defined as per linux/ptrace.h, which see.
  */
 #define arch_has_single_step()	(1)
-#define arch_has_block_step()	(1)
 
 #define user_mode(regs) (((regs)->psw.mask & PSW_MASK_PSTATE) != 0)
 #define instruction_pointer(regs) ((regs)->psw.addr & PSW_ADDR_INSN)

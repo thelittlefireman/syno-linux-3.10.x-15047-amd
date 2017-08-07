@@ -34,7 +34,6 @@
  * r_time reaches a certain value.
  */
 
-
 #define DEBUG_LOG_INCLUDED
 #define FAST_TIMER_LOG
 /* #define FAST_TIMER_TEST */
@@ -83,7 +82,6 @@ static unsigned int debug_log_cnt_wrapped;
 #define DEBUG_LOG(string, value)
 #endif
 
-
 #define NUM_TIMER_STATS 16
 #ifdef FAST_TIMER_LOG
 struct fast_timer timer_added_log[NUM_TIMER_STATS];
@@ -98,8 +96,6 @@ struct work_struct fast_work;
 
 static void
 timer_trig_handler(struct work_struct *work);
-
-
 
 /* Not true gettimeofday, only checks the jiffies (uptime) + useconds */
 inline void do_gettimeofday_fast(struct fasttime_t *tv)
@@ -299,7 +295,6 @@ int del_fast_timer(struct fast_timer * t)
   return ret;
 } /* del_fast_timer */
 
-
 /* Interrupt routines or functions called in interrupt context */
 
 /* Timer interrupt handler for trig interrupts */
@@ -443,7 +438,6 @@ static void wake_up_func(unsigned long data)
   wait_queue_head_t  *sleep_wait_p = (wait_queue_head_t*)data;
   wake_up(sleep_wait_p);
 }
-
 
 /* Useful API */
 
@@ -774,7 +768,6 @@ static void fast_timer_test(void)
 }
 #endif
 
-
 int fast_timer_init(void)
 {
   /* For some reason, request_irq() hangs when called froom time_init() */
@@ -786,7 +779,7 @@ int fast_timer_init(void)
     proc_create("fasttimer", 0, NULL, &proc_fasttimer_fops);
 #endif /* PROC_FS */
 		if (request_irq(TIMER0_INTR_VECT, timer_trig_interrupt,
-				IRQF_SHARED,
+				IRQF_SHARED | IRQF_DISABLED,
 				"fast timer int", &fast_timer_list))
 			printk(KERN_ERR "err: fasttimer irq\n");
     fast_timer_is_init = 1;

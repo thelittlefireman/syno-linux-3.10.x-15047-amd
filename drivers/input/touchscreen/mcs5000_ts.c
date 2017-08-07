@@ -14,6 +14,7 @@
  */
 
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/i2c.h>
 #include <linux/i2c/mcs.h>
 #include <linux/interrupt.h>
@@ -193,7 +194,7 @@ static int mcs5000_ts_probe(struct i2c_client *client,
 	struct input_dev *input_dev;
 	int ret;
 
-	if (!dev_get_platdata(&client->dev))
+	if (!client->dev.platform_data)
 		return -EINVAL;
 
 	data = kzalloc(sizeof(struct mcs5000_ts_data), GFP_KERNEL);
@@ -206,7 +207,7 @@ static int mcs5000_ts_probe(struct i2c_client *client,
 
 	data->client = client;
 	data->input_dev = input_dev;
-	data->platform_data = dev_get_platdata(&client->dev);
+	data->platform_data = client->dev.platform_data;
 
 	input_dev->name = "MELPAS MCS-5000 Touchscreen";
 	input_dev->id.bustype = BUS_I2C;

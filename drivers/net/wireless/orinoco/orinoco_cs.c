@@ -15,6 +15,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <pcmcia/cistpl.h>
 #include <pcmcia/cisreg.h>
@@ -53,7 +54,6 @@ struct orinoco_pccard {
 	 * PCMCIA layer */
 	unsigned long hard_reset_in_progress;
 };
-
 
 /********************************************************************/
 /* Function prototypes						    */
@@ -230,7 +230,6 @@ static int orinoco_cs_resume(struct pcmcia_device *link)
 
 	return err;
 }
-
 
 /********************************************************************/
 /* Module initialization					    */

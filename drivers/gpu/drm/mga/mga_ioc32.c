@@ -34,7 +34,6 @@
 
 #include <drm/drmP.h>
 #include <drm/mga_drm.h>
-#include "mga_drv.h"
 
 typedef struct drm32_mga_init {
 	int func;

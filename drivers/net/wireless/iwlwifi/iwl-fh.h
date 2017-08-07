@@ -5,7 +5,7 @@
  *
  * GPL LICENSE SUMMARY
  *
- * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2005 - 2013 Intel Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of version 2 of the GNU General Public License as
@@ -30,7 +30,7 @@
  *
  * BSD LICENSE
  *
- * Copyright(c) 2005 - 2014 Intel Corporation. All rights reserved.
+ * Copyright(c) 2005 - 2013 Intel Corporation. All rights reserved.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -95,7 +95,6 @@
  */
 #define FH_KW_MEM_ADDR_REG		     (FH_MEM_LOWER_BOUND + 0x97C)
 
-
 /**
  * TFD Circular Buffers Base (CBBC) addresses
  *
@@ -127,7 +126,6 @@ static inline unsigned int FH_MEM_CBBC_QUEUE(unsigned int chnl)
 	WARN_ON_ONCE(chnl >= 32);
 	return FH_MEM_CBBC_20_31_LOWER_BOUND + 4 * (chnl - 20);
 }
-
 
 /**
  * Rx SRAM Control and Status Registers (RSCSR)
@@ -460,7 +458,6 @@ struct iwl_rb_status {
 	__le16 finished_fr_nam;
 	__le32 __unused;
 } __packed;
-
 
 #define TFD_QUEUE_SIZE_MAX      (256)
 #define TFD_QUEUE_SIZE_BC_DUP	(64)

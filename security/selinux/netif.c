@@ -264,7 +264,7 @@ static int sel_netif_avc_callback(u32 event)
 static int sel_netif_netdev_notifier_handler(struct notifier_block *this,
 					     unsigned long event, void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = ptr;
 
 	if (dev_net(dev) != &init_net)
 		return NOTIFY_DONE;
@@ -299,4 +299,3 @@ static __init int sel_netif_init(void)
 }
 
 __initcall(sel_netif_init);
-

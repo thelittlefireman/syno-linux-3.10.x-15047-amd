@@ -36,7 +36,6 @@
 
 #define RTF_LOCAL	0x80000000
 
-
 struct in6_rtmsg {
 	struct in6_addr		rtmsg_dst;
 	struct in6_addr		rtmsg_src;

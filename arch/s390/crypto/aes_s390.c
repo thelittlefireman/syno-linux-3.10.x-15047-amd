@@ -735,8 +735,6 @@ static struct crypto_alg xts_aes_alg = {
 	}
 };
 
-static int xts_aes_alg_reg;
-
 static int ctr_aes_set_key(struct crypto_tfm *tfm, const u8 *in_key,
 			   unsigned int key_len)
 {
@@ -820,6 +818,9 @@ static int ctr_aes_crypt(struct blkcipher_desc *desc, long func,
 		else
 			memcpy(walk->iv, ctrptr, AES_BLOCK_SIZE);
 		spin_unlock(&ctrblk_lock);
+	} else {
+		if (!nbytes)
+			memcpy(walk->iv, ctrptr, AES_BLOCK_SIZE);
 	}
 	/*
 	 * final block may be < AES_BLOCK_SIZE, copy only nbytes
@@ -883,8 +884,6 @@ static struct crypto_alg ctr_aes_alg = {
 	}
 };
 
-static int ctr_aes_alg_reg;
-
 static int __init aes_s390_init(void)
 {
 	int ret;
@@ -923,7 +922,6 @@ static int __init aes_s390_init(void)
 		ret = crypto_register_alg(&xts_aes_alg);
 		if (ret)
 			goto xts_aes_err;
-		xts_aes_alg_reg = 1;
 	}
 
 	if (crypt_s390_func_available(KMCTR_AES_128_ENCRYPT,
@@ -942,7 +940,6 @@ static int __init aes_s390_init(void)
 			free_page((unsigned long) ctrblk);
 			goto ctr_aes_err;
 		}
-		ctr_aes_alg_reg = 1;
 	}
 
 out:
@@ -962,12 +959,9 @@ aes_err:
 
 static void __exit aes_s390_fini(void)
 {
-	if (ctr_aes_alg_reg) {
-		crypto_unregister_alg(&ctr_aes_alg);
-		free_page((unsigned long) ctrblk);
-	}
-	if (xts_aes_alg_reg)
-		crypto_unregister_alg(&xts_aes_alg);
+	crypto_unregister_alg(&ctr_aes_alg);
+	free_page((unsigned long) ctrblk);
+	crypto_unregister_alg(&xts_aes_alg);
 	crypto_unregister_alg(&cbc_aes_alg);
 	crypto_unregister_alg(&ecb_aes_alg);
 	crypto_unregister_alg(&aes_alg);
@@ -976,7 +970,7 @@ static void __exit aes_s390_fini(void)
 module_init(aes_s390_init);
 module_exit(aes_s390_fini);
 
-MODULE_ALIAS("aes-all");
+MODULE_ALIAS_CRYPTO("aes-all");
 
 MODULE_DESCRIPTION("Rijndael (AES) Cipher Algorithm");
 MODULE_LICENSE("GPL");

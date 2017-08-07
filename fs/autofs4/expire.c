@@ -91,7 +91,7 @@ static struct dentry *get_next_positive_subdir(struct dentry *prev,
 	spin_lock(&root->d_lock);
 
 	if (prev)
-		next = prev->d_u.d_child.next;
+		next = prev->d_child.next;
 	else {
 		prev = dget_dlock(root);
 		next = prev->d_subdirs.next;
@@ -105,13 +105,13 @@ cont:
 		return NULL;
 	}
 
-	q = list_entry(next, struct dentry, d_u.d_child);
+	q = list_entry(next, struct dentry, d_child);
 
 	spin_lock_nested(&q->d_lock, DENTRY_D_LOCK_NESTED);
 	/* Already gone or negative dentry (under construction) - try next */
-	if (!d_count(q) || !simple_positive(q)) {
+	if (q->d_count == 0 || !simple_positive(q)) {
 		spin_unlock(&q->d_lock);
-		next = q->d_u.d_child.next;
+		next = q->d_child.next;
 		goto cont;
 	}
 	dget_dlock(q);
@@ -161,13 +161,13 @@ again:
 				goto relock;
 			}
 			spin_unlock(&p->d_lock);
-			next = p->d_u.d_child.next;
+			next = p->d_child.next;
 			p = parent;
 			if (next != &parent->d_subdirs)
 				break;
 		}
 	}
-	ret = list_entry(next, struct dentry, d_u.d_child);
+	ret = list_entry(next, struct dentry, d_child);
 
 	spin_lock_nested(&ret->d_lock, DENTRY_D_LOCK_NESTED);
 	/* Negative dentry - try next */
@@ -267,7 +267,7 @@ static int autofs4_tree_busy(struct vfsmount *mnt,
 			else
 				ino_count++;
 
-			if (d_count(p) > ino_count) {
+			if (p->d_count > ino_count) {
 				top_ino->last_used = jiffies;
 				dput(p);
 				return 1;
@@ -402,20 +402,6 @@ struct dentry *autofs4_expire_indirect(struct super_block *sb,
 			goto next;
 		}
 
-		if (dentry->d_inode && S_ISLNK(dentry->d_inode->i_mode)) {
-			DPRINTK("checking symlink %p %.*s",
-				dentry, (int)dentry->d_name.len, dentry->d_name.name);
-			/*
-			 * A symlink can't be "busy" in the usual sense so
-			 * just check last used for expire timeout.
-			 */
-			if (autofs4_can_expire(dentry, timeout, do_now)) {
-				expired = dentry;
-				goto found;
-			}
-			goto next;
-		}
-
 		if (simple_empty(dentry))
 			goto next;
 
@@ -423,7 +409,7 @@ struct dentry *autofs4_expire_indirect(struct super_block *sb,
 		if (!exp_leaves) {
 			/* Path walk currently on this dentry? */
 			ino_count = atomic_read(&ino->count) + 1;
-			if (d_count(dentry) > ino_count)
+			if (dentry->d_count > ino_count)
 				goto next;
 
 			if (!autofs4_tree_busy(mnt, dentry, timeout, do_now)) {
@@ -437,7 +423,7 @@ struct dentry *autofs4_expire_indirect(struct super_block *sb,
 		} else {
 			/* Path walk currently on this dentry? */
 			ino_count = atomic_read(&ino->count) + 1;
-			if (d_count(dentry) > ino_count)
+			if (dentry->d_count > ino_count)
 				goto next;
 
 			expired = autofs4_check_leaves(mnt, dentry, timeout, do_now);
@@ -461,7 +447,7 @@ found:
 	spin_lock(&sbi->lookup_lock);
 	spin_lock(&expired->d_parent->d_lock);
 	spin_lock_nested(&expired->d_lock, DENTRY_D_LOCK_NESTED);
-	list_move(&expired->d_parent->d_subdirs, &expired->d_u.d_child);
+	list_move(&expired->d_parent->d_subdirs, &expired->d_child);
 	spin_unlock(&expired->d_lock);
 	spin_unlock(&expired->d_parent->d_lock);
 	spin_unlock(&sbi->lookup_lock);
@@ -573,4 +559,3 @@ int autofs4_expire_multi(struct super_block *sb, struct vfsmount *mnt,
 
 	return autofs4_do_expire_multi(sb, mnt, sbi, do_now);
 }
-

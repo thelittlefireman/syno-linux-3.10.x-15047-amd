@@ -49,8 +49,6 @@
 #include <net/ip.h>
 #include <net/arp.h>
 
-
-
 HLIST_HEAD(ax25_list);
 DEFINE_SPINLOCK(ax25_list_lock);
 
@@ -111,9 +109,9 @@ again:
  *	Handle device status changes.
  */
 static int ax25_device_event(struct notifier_block *this, unsigned long event,
-			     void *ptr)
+	void *ptr)
 {
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = (struct net_device *)ptr;
 
 	if (!net_eq(dev_net(dev), &init_net))
 		return NOTIFY_DONE;
@@ -806,6 +804,9 @@ static int ax25_create(struct net *net, struct socket *sock, int protocol,
 	struct sock *sk;
 	ax25_cb *ax25;
 
+	if (protocol < 0 || protocol > SK_PROTOCOL_MAX)
+		return -EINVAL;
+
 	if (!net_eq(net, &init_net))
 		return -EAFNOSUPPORT;
 
@@ -1136,7 +1137,6 @@ static int __must_check ax25_connect(struct socket *sock,
 		    (addr_len > sizeof(struct full_sockaddr_ax25)))
 			return -EINVAL;
 
-
 	if (fsa->fsa_ax25.sax25_family != AF_AX25)
 		return -EINVAL;
 
@@ -1435,7 +1435,7 @@ out:
 static int ax25_sendmsg(struct kiocb *iocb, struct socket *sock,
 			struct msghdr *msg, size_t len)
 {
-	DECLARE_SOCKADDR(struct sockaddr_ax25 *, usax, msg->msg_name);
+	struct sockaddr_ax25 *usax = (struct sockaddr_ax25 *)msg->msg_name;
 	struct sock *sk = sock->sk;
 	struct sockaddr_ax25 sax;
 	struct sk_buff *skb;
@@ -1490,7 +1490,6 @@ static int ax25_sendmsg(struct kiocb *iocb, struct socket *sock,
 				err = -EINVAL;
 				goto out;
 			}
-
 
 		if (addr_len > sizeof(struct sockaddr_ax25) && usax->sax25_ndigis != 0) {
 			int ct           = 0;
@@ -1640,7 +1639,7 @@ static int ax25_recvmsg(struct kiocb *iocb, struct socket *sock,
 		ax25_digi digi;
 		ax25_address src;
 		const unsigned char *mac = skb_mac_header(skb);
-		DECLARE_SOCKADDR(struct sockaddr_ax25 *, sax, msg->msg_name);
+		struct sockaddr_ax25 *sax = msg->msg_name;
 
 		memset(sax, 0, sizeof(struct full_sockaddr_ax25));
 		ax25_addr_parse(mac + 1, skb->data - mac - 1, &src, NULL,
@@ -1735,7 +1734,7 @@ static int ax25_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 			res = -EFAULT;
 			break;
 		}
-		if (amount < 0 || amount > AX25_NOUID_BLOCK) {
+		if (amount > AX25_NOUID_BLOCK) {
 			res = -EINVAL;
 			break;
 		}
@@ -1873,7 +1872,6 @@ static int ax25_info_show(struct seq_file *seq, void *v)
 	char buf[11];
 	int k;
 
-
 	/*
 	 * New format:
 	 * magic dev src_addr dest_addr,digi1,digi2,.. st vs vr va t1 t1 t2 t2 t3 t3 idle idle n2 n2 rtt window paclen Snd-Q Rcv-Q inode
@@ -1974,7 +1972,7 @@ static struct packet_type ax25_packet_type __read_mostly = {
 };
 
 static struct notifier_block ax25_dev_notifier = {
-	.notifier_call = ax25_device_event,
+	.notifier_call =ax25_device_event,
 };
 
 static int __init ax25_init(void)
@@ -1996,7 +1994,6 @@ out:
 	return rc;
 }
 module_init(ax25_init);
-
 
 MODULE_AUTHOR("Jonathan Naylor G4KLX <g4klx@g4klx.demon.co.uk>");
 MODULE_DESCRIPTION("The amateur radio AX.25 link layer protocol");

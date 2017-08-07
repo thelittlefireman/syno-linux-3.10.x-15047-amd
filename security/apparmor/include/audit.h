@@ -72,6 +72,10 @@ enum aa_ops {
 	OP_FMMAP,
 	OP_FMPROT,
 
+	OP_PIVOTROOT,
+	OP_MOUNT,
+	OP_UMOUNT,
+
 	OP_CREATE,
 	OP_POST_CREATE,
 	OP_BIND,
@@ -101,7 +105,6 @@ enum aa_ops {
 	OP_PROF_RM,
 };
 
-
 struct apparmor_audit_data {
 	int error;
 	int op;
@@ -109,6 +112,7 @@ struct apparmor_audit_data {
 	void *profile;
 	const char *name;
 	const char *info;
+	struct task_struct *tsk;
 	union {
 		void *target;
 		struct {
@@ -120,11 +124,22 @@ struct apparmor_audit_data {
 			unsigned long max;
 		} rlim;
 		struct {
+			const char *src_name;
+			const char *type;
+			const char *trans;
+			const char *data;
+			unsigned long flags;
+		} mnt;
+		struct {
 			const char *target;
 			u32 request;
 			u32 denied;
 			kuid_t ouid;
 		} fs;
+		struct {
+			int type, protocol;
+			struct sock *sk;
+		} net;
 	};
 };
 

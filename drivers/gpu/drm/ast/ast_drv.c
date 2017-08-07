@@ -73,8 +73,6 @@ ast_pci_remove(struct pci_dev *pdev)
 	drm_put_dev(dev);
 }
 
-
-
 static int ast_drm_freeze(struct drm_device *dev)
 {
 	drm_kms_helper_poll_disable(dev);
@@ -190,6 +188,7 @@ static const struct file_operations ast_fops = {
 	.unlocked_ioctl = drm_ioctl,
 	.mmap = ast_mmap,
 	.poll = drm_poll,
+	.fasync = drm_fasync,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = drm_compat_ioctl,
 #endif
@@ -197,7 +196,7 @@ static const struct file_operations ast_fops = {
 };
 
 static struct drm_driver driver = {
-	.driver_features = DRIVER_MODESET | DRIVER_GEM,
+	.driver_features = DRIVER_USE_MTRR | DRIVER_MODESET | DRIVER_GEM,
 	.dev_priv_size = 0,
 
 	.load = ast_driver_load,
@@ -211,10 +210,11 @@ static struct drm_driver driver = {
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
 
+	.gem_init_object = ast_gem_init_object,
 	.gem_free_object = ast_gem_free_object,
 	.dumb_create = ast_dumb_create,
 	.dumb_map_offset = ast_dumb_mmap_offset,
-	.dumb_destroy = drm_gem_dumb_destroy,
+	.dumb_destroy = ast_dumb_destroy,
 
 };
 
@@ -240,4 +240,3 @@ module_exit(ast_exit);
 MODULE_AUTHOR(DRIVER_AUTHOR);
 MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL and additional rights");
-

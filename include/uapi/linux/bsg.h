@@ -61,5 +61,4 @@ struct sg_io_v4 {
 	__u32 padding;
 };
 
-
 #endif /* _UAPIBSG_H */

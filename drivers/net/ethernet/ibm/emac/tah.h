@@ -36,7 +36,6 @@ struct tah_regs {
 	u32 tsr;
 };
 
-
 /* TAH device */
 struct tah_instance {
 	struct tah_regs __iomem		*base;
@@ -50,7 +49,6 @@ struct tah_instance {
 	/* OF device instance */
 	struct platform_device		*ofdev;
 };
-
 
 /* TAH engine */
 #define TAH_MR_CVR		0x80000000
@@ -72,13 +70,13 @@ struct tah_instance {
 
 #ifdef CONFIG_IBM_EMAC_TAH
 
-int tah_init(void);
-void tah_exit(void);
-int tah_attach(struct platform_device *ofdev, int channel);
-void tah_detach(struct platform_device *ofdev, int channel);
-void tah_reset(struct platform_device *ofdev);
-int tah_get_regs_len(struct platform_device *ofdev);
-void *tah_dump_regs(struct platform_device *ofdev, void *buf);
+extern int tah_init(void);
+extern void tah_exit(void);
+extern int tah_attach(struct platform_device *ofdev, int channel);
+extern void tah_detach(struct platform_device *ofdev, int channel);
+extern void tah_reset(struct platform_device *ofdev);
+extern int tah_get_regs_len(struct platform_device *ofdev);
+extern void *tah_dump_regs(struct platform_device *ofdev, void *buf);
 
 #else
 

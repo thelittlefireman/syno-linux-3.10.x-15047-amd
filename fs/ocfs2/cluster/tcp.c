@@ -262,17 +262,17 @@ static void o2net_update_recv_stats(struct o2net_sock_container *sc)
 
 #endif /* CONFIG_OCFS2_FS_STATS */
 
-static inline unsigned int o2net_reconnect_delay(void)
+static inline int o2net_reconnect_delay(void)
 {
 	return o2nm_single_cluster->cl_reconnect_delay_ms;
 }
 
-static inline unsigned int o2net_keepalive_delay(void)
+static inline int o2net_keepalive_delay(void)
 {
 	return o2nm_single_cluster->cl_keepalive_delay_ms;
 }
 
-static inline unsigned int o2net_idle_timeout(void)
+static inline int o2net_idle_timeout(void)
 {
 	return o2nm_single_cluster->cl_idle_timeout_ms;
 }
@@ -406,9 +406,6 @@ static void sc_kref_release(struct kref *kref)
 	sc->sc_node = NULL;
 
 	o2net_debug_del_sc(sc);
-
-	if (sc->sc_page)
-		__free_page(sc->sc_page);
 	kfree(sc);
 }
 
@@ -543,9 +540,8 @@ static void o2net_set_nn_state(struct o2net_node *nn,
 	}
 
 	if (was_valid && !valid) {
-		if (old_sc)
-			printk(KERN_NOTICE "o2net: No longer connected to "
-				SC_NODEF_FMT "\n", SC_NODEF_ARGS(old_sc));
+		printk(KERN_NOTICE "o2net: No longer connected to "
+		       SC_NODEF_FMT "\n", SC_NODEF_ARGS(old_sc));
 		o2net_complete_nodes_nsw(nn);
 	}
 
@@ -634,19 +630,19 @@ static void o2net_state_change(struct sock *sk)
 	state_change = sc->sc_state_change;
 
 	switch(sk->sk_state) {
-	/* ignore connecting sockets as they make progress */
-	case TCP_SYN_SENT:
-	case TCP_SYN_RECV:
-		break;
-	case TCP_ESTABLISHED:
-		o2net_sc_queue_work(sc, &sc->sc_connect_work);
-		break;
-	default:
-		printk(KERN_INFO "o2net: Connection to " SC_NODEF_FMT
-			" shutdown, state %d\n",
-			SC_NODEF_ARGS(sc), sk->sk_state);
-		o2net_sc_queue_work(sc, &sc->sc_shutdown_work);
-		break;
+		/* ignore connecting sockets as they make progress */
+		case TCP_SYN_SENT:
+		case TCP_SYN_RECV:
+			break;
+		case TCP_ESTABLISHED:
+			o2net_sc_queue_work(sc, &sc->sc_connect_work);
+			break;
+		default:
+			printk(KERN_INFO "o2net: Connection to " SC_NODEF_FMT
+			      " shutdown, state %d\n",
+			      SC_NODEF_ARGS(sc), sk->sk_state);
+			o2net_sc_queue_work(sc, &sc->sc_shutdown_work);
+			break;
 	}
 out:
 	read_unlock(&sk->sk_callback_lock);
@@ -766,32 +762,32 @@ static struct o2net_msg_handler *
 o2net_handler_tree_lookup(u32 msg_type, u32 key, struct rb_node ***ret_p,
 			  struct rb_node **ret_parent)
 {
-	struct rb_node **p = &o2net_handler_tree.rb_node;
-	struct rb_node *parent = NULL;
+        struct rb_node **p = &o2net_handler_tree.rb_node;
+        struct rb_node *parent = NULL;
 	struct o2net_msg_handler *nmh, *ret = NULL;
 	int cmp;
 
-	while (*p) {
-		parent = *p;
-		nmh = rb_entry(parent, struct o2net_msg_handler, nh_node);
+        while (*p) {
+                parent = *p;
+                nmh = rb_entry(parent, struct o2net_msg_handler, nh_node);
 		cmp = o2net_handler_cmp(nmh, msg_type, key);
 
-		if (cmp < 0)
-			p = &(*p)->rb_left;
-		else if (cmp > 0)
-			p = &(*p)->rb_right;
-		else {
+                if (cmp < 0)
+                        p = &(*p)->rb_left;
+                else if (cmp > 0)
+                        p = &(*p)->rb_right;
+                else {
 			ret = nmh;
-			break;
+                        break;
 		}
-	}
+        }
 
-	if (ret_p != NULL)
-		*ret_p = p;
-	if (ret_parent != NULL)
-		*ret_parent = parent;
+        if (ret_p != NULL)
+                *ret_p = p;
+        if (ret_parent != NULL)
+                *ret_parent = parent;
 
-	return ret;
+        return ret;
 }
 
 static void o2net_handler_kref_release(struct kref *kref)
@@ -916,30 +912,57 @@ static struct o2net_msg_handler *o2net_handler_get(u32 msg_type, u32 key)
 
 static int o2net_recv_tcp_msg(struct socket *sock, void *data, size_t len)
 {
-	struct kvec vec = { .iov_len = len, .iov_base = data, };
-	struct msghdr msg = { .msg_flags = MSG_DONTWAIT, };
-	return kernel_recvmsg(sock, &msg, &vec, 1, len, msg.msg_flags);
+	int ret;
+	mm_segment_t oldfs;
+	struct kvec vec = {
+		.iov_len = len,
+		.iov_base = data,
+	};
+	struct msghdr msg = {
+		.msg_iovlen = 1,
+		.msg_iov = (struct iovec *)&vec,
+       		.msg_flags = MSG_DONTWAIT,
+	};
+
+	oldfs = get_fs();
+	set_fs(get_ds());
+	ret = sock_recvmsg(sock, &msg, len, msg.msg_flags);
+	set_fs(oldfs);
+
+	return ret;
 }
 
 static int o2net_send_tcp_msg(struct socket *sock, struct kvec *vec,
 			      size_t veclen, size_t total)
 {
 	int ret;
-	struct msghdr msg;
+	mm_segment_t oldfs;
+	struct msghdr msg = {
+		.msg_iov = (struct iovec *)vec,
+		.msg_iovlen = veclen,
+	};
 
 	if (sock == NULL) {
 		ret = -EINVAL;
 		goto out;
 	}
 
-	ret = kernel_sendmsg(sock, &msg, vec, veclen, total);
-	if (likely(ret == total))
-		return 0;
-	mlog(ML_ERROR, "sendmsg returned %d instead of %zu\n", ret, total);
-	if (ret >= 0)
-		ret = -EPIPE; /* should be smarter, I bet */
+	oldfs = get_fs();
+	set_fs(get_ds());
+	ret = sock_sendmsg(sock, &msg, total);
+	set_fs(oldfs);
+	if (ret != total) {
+		mlog(ML_ERROR, "sendmsg returned %d instead of %zu\n", ret,
+		     total);
+		if (ret >= 0)
+			ret = -EPIPE; /* should be smarter, I bet */
+		goto out;
+	}
+
+	ret = 0;
 out:
-	mlog(0, "returning error: %d\n", ret);
+	if (ret < 0)
+		mlog(0, "returning error: %d\n", ret);
 	return ret;
 }
 
@@ -1669,12 +1692,13 @@ static void o2net_start_connect(struct work_struct *work)
 		ret = 0;
 
 out:
-	if (ret && sc) {
+	if (ret) {
 		printk(KERN_NOTICE "o2net: Connect attempt to " SC_NODEF_FMT
 		       " failed with errno %d\n", SC_NODEF_ARGS(sc), ret);
 		/* 0 err so that another will be queued and attempted
 		 * from set_nn_state */
-		o2net_ensure_shutdown(nn, sc, 0);
+		if (sc)
+			o2net_ensure_shutdown(nn, sc, 0);
 	}
 	if (sc)
 		sc_put(sc);
@@ -1846,16 +1870,12 @@ static int o2net_accept_one(struct socket *sock)
 
 	if (o2nm_this_node() >= node->nd_num) {
 		local_node = o2nm_get_node_by_num(o2nm_this_node());
-		if (local_node)
-			printk(KERN_NOTICE "o2net: Unexpected connect attempt "
-					"seen at node '%s' (%u, %pI4:%d) from "
-					"node '%s' (%u, %pI4:%d)\n",
-					local_node->nd_name, local_node->nd_num,
-					&(local_node->nd_ipv4_address),
-					ntohs(local_node->nd_ipv4_port),
-					node->nd_name,
-					node->nd_num, &sin.sin_addr.s_addr,
-					ntohs(sin.sin_port));
+		printk(KERN_NOTICE "o2net: Unexpected connect attempt seen "
+		       "at node '%s' (%u, %pI4:%d) from node '%s' (%u, "
+		       "%pI4:%d)\n", local_node->nd_name, local_node->nd_num,
+		       &(local_node->nd_ipv4_address),
+		       ntohs(local_node->nd_ipv4_port), node->nd_name,
+		       node->nd_num, &sin.sin_addr.s_addr, ntohs(sin.sin_port));
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1937,23 +1957,12 @@ static void o2net_listen_data_ready(struct sock *sk)
 		goto out;
 	}
 
-	/* This callback may called twice when a new connection
-	 * is  being established as a child socket inherits everything
-	 * from a parent LISTEN socket, including the data_ready cb of
-	 * the parent. This leads to a hazard. In o2net_accept_one()
-	 * we are still initializing the child socket but have not
-	 * changed the inherited data_ready callback yet when
-	 * data starts arriving.
-	 * We avoid this hazard by checking the state.
-	 * For the listening socket,  the state will be TCP_LISTEN; for the new
-	 * socket, will be  TCP_ESTABLISHED. Also, in this case,
-	 * sk->sk_user_data is not a valid function pointer.
-	 */
-
+	/* ->sk_data_ready is also called for a newly established child socket
+	 * before it has been accepted and the acceptor has set up their
+	 * data_ready.. we only want to queue listen work for our listening
+	 * socket */
 	if (sk->sk_state == TCP_LISTEN) {
 		queue_work(o2net_wq, &o2net_listen_work);
-	} else {
-		ready = NULL;
 	}
 
 out:
@@ -1992,7 +2001,7 @@ static int o2net_open_listening_sock(__be32 addr, __be16 port)
 	ret = sock->ops->bind(sock, (struct sockaddr *)&sin, sizeof(sin));
 	if (ret < 0) {
 		printk(KERN_ERR "o2net: Error %d while binding socket at "
-		       "%pI4:%u\n", ret, &addr, ntohs(port)); 
+		       "%pI4:%u\n", ret, &addr, ntohs(port));
 		goto out;
 	}
 

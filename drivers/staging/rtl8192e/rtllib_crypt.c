@@ -24,7 +24,6 @@ struct rtllib_crypto_alg {
 	struct lib80211_crypto_ops *ops;
 };
 
-
 struct rtllib_crypto {
 	struct list_head algs;
 	spinlock_t lock;
@@ -154,7 +153,6 @@ int rtllib_unregister_crypto_ops(struct lib80211_crypto_ops *ops)
 }
 EXPORT_SYMBOL(rtllib_unregister_crypto_ops);
 
-
 struct lib80211_crypto_ops *rtllib_get_crypto_ops(const char *name)
 {
 	unsigned long flags;
@@ -182,8 +180,7 @@ struct lib80211_crypto_ops *rtllib_get_crypto_ops(const char *name)
 }
 EXPORT_SYMBOL(rtllib_get_crypto_ops);
 
-
-static void *rtllib_crypt_null_init(int keyidx) { return (void *) 1; }
+static void * rtllib_crypt_null_init(int keyidx) { return (void *) 1; }
 static void rtllib_crypt_null_deinit(void *priv) {}
 
 static struct lib80211_crypto_ops rtllib_crypt_null = {
@@ -202,7 +199,6 @@ static struct lib80211_crypto_ops rtllib_crypt_null = {
 	.extra_msdu_postfix_len	= 0,
 	.owner			= THIS_MODULE,
 };
-
 
 int __init rtllib_crypto_init(void)
 {
@@ -223,7 +219,6 @@ int __init rtllib_crypto_init(void)
 out:
 	return ret;
 }
-
 
 void __exit rtllib_crypto_deinit(void)
 {

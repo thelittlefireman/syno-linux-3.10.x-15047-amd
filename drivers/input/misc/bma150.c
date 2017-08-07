@@ -287,7 +287,6 @@ static int bma150_set_high_g_interrupt(struct bma150_data *bma150,
 				BMA150_HIGH_G_EN_REG);
 }
 
-
 static int bma150_set_any_motion_interrupt(struct bma150_data *bma150,
 						u8 enable, u8 dur, u8 thres)
 {
@@ -526,8 +525,7 @@ static int bma150_register_polled_device(struct bma150_data *bma150)
 static int bma150_probe(struct i2c_client *client,
 				  const struct i2c_device_id *id)
 {
-	const struct bma150_platform_data *pdata =
-			dev_get_platdata(&client->dev);
+	const struct bma150_platform_data *pdata = client->dev.platform_data;
 	const struct bma150_cfg *cfg;
 	struct bma150_data *bma150;
 	int chip_id;

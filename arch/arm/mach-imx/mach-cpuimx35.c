@@ -53,7 +53,7 @@ static const struct imxi2c_platform_data
 };
 
 #define TSC2007_IRQGPIO		IMX_GPIO_NR(3, 2)
-static int tsc2007_get_pendown_state(struct device *dev)
+static int tsc2007_get_pendown_state(void)
 {
 	return !gpio_get_value(TSC2007_IRQGPIO);
 }

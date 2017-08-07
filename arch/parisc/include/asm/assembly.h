@@ -127,7 +127,6 @@
 	.macro	debug value
 	.endm
 
-
 	/* Shift Left - note the r and t can NOT be the same! */
 	.macro shl r, sa, t
 	dep,z	\r, 31-(\sa), 32-(\sa), \t
@@ -490,7 +489,6 @@
 	REST_CR	(%cr22, PT_PSW	(\regs))
 	.endm
 
-
 	/* First step to create a "relied upon translation"
 	 * See PA 2.0 Arch. page F-4 and F-5.
 	 *
@@ -514,18 +512,6 @@
 	nop	/* 6 */
 	nop	/* 7 */
 	.endm
-
-	/*
-	 * ASM_EXCEPTIONTABLE_ENTRY
-	 *
-	 * Creates an exception table entry.
-	 * Do not convert to a assembler macro. This won't work.
-	 */
-#define ASM_EXCEPTIONTABLE_ENTRY(fault_addr, except_addr)	\
-	.section __ex_table,"aw"			!	\
-	ASM_ULONG_INSN	fault_addr, except_addr		!	\
-	.previous
-
 
 #endif /* __ASSEMBLY__ */
 #endif

@@ -76,7 +76,6 @@ static struct wf_control *cpufreq_clamp;
 
 /* Set to kick the control loop into life */
 static int wf_smu_all_controls_ok, wf_smu_all_sensors_ok, wf_smu_started;
-static bool wf_smu_overtemp;
 
 /* Failure handling.. could be nicer */
 #define FAILURE_FAN		0x01
@@ -91,7 +90,6 @@ static int wf_smu_readjust, wf_smu_skipping;
  *
  */
 
-
 #define WF_SMU_CPU_FANS_INTERVAL	1
 #define WF_SMU_CPU_FANS_MAX_HISTORY	16
 
@@ -104,8 +102,6 @@ struct wf_smu_cpu_fans_state {
 };
 
 static struct wf_smu_cpu_fans_state *wf_smu_cpu_fans;
-
-
 
 /*
  * ****** Drive Fan Control Loop ******
@@ -137,7 +133,6 @@ static struct wf_smu_slots_fans_state *wf_smu_slots_fans;
  * ***** Implementation *****
  *
  */
-
 
 static void wf_smu_create_cpu_fans(void)
 {
@@ -451,7 +446,6 @@ static void wf_smu_slots_fans_tick(struct wf_smu_slots_fans_state *st)
 	}
 }
 
-
 /*
  * ****** Setup / Init / Misc ... ******
  *
@@ -518,7 +512,6 @@ static void wf_smu_tick(void)
 	if (new_failure & FAILURE_OVERTEMP) {
 		wf_set_overtemp();
 		wf_smu_skipping = 2;
-		wf_smu_overtemp = true;
 	}
 
 	/* We only clear the overtemp condition if overtemp is cleared
@@ -527,12 +520,9 @@ static void wf_smu_tick(void)
 	 * the control loop levels, but we don't want to keep it clear
 	 * here in this case
 	 */
-	if (!wf_smu_failure_state && wf_smu_overtemp) {
+	if (new_failure == 0 && last_failure & FAILURE_OVERTEMP)
 		wf_clear_overtemp();
-		wf_smu_overtemp = false;
-	}
 }
-
 
 static void wf_smu_new_control(struct wf_control *ct)
 {
@@ -603,7 +593,6 @@ static void wf_smu_new_sensor(struct wf_sensor *sr)
 	    sensor_hd_temp && sensor_slots_power)
 		wf_smu_all_sensors_ok = 1;
 }
-
 
 static int wf_smu_notify(struct notifier_block *self,
 			       unsigned long event, void *data)
@@ -703,7 +692,6 @@ static struct platform_driver wf_smu_driver = {
 	},
 };
 
-
 static int __init wf_smu_init(void)
 {
 	int rc = -ENODEV;
@@ -730,7 +718,6 @@ static void __exit wf_smu_exit(void)
 
 	platform_driver_unregister(&wf_smu_driver);
 }
-
 
 module_init(wf_smu_init);
 module_exit(wf_smu_exit);

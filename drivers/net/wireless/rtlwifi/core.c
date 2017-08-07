@@ -36,66 +36,6 @@
 
 #include <linux/export.h>
 
-void rtl_addr_delay(u32 addr)
-{
-	if (addr == 0xfe)
-		mdelay(50);
-	else if (addr == 0xfd)
-		mdelay(5);
-	else if (addr == 0xfc)
-		mdelay(1);
-	else if (addr == 0xfb)
-		udelay(50);
-	else if (addr == 0xfa)
-		udelay(5);
-	else if (addr == 0xf9)
-		udelay(1);
-}
-EXPORT_SYMBOL(rtl_addr_delay);
-
-void rtl_rfreg_delay(struct ieee80211_hw *hw, enum radio_path rfpath, u32 addr,
-		     u32 mask, u32 data)
-{
-	if (addr == 0xfe) {
-		mdelay(50);
-	} else if (addr == 0xfd) {
-		mdelay(5);
-	} else if (addr == 0xfc) {
-		mdelay(1);
-	} else if (addr == 0xfb) {
-		udelay(50);
-	} else if (addr == 0xfa) {
-		udelay(5);
-	} else if (addr == 0xf9) {
-		udelay(1);
-	} else {
-		rtl_set_rfreg(hw, rfpath, addr, mask, data);
-		udelay(1);
-	}
-}
-EXPORT_SYMBOL(rtl_rfreg_delay);
-
-void rtl_bb_delay(struct ieee80211_hw *hw, u32 addr, u32 data)
-{
-	if (addr == 0xfe) {
-		mdelay(50);
-	} else if (addr == 0xfd) {
-		mdelay(5);
-	} else if (addr == 0xfc) {
-		mdelay(1);
-	} else if (addr == 0xfb) {
-		udelay(50);
-	} else if (addr == 0xfa) {
-		udelay(5);
-	} else if (addr == 0xf9) {
-		udelay(1);
-	} else {
-		rtl_set_bbreg(hw, addr, MASKDWORD, data);
-		udelay(1);
-	}
-}
-EXPORT_SYMBOL(rtl_bb_delay);
-
 void rtl_fw_cb(const struct firmware *firmware, void *context)
 {
 	struct ieee80211_hw *hw = context;
@@ -185,7 +125,7 @@ static void rtl_op_stop(struct ieee80211_hw *hw)
 	mutex_lock(&rtlpriv->locks.conf_mutex);
 
 	mac->link_state = MAC80211_NOLINK;
-	memset(mac->bssid, 0, ETH_ALEN);
+	memset(mac->bssid, 0, 6);
 	mac->vendor = PEER_UNKNOWN;
 
 	/*reset sec info */
@@ -351,7 +291,7 @@ static void rtl_op_remove_interface(struct ieee80211_hw *hw,
 	mac->p2p = 0;
 	mac->vif = NULL;
 	mac->link_state = MAC80211_NOLINK;
-	memset(mac->bssid, 0, ETH_ALEN);
+	memset(mac->bssid, 0, 6);
 	mac->vendor = PEER_UNKNOWN;
 	mac->opmode = NL80211_IFTYPE_UNSPECIFIED;
 	rtlpriv->cfg->ops->set_network_type(hw, mac->opmode);
@@ -535,11 +475,37 @@ static void rtl_op_configure_filter(struct ieee80211_hw *hw,
 {
 	struct rtl_priv *rtlpriv = rtl_priv(hw);
 	struct rtl_mac *mac = rtl_mac(rtl_priv(hw));
-	u32 rx_conf;
 
 	*new_flags &= RTL_SUPPORTED_FILTERS;
 	if (!changed_flags)
 		return;
+
+	/*TODO: we disable broadcase now, so enable here */
+	if (changed_flags & FIF_ALLMULTI) {
+		if (*new_flags & FIF_ALLMULTI) {
+			mac->rx_conf |= rtlpriv->cfg->maps[MAC_RCR_AM] |
+			    rtlpriv->cfg->maps[MAC_RCR_AB];
+			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
+				 "Enable receive multicast frame\n");
+		} else {
+			mac->rx_conf &= ~(rtlpriv->cfg->maps[MAC_RCR_AM] |
+					  rtlpriv->cfg->maps[MAC_RCR_AB]);
+			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
+				 "Disable receive multicast frame\n");
+		}
+	}
+
+	if (changed_flags & FIF_FCSFAIL) {
+		if (*new_flags & FIF_FCSFAIL) {
+			mac->rx_conf |= rtlpriv->cfg->maps[MAC_RCR_ACRC32];
+			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
+				 "Enable receive FCS error frame\n");
+		} else {
+			mac->rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_ACRC32];
+			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
+				 "Disable receive FCS error frame\n");
+		}
+	}
 
 	/* if ssid not set to hw don't check bssid
 	 * here just used for linked scanning, & linked
@@ -556,46 +522,14 @@ static void rtl_op_configure_filter(struct ieee80211_hw *hw,
 		}
 	}
 
-	/* must be called after set_chk_bssid since that function modifies the
-	 * RCR register too. */
-	rtlpriv->cfg->ops->get_hw_reg(hw, HW_VAR_RCR, (u8 *)(&rx_conf));
-
-	/*TODO: we disable broadcase now, so enable here */
-	if (changed_flags & FIF_ALLMULTI) {
-		if (*new_flags & FIF_ALLMULTI) {
-			rx_conf |= rtlpriv->cfg->maps[MAC_RCR_AM] |
-			    rtlpriv->cfg->maps[MAC_RCR_AB];
-			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
-				 "Enable receive multicast frame\n");
-		} else {
-			rx_conf &= ~(rtlpriv->cfg->maps[MAC_RCR_AM] |
-					  rtlpriv->cfg->maps[MAC_RCR_AB]);
-			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
-				 "Disable receive multicast frame\n");
-		}
-	}
-
-	if (changed_flags & FIF_FCSFAIL) {
-		if (*new_flags & FIF_FCSFAIL) {
-			rx_conf |= rtlpriv->cfg->maps[MAC_RCR_ACRC32];
-			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
-				 "Enable receive FCS error frame\n");
-		} else {
-			rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_ACRC32];
-			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
-				 "Disable receive FCS error frame\n");
-		}
-	}
-
-
 	if (changed_flags & FIF_CONTROL) {
 		if (*new_flags & FIF_CONTROL) {
-			rx_conf |= rtlpriv->cfg->maps[MAC_RCR_ACF];
+			mac->rx_conf |= rtlpriv->cfg->maps[MAC_RCR_ACF];
 
 			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
 				 "Enable receive control frame\n");
 		} else {
-			rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_ACF];
+			mac->rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_ACF];
 			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
 				 "Disable receive control frame\n");
 		}
@@ -603,17 +537,15 @@ static void rtl_op_configure_filter(struct ieee80211_hw *hw,
 
 	if (changed_flags & FIF_OTHER_BSS) {
 		if (*new_flags & FIF_OTHER_BSS) {
-			rx_conf |= rtlpriv->cfg->maps[MAC_RCR_AAP];
+			mac->rx_conf |= rtlpriv->cfg->maps[MAC_RCR_AAP];
 			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
 				 "Enable receive other BSS's frame\n");
 		} else {
-			rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_AAP];
+			mac->rx_conf &= ~rtlpriv->cfg->maps[MAC_RCR_AAP];
 			RT_TRACE(rtlpriv, COMP_MAC80211, DBG_LOUD,
 				 "Disable receive other BSS's frame\n");
 		}
 	}
-
-	rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_RCR, (u8 *)(&rx_conf));
 }
 static int rtl_op_sta_add(struct ieee80211_hw *hw,
 			 struct ieee80211_vif *vif,
@@ -800,17 +732,12 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 			mac->link_state = MAC80211_LINKED;
 			mac->cnt_after_linked = 0;
 			mac->assoc_id = bss_conf->aid;
-			memcpy(mac->bssid, bss_conf->bssid, ETH_ALEN);
+			memcpy(mac->bssid, bss_conf->bssid, 6);
 
 			if (rtlpriv->cfg->ops->linked_set_reg)
 				rtlpriv->cfg->ops->linked_set_reg(hw);
 			rcu_read_lock();
 			sta = ieee80211_find_sta(vif, (u8 *)bss_conf->bssid);
-			if (!sta) {
-				pr_err("ieee80211_find_sta returned NULL\n");
-				rcu_read_unlock();
-				goto out;
-			}
 
 			if (vif->type == NL80211_IFTYPE_STATION && sta)
 				rtlpriv->cfg->ops->update_rate_tbl(hw, sta, 0);
@@ -834,7 +761,7 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 			if (ppsc->p2p_ps_info.p2p_ps_mode > P2P_PS_NONE)
 				rtl_p2p_ps_cmd(hw, P2P_PS_DISABLE);
 			mac->link_state = MAC80211_NOLINK;
-			memset(mac->bssid, 0, ETH_ALEN);
+			memset(mac->bssid, 0, 6);
 			mac->vendor = PEER_UNKNOWN;
 
 			if (rtlpriv->dm.supp_phymode_switch) {
@@ -910,7 +837,7 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 			 bss_conf->bssid);
 
 		mac->vendor = PEER_UNKNOWN;
-		memcpy(mac->bssid, bss_conf->bssid, ETH_ALEN);
+		memcpy(mac->bssid, bss_conf->bssid, 6);
 		rtlpriv->cfg->ops->set_network_type(hw, vif->type);
 
 		rcu_read_lock();
@@ -965,7 +892,7 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 
 			mac->basic_rates = basic_rates;
 			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_BASIC_RATE,
-					(u8 *)(&basic_rates));
+					(u8 *) (&basic_rates));
 		}
 		rcu_read_unlock();
 	}
@@ -979,11 +906,6 @@ static void rtl_op_bss_info_changed(struct ieee80211_hw *hw,
 		if (bss_conf->assoc) {
 			if (ppsc->fwctrl_lps) {
 				u8 mstatus = RT_MEDIA_CONNECT;
-				u8 keep_alive = 10;
-				rtlpriv->cfg->ops->set_hw_reg(hw,
-						 HW_VAR_KEEP_ALIVE,
-						 &keep_alive);
-
 				rtlpriv->cfg->ops->set_hw_reg(hw,
 						      HW_VAR_H2C_FW_JOINBSSRPT,
 						      &mstatus);
@@ -1419,4 +1341,3 @@ const struct ieee80211_ops rtl_ops = {
 	.rfkill_poll = rtl_op_rfkill_poll,
 	.flush = rtl_op_flush,
 };
-EXPORT_SYMBOL_GPL(rtl_ops);

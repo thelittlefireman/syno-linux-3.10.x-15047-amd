@@ -6,7 +6,6 @@
  * Selftests for breakpoints (and more generally the do_debug() path) in x86.
  */
 
-
 #include <sys/ptrace.h>
 #include <unistd.h>
 #include <stddef.h>
@@ -16,7 +15,6 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-
 
 /* Breakpoint access modes */
 enum {

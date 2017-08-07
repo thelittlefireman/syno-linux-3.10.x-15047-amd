@@ -43,6 +43,8 @@
 #include "dlmdomain.h"
 #include "dlmdebug.h"
 
+#include "dlmver.h"
+
 #define MLOG_MASK_PREFIX (ML_DLM|ML_DLM_DOMAIN)
 #include "cluster/masklog.h"
 
@@ -191,7 +193,7 @@ struct dlm_lock_resource * __dlm_lookup_lockres_full(struct dlm_ctxt *dlm,
 						     unsigned int hash)
 {
 	struct hlist_head *bucket;
-	struct dlm_lock_resource *res;
+	struct hlist_node *list;
 
 	mlog(0, "%.*s\n", len, name);
 
@@ -199,7 +201,9 @@ struct dlm_lock_resource * __dlm_lookup_lockres_full(struct dlm_ctxt *dlm,
 
 	bucket = dlm_lockres_hash(dlm, hash);
 
-	hlist_for_each_entry(res, bucket, hash_node) {
+	hlist_for_each(list, bucket) {
+		struct dlm_lock_resource *res = hlist_entry(list,
+			struct dlm_lock_resource, hash_node);
 		if (res->lockname.name[0] != name[0])
 			continue;
 		if (unlikely(res->lockname.len != len))
@@ -258,19 +262,22 @@ struct dlm_lock_resource * dlm_lookup_lockres(struct dlm_ctxt *dlm,
 
 static struct dlm_ctxt * __dlm_lookup_domain_full(const char *domain, int len)
 {
-	struct dlm_ctxt *tmp;
+	struct dlm_ctxt *tmp = NULL;
+	struct list_head *iter;
 
 	assert_spin_locked(&dlm_domain_lock);
 
 	/* tmp->name here is always NULL terminated,
 	 * but domain may not be! */
-	list_for_each_entry(tmp, &dlm_domains, list) {
+	list_for_each(iter, &dlm_domains) {
+		tmp = list_entry (iter, struct dlm_ctxt, list);
 		if (strlen(tmp->name) == len &&
 		    memcmp(tmp->name, domain, len)==0)
-			return tmp;
+			break;
+		tmp = NULL;
 	}
 
-	return NULL;
+	return tmp;
 }
 
 /* For null terminated domain strings ONLY */
@@ -280,7 +287,6 @@ static struct dlm_ctxt * __dlm_lookup_domain(const char *domain)
 
 	return __dlm_lookup_domain_full(domain, strlen(domain));
 }
-
 
 /* returns true on one of two conditions:
  * 1) the domain does not exist
@@ -359,22 +365,25 @@ static void __dlm_get(struct dlm_ctxt *dlm)
  * you shouldn't trust your pointer. */
 struct dlm_ctxt *dlm_grab(struct dlm_ctxt *dlm)
 {
-	struct dlm_ctxt *target;
-	struct dlm_ctxt *ret = NULL;
+	struct list_head *iter;
+	struct dlm_ctxt *target = NULL;
 
 	spin_lock(&dlm_domain_lock);
 
-	list_for_each_entry(target, &dlm_domains, list) {
+	list_for_each(iter, &dlm_domains) {
+		target = list_entry (iter, struct dlm_ctxt, list);
+
 		if (target == dlm) {
 			__dlm_get(target);
-			ret = target;
 			break;
 		}
+
+		target = NULL;
 	}
 
 	spin_unlock(&dlm_domain_lock);
 
-	return ret;
+	return target;
 }
 
 int dlm_domain_fully_joined(struct dlm_ctxt *dlm)
@@ -1123,6 +1132,7 @@ static int dlm_query_region_handler(struct o2net_msg *msg, u32 len,
 	struct dlm_ctxt *dlm = NULL;
 	char *local = NULL;
 	int status = 0;
+	int locked = 0;
 
 	qr = (struct dlm_query_region *) msg->buf;
 
@@ -1131,8 +1141,10 @@ static int dlm_query_region_handler(struct o2net_msg *msg, u32 len,
 
 	/* buffer used in dlm_mast_regions() */
 	local = kmalloc(sizeof(qr->qr_regions), GFP_KERNEL);
-	if (!local)
-		return -ENOMEM;
+	if (!local) {
+		status = -ENOMEM;
+		goto bail;
+	}
 
 	status = -EINVAL;
 
@@ -1141,15 +1153,16 @@ static int dlm_query_region_handler(struct o2net_msg *msg, u32 len,
 	if (!dlm) {
 		mlog(ML_ERROR, "Node %d queried hb regions on domain %s "
 		     "before join domain\n", qr->qr_node, qr->qr_domain);
-		goto out_domain_lock;
+		goto bail;
 	}
 
 	spin_lock(&dlm->spinlock);
+	locked = 1;
 	if (dlm->joining_node != qr->qr_node) {
 		mlog(ML_ERROR, "Node %d queried hb regions on domain %s "
 		     "but joining node is %d\n", qr->qr_node, qr->qr_domain,
 		     dlm->joining_node);
-		goto out_dlm_lock;
+		goto bail;
 	}
 
 	/* Support for global heartbeat was added in 1.1 */
@@ -1159,15 +1172,14 @@ static int dlm_query_region_handler(struct o2net_msg *msg, u32 len,
 		     "but active dlm protocol is %d.%d\n", qr->qr_node,
 		     qr->qr_domain, dlm->dlm_locking_proto.pv_major,
 		     dlm->dlm_locking_proto.pv_minor);
-		goto out_dlm_lock;
+		goto bail;
 	}
 
 	status = dlm_match_regions(dlm, qr, local, sizeof(qr->qr_regions));
 
-out_dlm_lock:
-	spin_unlock(&dlm->spinlock);
-
-out_domain_lock:
+bail:
+	if (locked)
+		spin_unlock(&dlm->spinlock);
 	spin_unlock(&dlm_domain_lock);
 
 	kfree(local);
@@ -1874,6 +1886,12 @@ static int dlm_join_domain(struct dlm_ctxt *dlm)
 		goto bail;
 	}
 
+	status = dlm_debug_init(dlm);
+	if (status < 0) {
+		mlog_errno(status);
+		goto bail;
+	}
+
 	status = dlm_launch_thread(dlm);
 	if (status < 0) {
 		mlog_errno(status);
@@ -1881,12 +1899,6 @@ static int dlm_join_domain(struct dlm_ctxt *dlm)
 	}
 
 	status = dlm_launch_recovery_thread(dlm);
-	if (status < 0) {
-		mlog_errno(status);
-		goto bail;
-	}
-
-	status = dlm_debug_init(dlm);
 	if (status < 0) {
 		mlog_errno(status);
 		goto bail;
@@ -2283,10 +2295,13 @@ static DECLARE_RWSEM(dlm_callback_sem);
 void dlm_fire_domain_eviction_callbacks(struct dlm_ctxt *dlm,
 					int node_num)
 {
+	struct list_head *iter;
 	struct dlm_eviction_cb *cb;
 
 	down_read(&dlm_callback_sem);
-	list_for_each_entry(cb, &dlm->dlm_eviction_callbacks, ec_item) {
+	list_for_each(iter, &dlm->dlm_eviction_callbacks) {
+		cb = list_entry(iter, struct dlm_eviction_cb, ec_item);
+
 		cb->ec_func(node_num, cb->ec_data);
 	}
 	up_read(&dlm_callback_sem);
@@ -2322,6 +2337,8 @@ EXPORT_SYMBOL_GPL(dlm_unregister_eviction_cb);
 static int __init dlm_init(void)
 {
 	int status;
+
+	dlm_print_version();
 
 	status = dlm_init_mle_cache();
 	if (status) {
@@ -2372,7 +2389,6 @@ static void __exit dlm_exit (void)
 
 MODULE_AUTHOR("Oracle");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("OCFS2 Distributed Lock Management");
 
 module_init(dlm_init);
 module_exit(dlm_exit);

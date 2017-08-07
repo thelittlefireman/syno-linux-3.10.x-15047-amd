@@ -39,7 +39,6 @@
 #include "nx_csbcpb.h"
 #include "nx.h"
 
-
 /**
  * nx_hcall_sync - make an H_COP_OP hcall for the passed in op structure
  *
@@ -61,7 +60,8 @@ int nx_hcall_sync(struct nx_crypto_ctx *nx_ctx,
 
 	do {
 		rc = vio_h_cop_sync(viodev, op);
-	} while (rc == -EBUSY && !may_sleep && retries--);
+	} while ((rc == -EBUSY && !may_sleep && retries--) ||
+	         (rc == -EBUSY && may_sleep && cond_resched()));
 
 	if (rc) {
 		dev_dbg(&viodev->dev, "vio_h_cop_sync failed: rc: %d "
@@ -113,28 +113,12 @@ struct nx_sg *nx_build_sg_list(struct nx_sg *sg_head,
 	 * have been described (or @sgmax elements have been written), the
 	 * loop ends. min_t is used to ensure @end_addr falls on the same page
 	 * as sg_addr, if not, we need to create another nx_sg element for the
-	 * data on the next page.
-	 *
-	 * Also when using vmalloc'ed data, every time that a system page
-	 * boundary is crossed the physical address needs to be re-calculated.
-	 */
+	 * data on the next page */
 	for (sg = sg_head; sg_len < len; sg++) {
-		u64 next_page;
-
 		sg->addr = sg_addr;
-		sg_addr = min_t(u64, NX_PAGE_NUM(sg_addr + NX_PAGE_SIZE),
-				end_addr);
-
-		next_page = (sg->addr & PAGE_MASK) + PAGE_SIZE;
-		sg->len = min_t(u64, sg_addr, next_page) - sg->addr;
+		sg_addr = min_t(u64, NX_PAGE_NUM(sg_addr + NX_PAGE_SIZE), end_addr);
+		sg->len = sg_addr - sg->addr;
 		sg_len += sg->len;
-
-		if (sg_addr >= next_page &&
-				is_vmalloc_addr(start_addr + sg_len)) {
-			sg_addr = page_to_phys(vmalloc_to_page(
-						start_addr + sg_len));
-			end_addr = sg_addr + len - sg_len;
-		}
 
 		if ((sg - sg_head) == sgmax) {
 			pr_err("nx: scatter/gather list overflow, pid: %d\n",
@@ -211,8 +195,6 @@ struct nx_sg *nx_walk_and_build(struct nx_sg       *nx_dst,
  * @dst: destination scatterlist
  * @src: source scatterlist
  * @nbytes: length of data described in the scatterlists
- * @offset: number of bytes to fast-forward past at the beginning of
- *          scatterlists.
  * @iv: destination for the iv data, if the algorithm requires it
  *
  * This is common code shared by all the AES algorithms. It uses the block
@@ -224,7 +206,6 @@ int nx_build_sg_lists(struct nx_crypto_ctx  *nx_ctx,
 		      struct scatterlist    *dst,
 		      struct scatterlist    *src,
 		      unsigned int           nbytes,
-		      unsigned int           offset,
 		      u8                    *iv)
 {
 	struct nx_sg *nx_insg = nx_ctx->in_sg;
@@ -233,10 +214,8 @@ int nx_build_sg_lists(struct nx_crypto_ctx  *nx_ctx,
 	if (iv)
 		memcpy(iv, desc->info, AES_BLOCK_SIZE);
 
-	nx_insg = nx_walk_and_build(nx_insg, nx_ctx->ap->sglen, src,
-				    offset, nbytes);
-	nx_outsg = nx_walk_and_build(nx_outsg, nx_ctx->ap->sglen, dst,
-				    offset, nbytes);
+	nx_insg = nx_walk_and_build(nx_insg, nx_ctx->ap->sglen, src, 0, nbytes);
+	nx_outsg = nx_walk_and_build(nx_outsg, nx_ctx->ap->sglen, dst, 0, nbytes);
 
 	/* these lengths should be negative, which will indicate to phyp that
 	 * the input and output parameters are scatterlists, not linear
@@ -255,7 +234,6 @@ int nx_build_sg_lists(struct nx_crypto_ctx  *nx_ctx,
  */
 void nx_ctx_init(struct nx_crypto_ctx *nx_ctx, unsigned int function)
 {
-	spin_lock_init(&nx_ctx->lock);
 	memset(nx_ctx->kmem, 0, nx_ctx->kmem_len);
 	nx_ctx->csbcpb->csb.valid |= NX_CSB_VALID_BIT;
 
@@ -672,7 +650,6 @@ static int nx_remove(struct vio_dev *viodev)
 
 	return 0;
 }
-
 
 /* module wide initialization/cleanup */
 static int __init nx_init(void)

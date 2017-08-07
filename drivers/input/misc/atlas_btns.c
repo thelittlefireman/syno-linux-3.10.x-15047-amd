@@ -25,10 +25,11 @@
 
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/init.h>
 #include <linux/input.h>
 #include <linux/types.h>
-#include <linux/acpi.h>
 #include <asm/uaccess.h>
+#include <acpi/acpi_drivers.h>
 
 #define ACPI_ATLAS_NAME		"Atlas ACPI"
 #define ACPI_ATLAS_CLASS	"Atlas"
@@ -155,4 +156,3 @@ module_acpi_driver(atlas_acpi_driver);
 MODULE_AUTHOR("Jaya Kumar");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Atlas button driver");
-

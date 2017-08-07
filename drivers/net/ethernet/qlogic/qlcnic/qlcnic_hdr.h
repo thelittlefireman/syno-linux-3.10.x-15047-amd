@@ -556,7 +556,6 @@ enum {
 	QLCNIC_TEMP_PANIC	/* Fatal error, hardware has shut down. */
 };
 
-
 /* Lock IDs for PHY lock */
 #define PHY_LOCK_DRIVER		0x44524956
 
@@ -672,7 +671,6 @@ enum {
 #define QLCNIC_HEARTBEAT_CHECK_RETRY_COUNT	10
 
 #define QLCNIC_MAX_MC_COUNT		38
-#define QLCNIC_MAX_UC_COUNT		512
 #define QLCNIC_WATCHDOG_TIMEOUTVALUE	5
 
 #define	ISR_MSI_INT_TRIGGER(FUNC) (QLCNIC_PCIX_PS_REG(PCIX_MSI_F(FUNC)))
@@ -698,6 +696,7 @@ struct qlcnic_legacy_intr_set {
 };
 
 #define QLCNIC_MSIX_BASE	0x132110
+#define QLCNIC_MAX_PCI_FUNC	8
 #define QLCNIC_MAX_VLAN_FILTERS	64
 
 #define FLASH_ROM_WINDOW	0x42110030

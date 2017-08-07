@@ -16,12 +16,10 @@
 #include <linux/slab.h>
 #include <linux/export.h>
 
-
 /*
  * The code in this file will only be executed when running with
  * a PROM that has ACPI IO support. (i.e., SN_ACPI_BASE_SUPPORT() == 1)
  */
-
 
 /*
  * This value must match the UUID the PROM uses
@@ -131,8 +129,7 @@ sn_get_bussoft_ptr(struct pci_bus *bus)
 	acpi_status status;
 	struct acpi_resource_vendor_typed *vendor;
 
-
-	handle = acpi_device_handle(PCI_CONTROLLER(bus)->companion);
+	handle = PCI_CONTROLLER(bus)->acpi_handle;
 	status = acpi_get_vendor_resource(handle, METHOD_NAME__CRS,
 					  &sn_uuid, &buffer);
 	if (ACPI_FAILURE(status)) {
@@ -360,7 +357,7 @@ sn_acpi_get_pcidev_info(struct pci_dev *dev, struct pcidev_info **pcidev_info,
 	acpi_status status;
 	struct acpi_buffer name_buffer = { ACPI_ALLOCATE_BUFFER, NULL };
 
-	rootbus_handle = acpi_device_handle(PCI_CONTROLLER(dev)->companion);
+	rootbus_handle = PCI_CONTROLLER(dev)->acpi_handle;
         status = acpi_evaluate_integer(rootbus_handle, METHOD_NAME__SEG, NULL,
                                        &segment);
         if (ACPI_SUCCESS(status)) {
@@ -455,7 +452,6 @@ sn_acpi_slot_fixup(struct pci_dev *dev)
 }
 
 EXPORT_SYMBOL(sn_acpi_slot_fixup);
-
 
 /*
  * sn_acpi_bus_fixup -  Perform SN specific setup of software structs

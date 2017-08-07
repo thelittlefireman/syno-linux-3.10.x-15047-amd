@@ -249,7 +249,6 @@ tsi721_pw_handler(struct rio_mport *mport)
 	u32 pw_stat;
 	u32 pw_buf[TSI721_RIO_PW_MSG_SIZE/sizeof(u32)];
 
-
 	pw_stat = ioread32(priv->regs + TSI721_RIO_PW_RX_STAT);
 
 	if (pw_stat & TSI721_RIO_PW_RX_STAT_PW_VAL) {
@@ -2256,7 +2255,6 @@ static int tsi721_setup_mport(struct tsi721_device *priv)
 	mport->phy_type = RIO_PHY_SERIAL;
 	mport->priv = (void *)priv;
 	mport->phys_efptr = 0x100;
-	mport->dev.parent = &pdev->dev;
 	priv->mport = mport;
 
 	INIT_LIST_HEAD(&mport->dbells);
@@ -2516,8 +2514,9 @@ static int __init tsi721_init(void)
 	return pci_register_driver(&tsi721_driver);
 }
 
-device_initcall(tsi721_init);
+static void __exit tsi721_exit(void)
+{
+	pci_unregister_driver(&tsi721_driver);
+}
 
-MODULE_DESCRIPTION("IDT Tsi721 PCIExpress-to-SRIO bridge driver");
-MODULE_AUTHOR("Integrated Device Technology, Inc.");
-MODULE_LICENSE("GPL");
+device_initcall(tsi721_init);

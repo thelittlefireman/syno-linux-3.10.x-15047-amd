@@ -11,7 +11,8 @@
  * published by the Free Software Foundation.                                *
  *                                                                           *
  * You should have received a copy of the GNU General Public License along   *
- * with this program; if not, see <http://www.gnu.org/licenses/>.            *
+ * with this program; if not, write to the Free Software Foundation, Inc.,   *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.                 *
  *                                                                           *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED    *
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF      *
@@ -70,7 +71,6 @@ enum CPL_opcode {
 
 	CPL_PCMD_READ         = 0x31,
 	CPL_PCMD_READ_RPL     = 0x32,
-
 
 	CPL_RX_DATA           = 0xA0,
 	CPL_RX_DATA_DDP       = 0xA1,
@@ -635,4 +635,3 @@ struct cpl_mss_change {
 };
 
 #endif /* _CXGB_CPL5_CMD_H_ */
-

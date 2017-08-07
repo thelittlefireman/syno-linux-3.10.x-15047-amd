@@ -24,6 +24,7 @@
 #include <linux/types.h>
 #include <linux/pci.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 
 #include <asm/mips-boards/msc01_pci.h>
 
@@ -79,7 +80,6 @@ static int msc_pcibios_config_access(unsigned char access_type,
 
 	return 0;
 }
-
 
 /*
  * We can't address 8 and 16 bit words directly.  Instead we have to

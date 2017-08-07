@@ -46,13 +46,12 @@ Jeremy Roberson jroberson@gtcocalcomp.com
 Scott Hill shill@gtcocalcomp.com
 */
 
-
-
 /*#define DEBUG*/
 
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/usb.h>
@@ -60,12 +59,10 @@ Scott Hill shill@gtcocalcomp.com
 #include <asm/unaligned.h>
 #include <asm/byteorder.h>
 
-
 #include <linux/usb/input.h>
 
 /* Version with a Major number of 2 is for kernel inclusion only. */
 #define  GTCO_VERSION   "2.00.0006"
-
 
 /*   MACROS  */
 
@@ -78,7 +75,6 @@ Scott Hill shill@gtcocalcomp.com
 
 /* Max size of a single report */
 #define REPORT_MAX_SIZE       10
-
 
 /* Bitmask whether pen is in range */
 #define MASK_INRANGE 0x20
@@ -98,7 +94,6 @@ static const struct usb_device_id gtco_usbid_table[] = {
 	{ }
 };
 MODULE_DEVICE_TABLE (usb, gtco_usbid_table);
-
 
 /* Structure to hold all of our device specific stuff */
 struct gtco {
@@ -127,8 +122,6 @@ struct gtco {
 	u32  minpressure;
 };
 
-
-
 /*   Code for parsing the HID REPORT DESCRIPTOR          */
 
 /* From HID1.11 spec */
@@ -142,11 +135,9 @@ struct hid_descriptor
 	__le16   wDescriptorLength;
 } __attribute__ ((packed));
 
-
 #define HID_DESCRIPTOR_SIZE   9
 #define HID_DEVICE_TYPE       33
 #define REPORT_DEVICE_TYPE    34
-
 
 #define PREF_TAG(x)     ((x)>>4)
 #define PREF_TYPE(x)    ((x>>2)&0x03)
@@ -181,7 +172,6 @@ struct hid_descriptor
 #define DIGITIZER_USAGE_TIP_PRESSURE   0x30
 #define DIGITIZER_USAGE_TILT_X         0x3D
 #define DIGITIZER_USAGE_TILT_Y         0x3E
-
 
 /*
  *   This is an abbreviated parser for the HID Report Descriptor.  We
@@ -225,7 +215,6 @@ static void parse_hid_report_descriptor(struct gtco *device, char * report,
 	char  globtype[12];
 	int   indent = 0;
 	char  indentstr[10] = "";
-
 
 	dev_dbg(ddev, "======>>>>>>PARSE<<<<<<======\n");
 
@@ -281,7 +270,6 @@ static void parse_hid_report_descriptor(struct gtco *device, char * report,
 					globalval[TAG_GLOB_LOG_MAX], globalval[TAG_GLOB_LOG_MAX],
 					globalval[TAG_GLOB_LOG_MIN], globalval[TAG_GLOB_LOG_MIN],
 					globalval[TAG_GLOB_REPORT_SZ] * globalval[TAG_GLOB_REPORT_CNT]);
-
 
 				/*
 				  We can assume that the first two input items
@@ -557,7 +545,6 @@ static void gtco_input_close(struct input_dev *inputdev)
 	usb_kill_urb(device->urbinfo);
 }
 
-
 /*
  *  Setup input device capabilities.  Tell the input system what this
  *  device is capable of generating.
@@ -672,7 +659,6 @@ static void gtco_urb_callback(struct urb *urbinfo)
 
 			if (device->buffer[7] & 0x40)
 				device->buffer[7] |= 0x80;
-
 
 			valsigned = (device->buffer[6]);
 			input_report_abs(inputdev, ABS_TILT_X, (s32)valsigned);
@@ -848,7 +834,7 @@ static int gtco_probe(struct usb_interface *usbinterface,
 	gtco->inputdevice = input_dev;
 
 	/* Save interface information */
-	gtco->usbdev = interface_to_usbdev(usbinterface);
+	gtco->usbdev = usb_get_dev(interface_to_usbdev(usbinterface));
 	gtco->intf = usbinterface;
 
 	/* Allocate some data for incoming reports */
@@ -866,6 +852,14 @@ static int gtco_probe(struct usb_interface *usbinterface,
 		dev_err(&usbinterface->dev, "Failed to allocate URB\n");
 		error = -ENOMEM;
 		goto err_free_buf;
+	}
+
+	/* Sanity check that a device has an endpoint */
+	if (usbinterface->altsetting[0].desc.bNumEndpoints < 1) {
+		dev_err(&usbinterface->dev,
+			"Invalid number of endpoints\n");
+		error = -EINVAL;
+		goto err_free_urb;
 	}
 
 	/*
@@ -889,7 +883,7 @@ static int gtco_probe(struct usb_interface *usbinterface,
 	 * HID report descriptor
 	 */
 	if (usb_get_extra_descriptor(usbinterface->cur_altsetting,
-				     HID_DEVICE_TYPE, &hid_desc) != 0){
+				     HID_DEVICE_TYPE, &hid_desc) != 0) {
 		dev_err(&usbinterface->dev,
 			"Can't retrieve exta USB descriptor to get hid report descriptor length\n");
 		error = -EIO;

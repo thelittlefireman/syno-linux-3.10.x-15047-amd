@@ -15,6 +15,10 @@ This program is free software; you can redistribute it and/or modify it under th
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+You should also find the complete GPL in the COPYING file accompanying this source code.
+
 @endverbatim
 */
 /*
@@ -39,8 +43,6 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
   |          |           |						  |
   +----------+-----------+------------------------------------------------+
 */
-
-#include <linux/delay.h>
 
 /*
  * ADDON RELATED ADDITIONS
@@ -239,7 +241,6 @@ static const struct comedi_lrange range_apci3120_ao = {
 	}
 };
 
-
 /* FUNCTION DEFINITIONS */
 
 /*
@@ -248,10 +249,10 @@ static const struct comedi_lrange range_apci3120_ao = {
 +----------------------------------------------------------------------------+
 */
 
-static int apci3120_ai_insn_config(struct comedi_device *dev,
-				   struct comedi_subdevice *s,
-				   struct comedi_insn *insn,
-				   unsigned int *data)
+static int i_APCI3120_InsnConfigAnalogInput(struct comedi_device *dev,
+					    struct comedi_subdevice *s,
+					    struct comedi_insn *insn,
+					    unsigned int *data)
 {
 	const struct addi_board *this_board = comedi_board(dev);
 	struct addi_private *devpriv = dev->private;
@@ -304,11 +305,11 @@ static int apci3120_ai_insn_config(struct comedi_device *dev,
  * If the last argument of function "check"is 1 then it only checks
  * the channel list is ok or not.
  */
-static int apci3120_setup_chan_list(struct comedi_device *dev,
-				    struct comedi_subdevice *s,
-				    int n_chan,
-				    unsigned int *chanlist,
-				    char check)
+static int i_APCI3120_SetupChannelList(struct comedi_device *dev,
+				       struct comedi_subdevice *s,
+				       int n_chan,
+				       unsigned int *chanlist,
+				       char check)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int i;		/* , differencial=0, bipolar=0; */
@@ -358,10 +359,10 @@ static int apci3120_setup_chan_list(struct comedi_device *dev,
  * as per configured if no conversion time is set uses default
  * conversion time 10 microsec.
  */
-static int apci3120_ai_insn_read(struct comedi_device *dev,
-				 struct comedi_subdevice *s,
-				 struct comedi_insn *insn,
-				 unsigned int *data)
+static int i_APCI3120_InsnReadAnalogInput(struct comedi_device *dev,
+					  struct comedi_subdevice *s,
+					  struct comedi_insn *insn,
+					  unsigned int *data)
 {
 	const struct addi_board *this_board = comedi_board(dev);
 	struct addi_private *devpriv = dev->private;
@@ -417,7 +418,10 @@ static int apci3120_ai_insn_read(struct comedi_device *dev,
 			inw(devpriv->iobase + APCI3120_RESET_FIFO);
 
 			/*  Initialize the sequence array */
-			if (!apci3120_setup_chan_list(dev, s, 1,
+
+			/* if (!i_APCI3120_SetupChannelList(dev,s,1,chanlist,0))  return -EINVAL; */
+
+			if (!i_APCI3120_SetupChannelList(dev, s, 1,
 					&insn->chanspec, 0))
 				return -EINVAL;
 
@@ -509,7 +513,7 @@ static int apci3120_ai_insn_read(struct comedi_device *dev,
 			outw(devpriv->us_OutputRegister,
 				devpriv->iobase + APCI3120_WR_ADDRESS);
 
-			if (!apci3120_setup_chan_list(dev, s,
+			if (!i_APCI3120_SetupChannelList(dev, s,
 					devpriv->ui_AiNbrofChannels,
 					devpriv->ui_AiChannelList, 0))
 				return -EINVAL;
@@ -603,7 +607,7 @@ static int apci3120_ai_insn_read(struct comedi_device *dev,
 
 }
 
-static int apci3120_reset(struct comedi_device *dev)
+static int i_APCI3120_Reset(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int i;
@@ -660,7 +664,7 @@ static int apci3120_reset(struct comedi_device *dev)
 	return 0;
 }
 
-static int apci3120_exttrig_enable(struct comedi_device *dev)
+static int i_APCI3120_ExttrigEnable(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
 
@@ -669,7 +673,7 @@ static int apci3120_exttrig_enable(struct comedi_device *dev)
 	return 0;
 }
 
-static int apci3120_exttrig_disable(struct comedi_device *dev)
+static int i_APCI3120_ExttrigDisable(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
 
@@ -678,8 +682,8 @@ static int apci3120_exttrig_disable(struct comedi_device *dev)
 	return 0;
 }
 
-static int apci3120_cancel(struct comedi_device *dev,
-			   struct comedi_subdevice *s)
+static int i_APCI3120_StopCyclicAcquisition(struct comedi_device *dev,
+					    struct comedi_subdevice *s)
 {
 	struct addi_private *devpriv = dev->private;
 
@@ -702,7 +706,7 @@ static int apci3120_cancel(struct comedi_device *dev,
 	 * devpriv->i_IobaseAmcc+AMCC_OP_REG_MCSR);  stop DMA */
 
 	/* Disable ext trigger */
-	apci3120_exttrig_disable(dev);
+	i_APCI3120_ExttrigDisable(dev);
 
 	devpriv->us_OutputRegister = 0;
 	/* stop  counters */
@@ -719,20 +723,22 @@ static int apci3120_cancel(struct comedi_device *dev,
 	inb(dev->iobase + APCI3120_RESET_FIFO);
 	inw(dev->iobase + APCI3120_RD_STATUS);
 	devpriv->ui_AiActualScan = 0;
+	devpriv->ui_AiActualScanPosition = 0;
 	s->async->cur_chan = 0;
+	devpriv->ui_AiBufferPtr = 0;
 	devpriv->b_AiContinuous = 0;
 	devpriv->ui_DmaActualBuffer = 0;
 
 	devpriv->b_AiCyclicAcquisition = APCI3120_DISABLE;
 	devpriv->b_InterruptMode = APCI3120_EOC_MODE;
 	devpriv->b_EocEosInterrupt = APCI3120_DISABLE;
-	apci3120_reset(dev);
+	i_APCI3120_Reset(dev);
 	return 0;
 }
 
-static int apci3120_ai_cmdtest(struct comedi_device *dev,
-			       struct comedi_subdevice *s,
-			       struct comedi_cmd *cmd)
+static int i_APCI3120_CommandTestAnalogInput(struct comedi_device *dev,
+					     struct comedi_subdevice *s,
+					     struct comedi_cmd *cmd)
 {
 	const struct addi_board *this_board = comedi_board(dev);
 	int err = 0;
@@ -815,9 +821,9 @@ static int apci3120_ai_cmdtest(struct comedi_device *dev,
  * If DMA is configured does DMA initialization otherwise does the
  * acquisition with EOS interrupt.
  */
-static int apci3120_cyclic_ai(int mode,
-			      struct comedi_device *dev,
-			      struct comedi_subdevice *s)
+static int i_APCI3120_CyclicAnalogInput(int mode,
+					struct comedi_device *dev,
+					struct comedi_subdevice *s)
 {
 	const struct addi_board *this_board = comedi_board(dev);
 	struct addi_private *devpriv = dev->private;
@@ -888,7 +894,9 @@ static int apci3120_cyclic_ai(int mode,
 	/* END JK 07.05.04: Comparison between WIN32 and Linux driver */
 
 	devpriv->ui_AiActualScan = 0;
+	devpriv->ui_AiActualScanPosition = 0;
 	s->async->cur_chan = 0;
+	devpriv->ui_AiBufferPtr = 0;
 	devpriv->ui_DmaActualBuffer = 0;
 
 	/*  value for timer2  minus -2 has to be done .....dunno y?? */
@@ -901,7 +909,7 @@ static int apci3120_cyclic_ai(int mode,
    /**********************************/
 	/* Initializes the sequence array */
    /**********************************/
-	if (!apci3120_setup_chan_list(dev, s, devpriv->ui_AiNbrofChannels,
+	if (!i_APCI3120_SetupChannelList(dev, s, devpriv->ui_AiNbrofChannels,
 			devpriv->pui_AiChannelList, 0))
 		return -EINVAL;
 
@@ -954,7 +962,7 @@ static int apci3120_cyclic_ai(int mode,
 /*** EL241003 End ******************************************************************************/
 
 	if (devpriv->b_ExttrigEnable == APCI3120_ENABLE)
-		apci3120_exttrig_enable(dev);	/*  activate EXT trigger */
+		i_APCI3120_ExttrigEnable(dev);	/*  activate EXT trigger */
 	switch (mode) {
 	case 1:
 		/*  init timer0 in mode 2 */
@@ -1330,8 +1338,8 @@ static int apci3120_cyclic_ai(int mode,
  * Does asynchronous acquisition.
  * Determines the mode 1 or 2.
  */
-static int apci3120_ai_cmd(struct comedi_device *dev,
-			   struct comedi_subdevice *s)
+static int i_APCI3120_CommandAnalogInput(struct comedi_device *dev,
+					 struct comedi_subdevice *s)
 {
 	struct addi_private *devpriv = dev->private;
 	struct comedi_cmd *cmd = &s->async->cmd;
@@ -1342,6 +1350,8 @@ static int apci3120_ai_cmd(struct comedi_device *dev,
 	devpriv->ui_AiScanLength = cmd->scan_end_arg;
 	devpriv->pui_AiChannelList = cmd->chanlist;
 
+	/* UPDATE-0.7.57->0.7.68devpriv->AiData=s->async->data; */
+	devpriv->AiData = s->async->prealloc_buf;
 	/* UPDATE-0.7.57->0.7.68devpriv->ui_AiDataLength=s->async->data_len; */
 	devpriv->ui_AiDataLength = s->async->prealloc_bufsz;
 
@@ -1368,7 +1378,7 @@ static int apci3120_ai_cmd(struct comedi_device *dev,
 
 			devpriv->ui_AiTimer0 = cmd->convert_arg;	/*  timer constant in nano seconds */
 			/* return this_board->ai_cmd(1,dev,s); */
-			return apci3120_cyclic_ai(1, dev, s);
+			return i_APCI3120_CyclicAnalogInput(1, dev, s);
 		}
 
 	}
@@ -1378,7 +1388,7 @@ static int apci3120_ai_cmd(struct comedi_device *dev,
 		devpriv->ui_AiTimer1 = cmd->scan_begin_arg;
 		devpriv->ui_AiTimer0 = cmd->convert_arg;	/*  variable changed timer2 to timer0 */
 		/* return this_board->ai_cmd(2,dev,s); */
-		return apci3120_cyclic_ai(2, dev, s);
+		return i_APCI3120_CyclicAnalogInput(2, dev, s);
 	}
 	return -1;
 }
@@ -1388,7 +1398,7 @@ static int apci3120_ai_cmd(struct comedi_device *dev,
  */
 static void v_APCI3120_InterruptDmaMoveBlock16bit(struct comedi_device *dev,
 						  struct comedi_subdevice *s,
-						  unsigned short *dma_buffer,
+						  short *dma_buffer,
 						  unsigned int num_samples)
 {
 	struct addi_private *devpriv = dev->private;
@@ -1407,11 +1417,11 @@ static void v_APCI3120_InterruptDmaMoveBlock16bit(struct comedi_device *dev,
  * For continuous DMA it reinitializes the DMA operation.
  * For single mode DMA it stop the acquisition.
  */
-static void apci3120_interrupt_dma(int irq, void *d)
+static void v_APCI3120_InterruptDma(int irq, void *d)
 {
 	struct comedi_device *dev = d;
 	struct addi_private *devpriv = dev->private;
-	struct comedi_subdevice *s = dev->read_subdev;
+	struct comedi_subdevice *s = &dev->subdevices[0];
 	unsigned int next_dma_buf, samplesinbuf;
 	unsigned long low_word, high_word, var;
 	unsigned int ui_Tmp;
@@ -1426,7 +1436,7 @@ static void apci3120_interrupt_dma(int irq, void *d)
 	}
 	if (samplesinbuf & 1) {
 		comedi_error(dev, "Odd count of bytes in DMA ring!");
-		apci3120_cancel(dev, s);
+		i_APCI3120_StopCyclicAcquisition(dev, s);
 		devpriv->b_AiCyclicAcquisition = APCI3120_DISABLE;
 
 		return;
@@ -1497,7 +1507,7 @@ static void apci3120_interrupt_dma(int irq, void *d)
 	if (!devpriv->b_AiContinuous)
 		if (devpriv->ui_AiActualScan >= devpriv->ui_AiNbrofScans) {
 			/*  all data sampled */
-			apci3120_cancel(dev, s);
+			i_APCI3120_StopCyclicAcquisition(dev, s);
 			devpriv->b_AiCyclicAcquisition = APCI3120_DISABLE;
 			s->async->events |= COMEDI_CB_EOA;
 			comedi_event(dev, s);
@@ -1562,14 +1572,16 @@ static void apci3120_interrupt_dma(int irq, void *d)
  * This function handles EOS interrupt.
  * This function copies the acquired data(from FIFO) to Comedi buffer.
  */
-static int apci3120_interrupt_handle_eos(struct comedi_device *dev)
+static int i_APCI3120_InterruptHandleEos(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
-	struct comedi_subdevice *s = dev->read_subdev;
 	int n_chan, i;
+	struct comedi_subdevice *s = &dev->subdevices[0];
 	int err = 1;
 
 	n_chan = devpriv->ui_AiNbrofChannels;
+
+	s->async->events = 0;
 
 	for (i = 0; i < n_chan; i++)
 		err &= comedi_buf_put(s->async, inw(dev->iobase + 0));
@@ -1584,15 +1596,15 @@ static int apci3120_interrupt_handle_eos(struct comedi_device *dev)
 	return 0;
 }
 
-static void apci3120_interrupt(int irq, void *d)
+static void v_APCI3120_Interrupt(int irq, void *d)
 {
 	struct comedi_device *dev = d;
 	struct addi_private *devpriv = dev->private;
-	struct comedi_subdevice *s = dev->read_subdev;
 	unsigned short int_daq;
 	unsigned int int_amcc, ui_Check, i;
 	unsigned short us_TmpValue;
 	unsigned char b_DummyRead;
+	struct comedi_subdevice *s = &dev->subdevices[0];
 
 	ui_Check = 1;
 
@@ -1610,7 +1622,7 @@ static void apci3120_interrupt(int irq, void *d)
 
 	if (devpriv->b_ExttrigEnable == APCI3120_ENABLE) {
 		/* Disable ext trigger */
-		apci3120_exttrig_disable(dev);
+		i_APCI3120_ExttrigDisable(dev);
 		devpriv->b_ExttrigEnable = APCI3120_DISABLE;
 	}
 	/* clear the timer 2 interrupt */
@@ -1650,7 +1662,7 @@ static void apci3120_interrupt(int irq, void *d)
 
 			if (devpriv->b_AiCyclicAcquisition == APCI3120_ENABLE) {
 				ui_Check = 0;
-				apci3120_interrupt_handle_eos(dev);
+				i_APCI3120_InterruptHandleEos(dev);
 				devpriv->ui_AiActualScan++;
 				devpriv->b_ModeSelectRegister =
 					devpriv->
@@ -1706,7 +1718,7 @@ static void apci3120_interrupt(int irq, void *d)
 				dev->iobase + APCI3120_WR_ADDRESS);
 
 			/* stop timer 0 and timer 1 */
-			apci3120_cancel(dev, s);
+			i_APCI3120_StopCyclicAcquisition(dev, s);
 			devpriv->b_AiCyclicAcquisition = APCI3120_DISABLE;
 
 			/* UPDATE-0.7.57->0.7.68comedi_done(dev,s); */
@@ -1760,8 +1772,7 @@ static void apci3120_interrupt(int irq, void *d)
 			/* Clears the timer status register */
 			/************************************/
 			inw(dev->iobase + APCI3120_TIMER_STATUS_REGISTER);
-			/* do some data transfer */
-			apci3120_interrupt_dma(irq, d);
+			v_APCI3120_InterruptDma(irq, d);	/*  do some data transfer */
 		} else {
 			/* Stops the Timer */
 			outw(devpriv->
@@ -1783,7 +1794,7 @@ static void apci3120_interrupt(int irq, void *d)
  * data[1] = Timer constant
  * data[2] = Timer2 interrupt (1)enable or(0) disable
  */
-static int apci3120_config_insn_timer(struct comedi_device *dev,
+static int i_APCI3120_InsnConfigTimer(struct comedi_device *dev,
 				      struct comedi_subdevice *s,
 				      struct comedi_insn *insn,
 				      unsigned int *data)
@@ -1928,7 +1939,7 @@ static int apci3120_config_insn_timer(struct comedi_device *dev,
  *			 = 1 Timer
  *			 = 2 Watch dog
  */
-static int apci3120_write_insn_timer(struct comedi_device *dev,
+static int i_APCI3120_InsnWriteTimer(struct comedi_device *dev,
 				     struct comedi_subdevice *s,
 				     struct comedi_insn *insn,
 				     unsigned int *data)
@@ -2100,7 +2111,7 @@ static int apci3120_write_insn_timer(struct comedi_device *dev,
  * for watchdog: data[0] = 0 (still running)
  *			 = 1 (run down)
  */
-static int apci3120_read_insn_timer(struct comedi_device *dev,
+static int i_APCI3120_InsnReadTimer(struct comedi_device *dev,
 				    struct comedi_subdevice *s,
 				    struct comedi_insn *insn,
 				    unsigned int *data)
@@ -2171,24 +2182,29 @@ static int apci3120_do_insn_bits(struct comedi_device *dev,
 				 unsigned int *data)
 {
 	struct addi_private *devpriv = dev->private;
+	unsigned int mask = data[0];
+	unsigned int bits = data[1];
+	unsigned int val;
 
-	if (comedi_dio_update_state(s, data)) {
-		/* The do channels are bits 7:4 of the do register */
-		devpriv->b_DigitalOutputRegister = s->state << 4;
+	/* The do channels are bits 7:4 of the do register */
+	val = devpriv->b_DigitalOutputRegister >> 4;
+	if (mask) {
+		val &= ~mask;
+		val |= (bits & mask);
+		devpriv->b_DigitalOutputRegister = val << 4;
 
-		outb(devpriv->b_DigitalOutputRegister,
-		     devpriv->iobase + APCI3120_DIGITAL_OUTPUT);
+		outb(val << 4, devpriv->iobase + APCI3120_DIGITAL_OUTPUT);
 	}
 
-	data[1] = s->state;
+	data[1] = val;
 
 	return insn->n;
 }
 
-static int apci3120_ao_insn_write(struct comedi_device *dev,
-				  struct comedi_subdevice *s,
-				  struct comedi_insn *insn,
-				  unsigned int *data)
+static int i_APCI3120_InsnWriteAnalogOutput(struct comedi_device *dev,
+					    struct comedi_subdevice *s,
+					    struct comedi_insn *insn,
+					    unsigned int *data)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int ui_Range, ui_Channel;

@@ -24,6 +24,8 @@
  *
  */
 
+#include <asm/mach-types.h>
+
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>

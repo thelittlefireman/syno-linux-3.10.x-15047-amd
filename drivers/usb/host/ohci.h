@@ -70,7 +70,6 @@ struct ed {
 
 #define ED_MASK	((u32)~0x0f)		/* strip hw status in low addr bits */
 
-
 /*
  * OHCI Transfer Descriptor (TD) ... one per transfer segment
  * See OHCI spec, sections 4.3.1 (general = control/bulk/interrupt)
@@ -151,7 +150,6 @@ struct td {
     /* 0x0E, 0x0F reserved for HCD */
 #define TD_NOTACCESSED     0x0F
 
-
 /* map OHCI TD status codes (CC) to errno values */
 static const int cc_to_error [16] = {
 	/* No  Error  */               0,
@@ -171,7 +169,6 @@ static const int cc_to_error [16] = {
 	/* (for HCD)  */               -EALREADY,
 	/* (for HCD)  */               -EALREADY
 };
-
 
 /*
  * The HCCA (Host Controller Communications Area) is a 256 byte
@@ -236,7 +233,6 @@ struct ohci_regs {
 
 } __attribute__ ((aligned(32)));
 
-
 /* OHCI CONTROL AND STATUS REGISTER MASKS */
 
 /*
@@ -283,7 +279,6 @@ struct ohci_regs {
 #define OHCI_INTR_OC	(1 << 30)	/* ownership change */
 #define OHCI_INTR_MIE	(1 << 31)	/* master interrupt enable */
 
-
 /* OHCI ROOT HUB REGISTER MASKS */
 
 /* roothub.portstatus [i] bits */
@@ -321,7 +316,6 @@ struct ohci_regs {
 #define	RH_A_NOCP	(1 << 12)		/* no over current protection */
 #define	RH_A_POTPGT	(0xff << 24)		/* power on to power good time */
 
-
 /* hcd-private per-urb state */
 typedef struct urb_priv {
 	struct ed		*ed;
@@ -335,7 +329,6 @@ typedef struct urb_priv {
 #define TD_HASH_SIZE    64    /* power'o'two */
 // sizeof (struct td) ~= 64 == 2^6 ...
 #define TD_HASH_FUNC(td_dma) ((td_dma ^ (td_dma >> 6)) % TD_HASH_SIZE)
-
 
 /*
  * This is the full ohci controller description
@@ -405,6 +398,8 @@ struct ohci_hcd {
 #define	OHCI_QUIRK_HUB_POWER	0x100			/* distrust firmware power/oc setup */
 #define	OHCI_QUIRK_AMD_PLL	0x200			/* AMD PLL quirk*/
 #define	OHCI_QUIRK_AMD_PREFETCH	0x400			/* pre-fetch for ISO transfer */
+#define	OHCI_QUIRK_GLOBAL_SUSPEND	0x800		/* must suspend ports */
+
 	// there are also chip quirks/bugs in init logic
 
 	struct work_struct	nec_work;	/* Worker for NEC quirk */
@@ -415,14 +410,12 @@ struct ohci_hcd {
 	struct ed		*ed_to_check;
 	unsigned		zf_delay;
 
+#ifdef DEBUG
 	struct dentry		*debug_dir;
 	struct dentry		*debug_async;
 	struct dentry		*debug_periodic;
 	struct dentry		*debug_registers;
-
-	/* platform-specific data -- must come last */
-	unsigned long           priv[0] __aligned(sizeof(s64));
-
+#endif
 };
 
 #ifdef CONFIG_PCI
@@ -473,6 +466,10 @@ static inline struct usb_hcd *ohci_to_hcd (const struct ohci_hcd *ohci)
 
 /*-------------------------------------------------------------------------*/
 
+#ifndef DEBUG
+#define STUB_DEBUG_FILES
+#endif	/* DEBUG */
+
 #define ohci_dbg(ohci, fmt, args...) \
 	dev_dbg (ohci_to_hcd(ohci)->self.controller , fmt , ## args )
 #define ohci_err(ohci, fmt, args...) \
@@ -481,6 +478,12 @@ static inline struct usb_hcd *ohci_to_hcd (const struct ohci_hcd *ohci)
 	dev_info (ohci_to_hcd(ohci)->self.controller , fmt , ## args )
 #define ohci_warn(ohci, fmt, args...) \
 	dev_warn (ohci_to_hcd(ohci)->self.controller , fmt , ## args )
+
+#ifdef OHCI_VERBOSE_DEBUG
+#	define ohci_vdbg ohci_dbg
+#else
+#	define ohci_vdbg(ohci, fmt, args...) do { } while (0)
+#endif
 
 /*-------------------------------------------------------------------------*/
 
@@ -570,7 +573,6 @@ static inline void _ohci_writel (const struct ohci_hcd *ohci,
 
 #define ohci_readl(o,r)		_ohci_readl(o,r)
 #define ohci_writel(o,v,r)	_ohci_writel(o,v,r)
-
 
 /*-------------------------------------------------------------------------*/
 
@@ -710,20 +712,3 @@ static inline u32 roothub_status (struct ohci_hcd *hc)
 	{ return ohci_readl (hc, &hc->regs->roothub.status); }
 static inline u32 roothub_portstatus (struct ohci_hcd *hc, int i)
 	{ return read_roothub (hc, portstatus [i], 0xffe0fce0); }
-
-/* Declarations of things exported for use by ohci platform drivers */
-
-struct ohci_driver_overrides {
-	const char	*product_desc;
-	size_t		extra_priv_size;
-	int		(*reset)(struct usb_hcd *hcd);
-};
-
-extern void	ohci_init_driver(struct hc_driver *drv,
-				const struct ohci_driver_overrides *over);
-extern int	ohci_restart(struct ohci_hcd *ohci);
-extern int	ohci_setup(struct usb_hcd *hcd);
-#ifdef CONFIG_PM
-extern int	ohci_suspend(struct usb_hcd *hcd, bool do_wakeup);
-extern int	ohci_resume(struct usb_hcd *hcd, bool hibernated);
-#endif

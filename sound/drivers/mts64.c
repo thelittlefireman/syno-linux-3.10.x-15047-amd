@@ -159,7 +159,6 @@ static void mts64_write_command(struct parport *p, u8 c);
 static void mts64_write_data(struct parport *p, u8 c);
 static void mts64_write_midi(struct mts64 *mts, u8 c, int midiport);
 
-
 /*  Enables the readout procedure
  *
  *  Before we can read a midi byte from the device, we have to set
@@ -281,7 +280,6 @@ static u8 mts64_map_midi_input(u8 c)
 
 	return map[c];
 }
-
 
 /*  Probe parport for device
  *
@@ -662,7 +660,6 @@ static struct snd_kcontrol_new mts64_ctl_smpte_fps = {
 	.put   = snd_mts64_ctl_smpte_fps_put
 };
 
-
 static int snd_mts64_ctl_create(struct snd_card *card,
 				struct mts64 *mts)
 {
@@ -959,8 +956,7 @@ static int snd_mts64_probe(struct platform_device *pdev)
 	if ((err = snd_mts64_probe_port(p)) < 0)
 		return err;
 
-	err = snd_card_new(&pdev->dev, index[dev], id[dev], THIS_MODULE,
-			   0, &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE, 0, &card);
 	if (err < 0) {
 		snd_printd("Cannot create card\n");
 		return err;
@@ -1010,6 +1006,8 @@ static int snd_mts64_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, card);
 
+	snd_card_set_dev(card, &pdev->dev);
+
 	/* At this point card will be usable */
 	if ((err = snd_card_register(card)) < 0) {
 		snd_printd("Cannot register card\n");
@@ -1033,7 +1031,6 @@ static int snd_mts64_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 
 static struct platform_driver snd_mts64_driver = {
 	.probe  = snd_mts64_probe,

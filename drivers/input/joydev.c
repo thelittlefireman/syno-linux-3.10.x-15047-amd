@@ -506,7 +506,6 @@ static int joydev_handle_JSIOCSBTNMAP(struct joydev *joydev,
 	return retval;
 }
 
-
 static int joydev_ioctl_common(struct joydev *joydev,
 				unsigned int cmd, void __user *argp)
 {
@@ -746,7 +745,6 @@ static void joydev_cleanup(struct joydev *joydev)
 	if (joydev->open)
 		input_close_device(handle);
 }
-
 
 static bool joydev_match(struct input_handler *handler, struct input_dev *dev)
 {

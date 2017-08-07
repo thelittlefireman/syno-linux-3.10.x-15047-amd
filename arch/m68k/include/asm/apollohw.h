@@ -5,11 +5,18 @@
 
 #include <linux/types.h>
 
-#include <asm/bootinfo-apollo.h>
-
+/*
+   apollo models
+*/
 
 extern u_long apollo_model;
 
+#define APOLLO_UNKNOWN (0)
+#define APOLLO_DN3000 (1)
+#define APOLLO_DN3010 (2)
+#define APOLLO_DN3500 (3)
+#define APOLLO_DN4000 (4)
+#define APOLLO_DN4500 (5)
 
 /*
    see scn2681 data sheet for more info.
@@ -46,7 +53,6 @@ struct mc146818 {
         unsigned char day_of_week, day_of_month;
         unsigned char month, year;
 };
-
 
 #define IO_BASE 0x80000000
 

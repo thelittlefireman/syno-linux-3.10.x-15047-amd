@@ -22,9 +22,7 @@
 #ifndef _M68K_SETUP_H
 #define _M68K_SETUP_H
 
-#include <uapi/asm/bootinfo.h>
 #include <uapi/asm/setup.h>
-
 
 #define CL_SIZE COMMAND_LINE_SIZE
 
@@ -174,7 +172,6 @@ extern unsigned long m68k_machtype;
 #  define MACH_TYPE (m68k_machtype)
 #endif
 
-
 #ifndef __ASSEMBLY__
 extern unsigned long m68k_cputype;
 extern unsigned long m68k_fputype;
@@ -290,7 +287,6 @@ extern int m68k_is040or060;
 #  define FPU_IS_EMU (0)
 #endif
 
-
     /*
      *  Miscellaneous
      */
@@ -298,14 +294,14 @@ extern int m68k_is040or060;
 #define NUM_MEMINFO	4
 
 #ifndef __ASSEMBLY__
-struct m68k_mem_info {
+struct mem_info {
 	unsigned long addr;		/* physical address of memory chunk */
 	unsigned long size;		/* length of memory chunk (in bytes) */
 };
 
 extern int m68k_num_memory;		/* # of memory blocks found (and used) */
 extern int m68k_realnum_memory;		/* real # of memory blocks found */
-extern struct m68k_mem_info m68k_memory[NUM_MEMINFO];/* memory description */
+extern struct mem_info m68k_memory[NUM_MEMINFO];/* memory description */
 #endif
 
 #endif /* _M68K_SETUP_H */

@@ -240,7 +240,6 @@ void __kprobes illegal_op(struct pt_regs *regs)
 		do_trap(regs, signal, ILL_ILLOPC, "illegal operation");
 }
 
-
 #ifdef CONFIG_MATHEMU
 void specification_exception(struct pt_regs *regs)
 {

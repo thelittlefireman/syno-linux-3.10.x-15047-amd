@@ -28,10 +28,6 @@
 #include <linux/timex.h>
 #include <linux/profile.h>
 
-
-unsigned long (*mach_random_get_entropy)(void);
-
-
 /*
  * timer_interrupt() needs to keep up the real-time clock,
  * as well as call the "xtime_update()" routine every clocktick
@@ -94,7 +90,7 @@ static int __init rtc_init(void)
 		return -ENODEV;
 
 	pdev = platform_device_register_simple("rtc-generic", -1, NULL, 0);
-	return PTR_ERR_OR_ZERO(pdev);
+	return PTR_RET(pdev);
 }
 
 module_init(rtc_init);

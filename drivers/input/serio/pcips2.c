@@ -16,6 +16,7 @@
 #include <linux/input.h>
 #include <linux/pci.h>
 #include <linux/slab.h>
+#include <linux/init.h>
 #include <linux/serio.h>
 #include <linux/delay.h>
 #include <asm/io.h>
@@ -147,7 +148,6 @@ static int pcips2_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		goto release;
 	}
 
-
 	serio->id.type		= SERIO_8042;
 	serio->write		= pcips2_write;
 	serio->open		= pcips2_open;
@@ -180,6 +180,7 @@ static void pcips2_remove(struct pci_dev *dev)
 	struct pcips2_data *ps2if = pci_get_drvdata(dev);
 
 	serio_unregister_port(ps2if->io);
+	pci_set_drvdata(dev, NULL);
 	kfree(ps2if);
 	pci_release_regions(dev);
 	pci_disable_device(dev);

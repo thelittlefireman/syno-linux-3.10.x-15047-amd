@@ -26,13 +26,11 @@
 #include <asm/mach/arch.h>
 
 #include <mach/at91sam9_smc.h>
-#include <mach/hardware.h>
 
 #include "at91_aic.h"
 #include "board.h"
 #include "sam9_smc.h"
 #include "generic.h"
-
 
 void __init stamp9g20_init_early(void)
 {
@@ -79,7 +77,6 @@ static void __init add_device_nand(void)
 	at91_add_device_nand(&nand_data);
 }
 
-
 /*
  * MCI (SD/MMC)
  * det_pin, wp_pin and vcc_pin are not connected
@@ -92,7 +89,6 @@ static struct mci_platform_data __initdata mmc_data = {
 	},
 };
 
-
 /*
  * USB Host port
  */
@@ -101,7 +97,6 @@ static struct at91_usbh_data __initdata usbh_data = {
 	.vbus_pin	= {-EINVAL, -EINVAL},
 	.overcurrent_pin= {-EINVAL, -EINVAL},
 };
-
 
 /*
  * USB Device port
@@ -116,7 +111,6 @@ static struct at91_udc_data __initdata stamp9g20evb_udc_data = {
 	.pullup_pin	= -EINVAL,		/* pull-up driven by UDC */
 };
 
-
 /*
  * MACB Ethernet device
  */
@@ -124,7 +118,6 @@ static struct macb_platform_data __initdata macb_data = {
 	.phy_irq_pin	= AT91_PIN_PA28,
 	.is_rmii	= 1,
 };
-
 
 /*
  * LEDs
@@ -164,7 +157,6 @@ static struct gpio_led stamp9g20evb_leds[] = {
 	}
 };
 
-
 /*
  * SPI devices
  */
@@ -181,7 +173,6 @@ static struct spi_board_info portuxg20_spi_devices[] = {
 		.bus_num	= 1,
 	},
 };
-
 
 /*
  * Dallas 1-Wire
@@ -204,7 +195,6 @@ void add_w1(void)
 	at91_set_multi_drive(w1_gpio_pdata.pin, 1);
 	platform_device_register(&w1_device);
 }
-
 
 void __init stamp9g20_board_init(void)
 {

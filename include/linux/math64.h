@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 #ifndef _LINUX_MATH64_H
 #define _LINUX_MATH64_H
 
@@ -9,47 +12,23 @@
 #define div64_long(x, y) div64_s64((x), (y))
 #define div64_ul(x, y)   div64_u64((x), (y))
 
-/**
- * div_u64_rem - unsigned 64bit divide with 32bit divisor with remainder
- *
- * This is commonly provided by 32bit archs to provide an optimized 64bit
- * divide.
- */
 static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 {
 	*remainder = dividend % divisor;
 	return dividend / divisor;
 }
 
-/**
- * div_s64_rem - signed 64bit divide with 32bit divisor with remainder
- */
 static inline s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder)
 {
 	*remainder = dividend % divisor;
 	return dividend / divisor;
 }
 
-/**
- * div64_u64_rem - unsigned 64bit divide with 64bit divisor and remainder
- */
-static inline u64 div64_u64_rem(u64 dividend, u64 divisor, u64 *remainder)
-{
-	*remainder = dividend % divisor;
-	return dividend / divisor;
-}
-
-/**
- * div64_u64 - unsigned 64bit divide with 64bit divisor
- */
 static inline u64 div64_u64(u64 dividend, u64 divisor)
 {
 	return dividend / divisor;
 }
 
-/**
- * div64_s64 - signed 64bit divide with 64bit divisor
- */
 static inline s64 div64_s64(s64 dividend, s64 divisor)
 {
 	return dividend / divisor;
@@ -72,10 +51,6 @@ static inline u64 div_u64_rem(u64 dividend, u32 divisor, u32 *remainder)
 extern s64 div_s64_rem(s64 dividend, s32 divisor, s32 *remainder);
 #endif
 
-#ifndef div64_u64_rem
-extern u64 div64_u64_rem(u64 dividend, u64 divisor, u64 *remainder);
-#endif
-
 #ifndef div64_u64
 extern u64 div64_u64(u64 dividend, u64 divisor);
 #endif
@@ -84,15 +59,8 @@ extern u64 div64_u64(u64 dividend, u64 divisor);
 extern s64 div64_s64(s64 dividend, s64 divisor);
 #endif
 
-#endif /* BITS_PER_LONG */
+#endif  
 
-/**
- * div_u64 - unsigned 64bit divide with 32bit divisor
- *
- * This is the most common 64bit divide and should be used if possible,
- * as many 32bit archs can optimize this variant better than a full 64bit
- * divide.
- */
 #ifndef div_u64
 static inline u64 div_u64(u64 dividend, u32 divisor)
 {
@@ -101,9 +69,6 @@ static inline u64 div_u64(u64 dividend, u32 divisor)
 }
 #endif
 
-/**
- * div_s64 - signed 64bit divide with 32bit divisor
- */
 #ifndef div_s64
 static inline s64 div_s64(s64 dividend, s32 divisor)
 {
@@ -120,8 +85,7 @@ __iter_div_u64_rem(u64 dividend, u32 divisor, u64 *remainder)
 	u32 ret = 0;
 
 	while (dividend >= divisor) {
-		/* The following asm() prevents the compiler from
-		   optimising this loop into a modulo operation.  */
+		 
 		asm("" : "+rm"(dividend));
 
 		dividend -= divisor;
@@ -133,34 +97,21 @@ __iter_div_u64_rem(u64 dividend, u32 divisor, u64 *remainder)
 	return ret;
 }
 
-#if defined(CONFIG_ARCH_SUPPORTS_INT128) && defined(__SIZEOF_INT128__)
-
-#ifndef mul_u64_u32_shr
-static inline u64 mul_u64_u32_shr(u64 a, u32 mul, unsigned int shift)
+#ifdef MY_ABC_HERE
+static inline u64 mod_u64_rem64(u64 dividend, u64 divisor)
 {
-	return (u64)(((unsigned __int128)a * mul) >> shift);
-}
-#endif /* mul_u64_u32_shr */
+#ifdef CONFIG_32BIT
+        if (dividend < divisor) {
+                return dividend;
+        } else if (dividend == divisor) {
+                return (u64)0;
+        }
 
+        return dividend - (div64_u64(dividend, divisor) * divisor);
 #else
-
-#ifndef mul_u64_u32_shr
-static inline u64 mul_u64_u32_shr(u64 a, u32 mul, unsigned int shift)
-{
-	u32 ah, al;
-	u64 ret;
-
-	al = a;
-	ah = a >> 32;
-
-	ret = ((u64)al * mul) >> shift;
-	if (ah)
-		ret += ((u64)ah * mul) << (32 - shift);
-
-	return ret;
-}
-#endif /* mul_u64_u32_shr */
-
+        return dividend % divisor;
 #endif
+}
+#endif  
 
-#endif /* _LINUX_MATH64_H */
+#endif  

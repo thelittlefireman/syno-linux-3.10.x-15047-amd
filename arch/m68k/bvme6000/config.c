@@ -28,8 +28,6 @@
 #include <linux/bcd.h>
 
 #include <asm/bootinfo.h>
-#include <asm/bootinfo-vme.h>
-#include <asm/byteorder.h>
 #include <asm/pgtable.h>
 #include <asm/setup.h>
 #include <asm/irq.h>
@@ -51,10 +49,9 @@ void bvme6000_set_vectors (void);
 
 static irq_handler_t tick_handler;
 
-
-int __init bvme6000_parse_bootinfo(const struct bi_record *bi)
+int bvme6000_parse_bootinfo(const struct bi_record *bi)
 {
-	if (be16_to_cpu(bi->tag) == BI_VME_TYPE)
+	if (bi->tag == BI_VME_TYPE)
 		return 0;
 	else
 		return 1;
@@ -140,7 +137,6 @@ void __init config_bvme6000(void)
     bvme_acr_addrctl = 0;
 }
 
-
 irqreturn_t bvme6000_abort_int (int irq, void *dev_id)
 {
         unsigned long *new = (unsigned long *)vectors;
@@ -156,7 +152,6 @@ irqreturn_t bvme6000_abort_int (int irq, void *dev_id)
         *(new+0x1f) = *(old+0x1f);      /* ABORT switch */
 	return IRQ_HANDLED;
 }
-
 
 static irqreturn_t bvme6000_timer_int (int irq, void *dev_id)
 {
@@ -207,7 +202,6 @@ void bvme6000_sched_init (irq_handler_t timer_routine)
 				"abort", bvme6000_abort_int))
 	panic ("Couldn't register abort int");
 }
-
 
 /* This is always executed with interrupts disabled.  */
 
@@ -348,4 +342,3 @@ int bvme6000_set_clock_mmss (unsigned long nowtime)
 
 	return retval;
 }
-

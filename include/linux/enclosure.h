@@ -1,3 +1,6 @@
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
 /*
  * Enclosure Services
  *
@@ -29,7 +32,14 @@
 /* A few generic types ... taken from ses-2 */
 enum enclosure_component_type {
 	ENCLOSURE_COMPONENT_DEVICE = 0x01,
+	ENCLOSURE_COMPONENT_CONTROLLER_ELECTRONICS = 0x07,
+#ifdef MY_DEF_HERE
+	ENCLOSURE_COMPONENT_ENCLOSURE = 0x0E,
+#endif /* MY_DEF_HERE */
+	ENCLOSURE_COMPONENT_SCSI_TARGET_PORT = 0x14,
+	ENCLOSURE_COMPONENT_SCSI_INITIATOR_PORT = 0x15,
 	ENCLOSURE_COMPONENT_ARRAY_DEVICE = 0x17,
+	ENCLOSURE_COMPONENT_SAS_EXPANDER = 0x18,
 };
 
 /* ses-2 common element status */
@@ -80,7 +90,6 @@ struct enclosure_component_callbacks {
 			  struct enclosure_component *,
 			  enum enclosure_component_setting);
 };
-
 
 struct enclosure_component {
 	void *scratch;

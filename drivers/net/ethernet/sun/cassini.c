@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
  *
  * This driver uses the sungem driver (c) David Miller
  * (davem@redhat.com) as its basis.
@@ -217,8 +219,6 @@ MODULE_PARM_DESC(linkdown_timeout,
  * Linux.  This will default to DEFAULT_LINKDOWN_TIMEOUT * HZ.
  */
 static int link_transition_timeout;
-
-
 
 static u16 link_modes[] = {
 	BMCR_ANENABLE,			 /* 0 : autoneg */
@@ -668,7 +668,6 @@ static cas_page_t *cas_page_dequeue(struct cas *cp)
 	return list_entry(entry, cas_page_t, list);
 }
 
-
 static void cas_mif_poll(struct cas *cp, const int enable)
 {
 	u32 cfg;
@@ -806,42 +805,43 @@ static int cas_reset_mii_phy(struct cas *cp)
 	return limit <= 0;
 }
 
-static void cas_saturn_firmware_init(struct cas *cp)
+static int cas_saturn_firmware_init(struct cas *cp)
 {
 	const struct firmware *fw;
 	const char fw_name[] = "sun/cassini.bin";
 	int err;
 
 	if (PHY_NS_DP83065 != cp->phy_id)
-		return;
+		return 0;
 
 	err = request_firmware(&fw, fw_name, &cp->pdev->dev);
 	if (err) {
 		pr_err("Failed to load firmware \"%s\"\n",
 		       fw_name);
-		return;
+		return err;
 	}
 	if (fw->size < 2) {
 		pr_err("bogus length %zu in \"%s\"\n",
 		       fw->size, fw_name);
+		err = -EINVAL;
 		goto out;
 	}
 	cp->fw_load_addr= fw->data[1] << 8 | fw->data[0];
 	cp->fw_size = fw->size - 2;
 	cp->fw_data = vmalloc(cp->fw_size);
-	if (!cp->fw_data)
+	if (!cp->fw_data) {
+		err = -ENOMEM;
 		goto out;
+	}
 	memcpy(cp->fw_data, &fw->data[2], cp->fw_size);
 out:
 	release_firmware(fw);
+	return err;
 }
 
 static void cas_saturn_firmware_load(struct cas *cp)
 {
 	int i;
-
-	if (!cp->fw_data)
-		return;
 
 	cas_phy_powerdown(cp);
 
@@ -868,7 +868,6 @@ static void cas_saturn_firmware_load(struct cas *cp)
 	cas_phy_write(cp, DP83065_MII_REGE, 0x8ff8);
 	cas_phy_write(cp, DP83065_MII_REGD, 0x1);
 }
-
 
 /* phy initialization */
 static void cas_phy_init(struct cas *cp)
@@ -998,7 +997,6 @@ static void cas_phy_init(struct cas *cp)
 		       cp->regs + REG_PCS_SERDES_CTRL);
 	}
 }
-
 
 static int cas_pcs_link_check(struct cas *cp)
 {
@@ -1571,7 +1569,6 @@ static int cas_mac_interrupt(struct net_device *dev, struct cas *cp,
 	return 0;
 }
 
-
 /* Must be invoked under cp->lock. */
 static inline int cas_mdio_link_not_up(struct cas *cp)
 {
@@ -1627,7 +1624,6 @@ static inline int cas_mdio_link_not_up(struct cas *cp)
 	}
 	return 0;
 }
-
 
 /* must be invoked with cp->lock held */
 static int cas_mii_link_check(struct cas *cp, const u16 bmsr)
@@ -1948,7 +1944,6 @@ static void cas_tx(struct net_device *dev, struct cas *cp,
 	}
 }
 
-
 static int cas_rx_process_pkt(struct cas *cp, struct cas_rx_comp *rxc,
 			      int entry, const u64 *words,
 			      struct sk_buff **skbref)
@@ -1999,7 +1994,6 @@ static int cas_rx_process_pkt(struct cas *cp, struct cas_rx_comp *rxc,
 		p += hlen;
 		swivel = 0;
 	}
-
 
 	if (alloclen < (hlen + dlen)) {
 		skb_frag_t *frag = skb_shinfo(skb)->frags;
@@ -2150,7 +2144,6 @@ end_copy_pkt:
 	return len;
 }
 
-
 /* we can handle up to 64 rx flows at a time. we do the same thing
  * as nonreassm except that we batch up the buffers.
  * NOTE: we currently just treat each flow as a bunch of packets that
@@ -2212,7 +2205,6 @@ static void cas_post_page(struct cas *cp, const int ring, const int index)
 		writel(entry, cp->regs + REG_PLUS_RX_KICK1);
 }
 
-
 /* only when things are bad */
 static int cas_post_rxds_ringN(struct cas *cp, int ring, int num)
 {
@@ -2273,7 +2265,6 @@ static int cas_post_rxds_ringN(struct cas *cp, int ring, int num)
 		writel(cluster, cp->regs + REG_PLUS_RX_KICK1);
 	return 0;
 }
-
 
 /* process a completion ring. packets are set up in three basic ways:
  * small packets: should be copied header + data in single buffer.
@@ -2401,7 +2392,6 @@ static int cas_rx_ringN(struct cas *cp, int ring, int budget)
 	return npackets;
 }
 
-
 /* put completion entries back on the ring */
 static void cas_post_rxcs_ringN(struct net_device *dev,
 				struct cas *cp, int ring)
@@ -2427,8 +2417,6 @@ static void cas_post_rxcs_ringN(struct net_device *dev,
 	else if (cp->cas_flags & CAS_FLAG_REG_PLUS)
 		writel(last, cp->regs + REG_PLUS_RX_COMPN_TAIL(ring));
 }
-
-
 
 /* cassini can use all four PCI interrupts for the completion ring.
  * rings 3 and 4 are identical
@@ -2577,7 +2565,6 @@ static irqreturn_t cas_interrupt(int irq, void *dev_id)
 	spin_unlock_irqrestore(&cp->lock, flags);
 	return IRQ_HANDLED;
 }
-
 
 #ifdef USE_NAPI
 static int cas_poll(struct napi_struct *napi, int budget)
@@ -2731,7 +2718,6 @@ static inline int cas_intme(int ring, int entry)
 		return 1;
 	return 0;
 }
-
 
 static void cas_write_txd(struct cas *cp, int ring, int entry,
 			  dma_addr_t mapping, int len, u64 ctrl, int last)
@@ -3014,7 +3000,6 @@ static void cas_clear_mac_err(struct cas *cp)
 	writel(0, cp->regs + REG_MAC_RX_CODE_ERR);
 }
 
-
 static void cas_mac_reset(struct cas *cp)
 {
 	int i;
@@ -3046,7 +3031,6 @@ static void cas_mac_reset(struct cas *cp)
 			   readl(cp->regs + REG_MAC_RX_RESET),
 			   readl(cp->regs + REG_MAC_STATE_MACHINE));
 }
-
 
 /* Must be invoked under cp->lock. */
 static void cas_init_mac(struct cas *cp)
@@ -3172,7 +3156,6 @@ static int cas_vpd_match(const void __iomem *p, const char *str)
 	}
 	return 1;
 }
-
 
 /* get the mac address by reading the vpd information in the rom.
  * also get the phy type and determine if there's an entropy generator.
@@ -3352,7 +3335,7 @@ use_random_mac_addr:
 #if defined(CONFIG_SPARC)
 	addr = of_get_property(cp->of_node, "local-mac-address", NULL);
 	if (addr != NULL) {
-		memcpy(dev_addr, addr, ETH_ALEN);
+		memcpy(dev_addr, addr, 6);
 		goto done;
 	}
 #endif
@@ -3399,7 +3382,6 @@ static void cas_check_pci_invariants(struct cas *cp)
 			cp->cas_flags |= CAS_FLAG_SATURN;
 	}
 }
-
 
 static int cas_check_invariants(struct cas *cp)
 {
@@ -3747,7 +3729,6 @@ static void cas_hard_reset(struct cas *cp)
 	udelay(20);
 	pci_restore_state(cp->pdev);
 }
-
 
 static void cas_global_reset(struct cas *cp, int blkflag)
 {
@@ -4240,7 +4221,6 @@ static int cas_tx_tiny_alloc(struct cas *cp)
 	return 0;
 }
 
-
 static int cas_open(struct net_device *dev)
 {
 	struct cas *cp = netdev_priv(dev);
@@ -4484,7 +4464,6 @@ static struct net_device_stats *cas_get_stats(struct net_device *dev)
 	spin_unlock_irqrestore(&cp->stat_lock[N_TX_RINGS], flags);
 	return stats + N_TX_RINGS;
 }
-
 
 static void cas_set_multicast(struct net_device *dev)
 {
@@ -4989,7 +4968,6 @@ static int cas_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	}
 #endif
 
-
 	/* Configure DMA attributes. */
 	if (!pci_set_dma_mask(pdev, DMA_BIT_MASK(64))) {
 		pci_using_dac = 1;
@@ -5080,7 +5058,8 @@ static int cas_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (cas_check_invariants(cp))
 		goto err_out_iounmap;
 	if (cp->cas_flags & CAS_FLAG_SATURN)
-		cas_saturn_firmware_init(cp);
+		if (cas_saturn_firmware_init(cp))
+			goto err_out_iounmap;
 
 	cp->init_block = (struct cas_init_block *)
 		pci_alloc_consistent(pdev, sizeof(struct cas_init_block),
@@ -5151,7 +5130,6 @@ err_out_iounmap:
 
 	pci_iounmap(pdev, cp->regs);
 
-
 err_out_free_res:
 	pci_release_regions(pdev);
 
@@ -5166,6 +5144,7 @@ err_out_free_netdev:
 
 err_out_disable_pdev:
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 	return -ENODEV;
 }
 
@@ -5203,6 +5182,7 @@ static void cas_remove_one(struct pci_dev *pdev)
 	free_netdev(dev);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 }
 
 #ifdef CONFIG_PM

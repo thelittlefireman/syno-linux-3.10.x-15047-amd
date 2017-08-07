@@ -171,11 +171,7 @@ extern void xmon_leave(void);
 #define REG		"%.8lx"
 #endif
 
-#ifdef __LITTLE_ENDIAN__
-#define GETWORD(v)	(((v)[3] << 24) + ((v)[2] << 16) + ((v)[1] << 8) + (v)[0])
-#else
 #define GETWORD(v)	(((v)[0] << 24) + ((v)[1] << 16) + ((v)[2] << 8) + (v)[3])
-#endif
 
 #define isxdigit(c)	(('0' <= (c) && (c) <= '9') \
 			 || ('a' <= (c) && (c) <= 'f') \
@@ -292,10 +288,11 @@ static inline void disable_surveillance(void)
 	args.token = rtas_token("set-indicator");
 	if (args.token == RTAS_UNKNOWN_SERVICE)
 		return;
-	args.nargs = 3;
-	args.nret = 1;
+	args.token = cpu_to_be32(args.token);
+	args.nargs = cpu_to_be32(3);
+	args.nret = cpu_to_be32(1);
 	args.rets = &args.args[3];
-	args.args[0] = SURVEILLANCE_TOKEN;
+	args.args[0] = cpu_to_be32(SURVEILLANCE_TOKEN);
 	args.args[1] = 0;
 	args.args[2] = 0;
 	enter_rtas(__pa(&args));
@@ -313,23 +310,16 @@ static void get_output_lock(void)
 
 	if (xmon_speaker == me)
 		return;
-
 	for (;;) {
-		last_speaker = cmpxchg(&xmon_speaker, 0, me);
-		if (last_speaker == 0)
-			return;
-
-		/*
-		 * Wait a full second for the lock, we might be on a slow
-		 * console, but check every 100us.
-		 */
-		timeout = 10000;
+		if (xmon_speaker == 0) {
+			last_speaker = cmpxchg(&xmon_speaker, 0, me);
+			if (last_speaker == 0)
+				return;
+		}
+		timeout = 10000000;
 		while (xmon_speaker == last_speaker) {
-			if (--timeout > 0) {
-				udelay(100);
+			if (--timeout > 0)
 				continue;
-			}
-
 			/* hostile takeover */
 			prev = cmpxchg(&xmon_speaker, last_speaker, me);
 			if (prev == last_speaker)
@@ -408,6 +398,7 @@ static int xmon_core(struct pt_regs *regs, int fromipi)
 	}
 
 	xmon_fault_jmp[cpu] = recurse_jmp;
+	cpumask_set_cpu(cpu, &cpus_in_xmon);
 
 	bp = NULL;
 	if ((regs->msr & (MSR_IR|MSR_PR|MSR_64BIT)) == (MSR_IR|MSR_64BIT))
@@ -428,8 +419,6 @@ static int xmon_core(struct pt_regs *regs, int fromipi)
 			       "can't continue\n");
 		release_output_lock();
 	}
-
-	cpumask_set_cpu(cpu, &cpus_in_xmon);
 
  waiting:
 	secondary = 1;
@@ -984,27 +973,27 @@ static void bootcmds(void)
 static int cpu_cmd(void)
 {
 #ifdef CONFIG_SMP
-	unsigned long cpu, first_cpu, last_cpu;
+	unsigned long cpu;
 	int timeout;
+	int count;
 
 	if (!scanhex(&cpu)) {
 		/* print cpus waiting or in xmon */
 		printf("cpus stopped:");
-		last_cpu = first_cpu = NR_CPUS;
+		count = 0;
 		for_each_possible_cpu(cpu) {
 			if (cpumask_test_cpu(cpu, &cpus_in_xmon)) {
-				if (cpu == last_cpu + 1) {
-					last_cpu = cpu;
-				} else {
-					if (last_cpu != first_cpu)
-						printf("-%lx", last_cpu);
-					last_cpu = first_cpu = cpu;
-					printf(" %lx", cpu);
-				}
+				if (count == 0)
+					printf(" %x", cpu);
+				++count;
+			} else {
+				if (count > 1)
+					printf("-%x", cpu - 1);
+				count = 0;
 			}
 		}
-		if (last_cpu != first_cpu)
-			printf("-%lx", last_cpu);
+		if (count > 1)
+			printf("-%x", NR_CPUS - 1);
 		printf("\n");
 		return 0;
 	}
@@ -1268,18 +1257,11 @@ const char *getvecname(unsigned long vec)
 	case 0x700:	ret = "(Program Check)"; break;
 	case 0x800:	ret = "(FPU Unavailable)"; break;
 	case 0x900:	ret = "(Decrementer)"; break;
-	case 0x980:	ret = "(Hypervisor Decrementer)"; break;
-	case 0xa00:	ret = "(Doorbell)"; break;
 	case 0xc00:	ret = "(System Call)"; break;
 	case 0xd00:	ret = "(Single Step)"; break;
-	case 0xe40:	ret = "(Emulation Assist)"; break;
-	case 0xe60:	ret = "(HMI)"; break;
-	case 0xe80:	ret = "(Hypervisor Doorbell)"; break;
 	case 0xf00:	ret = "(Performance Monitor)"; break;
 	case 0xf20:	ret = "(Altivec Unavailable)"; break;
 	case 0x1300:	ret = "(Instruction Breakpoint)"; break;
-	case 0x1500:	ret = "(Denormalisation)"; break;
-	case 0x1700:	ret = "(Altivec Assist)"; break;
 	default: ret = "";
 	}
 	return ret;
@@ -2063,10 +2045,6 @@ static void dump_one_paca(int cpu)
 	DUMP(p, stab_addr, "lx");
 #endif
 	DUMP(p, emergency_sp, "p");
-#ifdef CONFIG_PPC_BOOK3S_64
-	DUMP(p, mc_emergency_sp, "p");
-	DUMP(p, in_mce, "x");
-#endif
 	DUMP(p, data_offset, "lx");
 	DUMP(p, hw_cpu_id, "x");
 	DUMP(p, cpu_start, "x");
@@ -2631,7 +2609,6 @@ take_input(char *str)
 	lineptr = str;
 }
 
-
 static void
 symbol_lookup(void)
 {
@@ -2662,7 +2639,6 @@ symbol_lookup(void)
 		break;
 	}
 }
-
 
 /* Print an address in numeric and symbolic form (if possible) */
 static void xmon_print_symbol(unsigned long address, const char *mid,

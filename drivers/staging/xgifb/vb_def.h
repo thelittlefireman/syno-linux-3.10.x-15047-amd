@@ -1,6 +1,6 @@
 #ifndef _VB_DEF_
 #define _VB_DEF_
-#include "../../video/fbdev/sis/initdef.h"
+#include "../../video/sis/initdef.h"
 
 #define VB_XGI301C      0x0020 /* for 301C */
 
@@ -30,6 +30,11 @@
 #define SetCRT2ToDualEdge   0x8000
 
 #define ReserveTVOption     0x0008
+#define GatingCRT           0x0800
+#define DisableChB          0x1000
+#define EnableChB           0x2000
+#define DisableChA          0x4000
+#define EnableChA           0x8000
 
 #define SetTVLowResolution   0x0400
 #define TVSimuMode           0x0800
@@ -230,7 +235,6 @@
 #define RES1280x960x75       0x45
 #define RES1280x960x85       0x46
 #define RES1280x960x120      0x47
-
 
 #define XG27_CR8F 0x0C
 #define XG27_SR36 0x30

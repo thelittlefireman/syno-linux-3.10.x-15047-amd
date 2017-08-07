@@ -47,7 +47,8 @@ static void register_buffer(u8 *buf, size_t size)
 	sg_init_one(&sg, buf, size);
 
 	/* There should always be room for one buffer. */
-	virtqueue_add_inbuf(vq, &sg, 1, buf, GFP_KERNEL);
+	if (virtqueue_add_inbuf(vq, &sg, 1, buf, GFP_KERNEL) < 0)
+		BUG();
 
 	virtqueue_kick(vq);
 }
@@ -79,7 +80,6 @@ static void virtio_cleanup(struct hwrng *rng)
 	if (busy)
 		wait_for_completion(&have_data);
 }
-
 
 static struct hwrng virtio_hwrng = {
 	.name		= "virtio",
@@ -132,7 +132,7 @@ static void virtrng_remove(struct virtio_device *vdev)
 	remove_common(vdev);
 }
 
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 static int virtrng_freeze(struct virtio_device *vdev)
 {
 	remove_common(vdev);
@@ -156,7 +156,7 @@ static struct virtio_driver virtio_rng_driver = {
 	.id_table =	id_table,
 	.probe =	virtrng_probe,
 	.remove =	virtrng_remove,
-#ifdef CONFIG_PM_SLEEP
+#ifdef CONFIG_PM
 	.freeze =	virtrng_freeze,
 	.restore =	virtrng_restore,
 #endif

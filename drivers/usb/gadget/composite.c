@@ -354,7 +354,7 @@ static u8 encode_bMaxPower(enum usb_device_speed speed,
 		return DIV_ROUND_UP(val, 8);
 	default:
 		return DIV_ROUND_UP(val, 2);
-	}
+	};
 }
 
 static int config_buf(struct usb_configuration *config,
@@ -528,7 +528,7 @@ static int bos_desc(struct usb_composite_dev *cdev)
 	usb_ext->bLength = USB_DT_USB_EXT_CAP_SIZE;
 	usb_ext->bDescriptorType = USB_DT_DEVICE_CAPABILITY;
 	usb_ext->bDevCapabilityType = USB_CAP_TYPE_EXT;
-	usb_ext->bmAttributes = cpu_to_le32(USB_LPM_SUPPORT);
+	usb_ext->bmAttributes = cpu_to_le32(USB_LPM_SUPPORT | USB_BESL_SUPPORT);
 
 	/*
 	 * The Superspeed USB Capability descriptor shall be implemented by all
@@ -1139,7 +1139,7 @@ struct usb_string *usb_gstrings_attach(struct usb_composite_dev *cdev,
 
 	uc = copy_gadget_strings(sp, n_gstrings, n_strings);
 	if (IS_ERR(uc))
-		return ERR_CAST(uc);
+		return ERR_PTR(PTR_ERR(uc));
 
 	n_gs = get_containers_gs(uc);
 	ret = usb_string_ids_tab(cdev, n_gs[0]->strings);
@@ -1452,22 +1452,8 @@ unknown:
 			struct usb_configuration	*c;
 
 			c = cdev->config;
-			if (!c)
-				goto done;
-
-			/* try current config's setup */
-			if (c->setup) {
+			if (c && c->setup)
 				value = c->setup(c, ctrl);
-				goto done;
-			}
-
-			/* try the only function in the current config */
-			if (!list_is_singular(&c->functions))
-				goto done;
-			f = list_first_entry(&c->functions, struct usb_function,
-					     list);
-			if (f->setup)
-				value = f->setup(f, ctrl);
 		}
 
 		goto done;
@@ -1512,15 +1498,17 @@ void composite_disconnect(struct usb_gadget *gadget)
 
 /*-------------------------------------------------------------------------*/
 
-static ssize_t suspended_show(struct device *dev, struct device_attribute *attr,
-			      char *buf)
+static ssize_t composite_show_suspended(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
 {
 	struct usb_gadget *gadget = dev_to_usb_gadget(dev);
 	struct usb_composite_dev *cdev = get_gadget_data(gadget);
 
 	return sprintf(buf, "%d\n", cdev->suspended);
 }
-static DEVICE_ATTR_RO(suspended);
+
+static DEVICE_ATTR(suspended, 0444, composite_show_suspended, NULL);
 
 static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 {
@@ -1728,7 +1716,7 @@ composite_resume(struct usb_gadget *gadget)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	struct usb_function		*f;
-	u16				maxpower;
+	u8				maxpower;
 
 	/* REVISIT:  should we have config level
 	 * suspend/resume callbacks?

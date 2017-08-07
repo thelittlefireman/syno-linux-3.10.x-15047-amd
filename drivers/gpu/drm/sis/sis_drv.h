@@ -46,7 +46,6 @@ enum sis_family {
 
 #include <drm/drm_mm.h>
 
-
 #define SIS_BASE (dev_priv->mmio)
 #define SIS_READ(reg)         DRM_READ32(SIS_BASE, reg)
 #define SIS_WRITE(reg, val)   DRM_WRITE32(SIS_BASE, reg, val)
@@ -70,7 +69,7 @@ extern void sis_reclaim_buffers_locked(struct drm_device *dev,
 				       struct drm_file *file_priv);
 extern void sis_lastclose(struct drm_device *dev);
 
-extern const struct drm_ioctl_desc sis_ioctls[];
+extern struct drm_ioctl_desc sis_ioctls[];
 extern int sis_max_ioctl;
 
 #endif

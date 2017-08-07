@@ -52,10 +52,8 @@
 
 #include "rtllib.h"
 
-
 u32 rt_global_debug_component = COMP_ERR;
 EXPORT_SYMBOL(rt_global_debug_component);
-
 
 void _setup_timer(struct timer_list *ptimer, void *fun, unsigned long data)
 {
@@ -124,7 +122,6 @@ struct net_device *alloc_rtllib(int sizeof_priv)
 		goto failed;
 	}
 	rtllib_networks_initialize(ieee);
-
 
 	/* Default fragmentation threshold is maximum payload size */
 	ieee->fts = DEFAULT_FTS;
@@ -233,11 +230,10 @@ static const struct file_operations fops = {
 	.open = open_debug_level,
 	.read = seq_read,
 	.llseek = seq_lseek,
-	.write = write_debug_level,
-	.release = single_release,
+	.write = write_debug_level
 };
 
-static int __init rtllib_init(void)
+int __init rtllib_init(void)
 {
 	struct proc_dir_entry *e;
 
@@ -257,7 +253,7 @@ static int __init rtllib_init(void)
 	return 0;
 }
 
-static void __exit rtllib_exit(void)
+void __exit rtllib_exit(void)
 {
 	if (rtllib_proc) {
 		remove_proc_entry("debug_level", rtllib_proc);

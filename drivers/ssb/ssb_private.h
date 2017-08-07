@@ -5,7 +5,6 @@
 #include <linux/types.h>
 #include <linux/bcm47xx_wdt.h>
 
-
 #define PFX	"ssb: "
 
 #ifdef CONFIG_SSB_SILENT
@@ -40,7 +39,6 @@ static inline int __ssb_do_nothing(int x) { return x; }
 # define SSB_WARN_ON(x)		__ssb_do_nothing(unlikely(!!(x)))
 # define SSB_BUG_ON(x)		__ssb_do_nothing(unlikely(!!(x)))
 #endif
-
 
 /* pci.c */
 #ifdef CONFIG_SSB_PCIHOST
@@ -81,7 +79,6 @@ static inline int ssb_pci_init(struct ssb_bus *bus)
 	return 0;
 }
 #endif /* CONFIG_SSB_PCIHOST */
-
 
 /* pcmcia.c */
 #ifdef CONFIG_SSB_PCMCIAHOST
@@ -166,13 +163,11 @@ static inline int ssb_sdio_init(struct ssb_bus *bus)
 }
 #endif /* CONFIG_SSB_SDIOHOST */
 
-
 /* scan.c */
 extern const char *ssb_core_name(u16 coreid);
 extern int ssb_bus_scan(struct ssb_bus *bus,
 			unsigned long baseaddr);
 extern void ssb_iounmap(struct ssb_bus *ssb);
-
 
 /* sprom.c */
 extern
@@ -185,7 +180,6 @@ ssize_t ssb_attr_sprom_store(struct ssb_bus *bus,
 			     int (*sprom_write)(struct ssb_bus *bus, const u16 *sprom));
 extern int ssb_fill_sprom_with_fallback(struct ssb_bus *bus,
 					struct ssb_sprom *out);
-
 
 /* core.c */
 extern u32 ssb_calc_clock_rate(u32 plltype, u32 n, u32 m);
@@ -202,8 +196,6 @@ struct ssb_freeze_context {
 };
 extern int ssb_devices_freeze(struct ssb_bus *bus, struct ssb_freeze_context *ctx);
 extern int ssb_devices_thaw(struct ssb_freeze_context *ctx);
-
-
 
 /* b43_pci_bridge.c */
 #ifdef CONFIG_SSB_B43_PCI_BRIDGE
@@ -241,10 +233,6 @@ static inline int ssb_sflash_init(struct ssb_chipcommon *cc)
 
 #ifdef CONFIG_SSB_DRIVER_MIPS
 extern struct platform_device ssb_pflash_dev;
-#endif
-
-#ifdef CONFIG_SSB_SFLASH
-extern struct platform_device ssb_sflash_dev;
 #endif
 
 #ifdef CONFIG_SSB_DRIVER_EXTIF

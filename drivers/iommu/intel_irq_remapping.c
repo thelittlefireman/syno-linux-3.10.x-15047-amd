@@ -6,11 +6,11 @@
 #include <linux/hpet.h>
 #include <linux/pci.h>
 #include <linux/irq.h>
-#include <linux/intel-iommu.h>
-#include <linux/acpi.h>
 #include <asm/io_apic.h>
 #include <asm/smp.h>
 #include <asm/cpu.h>
+#include <linux/intel-iommu.h>
+#include <acpi/acpi.h>
 #include <asm/irq_remapping.h>
 #include <asm/pci-direct.h>
 #include <asm/msidef.h>
@@ -369,29 +369,52 @@ static int set_hpet_sid(struct irte *irte, u8 id)
 	return 0;
 }
 
+struct set_msi_sid_data {
+	struct pci_dev *pdev;
+	u16 alias;
+};
+
+static int set_msi_sid_cb(struct pci_dev *pdev, u16 alias, void *opaque)
+{
+	struct set_msi_sid_data *data = opaque;
+
+	data->pdev = pdev;
+	data->alias = alias;
+
+	return 0;
+}
+
 static int set_msi_sid(struct irte *irte, struct pci_dev *dev)
 {
-	struct pci_dev *bridge;
+	struct set_msi_sid_data data;
 
 	if (!irte || !dev)
 		return -1;
 
-	/* PCIe device or Root Complex integrated PCI device */
-	if (pci_is_pcie(dev) || !dev->bus->parent) {
-		set_irte_sid(irte, SVT_VERIFY_SID_SQ, SQ_ALL_16,
-			     (dev->bus->number << 8) | dev->devfn);
-		return 0;
-	}
+	pci_for_each_dma_alias(dev, set_msi_sid_cb, &data);
 
-	bridge = pci_find_upstream_pcie_bridge(dev);
-	if (bridge) {
-		if (pci_is_pcie(bridge))/* this is a PCIe-to-PCI/PCIX bridge */
-			set_irte_sid(irte, SVT_VERIFY_BUS, SQ_ALL_16,
-				(bridge->bus->number << 8) | dev->bus->number);
-		else /* this is a legacy PCI bridge */
-			set_irte_sid(irte, SVT_VERIFY_SID_SQ, SQ_ALL_16,
-				(bridge->bus->number << 8) | bridge->devfn);
-	}
+	/*
+	 * DMA alias provides us with a PCI device and alias.  The only case
+	 * where the it will return an alias on a different bus than the
+	 * device is the case of a PCIe-to-PCI bridge, where the alias is for
+	 * the subordinate bus.  In this case we can only verify the bus.
+	 *
+	 * If the alias device is on a different bus than our source device
+	 * then we have a topology based alias, use it.
+	 *
+	 * Otherwise, the alias is for a device DMA quirk and we cannot
+	 * assume that MSI uses the same requester ID.  Therefore use the
+	 * original device.
+	 */
+	if (PCI_BUS_NUM(data.alias) != data.pdev->bus->number)
+		set_irte_sid(irte, SVT_VERIFY_BUS, SQ_ALL_16,
+			     PCI_DEVID(PCI_BUS_NUM(data.alias),
+				       dev->bus->number));
+	else if (data.pdev->bus->number != dev->bus->number)
+		set_irte_sid(irte, SVT_VERIFY_SID_SQ, SQ_ALL_16, data.alias);
+	else
+		set_irte_sid(irte, SVT_VERIFY_SID_SQ, SQ_ALL_16,
+			     PCI_DEVID(dev->bus->number, dev->devfn));
 
 	return 0;
 }
@@ -445,7 +468,6 @@ static void iommu_set_irq_remapping(struct intel_iommu *iommu, int mode)
 
 	raw_spin_unlock_irqrestore(&iommu->register_lock, flags);
 }
-
 
 static int intel_setup_irq_remapping(struct intel_iommu *iommu, int mode)
 {
@@ -504,7 +526,7 @@ static void iommu_disable_irq_remapping(struct intel_iommu *iommu)
 
 	raw_spin_lock_irqsave(&iommu->register_lock, flags);
 
-	sts = dmar_readq(iommu->reg + DMAR_GSTS_REG);
+	sts = readl(iommu->reg + DMAR_GSTS_REG);
 	if (!(sts & DMA_GSTS_IRES))
 		goto end;
 
@@ -667,7 +689,8 @@ error:
 	 */
 
 	if (x2apic_present)
-		pr_warn("Failed to enable irq remapping.  You are vulnerable to irq-injection attacks.\n");
+		WARN(1, KERN_WARNING
+			"Failed to enable irq remapping.  You are vulnerable to irq-injection attacks.\n");
 
 	return -1;
 }

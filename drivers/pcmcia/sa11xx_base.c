@@ -45,7 +45,6 @@
 #include "soc_common.h"
 #include "sa11xx_base.h"
 
-
 /*
  * sa1100_pcmcia_default_mecr_timing
  * ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -124,6 +123,9 @@ sa1100_pcmcia_frequency_change(struct soc_pcmcia_socket *skt,
 	case CPUFREQ_POSTCHANGE:
 		if (freqs->new < freqs->old)
 			sa1100_pcmcia_set_mecr(skt, freqs->new);
+		break;
+	case CPUFREQ_RESUMECHANGE:
+		sa1100_pcmcia_set_mecr(skt, freqs->new);
 		break;
 	}
 

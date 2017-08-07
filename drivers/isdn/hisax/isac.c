@@ -44,7 +44,6 @@ ph_command(struct IsdnCardState *cs, unsigned int command)
 	cs->writeisac(cs, ISAC_CIX0, (command << 2) | 3);
 }
 
-
 static void
 isac_new_ph(struct IsdnCardState *cs)
 {
@@ -137,7 +136,7 @@ isac_empty_fifo(struct IsdnCardState *cs, int count)
 
 		t += sprintf(t, "isac_empty_fifo cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 
@@ -179,7 +178,7 @@ isac_fill_fifo(struct IsdnCardState *cs)
 
 		t += sprintf(t, "isac_fill_fifo cnt %d", count);
 		QuickHex(t, ptr, count);
-		debugl1(cs, "%s", cs->dlog);
+		debugl1(cs, cs->dlog);
 	}
 }
 

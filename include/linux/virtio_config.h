@@ -4,6 +4,7 @@
 #include <linux/err.h>
 #include <linux/bug.h>
 #include <linux/virtio.h>
+#include <linux/virtio_byteorder.h>
 #include <uapi/linux/virtio_config.h>
 
 /**
@@ -96,6 +97,33 @@ static inline bool virtio_has_feature(const struct virtio_device *vdev,
 	return test_bit(fbit, vdev->features);
 }
 
+/**
+ * virtio_config_val - look for a feature and get a virtio config entry.
+ * @vdev: the virtio device
+ * @fbit: the feature bit
+ * @offset: the type to search for.
+ * @v: a pointer to the value to fill in.
+ *
+ * The return value is -ENOENT if the feature doesn't exist.  Otherwise
+ * the config value is copied into whatever is pointed to by v. */
+#define virtio_config_val(vdev, fbit, offset, v) \
+	virtio_config_buf((vdev), (fbit), (offset), (v), sizeof(*v))
+
+#define virtio_config_val_len(vdev, fbit, offset, v, len) \
+	virtio_config_buf((vdev), (fbit), (offset), (v), (len))
+
+static inline int virtio_config_buf(struct virtio_device *vdev,
+				    unsigned int fbit,
+				    unsigned int offset,
+				    void *buf, unsigned len)
+{
+	if (!virtio_has_feature(vdev, fbit))
+		return -ENOENT;
+
+	vdev->config->get(vdev, offset, buf, len);
+	return 0;
+}
+
 static inline
 struct virtqueue *virtio_find_single_vq(struct virtio_device *vdev,
 					vq_callback_t *c, const char *n)
@@ -133,6 +161,37 @@ int virtqueue_set_affinity(struct virtqueue *vq, int cpu)
 	if (vdev->config->set_vq_affinity)
 		return vdev->config->set_vq_affinity(vq, cpu);
 	return 0;
+}
+
+/* Memory accessors */
+static inline u16 virtio16_to_cpu(struct virtio_device *vdev, __virtio16 val)
+{
+	return __virtio16_to_cpu(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
+}
+
+static inline __virtio16 cpu_to_virtio16(struct virtio_device *vdev, u16 val)
+{
+	return __cpu_to_virtio16(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
+}
+
+static inline u32 virtio32_to_cpu(struct virtio_device *vdev, __virtio32 val)
+{
+	return __virtio32_to_cpu(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
+}
+
+static inline __virtio32 cpu_to_virtio32(struct virtio_device *vdev, u32 val)
+{
+	return __cpu_to_virtio32(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
+}
+
+static inline u64 virtio64_to_cpu(struct virtio_device *vdev, __virtio64 val)
+{
+	return __virtio64_to_cpu(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
+}
+
+static inline __virtio64 cpu_to_virtio64(struct virtio_device *vdev, u64 val)
+{
+	return __cpu_to_virtio64(virtio_has_feature(vdev, VIRTIO_F_VERSION_1), val);
 }
 
 /* Config space accessors. */

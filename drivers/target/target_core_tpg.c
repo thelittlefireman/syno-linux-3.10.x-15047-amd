@@ -3,7 +3,7 @@
  *
  * This file contains generic Target Portal Group related functions.
  *
- * (c) Copyright 2002-2013 Datera, Inc.
+ * (c) Copyright 2002-2012 RisingTide Systems LLC.
  *
  * Nicholas A. Bellinger <nab@kernel.org>
  *
@@ -40,6 +40,7 @@
 #include <target/target_core_fabric.h>
 
 #include "target_core_internal.h"
+#include "target_core_pr.h"
 
 extern struct se_device *g_lun0_dev;
 
@@ -116,7 +117,6 @@ struct se_node_acl *core_tpg_get_initiator_node_acl(
 
 	return acl;
 }
-EXPORT_SYMBOL(core_tpg_get_initiator_node_acl);
 
 /*	core_tpg_add_node_to_devs():
  *
@@ -166,6 +166,13 @@ void core_tpg_add_node_to_devs(
 
 		core_enable_device_list_for_node(lun, NULL, lun->unpacked_lun,
 				lun_access, acl, tpg);
+		/*
+		 * Check to see if there are any existing persistent reservation
+		 * APTPL pre-registrations that need to be enabled for this dynamic
+		 * LUN ACL now..
+		 */
+		core_scsi3_check_aptpl_registration(dev, tpg, lun, acl,
+						    lun->unpacked_lun);
 		spin_lock(&tpg->tpg_lun_lock);
 	}
 	spin_unlock(&tpg->tpg_lun_lock);
@@ -278,6 +285,7 @@ struct se_node_acl *core_tpg_check_initiator_node_acl(
 	snprintf(acl->initiatorname, TRANSPORT_IQN_LEN, "%s", initiatorname);
 	acl->se_tpg = tpg;
 	acl->acl_index = scsi_get_new_index(SCSI_AUTH_INTR_INDEX);
+	spin_lock_init(&acl->stats_lock);
 	acl->dynamic_node_acl = 1;
 
 	tpg->se_tpg_tfo->set_default_node_attributes(acl);
@@ -405,6 +413,7 @@ struct se_node_acl *core_tpg_add_initiator_node_acl(
 	snprintf(acl->initiatorname, TRANSPORT_IQN_LEN, "%s", initiatorname);
 	acl->se_tpg = tpg;
 	acl->acl_index = scsi_get_new_index(SCSI_AUTH_INTR_INDEX);
+	spin_lock_init(&acl->stats_lock);
 
 	tpg->se_tpg_tfo->set_default_node_attributes(acl);
 
@@ -632,13 +641,6 @@ int core_tpg_set_initiator_node_tag(
 }
 EXPORT_SYMBOL(core_tpg_set_initiator_node_tag);
 
-static void core_tpg_lun_ref_release(struct percpu_ref *ref)
-{
-	struct se_lun *lun = container_of(ref, struct se_lun, lun_ref);
-
-	complete(&lun->lun_ref_comp);
-}
-
 static int core_tpg_setup_virtual_lun0(struct se_portal_group *se_tpg)
 {
 	/* Set in core_dev_setup_virtual_lun0() */
@@ -652,11 +654,12 @@ static int core_tpg_setup_virtual_lun0(struct se_portal_group *se_tpg)
 	atomic_set(&lun->lun_acl_count, 0);
 	init_completion(&lun->lun_shutdown_comp);
 	INIT_LIST_HEAD(&lun->lun_acl_list);
+	INIT_LIST_HEAD(&lun->lun_cmd_list);
 	spin_lock_init(&lun->lun_acl_lock);
+	spin_lock_init(&lun->lun_cmd_lock);
 	spin_lock_init(&lun->lun_sep_lock);
-	init_completion(&lun->lun_ref_comp);
 
-	ret = core_tpg_add_lun(se_tpg, lun, lun_access, dev);
+	ret = core_tpg_post_addlun(se_tpg, lun, lun_access, dev);
 	if (ret < 0)
 		return ret;
 
@@ -696,9 +699,10 @@ int core_tpg_register(
 		atomic_set(&lun->lun_acl_count, 0);
 		init_completion(&lun->lun_shutdown_comp);
 		INIT_LIST_HEAD(&lun->lun_acl_list);
+		INIT_LIST_HEAD(&lun->lun_cmd_list);
 		spin_lock_init(&lun->lun_acl_lock);
+		spin_lock_init(&lun->lun_cmd_lock);
 		spin_lock_init(&lun->lun_sep_lock);
-		init_completion(&lun->lun_ref_comp);
 	}
 
 	se_tpg->se_tpg_type = se_tpg_type;
@@ -781,7 +785,7 @@ int core_tpg_deregister(struct se_portal_group *se_tpg)
 }
 EXPORT_SYMBOL(core_tpg_deregister);
 
-struct se_lun *core_tpg_alloc_lun(
+struct se_lun *core_tpg_pre_addlun(
 	struct se_portal_group *tpg,
 	u32 unpacked_lun)
 {
@@ -811,23 +815,17 @@ struct se_lun *core_tpg_alloc_lun(
 	return lun;
 }
 
-int core_tpg_add_lun(
+int core_tpg_post_addlun(
 	struct se_portal_group *tpg,
 	struct se_lun *lun,
 	u32 lun_access,
-	struct se_device *dev)
+	void *lun_ptr)
 {
 	int ret;
 
-	ret = percpu_ref_init(&lun->lun_ref, core_tpg_lun_ref_release);
+	ret = core_dev_export(lun_ptr, tpg, lun);
 	if (ret < 0)
 		return ret;
-
-	ret = core_dev_export(dev, tpg, lun);
-	if (ret < 0) {
-		percpu_ref_cancel_init(&lun->lun_ref);
-		return ret;
-	}
 
 	spin_lock(&tpg->tpg_lun_lock);
 	lun->lun_access = lun_access;
@@ -835,6 +833,14 @@ int core_tpg_add_lun(
 	spin_unlock(&tpg->tpg_lun_lock);
 
 	return 0;
+}
+
+static void core_tpg_shutdown_lun(
+	struct se_portal_group *tpg,
+	struct se_lun *lun)
+{
+	core_clear_lun_from_tpg(lun, tpg);
+	transport_clear_lun_from_sessions(lun);
 }
 
 struct se_lun *core_tpg_pre_dellun(
@@ -871,8 +877,7 @@ int core_tpg_post_dellun(
 	struct se_portal_group *tpg,
 	struct se_lun *lun)
 {
-	core_clear_lun_from_tpg(lun, tpg);
-	transport_clear_lun_ref(lun);
+	core_tpg_shutdown_lun(tpg, lun);
 
 	core_dev_unexport(lun->lun_se_dev, tpg, lun);
 

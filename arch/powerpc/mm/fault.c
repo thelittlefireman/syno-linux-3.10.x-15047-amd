@@ -206,7 +206,7 @@ int __kprobes do_page_fault(struct pt_regs *regs, unsigned long address,
 	int trap = TRAP(regs);
  	int is_exec = trap == 0x400;
 	int fault;
-	int rc = 0, store_update_sp = 0;
+	int rc = 0;
 
 #if !(defined(CONFIG_4xx) || defined(CONFIG_BOOKE))
 	/*
@@ -277,14 +277,6 @@ int __kprobes do_page_fault(struct pt_regs *regs, unsigned long address,
 
 	perf_sw_event(PERF_COUNT_SW_PAGE_FAULTS, 1, regs, address);
 
-	/*
-	 * We want to do this outside mmap_sem, because reading code around nip
-	 * can result in fault, which will cause a deadlock when called with
-	 * mmap_sem held
-	 */
-	if (user_mode(regs))
-		store_update_sp = store_updates_sp(regs);
-
 	if (user_mode(regs))
 		flags |= FAULT_FLAG_USER;
 
@@ -353,7 +345,8 @@ retry:
 		 * between the last mapped region and the stack will
 		 * expand the stack rather than segfaulting.
 		 */
-		if (address + 2048 < uregs->gpr[1] && !store_update_sp)
+		if (address + 2048 < uregs->gpr[1]
+		    && (!user_mode(regs) || !store_updates_sp(regs)))
 			goto bad_area;
 	}
 	if (expand_stack(vma, address))
@@ -432,6 +425,8 @@ good_area:
 	 */
 	fault = handle_mm_fault(mm, vma, address, flags);
 	if (unlikely(fault & (VM_FAULT_RETRY|VM_FAULT_ERROR))) {
+		if (fault & VM_FAULT_SIGSEGV)
+			goto bad_area;
 		rc = mm_fault_error(regs, address, fault);
 		if (rc >= MM_FAULT_RETURN)
 			goto bail;
@@ -451,12 +446,8 @@ good_area:
 				      regs, address);
 #ifdef CONFIG_PPC_SMLPAR
 			if (firmware_has_feature(FW_FEATURE_CMO)) {
-				u32 page_ins;
-
 				preempt_disable();
-				page_ins = be32_to_cpu(get_lppaca()->page_ins);
-				page_ins += 1 << PAGE_FACTOR;
-				get_lppaca()->page_ins = cpu_to_be32(page_ins);
+				get_lppaca()->page_ins += (1 << PAGE_FACTOR);
 				preempt_enable();
 			}
 #endif /* CONFIG_PPC_SMLPAR */

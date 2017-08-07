@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754sp.h"
 
 ieee754sp ieee754sp_mul(ieee754sp x, ieee754sp y)
@@ -67,7 +66,6 @@ ieee754sp ieee754sp_mul(ieee754sp x, ieee754sp y)
 	case CLPAIR(IEEE754_CLASS_QNAN, IEEE754_CLASS_INF):
 		return x;
 
-
 		/* Infinity handling */
 
 	case CLPAIR(IEEE754_CLASS_INF, IEEE754_CLASS_ZERO):
@@ -88,7 +86,6 @@ ieee754sp ieee754sp_mul(ieee754sp x, ieee754sp y)
 	case CLPAIR(IEEE754_CLASS_NORM, IEEE754_CLASS_ZERO):
 	case CLPAIR(IEEE754_CLASS_DNORM, IEEE754_CLASS_ZERO):
 		return ieee754sp_zero(xs ^ ys);
-
 
 	case CLPAIR(IEEE754_CLASS_DNORM, IEEE754_CLASS_DNORM):
 		SPDNORMX;

@@ -32,13 +32,13 @@
 #include "device.h"
 #include "wcmd.h"
 
-void RXvWorkItem(struct work_struct *work);
+void RXvWorkItem(void *Context);
 
-void RXvMngWorkItem(struct work_struct *work);
+void RXvMngWorkItem(void *Context);
 
-void RXvFreeRCB(struct vnt_rcb *pRCB, int bReAllocSkb);
+void RXvFreeRCB(PRCB pRCB, int bReAllocSkb);
 
-int RXbBulkInProcessData(struct vnt_private *, struct vnt_rcb *pRCB,
+int RXbBulkInProcessData(struct vnt_private *, PRCB pRCB,
 	unsigned long BytesToIndicate);
 
 #endif /* __RXTX_H__ */

@@ -1,12 +1,9 @@
 #ifndef __ASM_MACH_PXA168_H
 #define __ASM_MACH_PXA168_H
 
-#include <linux/reboot.h>
-
 extern void pxa168_timer_init(void);
-extern void __init icu_init_irq(void);
 extern void __init pxa168_init_irq(void);
-extern void pxa168_restart(enum reboot_mode, const char *);
+extern void pxa168_restart(char, const char *);
 extern void pxa168_clear_keypad_wakeup(void);
 
 #include <linux/i2c.h>
@@ -40,7 +37,6 @@ extern struct pxa_device_desc pxa168_device_eth;
 
 /* pdata can be NULL */
 extern int __init pxa168_add_usb_host(struct mv_usb_platform_data *pdata);
-
 
 extern struct platform_device pxa168_device_gpio;
 

@@ -21,7 +21,6 @@
 #include <linux/gpio.h>
 #include <linux/platform_device.h>
 #include <linux/serial_core.h>
-#include <linux/serial_s3c.h>
 #include <linux/input.h>
 #include <linux/gpio_keys.h>
 #include <linux/device.h>
@@ -52,14 +51,13 @@
 #include <mach/fb.h>
 #include <mach/regs-gpio.h>
 #include <mach/regs-lcd.h>
-#include <mach/gpio-samsung.h>
 
 #include <plat/clock.h>
 #include <plat/cpu.h>
 #include <plat/devs.h>
 #include <plat/pm.h>
+#include <plat/regs-serial.h>
 #include <plat/samsung-time.h>
-#include <plat/gpio-cfg.h>
 
 #include "common.h"
 #include "h1940.h"
@@ -506,7 +504,6 @@ static void rx1950_backlight_exit(struct device *dev)
 	gpio_free(S3C2410_GPB(0));
 }
 
-
 static int rx1950_backlight_notify(struct device *dev, int brightness)
 {
 	if (!brightness) {
@@ -524,7 +521,6 @@ static struct platform_pwm_backlight_data rx1950_backlight_data = {
 	.max_brightness = 24,
 	.dft_brightness = 4,
 	.pwm_period_ns = 48000,
-	.enable_gpio = -1,
 	.init = rx1950_backlight_init,
 	.notify = rx1950_backlight_notify,
 	.exit = rx1950_backlight_exit,
@@ -533,7 +529,7 @@ static struct platform_pwm_backlight_data rx1950_backlight_data = {
 static struct platform_device rx1950_backlight = {
 	.name = "pwm-backlight",
 	.dev = {
-		.parent = &samsung_device_pwm.dev,
+		.parent = &s3c_device_timer[0].dev,
 		.platform_data = &rx1950_backlight_data,
 	},
 };
@@ -720,7 +716,8 @@ static struct platform_device *rx1950_devices[] __initdata = {
 	&s3c_device_sdi,
 	&s3c_device_adc,
 	&s3c_device_ts,
-	&samsung_device_pwm,
+	&s3c_device_timer[0],
+	&s3c_device_timer[1],
 	&rx1950_backlight,
 	&rx1950_device_gpiokeys,
 	&power_supply,

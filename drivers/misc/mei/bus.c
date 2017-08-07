@@ -26,6 +26,7 @@
 #include <linux/mei_cl_bus.h>
 
 #include "mei_dev.h"
+#include "hw-me.h"
 #include "client.h"
 
 #define to_mei_cl_driver(d) container_of(d, struct mei_cl_driver, driver)
@@ -46,7 +47,7 @@ static int mei_cl_device_match(struct device *dev, struct device_driver *drv)
 	id = driver->id_table;
 
 	while (id->name[0]) {
-		if (!strncmp(dev_name(dev), id->name, sizeof(id->name)))
+		if (!strcmp(dev_name(dev), id->name))
 			return 1;
 
 		id++;
@@ -70,7 +71,7 @@ static int mei_cl_device_probe(struct device *dev)
 
 	dev_dbg(dev, "Device probe\n");
 
-	strncpy(id.name, dev_name(dev), sizeof(id.name));
+	strlcpy(id.name, dev_name(dev), sizeof(id.name));
 
 	return driver->probe(device, &id);
 }
@@ -107,13 +108,11 @@ static ssize_t modalias_show(struct device *dev, struct device_attribute *a,
 
 	return (len >= PAGE_SIZE) ? (PAGE_SIZE - 1) : len;
 }
-static DEVICE_ATTR_RO(modalias);
 
-static struct attribute *mei_cl_dev_attrs[] = {
-	&dev_attr_modalias.attr,
-	NULL,
+static struct device_attribute mei_cl_dev_attrs[] = {
+	__ATTR_RO(modalias),
+	__ATTR_NULL,
 };
-ATTRIBUTE_GROUPS(mei_cl_dev);
 
 static int mei_cl_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
@@ -125,7 +124,7 @@ static int mei_cl_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 static struct bus_type mei_cl_bus_type = {
 	.name		= "mei",
-	.dev_groups	= mei_cl_dev_groups,
+	.dev_attrs	= mei_cl_dev_attrs,
 	.match		= mei_cl_device_match,
 	.probe		= mei_cl_device_probe,
 	.remove		= mei_cl_device_remove,
@@ -144,9 +143,9 @@ static struct device_type mei_cl_device_type = {
 static struct mei_cl *mei_bus_find_mei_cl_by_uuid(struct mei_device *dev,
 						uuid_le uuid)
 {
-	struct mei_cl *cl;
+	struct mei_cl *cl, *next;
 
-	list_for_each_entry(cl, &dev->device_list, device_link) {
+	list_for_each_entry_safe(cl, next, &dev->device_list, device_link) {
 		if (!uuid_le_cmp(uuid, cl->device_uuid))
 			return cl;
 	}
@@ -244,7 +243,7 @@ static int ___mei_cl_send(struct mei_cl *cl, u8 *buf, size_t length,
 	/* Check if we have an ME client device */
 	id = mei_me_cl_by_id(dev, cl->me_client_id);
 	if (id < 0)
-		return id;
+		return -ENODEV;
 
 	if (length > dev->me_clients[id].props.max_msg_length)
 		return -EINVAL;
@@ -521,22 +520,6 @@ void mei_cl_bus_rx_event(struct mei_cl *cl)
 	set_bit(MEI_CL_EVENT_RX, &device->events);
 
 	schedule_work(&device->event_work);
-}
-
-void mei_cl_bus_remove_devices(struct mei_device *dev)
-{
-	struct mei_cl *cl, *next;
-
-	mutex_lock(&dev->device_lock);
-	list_for_each_entry_safe(cl, next, &dev->device_list, device_link) {
-		if (cl->device)
-			mei_cl_remove_device(cl->device);
-
-		list_del(&cl->device_link);
-		mei_cl_unlink(cl);
-		kfree(cl);
-	}
-	mutex_unlock(&dev->device_lock);
 }
 
 int __init mei_cl_bus_init(void)

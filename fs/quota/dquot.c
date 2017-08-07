@@ -528,7 +528,7 @@ restart:
 		if (atomic_read(&dquot->dq_count)) {
 			DEFINE_WAIT(wait);
 
-			dqgrab(dquot);
+			atomic_inc(&dquot->dq_count);
 			prepare_to_wait(&dquot->dq_wait_unused, &wait,
 					TASK_UNINTERRUPTIBLE);
 			spin_unlock(&dq_list_lock);
@@ -632,12 +632,12 @@ int dquot_writeback_dquots(struct super_block *sb, int type)
 			/* Now we have active dquot from which someone is
  			 * holding reference so we can safely just increase
 			 * use count */
-			dqgrab(dquot);
+			atomic_inc(&dquot->dq_count);
 			spin_unlock(&dq_list_lock);
 			dqstats_inc(DQST_LOOKUPS);
 			err = sb->dq_op->write_dquot(dquot);
 			if (!ret && err)
-				err = ret;
+				ret = err;
 			dqput(dquot);
 			spin_lock(&dq_list_lock);
 		}
@@ -695,37 +695,45 @@ int dquot_quota_sync(struct super_block *sb, int type)
 }
 EXPORT_SYMBOL(dquot_quota_sync);
 
-static unsigned long
-dqcache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+/* Free unused dquots from cache */
+static void prune_dqcache(int count)
 {
 	struct list_head *head;
 	struct dquot *dquot;
-	unsigned long freed = 0;
 
 	head = free_dquots.prev;
-	while (head != &free_dquots && sc->nr_to_scan) {
+	while (head != &free_dquots && count) {
 		dquot = list_entry(head, struct dquot, dq_free);
 		remove_dquot_hash(dquot);
 		remove_free_dquot(dquot);
 		remove_inuse(dquot);
 		do_destroy_dquot(dquot);
-		sc->nr_to_scan--;
-		freed++;
+		count--;
 		head = free_dquots.prev;
 	}
-	return freed;
 }
 
-static unsigned long
-dqcache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+/*
+ * This is called from kswapd when we think we need some
+ * more memory
+ */
+static int shrink_dqcache_memory(struct shrinker *shrink,
+				 struct shrink_control *sc)
 {
-	return vfs_pressure_ratio(
-	percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS]));
+	int nr = sc->nr_to_scan;
+
+	if (nr) {
+		spin_lock(&dq_list_lock);
+		prune_dqcache(nr);
+		spin_unlock(&dq_list_lock);
+	}
+	return ((unsigned)
+		percpu_counter_read_positive(&dqstats.counter[DQST_FREE_DQUOTS])
+		/100) * sysctl_vfs_cache_pressure;
 }
 
 static struct shrinker dqcache_shrinker = {
-	.count_objects = dqcache_shrink_count,
-	.scan_objects = dqcache_shrink_scan,
+	.shrink = shrink_dqcache_memory,
 	.seeks = DEFAULT_SEEKS,
 };
 
@@ -2631,7 +2639,7 @@ static int do_proc_dqstats(struct ctl_table *table, int write,
 	return proc_dointvec(table, write, buffer, lenp, ppos);
 }
 
-static struct ctl_table fs_dqstats_table[] = {
+static ctl_table fs_dqstats_table[] = {
 	{
 		.procname	= "lookups",
 		.data		= &dqstats.stat[DQST_LOOKUPS],
@@ -2700,7 +2708,7 @@ static struct ctl_table fs_dqstats_table[] = {
 	{ },
 };
 
-static struct ctl_table fs_table[] = {
+static ctl_table fs_table[] = {
 	{
 		.procname	= "quota",
 		.mode		= 0555,
@@ -2709,7 +2717,7 @@ static struct ctl_table fs_table[] = {
 	{ },
 };
 
-static struct ctl_table sys_table[] = {
+static ctl_table sys_table[] = {
 	{
 		.procname	= "fs",
 		.mode		= 0555,

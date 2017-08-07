@@ -69,7 +69,6 @@ static const u16 atl1c_pay_load_size[] = {
 	128, 256, 512, 1024, 2048, 4096,
 };
 
-
 static const u32 atl1c_default_msg = NETIF_MSG_DRV | NETIF_MSG_PROBE |
 	NETIF_MSG_LINK | NETIF_MSG_TIMER | NETIF_MSG_IFDOWN | NETIF_MSG_IFUP;
 static void atl1c_pcie_patch(struct atl1c_hw *hw)
@@ -145,11 +144,9 @@ static void atl1c_reset_pcie(struct atl1c_hw *hw, u32 flag)
 	 * Mask some pcie error bits
 	 */
 	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
-	if (pos) {
-		pci_read_config_dword(pdev, pos + PCI_ERR_UNCOR_SEVER, &data);
-		data &= ~(PCI_ERR_UNC_DLP | PCI_ERR_UNC_FCP);
-		pci_write_config_dword(pdev, pos + PCI_ERR_UNCOR_SEVER, data);
-	}
+	pci_read_config_dword(pdev, pos + PCI_ERR_UNCOR_SEVER, &data);
+	data &= ~(PCI_ERR_UNC_DLP | PCI_ERR_UNC_FCP);
+	pci_write_config_dword(pdev, pos + PCI_ERR_UNCOR_SEVER, data);
 	/* clear error status */
 	pcie_capability_write_word(pdev, PCI_EXP_DEVSTA,
 			PCI_EXP_DEVSTA_NFED |
@@ -355,12 +352,10 @@ static void atl1c_common_task(struct work_struct *work)
 	}
 }
 
-
 static void atl1c_del_timer(struct atl1c_adapter *adapter)
 {
 	del_timer_sync(&adapter->phy_config_timer);
 }
-
 
 /**
  * atl1c_tx_timeout - Respond to a Tx Hang
@@ -776,7 +771,6 @@ static int atl1c_sw_init(struct atl1c_adapter *adapter)
 	struct pci_dev	*pdev = adapter->pdev;
 	u32 revision;
 
-
 	adapter->wol = 0;
 	device_set_wakeup_enable(&pdev->dev, false);
 	adapter->link_speed = SPEED_0;
@@ -832,7 +826,7 @@ static int atl1c_sw_init(struct atl1c_adapter *adapter)
 }
 
 static inline void atl1c_clean_buffer(struct pci_dev *pdev,
-				struct atl1c_buffer *buffer_info)
+				struct atl1c_buffer *buffer_info, int in_irq)
 {
 	u16 pci_driection;
 	if (buffer_info->flags & ATL1C_BUFFER_FREE)
@@ -850,8 +844,12 @@ static inline void atl1c_clean_buffer(struct pci_dev *pdev,
 			pci_unmap_page(pdev, buffer_info->dma,
 					buffer_info->length, pci_driection);
 	}
-	if (buffer_info->skb)
-		dev_consume_skb_any(buffer_info->skb);
+	if (buffer_info->skb) {
+		if (in_irq)
+			dev_kfree_skb_irq(buffer_info->skb);
+		else
+			dev_kfree_skb(buffer_info->skb);
+	}
 	buffer_info->dma = 0;
 	buffer_info->skb = NULL;
 	ATL1C_SET_BUFFER_STATE(buffer_info, ATL1C_BUFFER_FREE);
@@ -871,7 +869,7 @@ static void atl1c_clean_tx_ring(struct atl1c_adapter *adapter,
 	ring_count = tpd_ring->count;
 	for (index = 0; index < ring_count; index++) {
 		buffer_info = &tpd_ring->buffer_info[index];
-		atl1c_clean_buffer(pdev, buffer_info);
+		atl1c_clean_buffer(pdev, buffer_info, 0);
 	}
 
 	/* Zero out Tx-buffers */
@@ -895,7 +893,7 @@ static void atl1c_clean_rx_ring(struct atl1c_adapter *adapter)
 
 	for (j = 0; j < rfd_ring->count; j++) {
 		buffer_info = &rfd_ring->buffer_info[j];
-		atl1c_clean_buffer(pdev, buffer_info);
+		atl1c_clean_buffer(pdev, buffer_info, 0);
 	}
 	/* zero out the descriptor ring */
 	memset(rfd_ring->desc, 0, rfd_ring->size);
@@ -1014,13 +1012,12 @@ static int atl1c_setup_ring_resources(struct atl1c_adapter *adapter)
 		sizeof(struct atl1c_recv_ret_status) * rx_desc_count +
 		8 * 4;
 
-	ring_header->desc = pci_alloc_consistent(pdev, ring_header->size,
-				&ring_header->dma);
+	ring_header->desc = dma_zalloc_coherent(&pdev->dev, ring_header->size,
+						&ring_header->dma, GFP_KERNEL);
 	if (unlikely(!ring_header->desc)) {
-		dev_err(&pdev->dev, "pci_alloc_consistend failed\n");
+		dev_err(&pdev->dev, "could not get memory for DMA buffer\n");
 		goto err_nomem;
 	}
-	memset(ring_header->desc, 0, ring_header->size);
 	/* init TPD ring */
 
 	tpd_ring[0].dma = roundup(ring_header->dma, 8);
@@ -1073,7 +1070,6 @@ static void atl1c_configure_des_ring(struct atl1c_adapter *adapter)
 				AT_DMA_LO_ADDR_MASK));
 	AT_WRITE_REG(hw, REG_TPD_RING_SIZE,
 			(u32)(tpd_ring[0].count & TPD_RING_SIZE_MASK));
-
 
 	/* RFD */
 	AT_WRITE_REG(hw, REG_RX_BASE_ADDR_HI,
@@ -1496,39 +1492,30 @@ static struct net_device_stats *atl1c_get_stats(struct net_device *netdev)
 	struct net_device_stats *net_stats = &netdev->stats;
 
 	atl1c_update_hw_stats(adapter);
+	net_stats->rx_packets = hw_stats->rx_ok;
+	net_stats->tx_packets = hw_stats->tx_ok;
 	net_stats->rx_bytes   = hw_stats->rx_byte_cnt;
 	net_stats->tx_bytes   = hw_stats->tx_byte_cnt;
 	net_stats->multicast  = hw_stats->rx_mcast;
 	net_stats->collisions = hw_stats->tx_1_col +
-				hw_stats->tx_2_col +
-				hw_stats->tx_late_col +
-				hw_stats->tx_abort_col;
-
-	net_stats->rx_errors  = hw_stats->rx_frag +
-				hw_stats->rx_fcs_err +
-				hw_stats->rx_len_err +
-				hw_stats->rx_sz_ov +
-				hw_stats->rx_rrd_ov +
-				hw_stats->rx_align_err +
-				hw_stats->rx_rxf_ov;
-
+				hw_stats->tx_2_col * 2 +
+				hw_stats->tx_late_col + hw_stats->tx_abort_col;
+	net_stats->rx_errors  = hw_stats->rx_frag + hw_stats->rx_fcs_err +
+				hw_stats->rx_len_err + hw_stats->rx_sz_ov +
+				hw_stats->rx_rrd_ov + hw_stats->rx_align_err;
 	net_stats->rx_fifo_errors   = hw_stats->rx_rxf_ov;
 	net_stats->rx_length_errors = hw_stats->rx_len_err;
 	net_stats->rx_crc_errors    = hw_stats->rx_fcs_err;
 	net_stats->rx_frame_errors  = hw_stats->rx_align_err;
-	net_stats->rx_dropped       = hw_stats->rx_rrd_ov;
+	net_stats->rx_over_errors   = hw_stats->rx_rrd_ov + hw_stats->rx_rxf_ov;
 
-	net_stats->tx_errors = hw_stats->tx_late_col +
-			       hw_stats->tx_abort_col +
-			       hw_stats->tx_underrun +
-			       hw_stats->tx_trunc;
+	net_stats->rx_missed_errors = hw_stats->rx_rrd_ov + hw_stats->rx_rxf_ov;
 
+	net_stats->tx_errors = hw_stats->tx_late_col + hw_stats->tx_abort_col +
+				hw_stats->tx_underrun + hw_stats->tx_trunc;
 	net_stats->tx_fifo_errors    = hw_stats->tx_underrun;
 	net_stats->tx_aborted_errors = hw_stats->tx_abort_col;
 	net_stats->tx_window_errors  = hw_stats->tx_late_col;
-
-	net_stats->rx_packets = hw_stats->rx_ok + net_stats->rx_errors;
-	net_stats->tx_packets = hw_stats->tx_ok + net_stats->tx_errors;
 
 	return net_stats;
 }
@@ -1558,7 +1545,7 @@ static bool atl1c_clean_tx_irq(struct atl1c_adapter *adapter,
 
 	while (next_to_clean != hw_next_to_clean) {
 		buffer_info = &tpd_ring->buffer_info[next_to_clean];
-		atl1c_clean_buffer(pdev, buffer_info);
+		atl1c_clean_buffer(pdev, buffer_info, 1);
 		if (++next_to_clean == tpd_ring->count)
 			next_to_clean = 0;
 		atomic_set(&tpd_ring->next_to_clean, next_to_clean);
@@ -1973,17 +1960,17 @@ static int atl1c_tso_csum(struct atl1c_adapter *adapter,
 			  enum atl1c_trans_queue type)
 {
 	struct pci_dev *pdev = adapter->pdev;
-	unsigned short offload_type;
 	u8 hdr_len;
 	u32 real_len;
+	unsigned short offload_type;
+	int err;
 
 	if (skb_is_gso(skb)) {
-		int err;
-
-		err = skb_cow_head(skb, 0);
-		if (err < 0)
-			return err;
-
+		if (skb_header_cloned(skb)) {
+			err = pskb_expand_head(skb, 0, 0, GFP_ATOMIC);
+			if (unlikely(err))
+				return -1;
+		}
 		offload_type = skb_shinfo(skb)->gso_type;
 
 		if (offload_type & SKB_GSO_TCPV4) {
@@ -2081,7 +2068,7 @@ static void atl1c_tx_rollback(struct atl1c_adapter *adpt,
 	while (index != tpd_ring->next_to_use) {
 		tpd = ATL1C_TPD_DESC(tpd_ring, index);
 		buffer_info = &tpd_ring->buffer_info[index];
-		atl1c_clean_buffer(adpt->pdev, buffer_info);
+		atl1c_clean_buffer(adpt->pdev, buffer_info, 0);
 		memset(tpd, 0, sizeof(struct atl1c_tpd_desc));
 		if (++index == tpd_ring->count)
 			index = 0;
@@ -2254,7 +2241,7 @@ static netdev_tx_t atl1c_xmit_frame(struct sk_buff *skb,
 		/* roll back tpd/buffer */
 		atl1c_tx_rollback(adapter, tpd, type);
 		spin_unlock_irqrestore(&adapter->tx_lock, flags);
-		dev_kfree_skb_any(skb);
+		dev_kfree_skb(skb);
 	} else {
 		atl1c_tx_queue(adapter, skb, tpd, type);
 		spin_unlock_irqrestore(&adapter->tx_lock, flags);
@@ -2307,7 +2294,6 @@ static int atl1c_request_irq(struct atl1c_adapter *adapter)
 		dev_dbg(&pdev->dev, "atl1c_request_irq OK\n");
 	return err;
 }
-
 
 static void atl1c_reset_dma_ring(struct atl1c_adapter *adapter)
 {
@@ -2800,4 +2786,27 @@ static struct pci_driver atl1c_driver = {
 	.driver.pm = &atl1c_pm_ops,
 };
 
-module_pci_driver(atl1c_driver);
+/**
+ * atl1c_init_module - Driver Registration Routine
+ *
+ * atl1c_init_module is the first routine called when the driver is
+ * loaded. All it does is register with the PCI subsystem.
+ */
+static int __init atl1c_init_module(void)
+{
+	return pci_register_driver(&atl1c_driver);
+}
+
+/**
+ * atl1c_exit_module - Driver Exit Cleanup Routine
+ *
+ * atl1c_exit_module is called just before the driver is removed
+ * from memory.
+ */
+static void __exit atl1c_exit_module(void)
+{
+	pci_unregister_driver(&atl1c_driver);
+}
+
+module_init(atl1c_init_module);
+module_exit(atl1c_exit_module);

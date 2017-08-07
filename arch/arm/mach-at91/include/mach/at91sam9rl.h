@@ -42,7 +42,6 @@
 #define AT91SAM9RL_ID_AC97C	24	/* AC97 Controller */
 #define AT91SAM9RL_ID_IRQ0	31	/* Advanced Interrupt Controller (IRQ0) */
 
-
 /*
  * User Peripheral physical base addresses.
  */
@@ -64,7 +63,6 @@
 #define AT91SAM9RL_BASE_TSC	0xfffd0000
 #define AT91SAM9RL_BASE_UDPHS	0xfffd4000
 #define AT91SAM9RL_BASE_AC97C	0xfffd8000
-
 
 /*
  * System Peripherals (offset from AT91_BASE_SYS)
@@ -88,7 +86,6 @@
 #define AT91SAM9RL_BASE_WDT	0xfffffd40
 #define AT91SAM9RL_BASE_GPBR	0xfffffd60
 #define AT91SAM9RL_BASE_RTC	0xfffffe00
-
 
 /*
  * Internal Memory.

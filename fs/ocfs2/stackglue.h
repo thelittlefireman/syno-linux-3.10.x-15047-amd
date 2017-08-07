@@ -17,7 +17,6 @@
  * General Public License for more details.
  */
 
-
 #ifndef STACKGLUE_H
 #define STACKGLUE_H
 
@@ -44,10 +43,6 @@ struct file_lock;
  * wants to be in a public header.
  */
 #define GROUP_NAME_MAX		64
-
-/* This shadows  OCFS2_CLUSTER_NAME_LEN */
-#define CLUSTER_NAME_MAX	16
-
 
 /*
  * ocfs2_protocol_version changes when ocfs2 does something different in
@@ -93,17 +88,14 @@ struct ocfs2_locking_protocol {
 	void (*lp_unlock_ast)(struct ocfs2_dlm_lksb *lksb, int error);
 };
 
-
 /*
  * A cluster connection.  Mostly opaque to ocfs2, the connection holds
  * state for the underlying stack.  ocfs2 does use cc_version to determine
  * locking compatibility.
  */
 struct ocfs2_cluster_connection {
-	char cc_name[GROUP_NAME_MAX + 1];
+	char cc_name[GROUP_NAME_MAX];
 	int cc_namelen;
-	char cc_cluster_name[CLUSTER_NAME_MAX + 1];
-	int cc_cluster_name_len;
 	struct ocfs2_protocol_version cc_version;
 	struct ocfs2_locking_protocol *cc_proto;
 	void (*cc_recovery_handler)(int node_num, void *recovery_data);
@@ -157,8 +149,7 @@ struct ocfs2_stack_operations {
 	 * ->this_node() returns the cluster's unique identifier for the
 	 * local node.
 	 */
-	int (*this_node)(struct ocfs2_cluster_connection *conn,
-			 unsigned int *node);
+	int (*this_node)(unsigned int *node);
 
 	/*
 	 * Call the underlying dlm lock function.  The ->dlm_lock()
@@ -242,11 +233,8 @@ struct ocfs2_stack_plugin {
 	struct ocfs2_protocol_version sp_max_proto;
 };
 
-
 /* Used by the filesystem */
 int ocfs2_cluster_connect(const char *stack_name,
-			  const char *cluster_name,
-			  int cluster_name_len,
 			  const char *group,
 			  int grouplen,
 			  struct ocfs2_locking_protocol *lproto,
@@ -268,8 +256,7 @@ int ocfs2_cluster_connect_agnostic(const char *group,
 int ocfs2_cluster_disconnect(struct ocfs2_cluster_connection *conn,
 			     int hangup_pending);
 void ocfs2_cluster_hangup(const char *group, int grouplen);
-int ocfs2_cluster_this_node(struct ocfs2_cluster_connection *conn,
-			    unsigned int *node);
+int ocfs2_cluster_this_node(unsigned int *node);
 
 struct ocfs2_lock_res;
 int ocfs2_dlm_lock(struct ocfs2_cluster_connection *conn,
@@ -292,7 +279,6 @@ int ocfs2_plock(struct ocfs2_cluster_connection *conn, u64 ino,
 		struct file *file, int cmd, struct file_lock *fl);
 
 void ocfs2_stack_glue_set_max_proto_version(struct ocfs2_protocol_version *max_proto);
-
 
 /* Used by stack plugins */
 int ocfs2_stack_glue_register(struct ocfs2_stack_plugin *plugin);

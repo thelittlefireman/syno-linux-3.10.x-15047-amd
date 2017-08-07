@@ -298,7 +298,7 @@ static void free_tx_desc(struct adapter *adapter, struct sge_txq *q,
 			if (need_unmap)
 				unmap_skb(d->skb, q, cidx, pdev);
 			if (d->eop) {
-				dev_consume_skb_any(d->skb);
+				kfree_skb(d->skb);
 				d->skb = NULL;
 			}
 		}
@@ -383,7 +383,6 @@ static void free_rx_bufs(struct pci_dev *pdev, struct sge_fl *q)
 
 	while (q->credits--) {
 		struct rx_sw_desc *d = &q->sdesc[cidx];
-
 
 		clear_rx_desc(pdev, q, d);
 		if (++cidx == q->size)
@@ -658,7 +657,6 @@ static void t3_reset_qset(struct sge_qset *q)
 	q->nomem = 0;
 	napi_free_frags(&q->napi);
 }
-
 
 /**
  *	free_qset - free the resources of an SGE queue set
@@ -1188,7 +1186,7 @@ static void write_tx_pkt_wr(struct adapter *adap, struct sk_buff *skb,
 			cpl->wr.wr_lo = htonl(V_WR_LEN(flits) | V_WR_GEN(gen) |
 					      V_WR_TID(q->token));
 			wr_gen2(d, gen);
-			dev_consume_skb_any(skb);
+			kfree_skb(skb);
 			return;
 		}
 
@@ -1233,7 +1231,7 @@ netdev_tx_t t3_eth_xmit(struct sk_buff *skb, struct net_device *dev)
 	 * anything shorter than an Ethernet header.
 	 */
 	if (unlikely(skb->len < ETH_HLEN)) {
-		dev_kfree_skb_any(skb);
+		dev_kfree_skb(skb);
 		return NETDEV_TX_OK;
 	}
 
@@ -1537,9 +1535,10 @@ static void deferred_unmap_destructor(struct sk_buff *skb)
 	dui = (struct deferred_unmap_info *)skb->head;
 	p = dui->addr;
 
-	if (skb_tail_pointer(skb) - skb_transport_header(skb))
-		pci_unmap_single(dui->pdev, *p++, skb_tail_pointer(skb) -
-				 skb_transport_header(skb), PCI_DMA_TODEVICE);
+	if (skb->tail - skb->transport_header)
+		pci_unmap_single(dui->pdev, *p++,
+				 skb->tail - skb->transport_header,
+				 PCI_DMA_TODEVICE);
 
 	si = skb_shinfo(skb);
 	for (i = 0; i < si->nr_frags; i++)
@@ -1627,7 +1626,7 @@ static inline unsigned int calc_tx_descs_ofld(const struct sk_buff *skb)
 
 	flits = skb_transport_offset(skb) / 8;	/* headers */
 	cnt = skb_shinfo(skb)->nr_frags;
-	if (skb_tail_pointer(skb) != skb_transport_header(skb))
+	if (skb->tail != skb->transport_header)
 		cnt++;
 	return flits_to_desc(flits + sgl_len(cnt));
 }

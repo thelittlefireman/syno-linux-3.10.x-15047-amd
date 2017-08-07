@@ -874,9 +874,9 @@ static void __exit khazad_mod_fini(void)
 	crypto_unregister_alg(&khazad_alg);
 }
 
-
 module_init(khazad_mod_init);
 module_exit(khazad_mod_fini);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Khazad Cryptographic Algorithm");
+MODULE_ALIAS_CRYPTO("khazad");

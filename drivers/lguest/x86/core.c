@@ -157,7 +157,7 @@ static void run_guest_once(struct lg_cpu *cpu, struct lguest_pages *pages)
 	 * stack, then the address of this call.  This stack layout happens to
 	 * exactly match the stack layout created by an interrupt...
 	 */
-	asm volatile("pushf; lcall *%4"
+	asm volatile("pushf; lcall *lguest_entry"
 		     /*
 		      * This is how we tell GCC that %eax ("a") and %ebx ("b")
 		      * are changed by this routine.  The "=" means output.
@@ -169,9 +169,7 @@ static void run_guest_once(struct lg_cpu *cpu, struct lguest_pages *pages)
 		      * physical address of the Guest's top-level page
 		      * directory.
 		      */
-		     : "0"(pages), 
-		       "1"(__pa(cpu->lg->pgdirs[cpu->cpu_pgd].pgdir)),
-		       "m"(lguest_entry)
+		     : "0"(pages), "1"(__pa(cpu->lg->pgdirs[cpu->cpu_pgd].pgdir))
 		     /*
 		      * We tell gcc that all these registers could change,
 		      * which means we don't have to save and restore them in
@@ -608,7 +606,6 @@ void __exit lguest_arch_host_fini(void)
 	}
 	put_online_cpus();
 }
-
 
 /*H:122 The i386-specific hypercalls simply farm out to the right functions. */
 int lguest_arch_do_hcall(struct lg_cpu *cpu, struct hcall_args *args)

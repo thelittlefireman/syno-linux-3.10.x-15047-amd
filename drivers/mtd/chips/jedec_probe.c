@@ -120,7 +120,7 @@
 #define PM49FL008	0x006A
 
 /* Sharp */
-#define LH28F640BF	0x00B0
+#define LH28F640BF	0x00b0
 
 /* ST - www.st.com */
 #define M29F800AB	0x0058
@@ -176,7 +176,6 @@
 /* Winbond */
 #define W49V002A	0x00b0
 
-
 /*
  * Unlock address sets for AMD command sets.
  * Intel command sets use the MTD_UADDR_UNNECESSARY.
@@ -198,12 +197,10 @@ enum uaddr {
 	MTD_UADDR_UNNECESSARY,		/* Does not require any address */
 };
 
-
 struct unlock_addr {
 	uint32_t addr1;
 	uint32_t addr2;
 };
-
 
 /*
  * I don't like the fact that the first entry in unlock_addrs[]
@@ -284,7 +281,6 @@ struct amd_flash_info {
 #define SIZE_2MiB   21
 #define SIZE_4MiB   22
 #define SIZE_8MiB   23
-
 
 /*
  * Please keep this list ordered by manufacturer!
@@ -1299,14 +1295,13 @@ static const struct amd_flash_info jedec_table[] = {
 		.mfr_id		= CFI_MFR_SHARP,
 		.dev_id		= LH28F640BF,
 		.name		= "LH28F640BF",
-		.devtypes	= CFI_DEVICETYPE_X16,
+		.devtypes	= CFI_DEVICETYPE_X8,
 		.uaddr		= MTD_UADDR_UNNECESSARY,
-		.dev_size	= SIZE_8MiB,
-		.cmd_set	= P_ID_INTEL_EXT,
-		.nr_regions	= 2,
+		.dev_size	= SIZE_4MiB,
+		.cmd_set	= P_ID_INTEL_STD,
+		.nr_regions	= 1,
 		.regions	= {
-			ERASEINFO(0x10000, 127),
-			ERASEINFO(0x02000, 8),
+			ERASEINFO(0x40000,16),
 		}
 	}, {
 		.mfr_id		= CFI_MFR_SST,
@@ -1934,7 +1929,6 @@ static void jedec_reset(u32 base, struct map_info *map, struct cfi_private *cfi)
 	/* FIXME - should have reset delay before continuing */
 }
 
-
 static int cfi_jedec_setup(struct map_info *map, struct cfi_private *cfi, int index)
 {
 	int i,num_erase_regions;
@@ -1984,7 +1978,6 @@ static int cfi_jedec_setup(struct map_info *map, struct cfi_private *cfi, int in
 
 	return 1;	/* ok */
 }
-
 
 /*
  * There is a BIG problem properly ID'ing the JEDEC device and guaranteeing
@@ -2110,7 +2103,6 @@ static inline int jedec_match( uint32_t base,
  match_done:
 	return rc;
 }
-
 
 static int jedec_probe_chip(struct map_info *map, __u32 base,
 			    unsigned long *chip_map, struct cfi_private *cfi)

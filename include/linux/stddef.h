@@ -3,7 +3,6 @@
 
 #include <uapi/linux/stddef.h>
 
-
 #undef NULL
 #define NULL ((void *)0)
 

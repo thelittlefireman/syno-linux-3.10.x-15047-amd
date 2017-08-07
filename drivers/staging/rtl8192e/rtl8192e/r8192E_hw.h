@@ -17,7 +17,6 @@
  * wlanfae <wlanfae@realtek.com>
 ******************************************************************************/
 
-
 #ifndef R8180_HW
 #define R8180_HW
 
@@ -51,11 +50,8 @@ enum baseband_config {
 
 #define EEPROM_TxPowerDiff	0x1F
 
-
 #define EEPROM_PwDiff		0x21
 #define EEPROM_CrystalCap	0x22
-
-
 
 #define EEPROM_TxPwIndex_CCK_V1		0x29
 #define EEPROM_TxPwIndex_OFDM_24G_V1	0x2C
@@ -432,7 +428,6 @@ enum _RTL8192Pci_HW {
 #define RATE_ALL_OFDM_2SS	(RATR_MCS8 | RATR_MCS9 | RATR_MCS10 |	\
 				RATR_MCS11 | RATR_MCS12 | RATR_MCS13 |	\
 				RATR_MCS14|RATR_MCS15)
-
 
 	DRIVER_RSSI		= 0x32c,
 	MCS_TXAGC		= 0x340,

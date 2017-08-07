@@ -17,7 +17,6 @@
 #include <linux/module.h>
 #include <net/tcp.h>
 
-
 #define BICTCP_BETA_SCALE    1024	/* Scale factor beta calculation
 					 * max_cwnd = snd_cwnd * beta
 					 */
@@ -45,7 +44,6 @@ module_param(initial_ssthresh, int, 0644);
 MODULE_PARM_DESC(initial_ssthresh, "initial value of slow start threshold");
 module_param(smooth_part, int, 0644);
 MODULE_PARM_DESC(smooth_part, "log(B/(B*Smin))/log(B/(B-1))+B, # of RTT from Wmax-B to Wmax");
-
 
 /* BIC TCP Parameters */
 struct bictcp {
@@ -140,8 +138,7 @@ static inline void bictcp_update(struct bictcp *ca, u32 cwnd)
 		ca->cnt = 1;
 }
 
-static void bictcp_cong_avoid(struct sock *sk, u32 ack, u32 acked,
-			      u32 in_flight)
+static void bictcp_cong_avoid(struct sock *sk, u32 ack, u32 in_flight)
 {
 	struct tcp_sock *tp = tcp_sk(sk);
 	struct bictcp *ca = inet_csk_ca(sk);
@@ -150,7 +147,7 @@ static void bictcp_cong_avoid(struct sock *sk, u32 ack, u32 acked,
 		return;
 
 	if (tp->snd_cwnd <= tp->snd_ssthresh)
-		tcp_slow_start(tp, acked);
+		tcp_slow_start(tp);
 	else {
 		bictcp_update(ca, tp->snd_cwnd);
 		tcp_cong_avoid_ai(tp, ca->cnt);
@@ -177,7 +174,6 @@ static u32 bictcp_recalc_ssthresh(struct sock *sk)
 		ca->last_max_cwnd = tp->snd_cwnd;
 
 	ca->loss_cwnd = tp->snd_cwnd;
-
 
 	if (tp->snd_cwnd <= low_window)
 		return max(tp->snd_cwnd >> 1U, 2U);
@@ -211,7 +207,6 @@ static void bictcp_acked(struct sock *sk, u32 cnt, s32 rtt)
 		ca->delayed_ack += cnt;
 	}
 }
-
 
 static struct tcp_congestion_ops bictcp __read_mostly = {
 	.init		= bictcp_init,

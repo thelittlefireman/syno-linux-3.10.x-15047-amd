@@ -1,7 +1,7 @@
 
 /* cnic.c: Broadcom CNIC core network driver.
  *
- * Copyright (c) 2006-2014 Broadcom Corporation
+ * Copyright (c) 2006-2012 Broadcom Corporation
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -115,7 +115,6 @@ struct l4_kcq {
 #endif
 };
 
-
 /*
  * L4 KCQ CQE PG upload
  */
@@ -152,7 +151,6 @@ struct l4_kcq_upload_pg {
 #endif
 };
 
-
 /*
  * Gracefully close the connection request
  */
@@ -181,7 +179,6 @@ struct l4_kwq_close_req {
 	u32 cid;
 	u32 reserved2[6];
 };
-
 
 /*
  * The first request to be passed in order to establish connection in option2
@@ -275,7 +272,6 @@ struct l4_kwq_connect_req1 {
 	u32 rsrv2;
 };
 
-
 /*
  * The second ( optional )request to be passed in order to establish
  * connection in option2 - for IPv6 only
@@ -312,7 +308,6 @@ struct l4_kwq_connect_req2 {
 	u32 dst_ip_v6_3;
 	u32 dst_ip_v6_4;
 };
-
 
 /*
  * The third ( and last )request to be passed in order to establish
@@ -364,7 +359,6 @@ struct l4_kwq_connect_req3 {
 	u32 snd_buf;
 	u32 seed;
 };
-
 
 /*
  * a KWQE request to offload a PG connection
@@ -462,7 +456,6 @@ struct l4_kwq_offload_pg {
 	u32 host_opaque;
 };
 
-
 /*
  * Abortively close the connection request
  */
@@ -491,7 +484,6 @@ struct l4_kwq_reset_req {
 	u32 cid;
 	u32 reserved2[6];
 };
-
 
 /*
  * a KWQE request to update a PG connection
@@ -564,7 +556,6 @@ struct l4_kwq_update_pg {
 	u32 reserved4;
 	u32 reserved5;
 };
-
 
 /*
  * a KWQE request to upload a PG or L4 context
@@ -868,8 +859,6 @@ struct tstorm_fcoe_ag_context {
 	struct tstorm_fcoe_extra_ag_context_section __extra_section;
 };
 
-
-
 /*
  * The tcp aggregative context section of Tstorm
  */
@@ -1045,8 +1034,6 @@ struct tstorm_iscsi_ag_context {
 	struct tstorm_tcp_tcp_ag_context_section tcp;
 };
 
-
-
 /*
  * The fcoe aggregative context of Ustorm
  */
@@ -1189,7 +1176,6 @@ struct ustorm_fcoe_ag_context {
 #endif
 };
 
-
 /*
  * The iscsi aggregative context of Ustorm
  */
@@ -1331,7 +1317,6 @@ struct ustorm_iscsi_ag_context {
 	u16 __reserved2;
 #endif
 };
-
 
 /*
  * The fcoe aggregative context section of Xstorm
@@ -1709,8 +1694,6 @@ struct xstorm_fcoe_ag_context {
 	u32 confq_pbl_base_lo;
 	u32 confq_pbl_base_hi;
 };
-
-
 
 /*
  * The tcp aggregative context section of Xstorm
@@ -2133,7 +2116,6 @@ struct xstorm_iscsi_ag_context {
 	u32 rst_seq_num;
 };
 
-
 /*
  * The L5cm aggregative context of XStorm
  */
@@ -2379,7 +2361,6 @@ struct fcoe_abts_info {
 	__le32 reserved1;
 };
 
-
 /*
  * Fixed size structure in order to plant it in Union structure
  * $$KEEP_ENDIANNESS$$
@@ -2389,7 +2370,6 @@ struct fcoe_abts_rsp_union {
 	u8 rsrv[3];
 	__le32 abts_rsp_payload[7];
 };
-
 
 /*
  * 4 regs size $$KEEP_ENDIANNESS$$
@@ -2403,7 +2383,6 @@ struct fcoe_bd_ctx {
 	__le16 rsrv1;
 };
 
-
 /*
  * FCoE cached sges context $$KEEP_ENDIANNESS$$
  */
@@ -2414,7 +2393,6 @@ struct fcoe_cached_sge_ctx {
 	struct regpair second_buf_addr;
 };
 
-
 /*
  * Cleanup info $$KEEP_ENDIANNESS$$
  */
@@ -2423,7 +2401,6 @@ struct fcoe_cleanup_info {
 	__le16 rolled_tx_seq_cnt;
 	__le32 rolled_tx_data_offset;
 };
-
 
 /*
  * Fcp RSP flags $$KEEP_ENDIANNESS$$
@@ -2503,7 +2480,6 @@ union fcoe_comp_flow_info {
 	__le32 opaque[8];
 };
 
-
 /*
  * External ABTS info $$KEEP_ENDIANNESS$$
  */
@@ -2512,7 +2488,6 @@ struct fcoe_ext_abts_info {
 	struct fcoe_abts_info ctx;
 };
 
-
 /*
  * External cleanup info $$KEEP_ENDIANNESS$$
  */
@@ -2520,7 +2495,6 @@ struct fcoe_ext_cleanup_info {
 	__le32 rsrv0[6];
 	struct fcoe_cleanup_info ctx;
 };
-
 
 /*
  * Fcoe FW Tx sequence context $$KEEP_ENDIANNESS$$
@@ -2538,7 +2512,6 @@ struct fcoe_ext_fw_tx_seq_ctx {
 	__le32 rsrv0[6];
 	struct fcoe_fw_tx_seq_ctx ctx;
 };
-
 
 /*
  * FCoE multiple sges context $$KEEP_ENDIANNESS$$
@@ -2558,17 +2531,12 @@ struct fcoe_ext_mul_sges_ctx {
 	struct regpair rsrv0;
 };
 
-
 /*
  * FCP CMD payload $$KEEP_ENDIANNESS$$
  */
 struct fcoe_fcp_cmd_payload {
 	__le32 opaque[8];
 };
-
-
-
-
 
 /*
  * Fcp xfr rdy payload $$KEEP_ENDIANNESS$$
@@ -2578,7 +2546,6 @@ struct fcoe_fcp_xfr_rdy_payload {
 	__le32 data_ro;
 };
 
-
 /*
  * FC frame $$KEEP_ENDIANNESS$$
  */
@@ -2586,9 +2553,6 @@ struct fcoe_fc_frame {
 	struct fcoe_fc_hdr fc_hdr;
 	__le32 reserved0[2];
 };
-
-
-
 
 /*
  * FCoE KCQ CQE parameters $$KEEP_ENDIANNESS$$
@@ -2617,8 +2581,6 @@ struct fcoe_kcqe {
 #define FCOE_KCQE_LINKED_WITH_NEXT (0x1<<7)
 #define FCOE_KCQE_LINKED_WITH_NEXT_SHIFT 7
 };
-
-
 
 /*
  * FCoE KWQE header $$KEEP_ENDIANNESS$$
@@ -2857,21 +2819,6 @@ union fcoe_kwqe {
 	struct fcoe_kwqe_stat statistics;
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /*
  * TX SGL context $$KEEP_ENDIANNESS$$
  */
@@ -2888,7 +2835,6 @@ struct fcoe_read_flow_info {
 	union fcoe_sgl_union_ctx sgl_ctx;
 	__le32 rsrv0[3];
 };
-
 
 /*
  * Fcoe stat context $$KEEP_ENDIANNESS$$
@@ -2922,7 +2868,6 @@ struct fcoe_rx_seq_ctx {
 	__le32 high_exp_ro;
 };
 
-
 /*
  * Fcoe rx_wr union context $$KEEP_ENDIANNESS$$
  */
@@ -2931,8 +2876,6 @@ union fcoe_rx_wr_union_ctx {
 	union fcoe_comp_flow_info comp_info;
 	__le32 opaque[8];
 };
-
-
 
 /*
  * FCoE SQ element $$KEEP_ENDIANNESS$$
@@ -2944,8 +2887,6 @@ struct fcoe_sqe {
 #define FCOE_SQE_TOGGLE_BIT (0x1<<15)
 #define FCOE_SQE_TOGGLE_BIT_SHIFT 15
 };
-
-
 
 /*
  * 14 regs $$KEEP_ENDIANNESS$$
@@ -3068,15 +3009,6 @@ struct fcoe_task_ctx_entry {
 	struct fcoe_tce_rx_only rxwr_only;
 };
 
-
-
-
-
-
-
-
-
-
 /*
  * FCoE XFRQ element $$KEEP_ENDIANNESS$$
  */
@@ -3088,14 +3020,12 @@ struct fcoe_xfrqe {
 #define FCOE_XFRQE_TOGGLE_BIT_SHIFT 15
 };
 
-
 /*
  * Cached SGEs $$KEEP_ENDIANNESS$$
  */
 struct common_fcoe_sgl {
 	struct fcoe_bd_ctx sge[3];
 };
-
 
 /*
  * FCoE SQ\XFRQ element
@@ -3105,7 +3035,6 @@ struct fcoe_cached_wqe {
 	struct fcoe_xfrqe xfrqe;
 };
 
-
 /*
  * FCoE connection enable\disable params passed by driver to FW in FCoE enable
  * ramrod $$KEEP_ENDIANNESS$$
@@ -3113,7 +3042,6 @@ struct fcoe_cached_wqe {
 struct fcoe_conn_enable_disable_ramrod_params {
 	struct fcoe_kwqe_conn_enable_disable enable_disable_kwqe;
 };
-
 
 /*
  * FCoE connection offload params passed by driver to FW in FCoE offload ramrod
@@ -3125,7 +3053,6 @@ struct fcoe_conn_offload_ramrod_params {
 	struct fcoe_kwqe_conn_offload3 offload_kwqe3;
 	struct fcoe_kwqe_conn_offload4 offload_kwqe4;
 };
-
 
 struct ustorm_fcoe_mng_ctx {
 #if defined(__BIG_ENDIAN)
@@ -3797,7 +3724,6 @@ struct cstorm_iscsi_st_context {
 	struct regpair rsrv1;
 };
 
-
 /*
  * SCSI read/write SQ WQE
  */
@@ -3844,14 +3770,12 @@ struct iscsi_cmd_pdu_hdr_little_endian {
 	u32 scsi_command_block[4];
 };
 
-
 /*
  * Buffer per connection, used in Tstorm
  */
 struct iscsi_conn_buf {
 	struct regpair reserved[8];
 };
-
 
 /*
  * iSCSI context region, used only in iSCSI
@@ -4651,7 +4575,6 @@ struct iscsi_context {
 	struct cstorm_iscsi_st_context cstorm_st_context;
 };
 
-
 /*
  * PDU header of an iSCSI DATA-OUT
  */
@@ -4688,7 +4611,6 @@ struct iscsi_data_pdu_hdr_little_endian {
 	u32 buffer_offset;
 	u32 rsrv4;
 };
-
 
 /*
  * PDU header of an iSCSI login request
@@ -4935,7 +4857,6 @@ struct iscsi_hq_bd {
 #endif
 };
 
-
 /*
  * CQE data for L2 OOO connection $$KEEP_ENDIANNESS$$
  */
@@ -4947,11 +4868,6 @@ struct iscsi_l2_ooo_data {
 	u8 ooo_isle;
 	u8 reserved[8];
 };
-
-
-
-
-
 
 struct iscsi_task_context_entry_xuc_c_write_only {
 	u32 total_data_acked;
@@ -5006,33 +4922,10 @@ struct iscsi_task_context_entry {
 	u32 rsrv1[7];
 };
 
-
-
-
-
-
-
-
 struct iscsi_task_context_entry_xuc_x_init_only {
 	struct regpair lun;
 	u32 exp_data_transfer_len;
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /*
  * ipv6 structure
@@ -5043,8 +4936,6 @@ struct ip_v6_addr {
 	u32 ip_addr_hi_lo;
 	u32 ip_addr_hi_hi;
 };
-
-
 
 /*
  * l5cm- connection identification params
@@ -5159,8 +5050,6 @@ struct l5cm_active_conn_buffer {
 	struct l5cm_tstorm_conn_buffer tstorm_conn_buffer;
 };
 
-
-
 /*
  * The l5cm opaque buffer passed in add new connection ramrod passive side
  */
@@ -5178,7 +5067,6 @@ struct l5cm_hash_input_string {
 	u32 __opaque6;
 	u32 __opaque7[5];
 };
-
 
 /*
  * syn cookie component
@@ -5224,7 +5112,6 @@ struct l5cm_opaque_buf {
 #endif
 };
 
-
 /*
  * l5cm slow path element
  */
@@ -5232,7 +5119,6 @@ struct l5cm_packet_size {
 	u32 size;
 	u32 rsrv;
 };
-
 
 /*
  * The final-ack union structure in PCS entry after final ack arrived
@@ -5243,7 +5129,6 @@ struct l5cm_pcse_ack {
 	struct l5cm_tstorm_conn_buffer rx_socket_params;
 };
 
-
 /*
  * The syn union structure in PCS entry after syn arrived
  */
@@ -5251,7 +5136,6 @@ struct l5cm_pcse_syn {
 	struct l5cm_opaque_buf opaque_buf;
 	u32 rsrv[12];
 };
-
 
 /*
  * pcs entry data for passive connections
@@ -5300,7 +5184,6 @@ struct l5cm_pcs_attributes {
 #endif
 };
 
-
 union l5cm_seg_params {
 	struct l5cm_pcse_syn syn_seg_params;
 	struct l5cm_pcse_ack ack_seg_params;
@@ -5332,9 +5215,6 @@ struct l5cm_pcs_entry {
 	struct l5cm_pcs_hdr hdr;
 	u8 rx_segment[1516];
 };
-
-
-
 
 /*
  * l5cm connection parameters
@@ -5370,9 +5250,6 @@ struct l5cm_spe {
 	union l5cm_specific_data data;
 };
 
-
-
-
 /*
  * Termination variables
  */
@@ -5390,9 +5267,6 @@ struct l5cm_term_vars {
 #define L5CM_TERM_VARS_RSRV_SHIFT 7
 };
 
-
-
-
 /*
  * Tstorm Tcp flags
  */
@@ -5400,14 +5274,13 @@ struct tstorm_l5cm_tcp_flags {
 	u16 flags;
 #define TSTORM_L5CM_TCP_FLAGS_VLAN_ID (0xFFF<<0)
 #define TSTORM_L5CM_TCP_FLAGS_VLAN_ID_SHIFT 0
-#define TSTORM_L5CM_TCP_FLAGS_DELAYED_ACK_EN (0x1<<12)
-#define TSTORM_L5CM_TCP_FLAGS_DELAYED_ACK_SHIFT 12
+#define TSTORM_L5CM_TCP_FLAGS_RSRV0 (0x1<<12)
+#define TSTORM_L5CM_TCP_FLAGS_RSRV0_SHIFT 12
 #define TSTORM_L5CM_TCP_FLAGS_TS_ENABLED (0x1<<13)
 #define TSTORM_L5CM_TCP_FLAGS_TS_ENABLED_SHIFT 13
 #define TSTORM_L5CM_TCP_FLAGS_RSRV1 (0x3<<14)
 #define TSTORM_L5CM_TCP_FLAGS_RSRV1_SHIFT 14
 };
-
 
 /*
  * Xstorm Tcp flags
@@ -5424,8 +5297,6 @@ struct xstorm_l5cm_tcp_flags {
 #define XSTORM_L5CM_TCP_FLAGS_RSRV_SHIFT 3
 };
 
-
-
 /*
  * Out-of-order states
  */
@@ -5439,7 +5310,6 @@ enum tcp_ooo_event {
 	MAX_TCP_OOO_EVENT
 };
 
-
 /*
  * OOO support modes
  */
@@ -5449,13 +5319,5 @@ enum tcp_tstorm_ooo {
 	TCP_TSTORM_OOO_SUPPORTED = 2,
 	MAX_TCP_TSTORM_OOO
 };
-
-
-
-
-
-
-
-
 
 #endif /* __5710_HSI_CNIC_LE__ */

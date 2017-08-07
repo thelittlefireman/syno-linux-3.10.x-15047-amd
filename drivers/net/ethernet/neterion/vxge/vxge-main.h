@@ -96,7 +96,6 @@
 /* 100 - 9k Mtu, 300 - 1.5k mtu */
 #define TTI_T1A_TX_UFC_D(mtu)	(100 + ((VXGE_HW_MAX_MTU - mtu) / 37))
 
-
 #define RTI_RX_URANGE_A		5
 #define RTI_RX_URANGE_B		15
 #define RTI_RX_URANGE_C		40
@@ -427,6 +426,7 @@ void vxge_os_timer(struct timer_list *timer, void (*func)(unsigned long data),
 }
 
 void vxge_initialize_ethtool_ops(struct net_device *ndev);
+enum vxge_hw_status vxge_reset_all_vpaths(struct vxgedev *vdev);
 int vxge_fw_upgrade(struct vxgedev *vdev, char *fw_name, int override);
 
 /* #define VXGE_DEBUG_INIT: debug for initialization functions

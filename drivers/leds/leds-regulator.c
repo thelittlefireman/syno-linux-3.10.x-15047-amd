@@ -61,7 +61,6 @@ static int led_regulator_get_voltage(struct regulator *supply,
 	return regulator_list_voltage(supply, brightness - 1);
 }
 
-
 static void regulator_led_enable(struct regulator_led *led)
 {
 	int ret;
@@ -142,8 +141,7 @@ static void regulator_led_brightness_set(struct led_classdev *led_cdev,
 
 static int regulator_led_probe(struct platform_device *pdev)
 {
-	struct led_regulator_platform_data *pdata =
-			dev_get_platdata(&pdev->dev);
+	struct led_regulator_platform_data *pdata = pdev->dev.platform_data;
 	struct regulator_led *led;
 	struct regulator *vcc;
 	int ret = 0;

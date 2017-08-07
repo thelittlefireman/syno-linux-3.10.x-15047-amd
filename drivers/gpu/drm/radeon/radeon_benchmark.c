@@ -74,7 +74,6 @@ exit_do_move:
 	return r;
 }
 
-
 static void radeon_benchmark_log_results(int n, unsigned size,
 					 unsigned int time,
 					 unsigned sdomain, unsigned ddomain,

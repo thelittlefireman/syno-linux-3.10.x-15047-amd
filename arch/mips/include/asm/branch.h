@@ -18,7 +18,6 @@ extern int __compute_return_epc_for_insn(struct pt_regs *regs,
 extern int __microMIPS_compute_return_epc(struct pt_regs *regs);
 extern int __MIPS16e_compute_return_epc(struct pt_regs *regs);
 
-
 static inline int delay_slot(struct pt_regs *regs)
 {
 	return regs->cp0_cause & CAUSEF_BD;

@@ -33,11 +33,9 @@
 //#define SNDRV_SEQ_OSS_MAX_TIMEOUT	(unsigned long)(-1)
 #define SNDRV_SEQ_OSS_MAX_TIMEOUT	(HZ * 3600)
 
-
 /*
  * prototypes
  */
-
 
 /*
  * create a read queue
@@ -48,12 +46,12 @@ snd_seq_oss_readq_new(struct seq_oss_devinfo *dp, int maxlen)
 	struct seq_oss_readq *q;
 
 	if ((q = kzalloc(sizeof(*q), GFP_KERNEL)) == NULL) {
-		pr_err("ALSA: seq_oss: can't malloc read queue\n");
+		snd_printk(KERN_ERR "can't malloc read queue\n");
 		return NULL;
 	}
 
 	if ((q->q = kcalloc(maxlen, sizeof(union evrec), GFP_KERNEL)) == NULL) {
-		pr_err("ALSA: seq_oss: can't malloc read queue buffer\n");
+		snd_printk(KERN_ERR "can't malloc read queue buffer\n");
 		kfree(q);
 		return NULL;
 	}
@@ -147,7 +145,6 @@ snd_seq_oss_readq_put_event(struct seq_oss_readq *q, union evrec *ev)
 	return 0;
 }
 
-
 /*
  * pop queue
  * caller must hold lock
@@ -221,7 +218,6 @@ snd_seq_oss_readq_put_timestamp(struct seq_oss_readq *q, unsigned long curt, int
 	}
 	return 0;
 }
-
 
 #ifdef CONFIG_PROC_FS
 /*

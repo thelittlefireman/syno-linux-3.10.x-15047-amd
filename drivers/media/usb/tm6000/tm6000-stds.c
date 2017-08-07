@@ -1,7 +1,7 @@
 /*
  *  tm6000-stds.c - driver for TM5600/TM6000/TM6010 USB video capture devices
  *
- *  Copyright (C) 2007 Mauro Carvalho Chehab
+ *  Copyright (C) 2007 Mauro Carvalho Chehab <mchehab@redhat.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ struct tm6000_reg_settings {
 	unsigned char reg;
 	unsigned char value;
 };
-
 
 struct tm6000_std_settings {
 	v4l2_std_id id;

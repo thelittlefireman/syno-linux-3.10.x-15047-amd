@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2004-2013 Emulex.  All rights reserved.           *
+ * Copyright (C) 2004-2008 Emulex.  All rights reserved.           *
  * EMULEX and SLI are trademarks of Emulex.                        *
  * www.emulex.com                                                  *
  * Portions Copyright (C) 2004-2005 Christoph Hellwig              *
@@ -387,9 +387,6 @@ lpfc_vport_create(struct fc_vport *fc_vport, bool disable)
 	/* Create binary sysfs attribute for vport */
 	lpfc_alloc_sysfs_attr(vport);
 
-	/* Set the DFT_LUN_Q_DEPTH accordingly */
-	vport->cfg_lun_queue_depth  = phba->pport->cfg_lun_queue_depth;
-
 	*(struct lpfc_vport **)fc_vport->dd_data = vport;
 	vport->fc_vport = fc_vport;
 
@@ -561,7 +558,6 @@ lpfc_vport_disable(struct fc_vport *fc_vport, bool disable)
 	else
 		return enable_vport(fc_vport);
 }
-
 
 int
 lpfc_vport_delete(struct fc_vport *fc_vport)
@@ -825,7 +821,6 @@ lpfc_destroy_vport_work_array(struct lpfc_hba *phba, struct lpfc_vport **vports)
 	kfree(vports);
 }
 
-
 /**
  * lpfc_vport_reset_stat_data - Reset the statistical data for the vport
  * @vport: Pointer to vport object.
@@ -846,7 +841,6 @@ lpfc_vport_reset_stat_data(struct lpfc_vport *vport)
 				sizeof(struct lpfc_scsicmd_bkt));
 	}
 }
-
 
 /**
  * lpfc_alloc_bucket - Allocate data buffer required for statistical data

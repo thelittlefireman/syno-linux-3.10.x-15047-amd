@@ -235,7 +235,6 @@ struct bau_msg_payload {
 	unsigned int	reserved1:32;		/* not usable */
 };
 
-
 /*
  * UV1 Message header:  16 bytes (128 bits) (bytes 0x30-0x3f of descriptor)
  * see table 4.2.3.0.1 in broacast_assist spec.
@@ -731,9 +730,6 @@ static inline void bau_cpubits_clear(struct bau_local_cpumask *dstp, int nbits)
 }
 
 extern void uv_bau_message_intr1(void);
-#ifdef CONFIG_TRACING
-#define trace_uv_bau_message_intr1 uv_bau_message_intr1
-#endif
 extern void uv_bau_timeout_intr1(void);
 
 struct atomic_short {

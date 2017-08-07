@@ -11,7 +11,8 @@
  * published by the Free Software Foundation.                                *
  *                                                                           *
  * You should have received a copy of the GNU General Public License along   *
- * with this program; if not, see <http://www.gnu.org/licenses/>.            *
+ * with this program; if not, write to the Free Software Foundation, Inc.,   *
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.                 *
  *                                                                           *
  * THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR IMPLIED    *
  * WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED WARRANTIES OF      *
@@ -636,7 +637,6 @@
 #define M_TPIPAR    0x7f
 #define V_TPIPAR(x) ((x) << S_TPIPAR)
 #define G_TPIPAR(x) (((x) >> S_TPIPAR) & M_TPIPAR)
-
 
 /* TP registers */
 #define A_TP_IN_CONFIG 0x300
@@ -1683,7 +1683,6 @@
 #define M_TRANSACTION_TIMER    0xff
 #define V_TRANSACTION_TIMER(x) ((x) << S_TRANSACTION_TIMER)
 #define G_TRANSACTION_TIMER(x) (((x) >> S_TRANSACTION_TIMER) & M_TRANSACTION_TIMER)
-
 
 /* ULP registers */
 #define A_ULP_ULIMIT 0x980

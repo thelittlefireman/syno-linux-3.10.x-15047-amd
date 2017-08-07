@@ -42,7 +42,6 @@ enum {
 	EWS_I2C_6FIRE = 0
 };
 	
-
 /* additional i2c devices for EWS boards */
 struct ews_spec {
 	struct snd_i2c_device *i2cdevs[3];
@@ -137,7 +136,6 @@ static struct snd_i2c_bit_ops snd_ice1712_ewx_cs8427_bit_ops = {
 	.getdata = ewx_i2c_getdata,
 };
 
-
 /*
  * AK4524 access
  */
@@ -163,8 +161,7 @@ static int snd_ice1712_ews88mt_chip_select(struct snd_ice1712 *ice, int chip_mas
 
      __error:
 	snd_i2c_unlock(ice->i2c);
-	dev_err(ice->card->dev,
-		"AK4524 chip select failed, check cable to the front module\n");
+	snd_printk(KERN_ERR "AK4524 chip select failed, check cable to the front module\n");
 	return -EIO;
 }
 
@@ -175,7 +172,7 @@ static void ews88mt_ak4524_lock(struct snd_akm4xxx *ak, int chip)
 	unsigned char tmp;
 	/* assert AK4524 CS */
 	if (snd_ice1712_ews88mt_chip_select(ice, ~(1 << chip) & 0x0f) < 0)
-		dev_err(ice->card->dev, "fatal error (ews88mt chip select)\n");
+		snd_printk(KERN_ERR "fatal error (ews88mt chip select)\n");
 	snd_ice1712_save_gpio_status(ice);
 	tmp = ICE1712_EWS88_SERIAL_DATA |
 		ICE1712_EWS88_SERIAL_CLOCK |
@@ -309,7 +306,6 @@ static int ews88_spdif_stream_put(struct snd_ice1712 *ice, struct snd_ctl_elem_v
 	return change;
 }
 
-
 /* open callback */
 static void ews88_open_spdif(struct snd_ice1712 *ice, struct snd_pcm_substream *substream)
 {
@@ -340,7 +336,6 @@ static void ews88_setup_spdif(struct snd_ice1712 *ice, int rate)
 		snd_ctl_notify(ice->card, SNDRV_CTL_EVENT_MASK_VALUE, &ice->spdif.stream_ctl->id);
 	snd_ice1712_ews_cs8404_spdif_write(ice, tmp);
 }
-
 
 /*
  */
@@ -457,7 +452,7 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
 
 	/* create i2c */
 	if ((err = snd_i2c_bus_create(ice->card, "ICE1712 GPIO 1", NULL, &ice->i2c)) < 0) {
-		dev_err(ice->card->dev, "unable to create I2C bus\n");
+		snd_printk(KERN_ERR "unable to create I2C bus\n");
 		return err;
 	}
 	ice->i2c->private_data = ice;
@@ -470,8 +465,7 @@ static int snd_ice1712_ews_init(struct snd_ice1712 *ice)
 					    ICE1712_6FIRE_PCF9554_ADDR,
 					    &spec->i2cdevs[EWS_I2C_6FIRE]);
 		if (err < 0) {
-			dev_err(ice->card->dev,
-				"PCF9554 initialization failed\n");
+			snd_printk(KERN_ERR "PCF9554 initialization failed\n");
 			return err;
 		}
 		snd_ice1712_6fire_write_pca(ice, PCF9554_REG_CONFIG, 0x80);
@@ -636,7 +630,6 @@ static struct snd_kcontrol_new snd_ice1712_ewx2496_controls[] = {
 	},
 };
 
-
 /*
  * EWS88MT specific controls
  */
@@ -742,7 +735,6 @@ static struct snd_kcontrol_new snd_ice1712_ews88mt_output_sense = {
 	.put = snd_ice1712_ews88mt_output_sense_put,
 };
 
-
 /*
  * EWS88D specific controls
  */
@@ -820,7 +812,6 @@ static struct snd_kcontrol_new snd_ice1712_ews88d_controls[] = {
 	EWS88D_CONTROL(SNDRV_CTL_ELEM_IFACE_MIXER, "ADAT Through", 4, 1, 0),
 };
 
-
 /*
  * DMX 6Fire specific controls
  */
@@ -836,7 +827,7 @@ static int snd_ice1712_6fire_read_pca(struct snd_ice1712 *ice, unsigned char reg
 	byte = 0;
 	if (snd_i2c_readbytes(spec->i2cdevs[EWS_I2C_6FIRE], &byte, 1) != 1) {
 		snd_i2c_unlock(ice->i2c);
-		dev_err(ice->card->dev, "cannot read pca\n");
+		printk(KERN_ERR "cannot read pca\n");
 		return -EIO;
 	}
 	snd_i2c_unlock(ice->i2c);
@@ -939,7 +930,6 @@ static int snd_ice1712_6fire_select_input_put(struct snd_kcontrol *kcontrol, str
 	return 0;
 }
 
-
 #define DMX6FIRE_CONTROL(xname, xshift, xinvert) \
 { .iface = SNDRV_CTL_ELEM_IFACE_MIXER,\
   .name = xname,\
@@ -963,7 +953,6 @@ static struct snd_kcontrol_new snd_ice1712_6fire_controls[] = {
 	DMX6FIRE_CONTROL("Phono Analog Input Switch", 5, 0),
 	DMX6FIRE_CONTROL("Breakbox LED", 6, 0),
 };
-
 
 static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
 {
@@ -1028,7 +1017,6 @@ static int snd_ice1712_ews_add_controls(struct snd_ice1712 *ice)
 	}
 	return 0;
 }
-
 
 /* entry point */
 struct snd_ice1712_card_info snd_ice1712_ews_cards[] = {

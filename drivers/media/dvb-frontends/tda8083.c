@@ -33,7 +33,6 @@
 #include "dvb_frontend.h"
 #include "tda8083.h"
 
-
 struct tda8083_state {
 	struct i2c_adapter* i2c;
 	/* configuration settings */
@@ -47,7 +46,6 @@ static int debug;
 		if (debug) printk(KERN_DEBUG "tda8083: " args); \
 	} while (0)
 
-
 static u8 tda8083_init_tab [] = {
 	0x04, 0x00, 0x4a, 0x79, 0x04, 0x00, 0xff, 0xea,
 	0x48, 0x42, 0x79, 0x60, 0x70, 0x52, 0x9a, 0x10,
@@ -56,7 +54,6 @@ static u8 tda8083_init_tab [] = {
 	0x00, 0x75, 0x00, 0xe0, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00
 };
-
 
 static int tda8083_writereg (struct tda8083_state* state, u8 reg, u8 data)
 {
@@ -189,7 +186,7 @@ static int tda8083_set_tone (struct tda8083_state* state, fe_sec_tone_mode_t ton
 		return tda8083_writereg (state, 0x29, 0x80);
 	default:
 		return -EINVAL;
-	}
+	};
 }
 
 static int tda8083_set_voltage (struct tda8083_state* state, fe_sec_voltage_t voltage)
@@ -201,7 +198,7 @@ static int tda8083_set_voltage (struct tda8083_state* state, fe_sec_voltage_t vo
 		return tda8083_writereg (state, 0x20, 0x11);
 	default:
 		return -EINVAL;
-	}
+	};
 }
 
 static int tda8083_send_diseqc_burst (struct tda8083_state* state, fe_sec_mini_cmd_t burst)

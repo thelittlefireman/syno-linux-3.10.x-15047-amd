@@ -180,17 +180,16 @@ static inline void assert_pte_locked(struct mm_struct *mm, unsigned long addr)
 #define MMU_PAGE_64K_AP	3	/* "Admixed pages" (hash64 only) */
 #define MMU_PAGE_256K	4
 #define MMU_PAGE_1M	5
-#define MMU_PAGE_2M	6
-#define MMU_PAGE_4M	7
-#define MMU_PAGE_8M	8
-#define MMU_PAGE_16M	9
-#define MMU_PAGE_64M	10
-#define MMU_PAGE_256M	11
-#define MMU_PAGE_1G	12
-#define MMU_PAGE_16G	13
-#define MMU_PAGE_64G	14
+#define MMU_PAGE_4M	6
+#define MMU_PAGE_8M	7
+#define MMU_PAGE_16M	8
+#define MMU_PAGE_64M	9
+#define MMU_PAGE_256M	10
+#define MMU_PAGE_1G	11
+#define MMU_PAGE_16G	12
+#define MMU_PAGE_64G	13
 
-#define MMU_PAGE_COUNT	15
+#define MMU_PAGE_COUNT	14
 
 #if defined(CONFIG_PPC_STD_MMU_64)
 /* 64-bit classic hash table MMU */
@@ -211,7 +210,6 @@ static inline void assert_pte_locked(struct mm_struct *mm, unsigned long addr)
 /* Motorola/Freescale 8xx software loaded TLB */
 #  include <asm/mmu-8xx.h>
 #endif
-
 
 #endif /* __KERNEL__ */
 #endif /* _ASM_POWERPC_MMU_H_ */

@@ -9,7 +9,6 @@
  *      2 of the License, or (at your option) any later version.
  */
 
-
 #include <linux/module.h>
 #include <linux/inet_diag.h>
 #include <linux/udp.h>
@@ -99,10 +98,12 @@ static void udp_dump(struct udp_table *table, struct sk_buff *skb, struct netlin
 	s_slot = cb->args[0];
 	num = s_num = cb->args[1];
 
-	for (slot = s_slot; slot <= table->mask; num = s_num = 0, slot++) {
+	for (slot = s_slot; slot <= table->mask; s_num = 0, slot++) {
 		struct sock *sk;
 		struct hlist_nulls_node *node;
 		struct udp_hslot *hslot = &table->hash[slot];
+
+		num = 0;
 
 		if (hlist_nulls_empty(&hslot->head))
 			continue;

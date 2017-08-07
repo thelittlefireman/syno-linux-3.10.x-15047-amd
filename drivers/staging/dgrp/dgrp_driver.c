@@ -23,12 +23,12 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/tty.h>
+#include <linux/init.h>
 
 /*
  *  PortServer includes
  */
 #include "dgrp_common.h"
-
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Digi International, http://www.digi.com");
@@ -51,12 +51,19 @@ MODULE_PARM_DESC(register_prdevices, "Turn on/off registering transparent print 
 module_param_named(pollrate, dgrp_poll_tick, int, 0644);
 MODULE_PARM_DESC(pollrate, "Poll interval in ms");
 
+/* Driver load/unload functions */
+static int dgrp_init_module(void);
+static void dgrp_cleanup_module(void);
+
+module_init(dgrp_init_module);
+module_exit(dgrp_cleanup_module);
+
 /*
  * init_module()
  *
  * Module load.  This is where it all starts.
  */
-static int __init dgrp_init_module(void)
+static int dgrp_init_module(void)
 {
 	int ret;
 
@@ -77,11 +84,10 @@ static int __init dgrp_init_module(void)
 	return 0;
 }
 
-
 /*
  *	Module unload.  This is where it all ends.
  */
-static void __exit dgrp_cleanup_module(void)
+static void dgrp_cleanup_module(void)
 {
 	struct nd_struct *nd, *next;
 
@@ -94,12 +100,8 @@ static void __exit dgrp_cleanup_module(void)
 
 	dgrp_remove_class_sysfs_files();
 
-
 	list_for_each_entry_safe(nd, next, &nd_struct_list, list) {
 		dgrp_tty_uninit(nd);
 		kfree(nd);
 	}
 }
-
-module_init(dgrp_init_module);
-module_exit(dgrp_cleanup_module);

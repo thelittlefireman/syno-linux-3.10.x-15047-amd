@@ -31,6 +31,7 @@
 #include <linux/module.h>
 #include <linux/mman.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/miscdevice.h>
 #include <linux/agp_backend.h>
 #include <linux/agpgart.h>
@@ -208,7 +209,6 @@ static void agp_insert_into_pool(struct agp_memory * temp)
 	}
 	agp_fe.current_controller->pool = temp;
 }
-
 
 /* File private list routines */
 
@@ -602,8 +602,7 @@ static int agp_mmap(struct file *file, struct vm_area_struct *vma)
 			vma->vm_ops = kerninfo.vm_ops;
 		} else if (io_remap_pfn_range(vma, vma->vm_start,
 				(kerninfo.aper_base + offset) >> PAGE_SHIFT,
-				size,
-				pgprot_writecombine(vma->vm_page_prot))) {
+					    size, vma->vm_page_prot)) {
 			goto out_again;
 		}
 		mutex_unlock(&(agp_fe.agp_mutex));
@@ -618,9 +617,8 @@ static int agp_mmap(struct file *file, struct vm_area_struct *vma)
 		if (kerninfo.vm_ops) {
 			vma->vm_ops = kerninfo.vm_ops;
 		} else if (io_remap_pfn_range(vma, vma->vm_start,
-				kerninfo.aper_base >> PAGE_SHIFT,
-				size,
-				pgprot_writecombine(vma->vm_page_prot))) {
+					    kerninfo.aper_base >> PAGE_SHIFT,
+					    size, vma->vm_page_prot)) {
 			goto out_again;
 		}
 		mutex_unlock(&(agp_fe.agp_mutex));
@@ -709,7 +707,6 @@ static int agp_open(struct inode *inode, struct file *file)
 
 	return 0;
 }
-
 
 static ssize_t agp_read(struct file *file, char __user *buf,
 			size_t count, loff_t * ppos)

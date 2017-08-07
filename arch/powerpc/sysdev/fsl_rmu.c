@@ -27,7 +27,6 @@
 #include <linux/types.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
-#include <linux/of_irq.h>
 #include <linux/of_platform.h>
 #include <linux/slab.h>
 
@@ -148,7 +147,6 @@ struct rio_pw_regs {
 	u32 epwqbar;
 	u32 pwqbar;
 };
-
 
 struct rio_tx_desc {
 	u32 pad1;
@@ -574,7 +572,6 @@ int fsl_rio_port_write_init(struct fsl_rio_pw *pw)
 	   clear queue full */
 	out_be32(&pw->pw_regs->pwmr,
 		 RIO_IPWMR_SEN | RIO_IPWMR_QFIE | RIO_IPWMR_EIE | RIO_IPWMR_CQ);
-
 
 	/* Hook up port-write handler */
 	rc = request_irq(IRQ_RIO_PW(pw), fsl_rio_port_write_handler,

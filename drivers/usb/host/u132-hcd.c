@@ -242,7 +242,6 @@ static inline void u132_disable(struct u132 *u132)
 	u132_to_hcd(u132)->state = HC_STATE_HALT;
 }
 
-
 #define kref_to_u132(d) container_of(d, struct u132, kref)
 #define kref_to_u132_endp(d) container_of(d, struct u132_endp, kref)
 #define kref_to_u132_udev(d) container_of(d, struct u132_udev, kref)
@@ -613,7 +612,6 @@ static inline int edset_output(struct u132 *u132, struct u132_ring *ring,
 	return usb_ftdi_elan_edset_output(u132->platform_dev, ring->number,
 		endp, urb, address, endp->usb_endp, toggle_bits, callback);
 }
-
 
 /*
 * must not LOCK sw_lock
@@ -1592,7 +1590,6 @@ static int u132_init(struct u132 *u132)
 	return 0;
 }
 
-
 /* Start an OHCI controller, set the BUS operational
 * resets USB and controller
 * enable interrupts
@@ -1809,9 +1806,9 @@ static int u132_hcd_start(struct usb_hcd *hcd)
 		struct platform_device *pdev =
 			to_platform_device(hcd->self.controller);
 		u16 vendor = ((struct u132_platform_data *)
-			dev_get_platdata(&pdev->dev))->vendor;
+			(pdev->dev.platform_data))->vendor;
 		u16 device = ((struct u132_platform_data *)
-			dev_get_platdata(&pdev->dev))->device;
+			(pdev->dev.platform_data))->device;
 		mutex_lock(&u132->sw_lock);
 		msleep(10);
 		if (vendor == PCI_VENDOR_ID_AMD && device == 0x740c) {
@@ -2640,7 +2637,6 @@ static int u132_roothub_portstatus(struct u132 *u132, __le32 *desc, u16 wIndex)
 	}
 }
 
-
 /* this timer value might be vendor-specific ... */
 #define PORT_RESET_HW_MSEC 10
 #define PORT_RESET_MSEC 10
@@ -2780,7 +2776,6 @@ static int u132_roothub_clearportfeature(struct u132 *u132, u16 wValue,
 		return 0;
 	}
 }
-
 
 /* the virtual root hub timer IRQ checks for hub status*/
 static int u132_hub_status_data(struct usb_hcd *hcd, char *buf)
@@ -2931,7 +2926,6 @@ static int u132_start_port_reset(struct usb_hcd *hcd, unsigned port_num)
 		return 0;
 }
 
-
 #ifdef CONFIG_PM
 static int u132_bus_suspend(struct usb_hcd *hcd)
 {
@@ -3034,7 +3028,7 @@ static void u132_initialise(struct u132 *u132, struct platform_device *pdev)
 	int addrs = MAX_U132_ADDRS;
 	int udevs = MAX_U132_UDEVS;
 	int endps = MAX_U132_ENDPS;
-	u132->board = dev_get_platdata(&pdev->dev);
+	u132->board = pdev->dev.platform_data;
 	u132->platform_dev = pdev;
 	u132->power = 0;
 	u132->reset = 0;
@@ -3133,13 +3127,11 @@ static int u132_probe(struct platform_device *pdev)
 			u132_u132_put_kref(u132);
 			return retval;
 		} else {
-			device_wakeup_enable(hcd->self.controller);
 			u132_monitor_queue_work(u132, 100);
 			return 0;
 		}
 	}
 }
-
 
 #ifdef CONFIG_PM
 /*
@@ -3218,7 +3210,7 @@ static struct platform_driver u132_platform_driver = {
 	.suspend = u132_suspend,
 	.resume = u132_resume,
 	.driver = {
-		   .name = hcd_name,
+		   .name = (char *)hcd_name,
 		   .owner = THIS_MODULE,
 		   },
 };
@@ -3237,7 +3229,6 @@ static int __init u132_hcd_init(void)
 	return retval;
 }
 
-
 module_init(u132_hcd_init);
 static void __exit u132_hcd_exit(void)
 {
@@ -3255,7 +3246,6 @@ static void __exit u132_hcd_exit(void)
 	flush_workqueue(workqueue);
 	destroy_workqueue(workqueue);
 }
-
 
 module_exit(u132_hcd_exit);
 MODULE_LICENSE("GPL");

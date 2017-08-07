@@ -349,11 +349,6 @@ ip6t_do_table(struct sk_buff *skb,
 	local_bh_disable();
 	addend = xt_write_recseq_begin();
 	private = table->private;
-	/*
-	 * Ensure we load private-> members after we've fetched the base
-	 * pointer.
-	 */
-	smp_read_barrier_depends();
 	cpu        = smp_processor_id();
 	table_base = private->entries[cpu];
 	jumpstack  = (struct ip6t_entry **)private->jumpstack[cpu];
@@ -1368,7 +1363,6 @@ do_add_counters(struct net *net, const void __user *user, unsigned int len,
 		ret = t ? PTR_ERR(t) : -ENOENT;
 		goto free;
 	}
-
 
 	local_bh_disable();
 	private = t->private;

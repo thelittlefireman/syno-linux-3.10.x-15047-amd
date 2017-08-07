@@ -66,7 +66,6 @@ notrace void arch_local_irq_disable(void)
 }
 EXPORT_SYMBOL(arch_local_irq_disable);
 
-
 notrace unsigned long arch_local_irq_save(void)
 {
 	unsigned long flags;
@@ -151,7 +150,6 @@ notrace void arch_local_irq_restore(unsigned long flags)
 	preempt_enable();
 }
 EXPORT_SYMBOL(arch_local_irq_restore);
-
 
 notrace void __arch_local_irq_restore(unsigned long flags)
 {

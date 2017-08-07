@@ -179,8 +179,6 @@ static void chnl_flowctrl_cb(struct cflayer *layr, enum caif_ctrlcmd flow,
 		flow == CAIF_CTRLCMD_REMOTE_SHUTDOWN_IND ?
 		 "REMOTE_SHUTDOWN" : "UKNOWN CTRL COMMAND");
 
-
-
 	switch (flow) {
 	case CAIF_CTRLCMD_FLOW_OFF_IND:
 		priv->flowenabled = false;
@@ -285,7 +283,7 @@ static int chnl_net_open(struct net_device *dev)
 				goto error;
 		}
 
-		lldev = __dev_get_by_index(dev_net(dev), llifindex);
+		lldev = dev_get_by_index(dev_net(dev), llifindex);
 
 		if (lldev == NULL) {
 			pr_debug("no interface?\n");
@@ -307,6 +305,7 @@ static int chnl_net_open(struct net_device *dev)
 		mtu = min_t(int, dev->mtu, lldev->mtu - (headroom + tailroom));
 		mtu = min_t(int, GPRS_PDP_MTU, mtu);
 		dev_set_mtu(dev, mtu);
+		dev_put(lldev);
 
 		if (mtu < 100) {
 			pr_warn("CAIF Interface MTU too small (%d)\n", mtu);
@@ -421,7 +420,6 @@ static void ipcaif_net_setup(struct net_device *dev)
 	init_waitqueue_head(&priv->netmgmt_wq);
 }
 
-
 static int ipcaif_fill_info(struct sk_buff *skb, const struct net_device *dev)
 {
 	struct chnl_net *priv;
@@ -514,7 +512,6 @@ static const struct nla_policy ipcaif_policy[IFLA_CAIF_MAX + 1] = {
 	[IFLA_CAIF_IPV6_CONNID]	      = { .type = NLA_U32 },
 	[IFLA_CAIF_LOOPBACK]	      = { .type = NLA_U8 }
 };
-
 
 static struct rtnl_link_ops ipcaif_link_ops __read_mostly = {
 	.kind		= "caif",

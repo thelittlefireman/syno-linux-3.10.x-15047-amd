@@ -22,7 +22,8 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
  * ChangeLog
@@ -420,7 +421,6 @@ struct rx_info {
 	__le32		*descs;
 	dma_addr_t	phy_descs;
 };
-
 
 struct ns83820 {
 	u8			__iomem *base;
@@ -2235,6 +2235,7 @@ out_disable:
 	pci_disable_device(pci_dev);
 out_free:
 	free_netdev(ndev);
+	pci_set_drvdata(pci_dev, NULL);
 out:
 	return err;
 }
@@ -2258,6 +2259,7 @@ static void ns83820_remove_one(struct pci_dev *pci_dev)
 			dev->rx_info.descs, dev->rx_info.phy_descs);
 	pci_disable_device(dev->pci_dev);
 	free_netdev(ndev);
+	pci_set_drvdata(pci_dev, NULL);
 }
 
 static DEFINE_PCI_DEVICE_TABLE(ns83820_pci_tbl) = {
@@ -2275,7 +2277,6 @@ static struct pci_driver driver = {
 	.resume		= ,
 #endif
 };
-
 
 static int __init ns83820_init(void)
 {

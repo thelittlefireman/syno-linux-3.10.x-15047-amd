@@ -109,7 +109,7 @@ extern struct cpuinfo_m32r	boot_cpu_data;
 struct ar {
 	struct v4l2_device v4l2_dev;
 	struct video_device vdev;
-	int start_capture;	/* duaring capture in INT. mode. */
+	unsigned int start_capture;	/* duaring capture in INT. mode. */
 #if USE_INT
 	unsigned char *line_buff;	/* DMA line buffer */
 #endif
@@ -200,7 +200,6 @@ static void iic(int n, unsigned long addr, unsigned long data1, unsigned long da
 	while (ar_inl(PLDI2CSTS) & PLDI2CSTS_BB)
 		cpu_relax();
 }
-
 
 static void init_iic(void)
 {
@@ -307,11 +306,11 @@ static ssize_t ar_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 	/*
 	 * Okay, kick AR LSI to invoke an interrupt
 	 */
-	ar->start_capture = -1;
+	ar->start_capture = 0;
 	ar_outl(arvcr1 | ARVCR1_HIEN, ARVCR1);
 	local_irq_restore(flags);
 	/* .... AR interrupts .... */
-	wait_event_interruptible(ar->wait, ar->start_capture == 0);
+	interruptible_sleep_on(&ar->wait);
 	if (signal_pending(current)) {
 		printk(KERN_ERR "arv: interrupted while get frame data.\n");
 		ret = -EINTR;
@@ -702,7 +701,6 @@ static int ar_initialize(struct ar *ar)
 	return 0;
 }
 
-
 /****************************************************************************
  *
  * Video4Linux Module functions
@@ -847,7 +845,6 @@ out_end:
 	v4l2_device_unregister(&ar->v4l2_dev);
 	return ret;
 }
-
 
 static int __init ar_init_module(void)
 {

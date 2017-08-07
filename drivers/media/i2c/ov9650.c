@@ -1083,7 +1083,7 @@ static int ov965x_enum_frame_sizes(struct v4l2_subdev *sd,
 {
 	int i = ARRAY_SIZE(ov965x_formats);
 
-	if (fse->index >= ARRAY_SIZE(ov965x_framesizes))
+	if (fse->index > ARRAY_SIZE(ov965x_framesizes))
 		return -EINVAL;
 
 	while (--i)
@@ -1119,7 +1119,6 @@ static int __ov965x_set_frame_interval(struct ov965x *ov965x,
 	const struct ov965x_interval *fiv = &ov965x_intervals[0];
 	u64 req_int, err, min_err = ~0ULL;
 	unsigned int i;
-
 
 	if (fi->interval.denominator == 0)
 		return -EINVAL;

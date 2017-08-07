@@ -26,18 +26,11 @@ static struct dentry *efs_mount(struct file_system_type *fs_type,
 	return mount_bdev(fs_type, flags, dev_name, data, efs_fill_super);
 }
 
-static void efs_kill_sb(struct super_block *s)
-{
-	struct efs_sb_info *sbi = SUPER_INFO(s);
-	kill_block_super(s);
-	kfree(sbi);
-}
-
 static struct file_system_type efs_fs_type = {
 	.owner		= THIS_MODULE,
 	.name		= "efs",
 	.mount		= efs_mount,
-	.kill_sb	= efs_kill_sb,
+	.kill_sb	= kill_block_super,
 	.fs_flags	= FS_REQUIRES_DEV,
 };
 MODULE_ALIAS_FS("efs");
@@ -60,7 +53,6 @@ static struct pt_types sgi_pt_types[] = {
 	{0x83,		"Linux native"},
 	{0,		NULL}
 };
-
 
 static struct kmem_cache * efs_inode_cachep;
 
@@ -91,7 +83,7 @@ static void init_once(void *foo)
 	inode_init_once(&ei->vfs_inode);
 }
 
-static int __init init_inodecache(void)
+static int init_inodecache(void)
 {
 	efs_inode_cachep = kmem_cache_create("efs_inode_cache",
 				sizeof(struct efs_inode_info),
@@ -112,6 +104,12 @@ static void destroy_inodecache(void)
 	kmem_cache_destroy(efs_inode_cachep);
 }
 
+static void efs_put_super(struct super_block *s)
+{
+	kfree(s->s_fs_info);
+	s->s_fs_info = NULL;
+}
+
 static int efs_remount(struct super_block *sb, int *flags, char *data)
 {
 	sync_filesystem(sb);
@@ -122,6 +120,7 @@ static int efs_remount(struct super_block *sb, int *flags, char *data)
 static const struct super_operations efs_superblock_operations = {
 	.alloc_inode	= efs_alloc_inode,
 	.destroy_inode	= efs_destroy_inode,
+	.put_super	= efs_put_super,
 	.statfs		= efs_statfs,
 	.remount_fs	= efs_remount,
 };
@@ -260,6 +259,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	struct efs_sb_info *sb;
 	struct buffer_head *bh;
 	struct inode *root;
+	int ret = -EINVAL;
 
  	sb = kzalloc(sizeof(struct efs_sb_info), GFP_KERNEL);
 	if (!sb)
@@ -270,7 +270,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	if (!sb_set_blocksize(s, EFS_BLOCKSIZE)) {
 		printk(KERN_ERR "EFS: device does not support %d byte blocks\n",
 			EFS_BLOCKSIZE);
-		return -EINVAL;
+		goto out_no_fs_ul;
 	}
   
 	/* read the vh (volume header) block */
@@ -278,7 +278,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 
 	if (!bh) {
 		printk(KERN_ERR "EFS: cannot read volume header\n");
-		return -EINVAL;
+		goto out_no_fs_ul;
 	}
 
 	/*
@@ -290,13 +290,13 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	brelse(bh);
 
 	if (sb->fs_start == -1) {
-		return -EINVAL;
+		goto out_no_fs_ul;
 	}
 
 	bh = sb_bread(s, sb->fs_start + EFS_SUPER);
 	if (!bh) {
 		printk(KERN_ERR "EFS: cannot read superblock\n");
-		return -EINVAL;
+		goto out_no_fs_ul;
 	}
 		
 	if (efs_validate_super(sb, (struct efs_super *) bh->b_data)) {
@@ -304,7 +304,7 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 		printk(KERN_WARNING "EFS: invalid superblock at block %u\n", sb->fs_start + EFS_SUPER);
 #endif
 		brelse(bh);
-		return -EINVAL;
+		goto out_no_fs_ul;
 	}
 	brelse(bh);
 
@@ -319,16 +319,24 @@ static int efs_fill_super(struct super_block *s, void *d, int silent)
 	root = efs_iget(s, EFS_ROOTINODE);
 	if (IS_ERR(root)) {
 		printk(KERN_ERR "EFS: get root inode failed\n");
-		return PTR_ERR(root);
+		ret = PTR_ERR(root);
+		goto out_no_fs;
 	}
 
 	s->s_root = d_make_root(root);
 	if (!(s->s_root)) {
 		printk(KERN_ERR "EFS: get root dentry failed\n");
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto out_no_fs;
 	}
 
 	return 0;
+
+out_no_fs_ul:
+out_no_fs:
+	s->s_fs_info = NULL;
+	kfree(sb);
+	return ret;
 }
 
 static int efs_statfs(struct dentry *dentry, struct kstatfs *buf) {
@@ -352,4 +360,3 @@ static int efs_statfs(struct dentry *dentry, struct kstatfs *buf) {
 
 	return 0;
 }
-

@@ -65,7 +65,6 @@ MODULE_PARM_DESC(index, "Index value for Harmony driver.");
 module_param(id, charp, 0444);
 MODULE_PARM_DESC(id, "ID string for Harmony driver.");
 
-
 static struct parisc_device_id snd_harmony_devtable[] = {
 	/* bushmaster / flounder */
 	{ HPHW_FIO, HVERSION_REV_ANY_ID, HVERSION_ANY_ID, 0x0007A }, 
@@ -902,6 +901,8 @@ snd_harmony_free(struct snd_harmony *h)
 	if (h->iobase)
 		iounmap(h->iobase);
 
+	parisc_set_drvdata(h->dev, NULL);
+
 	kfree(h);
 	return 0;
 }
@@ -959,6 +960,8 @@ snd_harmony_create(struct snd_card *card,
                 goto free_and_ret;
         }
 
+	snd_card_set_dev(card, &padev->dev);
+
 	*rchip = h;
 
 	return 0;
@@ -975,7 +978,7 @@ snd_harmony_probe(struct parisc_device *padev)
 	struct snd_card *card;
 	struct snd_harmony *h;
 
-	err = snd_card_new(&padev->dev, index, id, THIS_MODULE, 0, &card);
+	err = snd_card_create(index, id, THIS_MODULE, 0, &card);
 	if (err < 0)
 		return err;
 
@@ -1012,6 +1015,7 @@ static int
 snd_harmony_remove(struct parisc_device *padev)
 {
 	snd_card_free(parisc_get_drvdata(padev));
+	parisc_set_drvdata(padev, NULL);
 	return 0;
 }
 

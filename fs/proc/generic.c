@@ -3,7 +3,7 @@
  *
  * This file contains generic proc-fs routines for handling
  * directories and files.
- * 
+ *
  * Copyright (C) 1991, 1992 Linus Torvalds.
  * Copyright (C) 1997 Theodore Ts'o
  */
@@ -19,7 +19,6 @@
 #include <linux/mount.h>
 #include <linux/init.h>
 #include <linux/idr.h>
-#include <linux/namei.h>
 #include <linux/bitops.h>
 #include <linux/spinlock.h>
 #include <linux/completion.h>
@@ -49,7 +48,8 @@ static int proc_notify_change(struct dentry *dentry, struct iattr *iattr)
 	setattr_copy(inode, iattr);
 	mark_inode_dirty(inode);
 
-	proc_set_user(de, inode->i_uid, inode->i_gid);
+	de->uid = inode->i_uid;
+	de->gid = inode->i_gid;
 	de->mode = inode->i_mode;
 	return 0;
 }
@@ -162,17 +162,6 @@ void proc_free_inum(unsigned int inum)
 	spin_unlock_irqrestore(&proc_inum_lock, flags);
 }
 
-static void *proc_follow_link(struct dentry *dentry, struct nameidata *nd)
-{
-	nd_set_link(nd, __PDE_DATA(dentry->d_inode));
-	return NULL;
-}
-
-static const struct inode_operations proc_link_inode_operations = {
-	.readlink	= generic_readlink,
-	.follow_link	= proc_follow_link,
-};
-
 /*
  * Don't create negative dentries here, return -ENOENT by hand
  * instead.
@@ -216,52 +205,76 @@ struct dentry *proc_lookup(struct inode *dir, struct dentry *dentry,
  * value of the readdir() call, as long as it's non-negative
  * for success..
  */
-int proc_readdir_de(struct proc_dir_entry *de, struct file *file,
-		    struct dir_context *ctx)
+int proc_readdir_de(struct proc_dir_entry *de, struct file *filp, void *dirent,
+		filldir_t filldir)
 {
+	unsigned int ino;
 	int i;
+	struct inode *inode = file_inode(filp);
+	int ret = 0;
 
-	if (!dir_emit_dots(file, ctx))
-		return 0;
+	ino = inode->i_ino;
+	i = filp->f_pos;
+	switch (i) {
+		case 0:
+			if (filldir(dirent, ".", 1, i, ino, DT_DIR) < 0)
+				goto out;
+			i++;
+			filp->f_pos++;
+			/* fall through */
+		case 1:
+			if (filldir(dirent, "..", 2, i,
+				    parent_ino(filp->f_path.dentry),
+				    DT_DIR) < 0)
+				goto out;
+			i++;
+			filp->f_pos++;
+			/* fall through */
+		default:
+			spin_lock(&proc_subdir_lock);
+			de = de->subdir;
+			i -= 2;
+			for (;;) {
+				if (!de) {
+					ret = 1;
+					spin_unlock(&proc_subdir_lock);
+					goto out;
+				}
+				if (!i)
+					break;
+				de = de->next;
+				i--;
+			}
 
-	spin_lock(&proc_subdir_lock);
-	de = de->subdir;
-	i = ctx->pos - 2;
-	for (;;) {
-		if (!de) {
+			do {
+				struct proc_dir_entry *next;
+
+				/* filldir passes info to user space */
+				pde_get(de);
+				spin_unlock(&proc_subdir_lock);
+				if (filldir(dirent, de->name, de->namelen, filp->f_pos,
+					    de->low_ino, de->mode >> 12) < 0) {
+					pde_put(de);
+					goto out;
+				}
+				spin_lock(&proc_subdir_lock);
+				filp->f_pos++;
+				next = de->next;
+				pde_put(de);
+				de = next;
+			} while (de);
 			spin_unlock(&proc_subdir_lock);
-			return 0;
-		}
-		if (!i)
-			break;
-		de = de->next;
-		i--;
 	}
-
-	do {
-		struct proc_dir_entry *next;
-		pde_get(de);
-		spin_unlock(&proc_subdir_lock);
-		if (!dir_emit(ctx, de->name, de->namelen,
-			    de->low_ino, de->mode >> 12)) {
-			pde_put(de);
-			return 0;
-		}
-		spin_lock(&proc_subdir_lock);
-		ctx->pos++;
-		next = de->next;
-		pde_put(de);
-		de = next;
-	} while (de);
-	spin_unlock(&proc_subdir_lock);
-	return 1;
+	ret = 1;
+out:
+	return ret;
 }
 
-int proc_readdir(struct file *file, struct dir_context *ctx)
+int proc_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
-	struct inode *inode = file_inode(file);
+	struct inode *inode = file_inode(filp);
 
-	return proc_readdir_de(PDE(inode), file, ctx);
+	return proc_readdir_de(PDE(inode), filp, dirent, filldir);
 }
 
 /*
@@ -272,7 +285,7 @@ int proc_readdir(struct file *file, struct dir_context *ctx)
 static const struct file_operations proc_dir_operations = {
 	.llseek			= generic_file_llseek,
 	.read			= generic_read_dir,
-	.iterate		= proc_readdir,
+	.readdir		= proc_readdir,
 };
 
 /*
@@ -288,7 +301,7 @@ static int proc_register(struct proc_dir_entry * dir, struct proc_dir_entry * dp
 {
 	struct proc_dir_entry *tmp;
 	int ret;
-	
+
 	ret = proc_alloc_inum(&dp->low_ino);
 	if (ret)
 		return ret;
@@ -451,7 +464,7 @@ out:
 	return NULL;
 }
 EXPORT_SYMBOL(proc_create_data);
- 
+
 void proc_set_size(struct proc_dir_entry *de, loff_t size)
 {
 	de->size = size;

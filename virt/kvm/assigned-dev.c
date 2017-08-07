@@ -796,7 +796,6 @@ out:
 	return r;
 }
 
-
 #ifdef __KVM_HAVE_MSIX
 static int kvm_vm_ioctl_set_msix_nr(struct kvm *kvm,
 				    struct kvm_assigned_msix_nr *entry_nr)

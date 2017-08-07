@@ -71,7 +71,6 @@ static const char * const ext_clock_names[3] = {"IEC958 In", "Word Clock 1xFS",
 /* chip address on SPI bus */
 #define AK4620_ADDR		0x02	/* ADC/DAC */
 
-
 /*
  * GPIO pins
  */
@@ -203,7 +202,6 @@ static const char * const ext_clock_names[3] = {"IEC958 In", "Word Clock 1xFS",
 #define AK4620_DEEMVOL_REG	0x03
 #define AK4620_SMUTE		(1<<7)
 
-#ifdef CONFIG_PROC_FS
 /*
  * Conversion from int value to its binary form. Used for debugging.
  * The output buffer must be allocated prior to calling the function.
@@ -228,7 +226,6 @@ static char *get_binary(char *buffer, int value)
 	buffer[pos] = '\0';
 	return buffer;
 }
-#endif /* CONFIG_PROC_FS */
 
 /*
  * Initial setup of the conversion array GPIO <-> rate
@@ -262,7 +259,6 @@ static unsigned char qtet_ak4113_read(void *private_data, unsigned char reg)
 			AK4113_ADDR, reg);
 }
 
-
 /*
  * AK4620 section
  */
@@ -280,7 +276,7 @@ static void qtet_akm_write(struct snd_akm4xxx *ak, int chip,
 
 	if (snd_BUG_ON(chip < 0 || chip >= 4))
 		return;
-	/*dev_dbg(ice->card->dev, "Writing to AK4620: chip=%d, addr=0x%x,
+	/*printk(KERN_DEBUG "Writing to AK4620: chip=%d, addr=0x%x,
 	  data=0x%x\n", chip, addr, data);*/
 	orig_dir = ice->gpio.get_dir(ice);
 	ice->gpio.set_dir(ice, orig_dir | GPIO_SPI_ALL);
@@ -403,7 +399,6 @@ static struct snd_akm4xxx akm_qtet_dac = {
 };
 
 /* Communication routines with the CPLD */
-
 
 /* Writes data to external register reg, both reg and data are
  * GPIO representations */
@@ -682,7 +677,6 @@ static int qtet_php_put(struct snd_kcontrol *kcontrol,
 	.set_register = set_##xreg,\
 	.get_register = get_##xreg, }
 
-
 #define PRIV_ENUM2(xid, xbit, xreg, xtext1, xtext2)	[xid] = {.bit = xbit,\
 	.set_register = set_##xreg,\
 	.get_register = get_##xreg,\
@@ -898,7 +892,7 @@ static void qtet_set_rate(struct snd_ice1712 *ice, unsigned int rate)
 	new =  (get_cpld(ice) & ~CPLD_CKS_MASK) | get_cks_val(rate);
 	/* switch to internal clock, drop CPLD_SYNC_SEL */
 	new &= ~CPLD_SYNC_SEL;
-	/* dev_dbg(ice->card->dev, "QT - set_rate: old %x, new %x\n",
+	/* printk(KERN_DEBUG "QT - set_rate: old %x, new %x\n",
 	   get_cpld(ice), new); */
 	set_cpld(ice, new);
 }
@@ -978,7 +972,7 @@ static void qtet_ak4113_change(struct ak4113 *ak4113, unsigned char c0,
 			c1) {
 		/* only for SPDIF master mode, rate was changed */
 		rate = snd_ak4113_external_rate(ak4113);
-		/* dev_dbg(ice->card->dev, "ak4113 - input rate changed to %d\n",
+		/* printk(KERN_DEBUG "ak4113 - input rate changed to %d\n",
 		   rate); */
 		qtet_akm_set_rate_val(ice->akm, rate);
 	}
@@ -1063,7 +1057,6 @@ static int qtet_init(struct snd_ice1712 *ice)
 
 	/* CPLD Initialize */
 	set_cpld(ice, 0);
-
 
 	ice->num_total_dacs = 2;
 	ice->num_total_adcs = 2;

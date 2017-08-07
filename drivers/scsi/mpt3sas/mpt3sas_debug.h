@@ -2,7 +2,7 @@
  * Logging Support for MPT (Message Passing Technology) based controllers
  *
  * This code is based on drivers/scsi/mpt3sas/mpt3sas_debug.c
- * Copyright (C) 2012-2013  LSI Corporation
+ * Copyright (C) 2012  LSI Corporation
  *  (mailto:DL-MPTFusionLinux@lsi.com)
  *
  * This program is free software; you can redistribute it and/or
@@ -66,7 +66,6 @@
 
 #define MPT_DEBUG_TRIGGER_DIAG		0x00200000
 
-
 /*
  * CONFIG_SCSI_MPT3SAS_LOGGING - enabled in Kconfig
  */
@@ -80,7 +79,6 @@
 #else
 #define MPT_CHECK_LOGGING(IOC, CMD, BITS)
 #endif /* CONFIG_SCSI_MPT3SAS_LOGGING */
-
 
 /*
  * debug macros
@@ -148,8 +146,6 @@
 
 #define dTriggerDiagPrintk(IOC, CMD)			\
 	MPT_CHECK_LOGGING(IOC, CMD, MPT_DEBUG_TRIGGER_DIAG)
-
-
 
 /* inline functions for dumping debug data*/
 #ifdef CONFIG_SCSI_MPT3SAS_LOGGING

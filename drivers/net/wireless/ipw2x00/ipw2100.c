@@ -130,7 +130,6 @@ that protects the following:
 All external entry functions are locked with the priv->action_lock to ensure
 that only one external action is invoked at a time.
 
-
 */
 
 #include <linux/compiler.h>
@@ -1930,10 +1929,10 @@ static int ipw2100_wdev_init(struct net_device *dev)
 			bg_band->channels[i].max_power = geo->bg[i].max_power;
 			if (geo->bg[i].flags & LIBIPW_CH_PASSIVE_ONLY)
 				bg_band->channels[i].flags |=
-					IEEE80211_CHAN_NO_IR;
+					IEEE80211_CHAN_PASSIVE_SCAN;
 			if (geo->bg[i].flags & LIBIPW_CH_NO_IBSS)
 				bg_band->channels[i].flags |=
-					IEEE80211_CHAN_NO_IR;
+					IEEE80211_CHAN_NO_IBSS;
 			if (geo->bg[i].flags & LIBIPW_CH_RADAR_DETECT)
 				bg_band->channels[i].flags |=
 					IEEE80211_CHAN_RADAR;
@@ -6242,6 +6241,8 @@ static int ipw2100_pci_init_one(struct pci_dev *pci_dev,
 	if ((val & 0x0000ff00) != 0)
 		pci_write_config_dword(pci_dev, 0x40, val & 0xffff00ff);
 
+	pci_set_power_state(pci_dev, PCI_D0);
+
 	if (!ipw2100_hw_is_adapter_in_system(dev)) {
 		printk(KERN_WARNING DRV_NAME
 		       "Device not found via register read.\n");
@@ -6362,6 +6363,7 @@ out:
 				   &ipw2100_attribute_group);
 
 		free_libipw(dev, 0);
+		pci_set_drvdata(pci_dev, NULL);
 	}
 
 	pci_iounmap(pci_dev, ioaddr);
@@ -7065,7 +7067,7 @@ static int ipw2100_wx_set_nick(struct net_device *dev,
 	if (wrqu->data.length > IW_ESSID_MAX_SIZE)
 		return -E2BIG;
 
-	wrqu->data.length = min_t(size_t, wrqu->data.length, sizeof(priv->nick));
+	wrqu->data.length = min((size_t) wrqu->data.length, sizeof(priv->nick));
 	memset(priv->nick, 0, sizeof(priv->nick));
 	memcpy(priv->nick, extra, wrqu->data.length);
 

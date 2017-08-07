@@ -39,11 +39,6 @@ struct thread_info {
 	struct restart_block	restart_block;
 	struct single_step_state *step_state;	/* single step state
 						   (if non-zero) */
-	int			align_ctl;	/* controls unaligned access */
-#ifdef __tilegx__
-	unsigned long		unalign_jit_tmp[4]; /* temp r0..r3 storage */
-	void __user		*unalign_jit_base; /* unalign fixup JIT base */
-#endif
 };
 
 /*
@@ -61,7 +56,6 @@ struct thread_info {
 		.fn = do_no_restart_syscall,	\
 	},					\
 	.step_state	= NULL,			\
-	.align_ctl	= 0,			\
 }
 
 #define init_thread_info	(init_thread_union.thread_info)
@@ -112,6 +106,8 @@ extern void _cpu_idle(void);
 #endif
 
 #endif /* !__ASSEMBLY__ */
+
+#define PREEMPT_ACTIVE		0x10000000
 
 /*
  * Thread information flags that various assembly files may need to access.

@@ -29,6 +29,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -281,7 +282,6 @@ static struct ata_port_operations atp867x_ops = {
 	.set_dmamode		= atp867x_set_dmamode,
 };
 
-
 #ifdef	ATP867X_DEBUG
 static void atp867x_check_res(struct pci_dev *pdev)
 {
@@ -533,7 +533,7 @@ err_out:
 #ifdef CONFIG_PM
 static int atp867x_reinit_one(struct pci_dev *pdev)
 {
-	struct ata_host *host = pci_get_drvdata(pdev);
+	struct ata_host *host = dev_get_drvdata(&pdev->dev);
 	int rc;
 
 	rc = ata_pci_device_do_resume(pdev);

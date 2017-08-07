@@ -139,7 +139,7 @@ static int bgpio_get(struct gpio_chip *gc, unsigned int gpio)
 {
 	struct bgpio_chip *bgc = to_bgpio_chip(gc);
 
-	return !!(bgc->read_reg(bgc->reg_dat) & bgc->pin2mask(bgc, gpio));
+	return bgc->read_reg(bgc->reg_dat) & bgc->pin2mask(bgc, gpio);
 }
 
 static void bgpio_set(struct gpio_chip *gc, unsigned int gpio, int val)
@@ -488,7 +488,7 @@ static int bgpio_pdev_probe(struct platform_device *pdev)
 	void __iomem *dirout;
 	void __iomem *dirin;
 	unsigned long sz;
-	unsigned long flags = pdev->id_entry->driver_data;
+	unsigned long flags = 0;
 	int err;
 	struct bgpio_chip *bgc;
 	struct bgpio_pdata *pdata = dev_get_platdata(dev);
@@ -519,6 +519,9 @@ static int bgpio_pdev_probe(struct platform_device *pdev)
 	if (err)
 		return err;
 
+	if (!strcmp(platform_get_device_id(pdev)->name, "basic-mmio-gpio-be"))
+		flags |= BGPIOF_BIG_ENDIAN;
+
 	bgc = devm_kzalloc(&pdev->dev, sizeof(*bgc), GFP_KERNEL);
 	if (!bgc)
 		return -ENOMEM;
@@ -528,8 +531,6 @@ static int bgpio_pdev_probe(struct platform_device *pdev)
 		return err;
 
 	if (pdata) {
-		if (pdata->label)
-			bgc->gc.label = pdata->label;
 		bgc->gc.base = pdata->base;
 		if (pdata->ngpio > 0)
 			bgc->gc.ngpio = pdata->ngpio;
@@ -548,14 +549,9 @@ static int bgpio_pdev_remove(struct platform_device *pdev)
 }
 
 static const struct platform_device_id bgpio_id_table[] = {
-	{
-		.name		= "basic-mmio-gpio",
-		.driver_data	= 0,
-	}, {
-		.name		= "basic-mmio-gpio-be",
-		.driver_data	= BGPIOF_BIG_ENDIAN,
-	},
-	{ }
+	{ "basic-mmio-gpio", },
+	{ "basic-mmio-gpio-be", },
+	{},
 };
 MODULE_DEVICE_TABLE(platform, bgpio_id_table);
 

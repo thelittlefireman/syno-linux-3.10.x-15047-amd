@@ -21,17 +21,24 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * along with GNU CC; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  *
  * Please send any bug reports or fixes you make to the
  * email address(es):
- *    lksctp developers <linux-sctp@vger.kernel.org>
+ *    lksctp developers <lksctp-developers@lists.sourceforge.net>
+ *
+ * Or submit a bug report through the following website:
+ *    http://www.sf.net/projects/lksctp
  *
  * Written or modified by:
  *    Jon Grimm             <jgrimm@us.ibm.com>
  *    La Monte H.P. Yarroll <piggy@acm.org>
  *    Sridhar Samudrala     <sri@us.ibm.com>
+ *
+ * Any bugs reported given to us we will try to fix... any fixes shared will
+ * be incorporated into the next SCTP release.
  */
 
 #include <linux/slab.h>
@@ -43,9 +50,9 @@
 #include <net/sctp/sm.h>
 
 /* Forward declarations for internal helpers.  */
-static struct sctp_ulpevent *sctp_ulpq_reasm(struct sctp_ulpq *ulpq,
+static struct sctp_ulpevent * sctp_ulpq_reasm(struct sctp_ulpq *ulpq,
 					      struct sctp_ulpevent *);
-static struct sctp_ulpevent *sctp_ulpq_order(struct sctp_ulpq *,
+static struct sctp_ulpevent * sctp_ulpq_order(struct sctp_ulpq *,
 					      struct sctp_ulpevent *);
 static void sctp_ulpq_reasm_drain(struct sctp_ulpq *ulpq);
 
@@ -64,7 +71,6 @@ struct sctp_ulpq *sctp_ulpq_init(struct sctp_ulpq *ulpq,
 
 	return ulpq;
 }
-
 
 /* Flush the reassembly and ordering queues.  */
 void sctp_ulpq_flush(struct sctp_ulpq *ulpq)
@@ -107,7 +113,7 @@ int sctp_ulpq_tail_data(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
 	event = sctp_ulpq_reasm(ulpq, event);
 
 	/* Do ordering if needed.  */
-	if ((event) && (event->msg_flags & MSG_EOR)) {
+	if ((event) && (event->msg_flags & MSG_EOR)){
 		/* Create a temporary list to collect chunks on.  */
 		skb_queue_head_init(&temp);
 		__skb_queue_tail(&temp, sctp_event2skb(event));
@@ -336,8 +342,7 @@ static struct sctp_ulpevent *sctp_make_reassembled_event(struct net *net,
 		pos = f_frag->next;
 
 	/* Get the last skb in the f_frag's frag_list if present. */
-	for (last = list; list; last = list, list = list->next)
-		;
+	for (last = list; list; last = list, list = list->next);
 
 	/* Add the list of remaining fragments to the first fragments
 	 * frag_list.
@@ -394,7 +399,6 @@ static struct sctp_ulpevent *sctp_make_reassembled_event(struct net *net,
 
 	return event;
 }
-
 
 /* Helper function to check if an incoming chunk has filled up the last
  * missing fragment in a SCTP datagram and return the corresponding event.
@@ -574,7 +578,6 @@ done:
 	return retval;
 }
 
-
 /* Helper function to reassemble chunks.  Hold chunks on the reasm queue that
  * need reassembling.
  */
@@ -727,7 +730,7 @@ static void sctp_ulpq_reasm_drain(struct sctp_ulpq *ulpq)
 
 	while ((event = sctp_ulpq_retrieve_reassembled(ulpq)) != NULL) {
 		/* Do ordering if needed.  */
-		if ((event) && (event->msg_flags & MSG_EOR)) {
+		if ((event) && (event->msg_flags & MSG_EOR)){
 			skb_queue_head_init(&temp);
 			__skb_queue_tail(&temp, sctp_event2skb(event));
 
@@ -741,7 +744,6 @@ static void sctp_ulpq_reasm_drain(struct sctp_ulpq *ulpq)
 			sctp_ulpq_tail_event(ulpq, event);
 	}
 }
-
 
 /* Helper function to gather skbs that have possibly become
  * ordered by an an incoming chunk.
@@ -831,7 +833,6 @@ static void sctp_ulpq_store_ordered(struct sctp_ulpq *ulpq,
 		if (csid == sid && SSN_lt(ssn, cssn))
 			break;
 	}
-
 
 	/* Insert before pos. */
 	__skb_queue_before(&ulpq->lobby, pos, sctp_event2skb(event));
@@ -1110,8 +1111,6 @@ void sctp_ulpq_renege(struct sctp_ulpq *ulpq, struct sctp_chunk *chunk,
 
 	sk_mem_reclaim(asoc->base.sk);
 }
-
-
 
 /* Notify the application if an association is aborted and in
  * partial delivery mode.  Send up any pending received messages.

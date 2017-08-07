@@ -38,6 +38,7 @@ void ufs_free_fragments(struct inode *inode, u64 fragment, unsigned count)
 {
 	struct super_block * sb;
 	struct ufs_sb_private_info * uspi;
+	struct ufs_super_block_first * usb1;
 	struct ufs_cg_private_info * ucpi;
 	struct ufs_cylinder_group * ucg;
 	unsigned cgno, bit, end_bit, bbase, blkmap, i;
@@ -45,6 +46,7 @@ void ufs_free_fragments(struct inode *inode, u64 fragment, unsigned count)
 	
 	sb = inode->i_sb;
 	uspi = UFS_SB(sb)->s_uspi;
+	usb1 = ubh_get_usb_first(uspi);
 	
 	UFSD("ENTER, fragment %llu, count %u\n",
 	     (unsigned long long)fragment, count);
@@ -133,6 +135,7 @@ void ufs_free_blocks(struct inode *inode, u64 fragment, unsigned count)
 {
 	struct super_block * sb;
 	struct ufs_sb_private_info * uspi;
+	struct ufs_super_block_first * usb1;
 	struct ufs_cg_private_info * ucpi;
 	struct ufs_cylinder_group * ucg;
 	unsigned overflow, cgno, bit, end_bit, i;
@@ -140,6 +143,7 @@ void ufs_free_blocks(struct inode *inode, u64 fragment, unsigned count)
 	
 	sb = inode->i_sb;
 	uspi = UFS_SB(sb)->s_uspi;
+	usb1 = ubh_get_usb_first(uspi);
 
 	UFSD("ENTER, fragment %llu, count %u\n",
 	     (unsigned long long)fragment, count);
@@ -277,7 +281,6 @@ static void ufs_change_blocknr(struct inode *inode, sector_t beg,
 		pos = i & mask;
 		for (j = 0; j < pos; ++j)
 			bh = bh->b_this_page;
-
 
 		if (unlikely(index == last_index))
 			lblock = end & mask;
@@ -495,6 +498,7 @@ static u64 ufs_add_fragments(struct inode *inode, u64 fragment,
 {
 	struct super_block * sb;
 	struct ufs_sb_private_info * uspi;
+	struct ufs_super_block_first * usb1;
 	struct ufs_cg_private_info * ucpi;
 	struct ufs_cylinder_group * ucg;
 	unsigned cgno, fragno, fragoff, count, fragsize, i;
@@ -504,6 +508,7 @@ static u64 ufs_add_fragments(struct inode *inode, u64 fragment,
 	
 	sb = inode->i_sb;
 	uspi = UFS_SB(sb)->s_uspi;
+	usb1 = ubh_get_usb_first (uspi);
 	count = newcount - oldcount;
 	
 	cgno = ufs_dtog(uspi, fragment);
@@ -571,6 +576,7 @@ static u64 ufs_alloc_fragments(struct inode *inode, unsigned cgno,
 {
 	struct super_block * sb;
 	struct ufs_sb_private_info * uspi;
+	struct ufs_super_block_first * usb1;
 	struct ufs_cg_private_info * ucpi;
 	struct ufs_cylinder_group * ucg;
 	unsigned oldcg, i, j, k, allocsize;
@@ -581,6 +587,7 @@ static u64 ufs_alloc_fragments(struct inode *inode, unsigned cgno,
 
 	sb = inode->i_sb;
 	uspi = UFS_SB(sb)->s_uspi;
+	usb1 = ubh_get_usb_first(uspi);
 	oldcg = cgno;
 	
 	/*
@@ -682,6 +689,7 @@ static u64 ufs_alloccg_block(struct inode *inode,
 {
 	struct super_block * sb;
 	struct ufs_sb_private_info * uspi;
+	struct ufs_super_block_first * usb1;
 	struct ufs_cylinder_group * ucg;
 	u64 result, blkno;
 
@@ -689,6 +697,7 @@ static u64 ufs_alloccg_block(struct inode *inode,
 
 	sb = inode->i_sb;
 	uspi = UFS_SB(sb)->s_uspi;
+	usb1 = ubh_get_usb_first(uspi);
 	ucg = ubh_get_ucg(UCPI_UBH(ucpi));
 
 	if (goal == 0) {
@@ -742,7 +751,6 @@ static unsigned ubh_scanc(struct ufs_sb_private_info *uspi,
 	unsigned rest, offset;
 	unsigned char *cp;
 	
-
 	offset = begin & ~uspi->s_fmask;
 	begin >>= uspi->s_fshift;
 	for (;;) {
@@ -784,6 +792,7 @@ static u64 ufs_bitmap_search(struct super_block *sb,
 		0x0, 0x2, 0x6, 0xe, 0x1e, 0x3e, 0x7e, 0xfe, 0x1fe
 	};
 	struct ufs_sb_private_info *uspi = UFS_SB(sb)->s_uspi;
+	struct ufs_super_block_first *usb1;
 	struct ufs_cylinder_group *ucg;
 	unsigned start, length, loc;
 	unsigned pos, want, blockmap, mask, end;
@@ -792,6 +801,7 @@ static u64 ufs_bitmap_search(struct super_block *sb,
 	UFSD("ENTER, cg %u, goal %llu, count %u\n", ucpi->c_cgx,
 	     (unsigned long long)goal, count);
 
+	usb1 = ubh_get_usb_first (uspi);
 	ucg = ubh_get_ucg(UCPI_UBH(ucpi));
 
 	if (goal)
@@ -900,7 +910,6 @@ static void ufs_clusteracct(struct super_block * sb,
 	if (forw > 0)
 		fs32_sub(sb, (__fs32*)ubh_get_addr(UCPI_UBH(ucpi), ucpi->c_clustersumoff + (forw << 2)), cnt);
 }
-
 
 static unsigned char ufs_fragtable_8fpb[] = {
 	0x00, 0x01, 0x01, 0x02, 0x01, 0x01, 0x02, 0x04, 0x01, 0x01, 0x01, 0x03, 0x02, 0x03, 0x04, 0x08,

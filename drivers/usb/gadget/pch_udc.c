@@ -2458,7 +2458,6 @@ static void pch_udc_svc_control_out(struct pch_udc_dev *dev)
 	pch_udc_ep_set_rrdy(ep);
 }
 
-
 /**
  * pch_udc_postsvc_epinters() - This function enables end point interrupts
  *				and clears NAK status
@@ -2550,7 +2549,6 @@ static void pch_udc_activate_control_ep(struct pch_udc_dev *dev)
 
 	pch_udc_ep_clear_nak(ep);
 }
-
 
 /**
  * pch_udc_svc_ur_interrupt() - This function handles a USB reset interrupt
@@ -2896,12 +2894,12 @@ static void pch_udc_pcd_reinit(struct pch_udc_dev *dev)
 			ep->offset_addr = (UDC_EPINT_OUT_SHIFT + ep->num) *
 					  UDC_EP_REG_SHIFT;
 		/* need to set ep->ep.maxpacket and set Default Configuration?*/
-		usb_ep_set_maxpacket_limit(&ep->ep, UDC_BULK_MAX_PKT_SIZE);
+		ep->ep.maxpacket = UDC_BULK_MAX_PKT_SIZE;
 		list_add_tail(&ep->ep.ep_list, &dev->gadget.ep_list);
 		INIT_LIST_HEAD(&ep->queue);
 	}
-	usb_ep_set_maxpacket_limit(&dev->ep[UDC_EP0IN_IDX].ep, UDC_EP0IN_MAX_PKT_SIZE);
-	usb_ep_set_maxpacket_limit(&dev->ep[UDC_EP0OUT_IDX].ep, UDC_EP0OUT_MAX_PKT_SIZE);
+	dev->ep[UDC_EP0IN_IDX].ep.maxpacket = UDC_EP0IN_MAX_PKT_SIZE;
+	dev->ep[UDC_EP0OUT_IDX].ep.maxpacket = UDC_EP0OUT_MAX_PKT_SIZE;
 
 	/* remove ep0 in and out from the list.  They have own pointer */
 	list_del_init(&dev->ep[UDC_EP0IN_IDX].ep.ep_list);
@@ -3080,6 +3078,7 @@ static void pch_udc_remove(struct pci_dev *pdev)
 	if (dev->active)
 		pci_disable_device(pdev);
 	kfree(dev);
+	pci_set_drvdata(pdev, NULL);
 }
 
 #ifdef CONFIG_PM
@@ -3210,7 +3209,7 @@ finished:
 	return retval;
 }
 
-static const struct pci_device_id pch_udc_pcidev_id[] = {
+static DEFINE_PCI_DEVICE_TABLE(pch_udc_pcidev_id) = {
 	{
 		PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_EG20T_UDC),
 		.class = (PCI_CLASS_SERIAL_USB << 8) | 0xfe,

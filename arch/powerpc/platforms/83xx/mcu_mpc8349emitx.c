@@ -11,6 +11,7 @@
  * (at your option) any later version.
  */
 
+#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/device.h>
@@ -55,7 +56,6 @@ static int shutdown_thread_fn(void *data)
 		if (ret < 0)
 			pr_err("MCU status reg read failed.\n");
 		mcu->reg_ctrl = ret;
-
 
 		if (mcu->reg_ctrl & MCU_CTRL_BTN) {
 			i2c_smbus_write_byte_data(mcu->client, MCU_REG_CTRL,
@@ -203,6 +203,7 @@ static int mcu_remove(struct i2c_client *client)
 	ret = mcu_gpiochip_remove(mcu);
 	if (ret)
 		return ret;
+	i2c_set_clientdata(client, NULL);
 	kfree(mcu);
 	return 0;
 }
@@ -229,7 +230,17 @@ static struct i2c_driver mcu_driver = {
 	.id_table = mcu_ids,
 };
 
-module_i2c_driver(mcu_driver);
+static int __init mcu_init(void)
+{
+	return i2c_add_driver(&mcu_driver);
+}
+module_init(mcu_init);
+
+static void __exit mcu_exit(void)
+{
+	i2c_del_driver(&mcu_driver);
+}
+module_exit(mcu_exit);
 
 MODULE_DESCRIPTION("Power Management and GPIO expander driver for "
 		   "MPC8349E-mITX-compatible MCU");

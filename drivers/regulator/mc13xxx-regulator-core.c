@@ -167,10 +167,8 @@ int mc13xxx_get_num_regulators_dt(struct platform_device *pdev)
 	struct device_node *parent;
 	int num;
 
-	if (!pdev->dev.parent->of_node)
-		return -ENODEV;
-
-	parent = of_get_child_by_name(pdev->dev.parent->of_node, "regulators");
+	of_node_get(pdev->dev.parent->of_node);
+	parent = of_find_node_by_name(pdev->dev.parent->of_node, "regulators");
 	if (!parent)
 		return -ENODEV;
 
@@ -189,10 +187,8 @@ struct mc13xxx_regulator_init_data *mc13xxx_parse_regulators_dt(
 	struct device_node *parent, *child;
 	int i, parsed = 0;
 
-	if (!pdev->dev.parent->of_node)
-		return NULL;
-
-	parent = of_get_child_by_name(pdev->dev.parent->of_node, "regulators");
+	of_node_get(pdev->dev.parent->of_node);
+	parent = of_find_node_by_name(pdev->dev.parent->of_node, "regulators");
 	if (!parent)
 		return NULL;
 

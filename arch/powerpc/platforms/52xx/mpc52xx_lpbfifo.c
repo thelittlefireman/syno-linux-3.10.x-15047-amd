@@ -245,7 +245,7 @@ static irqreturn_t mpc52xx_lpbfifo_irq(int irq, void *dev_id)
 
 	if (dma && !write) {
 		spin_unlock_irqrestore(&lpbfifo.lock, flags);
-		pr_err("bogus LPBFIFO IRQ (dma and not writing)\n");
+		pr_err("bogus LPBFIFO IRQ (dma and not writting)\n");
 		return IRQ_HANDLED;
 	}
 
@@ -538,7 +538,6 @@ static int mpc52xx_lpbfifo_probe(struct platform_device *op)
 	dev_err(&op->dev, "mpc52xx_lpbfifo_probe() failed\n");
 	return -ENODEV;
 }
-
 
 static int mpc52xx_lpbfifo_remove(struct platform_device *op)
 {

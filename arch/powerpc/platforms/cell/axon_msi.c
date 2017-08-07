@@ -7,7 +7,6 @@
  * 2 of the License, or (at your option) any later version.
  */
 
-
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/kernel.h>
@@ -22,7 +21,6 @@
 #include <asm/machdep.h>
 #include <asm/prom.h>
 
-
 /*
  * MSIC registers, specified as offsets from dcr_base
  */
@@ -35,7 +33,6 @@
 /* Hold the read/write offsets into the FIFO */
 #define MSIC_READ_OFFSET_REG	0x5
 #define MSIC_WRITE_OFFSET_REG	0x6
-
 
 /* MSIC control register flags */
 #define MSIC_CTRL_ENABLE		0x0001
@@ -65,7 +62,6 @@
 /* Each entry in the FIFO is 16 bytes, the first 4 bytes hold the irq # */
 #define MSIC_FIFO_ENTRY_SIZE	0x10
 
-
 struct axon_msic {
 	struct irq_domain *irq_domain;
 	__le32 *fifo_virt;
@@ -83,7 +79,6 @@ void axon_msi_debug_setup(struct device_node *dn, struct axon_msic *msic);
 static inline void axon_msi_debug_setup(struct device_node *dn,
 					struct axon_msic *msic) { }
 #endif
-
 
 static void msic_dcr_write(struct axon_msic *msic, unsigned int dcr_n, u32 val)
 {
@@ -456,7 +451,6 @@ static int __init axon_msi_init(void)
 	return platform_driver_register(&axon_msi_driver);
 }
 subsys_initcall(axon_msi_init);
-
 
 #ifdef DEBUG
 static int msic_set(void *data, u64 val)

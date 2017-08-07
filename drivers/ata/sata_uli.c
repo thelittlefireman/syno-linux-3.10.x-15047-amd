@@ -28,6 +28,7 @@
 #include <linux/module.h>
 #include <linux/gfp.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -92,7 +93,6 @@ static const struct ata_port_info uli_port_info = {
 	.udma_mask      = ATA_UDMA6,
 	.port_ops       = &uli_ops,
 };
-
 
 MODULE_AUTHOR("Peer Chen");
 MODULE_DESCRIPTION("low-level driver for ULi Electronics SATA controller");

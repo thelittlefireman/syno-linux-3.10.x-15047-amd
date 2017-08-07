@@ -60,7 +60,6 @@
 
 #include <linux/delay.h>
 
-
 #define VERSION_STRING DRIVER_DESC " 2.1d"
 
 /*    Macros definitions */
@@ -134,7 +133,6 @@ static int debug;
 /* Size of tmp send buffer to card */
 #define SEND_BUF_MAX		1024
 #define RECEIVE_BUF_MAX		4
-
 
 #define R_IIR		0x0000	/* Interrupt Identity Register */
 #define R_FCR		0x0000	/* Flow Control Register */
@@ -959,7 +957,7 @@ static int receive_flow_control(struct nozomi *dc)
 		dev_err(&dc->pdev->dev,
 			"ERROR: flow control received for non-existing port\n");
 		return 0;
-	}
+	};
 
 	DBG1("0x%04X->0x%04X", *((u16 *)&dc->port[port].ctrl_dl),
 	   *((u16 *)&ctrl_dl));
@@ -1025,7 +1023,7 @@ static enum ctrl_port_type port2ctrl(enum port_type port,
 		dev_err(&dc->pdev->dev,
 			"ERROR: send flow control " \
 			"received for non-existing port\n");
-	}
+	};
 	return CTRL_ERROR;
 }
 
@@ -1177,7 +1175,6 @@ static irqreturn_t interrupt_handler(int irq, void *dev_id)
 
 	if (read_iir == 0)
 		goto none;
-
 
 	DBG4("%s irq:0x%04X, prev:0x%04X", interrupt2str(read_iir), read_iir,
 		dc->last_ier);
@@ -1805,7 +1802,7 @@ static int ntty_ioctl(struct tty_struct *tty,
 	default:
 		DBG1("ERR: 0x%08X, %d", cmd, cmd);
 		break;
-	}
+	};
 
 	return rval;
 }

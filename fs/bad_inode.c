@@ -15,7 +15,6 @@
 #include <linux/namei.h>
 #include <linux/poll.h>
 
-
 static loff_t bad_file_llseek(struct file *file, loff_t offset, int whence)
 {
 	return -EIO;
@@ -45,7 +44,7 @@ static ssize_t bad_file_aio_write(struct kiocb *iocb, const struct iovec *iov,
 	return -EIO;
 }
 
-static int bad_file_readdir(struct file *file, struct dir_context *ctx)
+static int bad_file_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
 	return -EIO;
 }
@@ -152,7 +151,7 @@ static const struct file_operations bad_file_ops =
 	.write		= bad_file_write,
 	.aio_read	= bad_file_aio_read,
 	.aio_write	= bad_file_aio_write,
-	.iterate	= bad_file_readdir,
+	.readdir	= bad_file_readdir,
 	.poll		= bad_file_poll,
 	.unlocked_ioctl	= bad_file_unlocked_ioctl,
 	.compat_ioctl	= bad_file_compat_ioctl,
@@ -293,7 +292,6 @@ static const struct inode_operations bad_inode_ops =
 	.listxattr	= bad_inode_listxattr,
 	.removexattr	= bad_inode_removexattr,
 };
-
 
 /*
  * When a filesystem is unable to read an inode due to an I/O error in

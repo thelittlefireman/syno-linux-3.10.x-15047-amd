@@ -23,7 +23,6 @@
  * ########################################################################
  */
 
-
 #include "ieee754dp.h"
 
 int ieee754dp_class(ieee754dp x)
@@ -43,7 +42,6 @@ int ieee754dp_issnan(ieee754dp x)
 	assert(ieee754dp_isnan(x));
 	return ((DPMANT(x) & DP_MBIT(DP_MBITS-1)) == DP_MBIT(DP_MBITS-1));
 }
-
 
 ieee754dp ieee754dp_xcpt(ieee754dp r, const char *op, ...)
 {
@@ -98,7 +96,6 @@ ieee754dp ieee754dp_bestnan(ieee754dp x, ieee754dp y)
 		return y;
 }
 
-
 static u64 get_rounding(int sn, u64 xm)
 {
 	/* inexact must round of 3 bits
@@ -123,7 +120,6 @@ static u64 get_rounding(int sn, u64 xm)
 	}
 	return xm;
 }
-
 
 /* generate a normal/denormal number with over,under handling
  * sn is sign

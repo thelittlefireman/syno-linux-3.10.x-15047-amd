@@ -76,7 +76,6 @@ struct genericstrtable {
 	char name[1];
 };
 
-
 #define HASH1  0x10
 #define HASH2  0x02
 #define HASHSZ 16
@@ -90,7 +89,6 @@ static unsigned int hashnum(unsigned int num)
 			num ^= mask2;
 	return num & (HASHSZ-1);
 }
-
 
 static struct vendor *vendors[HASHSZ] = { NULL, };
 static struct product *products[HASHSZ] = { NULL, };
@@ -169,14 +167,14 @@ static void *my_malloc(size_t size)
 	struct pool *p;
 
 	p = calloc(1, sizeof(struct pool));
-	if (!p)
-		return NULL;
-
-	p->mem = calloc(1, size);
-	if (!p->mem) {
+	if (!p) {
 		free(p);
 		return NULL;
 	}
+
+	p->mem = calloc(1, size);
+	if (!p->mem)
+		return NULL;
 
 	p->next = pool_head;
 	pool_head = p;
@@ -488,7 +486,6 @@ static void parse(FILE *f)
 		err("Unknown line at line %u", linectr);
 	}
 }
-
 
 int names_init(char *n)
 {

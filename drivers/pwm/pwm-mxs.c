@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/slab.h>
@@ -129,6 +130,7 @@ static int mxs_pwm_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	struct mxs_pwm_chip *mxs;
 	struct resource *res;
+	struct pinctrl *pinctrl;
 	int ret;
 
 	mxs = devm_kzalloc(&pdev->dev, sizeof(*mxs), GFP_KERNEL);
@@ -139,6 +141,10 @@ static int mxs_pwm_probe(struct platform_device *pdev)
 	mxs->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(mxs->base))
 		return PTR_ERR(mxs->base);
+
+	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
+	if (IS_ERR(pinctrl))
+		return PTR_ERR(pinctrl);
 
 	mxs->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(mxs->clk))
@@ -161,15 +167,9 @@ static int mxs_pwm_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mxs);
 
-	ret = stmp_reset_block(mxs->base);
-	if (ret)
-		goto pwm_remove;
+	stmp_reset_block(mxs->base);
 
 	return 0;
-
-pwm_remove:
-	pwmchip_remove(&mxs->chip);
-	return ret;
 }
 
 static int mxs_pwm_remove(struct platform_device *pdev)
@@ -188,8 +188,7 @@ MODULE_DEVICE_TABLE(of, mxs_pwm_dt_ids);
 static struct platform_driver mxs_pwm_driver = {
 	.driver = {
 		.name = "mxs-pwm",
-		.owner = THIS_MODULE,
-		.of_match_table = mxs_pwm_dt_ids,
+		.of_match_table = of_match_ptr(mxs_pwm_dt_ids),
 	},
 	.probe = mxs_pwm_probe,
 	.remove = mxs_pwm_remove,

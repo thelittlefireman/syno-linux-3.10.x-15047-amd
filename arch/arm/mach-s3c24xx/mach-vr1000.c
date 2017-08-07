@@ -25,7 +25,6 @@
 #include <linux/tty.h>
 #include <linux/serial_8250.h>
 #include <linux/serial_reg.h>
-#include <linux/serial_s3c.h>
 #include <linux/io.h>
 
 #include <asm/mach/arch.h>
@@ -41,11 +40,11 @@
 
 #include <mach/hardware.h>
 #include <mach/regs-gpio.h>
-#include <mach/gpio-samsung.h>
 
 #include <plat/clock.h>
 #include <plat/cpu.h>
 #include <plat/devs.h>
+#include <plat/regs-serial.h>
 #include <plat/samsung-time.h>
 
 #include "bast.h"

@@ -45,7 +45,6 @@ static void __init iq80332_timer_init(void)
 		iop_init_time(266000000);
 }
 
-
 /*
  * IQ80332 PCI.
  */
@@ -98,7 +97,6 @@ static int __init iq80332_pci_init(void)
 
 subsys_initcall(iq80332_pci_init);
 
-
 /*
  * IQ80332 machine initialisation.
  */
@@ -122,15 +120,8 @@ static struct platform_device iq80332_flash_device = {
 	.resource	= &iq80332_flash_resource,
 };
 
-static struct resource iq80332_gpio_res[] = {
-	DEFINE_RES_MEM((IOP3XX_PERIPHERAL_PHYS_BASE + 0x1780), 0x10),
-};
-
 static void __init iq80332_init_machine(void)
 {
-	platform_device_register_simple("gpio-iop", 0,
-					iq80332_gpio_res,
-					ARRAY_SIZE(iq80332_gpio_res));
 	platform_device_register(&iop3xx_i2c0_device);
 	platform_device_register(&iop3xx_i2c1_device);
 	platform_device_register(&iop33x_uart0_device);

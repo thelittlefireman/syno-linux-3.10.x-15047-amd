@@ -242,7 +242,6 @@ static int mxb_probe(struct saa7146_dev *dev)
 		return -ENOMEM;
 	}
 
-
 	snprintf(mxb->i2c_adapter.name, sizeof(mxb->i2c_adapter.name), "mxb%d", mxb_num);
 
 	saa7146_i2c_adapter_prepare(dev, &mxb->i2c_adapter, SAA7146_I2C_BUS_BIT_RATE_480);
@@ -669,10 +668,14 @@ static int vidioc_g_register(struct file *file, void *fh, struct v4l2_dbg_regist
 {
 	struct saa7146_dev *dev = ((struct saa7146_fh *)fh)->dev;
 
-	if (reg->reg > pci_resource_len(dev->pci, 0) - 4)
-		return -EINVAL;
-	reg->val = saa7146_read(dev, reg->reg);
-	reg->size = 4;
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
+	if (v4l2_chip_match_host(&reg->match)) {
+		reg->val = saa7146_read(dev, reg->reg);
+		reg->size = 4;
+		return 0;
+	}
+	call_all(dev, core, g_register, reg);
 	return 0;
 }
 
@@ -680,10 +683,13 @@ static int vidioc_s_register(struct file *file, void *fh, const struct v4l2_dbg_
 {
 	struct saa7146_dev *dev = ((struct saa7146_fh *)fh)->dev;
 
-	if (reg->reg > pci_resource_len(dev->pci, 0) - 4)
-		return -EINVAL;
-	saa7146_write(dev, reg->reg, reg->val);
-	return 0;
+	if (!capable(CAP_SYS_ADMIN))
+		return -EPERM;
+	if (v4l2_chip_match_host(&reg->match)) {
+		saa7146_write(dev, reg->reg, reg->val);
+		return 0;
+	}
+	return call_all(dev, core, s_register, reg);
 }
 #endif
 

@@ -128,4 +128,3 @@ int omap_vc_bypass_scale(struct voltagedomain *voltdm,
 			 unsigned long target_volt);
 
 #endif
-

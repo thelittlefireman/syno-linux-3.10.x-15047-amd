@@ -16,8 +16,7 @@
 #include <linux/clockchips.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
-#include <linux/sched_clock.h>
-#include <plat/time.h>
+#include <asm/sched_clock.h>
 
 /*
  * MBus bridge block registers.
@@ -26,7 +25,6 @@
 #define BRIDGE_MASK_OFF		0x0114
 #define  BRIDGE_INT_TIMER0	 0x0002
 #define  BRIDGE_INT_TIMER1	 0x0004
-
 
 /*
  * Timer block registers.
@@ -41,7 +39,6 @@
 #define TIMER1_RELOAD_OFF	0x0018
 #define TIMER1_VAL_OFF		0x001c
 
-
 /*
  * SoC-specific data.
  */
@@ -49,19 +46,17 @@ static void __iomem *bridge_base;
 static u32 bridge_timer1_clr_mask;
 static void __iomem *timer_base;
 
-
 /*
  * Number of timer ticks per jiffy.
  */
 static u32 ticks_per_jiffy;
-
 
 /*
  * Orion's sched_clock implementation. It has a resolution of
  * at least 7.5ns (133MHz TCLK).
  */
 
-static u64 notrace orion_read_sched_clock(void)
+static u32 notrace orion_read_sched_clock(void)
 {
 	return ~readl(timer_base + TIMER0_VAL_OFF);
 }
@@ -175,7 +170,7 @@ static irqreturn_t orion_timer_interrupt(int irq, void *dev_id)
 
 static struct irqaction orion_timer_irq = {
 	.name		= "orion_tick",
-	.flags		= IRQF_TIMER,
+	.flags		= IRQF_DISABLED | IRQF_TIMER,
 	.handler	= orion_timer_interrupt
 };
 
@@ -202,7 +197,7 @@ orion_time_init(void __iomem *_bridge_base, u32 _bridge_timer1_clr_mask,
 	/*
 	 * Set scale and timer for sched_clock.
 	 */
-	sched_clock_register(orion_read_sched_clock, 32, tclk);
+	setup_sched_clock(orion_read_sched_clock, 32, tclk);
 
 	/*
 	 * Setup free-running clocksource timer (interrupts

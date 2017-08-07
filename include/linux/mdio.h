@@ -11,7 +11,6 @@
 
 #include <uapi/linux/mdio.h>
 
-
 static inline bool mdio_phy_id_is_c45(int phy_id)
 {
 	return (phy_id & MDIO_PHY_ID_C45) && !(phy_id & ~MDIO_PHY_ID_C45_MASK);
@@ -70,6 +69,9 @@ extern int mdio45_nway_restart(const struct mdio_if_info *mdio);
 extern void mdio45_ethtool_gset_npage(const struct mdio_if_info *mdio,
 				      struct ethtool_cmd *ecmd,
 				      u32 npage_adv, u32 npage_lpa);
+extern void
+mdio45_ethtool_spauseparam_an(const struct mdio_if_info *mdio,
+			      const struct ethtool_pauseparam *ecmd);
 
 /**
  * mdio45_ethtool_gset - get settings for ETHTOOL_GSET

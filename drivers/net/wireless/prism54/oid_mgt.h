@@ -11,7 +11,8 @@
  *  GNU General Public License for more details.
  *
  *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  */
 
@@ -35,7 +36,6 @@ void mgt_le_to_cpu(int, void *);
 
 int mgt_set_request(islpci_private *, enum oid_num_t, int, void *);
 int mgt_set_varlen(islpci_private *, enum oid_num_t, void *, int);
-
 
 int mgt_get_request(islpci_private *, enum oid_num_t, int, void *,
 		    union oid_res_t *);

@@ -86,7 +86,6 @@ struct pv_init_ops {
 			  unsigned long addr, unsigned len);
 };
 
-
 struct pv_lazy_ops {
 	/* Set deferred update mode, used for batching operations. */
 	void (*enter)(void);
@@ -242,7 +241,6 @@ struct pv_mmu_ops {
 			 struct mm_struct *mm);
 	void (*exit_mmap)(struct mm_struct *mm);
 
-
 	/* TLB operations */
 	void (*flush_tlb_user)(void);
 	void (*flush_tlb_kernel)(void);
@@ -327,15 +325,13 @@ struct pv_mmu_ops {
 };
 
 struct arch_spinlock;
-#ifdef CONFIG_SMP
-#include <asm/spinlock_types.h>
-#else
-typedef u16 __ticket_t;
-#endif
-
 struct pv_lock_ops {
-	struct paravirt_callee_save lock_spinning;
-	void (*unlock_kick)(struct arch_spinlock *lock, __ticket_t ticket);
+	int (*spin_is_locked)(struct arch_spinlock *lock);
+	int (*spin_is_contended)(struct arch_spinlock *lock);
+	void (*spin_lock)(struct arch_spinlock *lock);
+	void (*spin_lock_flags)(struct arch_spinlock *lock, unsigned long flags);
+	int (*spin_trylock)(struct arch_spinlock *lock);
+	void (*spin_unlock)(struct arch_spinlock *lock);
 };
 
 /* This contains all the paravirt structures: we get a convenient
@@ -388,11 +384,9 @@ extern struct pv_lock_ops pv_lock_ops;
 	_paravirt_alt(insn_string, "%c[paravirt_typenum]", "%c[paravirt_clobber]")
 
 /* Simple instruction patching code. */
-#define NATIVE_LABEL(a,x,b) "\n\t.globl " a #x "_" #b "\n" a #x "_" #b ":\n\t"
-
-#define DEF_NATIVE(ops, name, code)					\
-	__visible extern const char start_##ops##_##name[], end_##ops##_##name[];	\
-	asm(NATIVE_LABEL("start_", ops, name) code NATIVE_LABEL("end_", ops, name))
+#define DEF_NATIVE(ops, name, code) 					\
+	extern const char start_##ops##_##name[], end_##ops##_##name[];	\
+	asm("start_" #ops "_" #name ": " code "; end_" #ops "_" #name ":")
 
 unsigned paravirt_patch_nop(void);
 unsigned paravirt_patch_ident_32(void *insnbuf, unsigned len);
@@ -577,7 +571,6 @@ int paravirt_disable_iospace(void);
 		      PVOP_CALLEE_CLOBBERS, ,				\
 		      pre, post, ##__VA_ARGS__)
 
-
 #define ____PVOP_VCALL(op, clbr, call_clbr, extra_clbr, pre, post, ...)	\
 	({								\
 		PVOP_VCALL_ARGS;					\
@@ -602,8 +595,6 @@ int paravirt_disable_iospace(void);
 		      PVOP_VCALLEE_CLOBBERS, ,				\
 		      pre, post, ##__VA_ARGS__)
 
-
-
 #define PVOP_CALL0(rettype, op)						\
 	__PVOP_CALL(rettype, op, "", "")
 #define PVOP_VCALL0(op)							\
@@ -614,7 +605,6 @@ int paravirt_disable_iospace(void);
 #define PVOP_VCALLEE0(op)						\
 	__PVOP_VCALLEESAVE(op, "", "")
 
-
 #define PVOP_CALL1(rettype, op, arg1)					\
 	__PVOP_CALL(rettype, op, "", "", PVOP_CALL_ARG1(arg1))
 #define PVOP_VCALL1(op, arg1)						\
@@ -624,7 +614,6 @@ int paravirt_disable_iospace(void);
 	__PVOP_CALLEESAVE(rettype, op, "", "", PVOP_CALL_ARG1(arg1))
 #define PVOP_VCALLEE1(op, arg1)						\
 	__PVOP_VCALLEESAVE(op, "", "", PVOP_CALL_ARG1(arg1))
-
 
 #define PVOP_CALL2(rettype, op, arg1, arg2)				\
 	__PVOP_CALL(rettype, op, "", "", PVOP_CALL_ARG1(arg1),		\
@@ -639,7 +628,6 @@ int paravirt_disable_iospace(void);
 #define PVOP_VCALLEE2(op, arg1, arg2)					\
 	__PVOP_VCALLEESAVE(op, "", "", PVOP_CALL_ARG1(arg1),		\
 			   PVOP_CALL_ARG2(arg2))
-
 
 #define PVOP_CALL3(rettype, op, arg1, arg2, arg3)			\
 	__PVOP_CALL(rettype, op, "", "", PVOP_CALL_ARG1(arg1),		\

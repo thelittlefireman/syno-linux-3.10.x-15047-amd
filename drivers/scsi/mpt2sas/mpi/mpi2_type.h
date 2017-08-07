@@ -1,5 +1,5 @@
 /*
- *  Copyright (c) 2000-2013 LSI Corporation.
+ *  Copyright (c) 2000-2007 LSI Corporation.
  *
  *
  *           Name:  mpi2_type.h
@@ -19,7 +19,6 @@
 
 #ifndef MPI2_TYPE_H
 #define MPI2_TYPE_H
-
 
 /*******************************************************************************
  * Define MPI2_POINTER if it hasn't already been defined. By default
@@ -58,4 +57,3 @@ typedef U64     *PU64;
 #endif
 
 #endif
-

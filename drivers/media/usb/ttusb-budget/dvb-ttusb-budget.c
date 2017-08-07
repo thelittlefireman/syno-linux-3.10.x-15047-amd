@@ -529,7 +529,6 @@ static int ttusb_set_tone(struct dvb_frontend* fe, fe_sec_tone_mode_t tone)
 }
 #endif
 
-
 #if 0
 static void ttusb_set_led_freq(struct ttusb *ttusb, u8 freq)
 {
@@ -1022,8 +1021,6 @@ static u32 functionality(struct i2c_adapter *adapter)
 	return I2C_FUNC_I2C;
 }
 
-
-
 static int alps_tdmb7_tuner_set_params(struct dvb_frontend *fe)
 {
 	struct dtv_frontend_properties *p = &fe->dtv_property_cache;
@@ -1048,10 +1045,6 @@ static int alps_tdmb7_tuner_set_params(struct dvb_frontend *fe)
 static struct cx22700_config alps_tdmb7_config = {
 	.demod_address = 0x43,
 };
-
-
-
-
 
 static int philips_tdm1316l_tuner_init(struct dvb_frontend* fe)
 {
@@ -1381,7 +1374,6 @@ static int alps_tdbe2_tuner_set_params(struct dvb_frontend *fe)
 	return 0;
 }
 
-
 static struct ves1820_config alps_tdbe2_config = {
 	.demod_address = 0x09,
 	.xin = 57840000UL,
@@ -1401,7 +1393,6 @@ static u8 read_pwm(struct ttusb* ttusb)
 
 	return pwm;
 }
-
 
 static int dvbc_philips_tdm1316l_tuner_set_params(struct dvb_frontend *fe)
 {
@@ -1644,8 +1635,6 @@ static void frontend_init(struct ttusb* ttusb)
 	}
 }
 
-
-
 static struct i2c_algorithm ttusb_dec_algo = {
 	.master_xfer	= master_xfer,
 	.functionality	= functionality,
@@ -1768,8 +1757,6 @@ err_i2c_del_adapter:
 	i2c_del_adapter(&ttusb->i2c_adap);
 err_unregister_adapter:
 	dvb_unregister_adapter (&ttusb->adapter);
-	ttusb_free_iso_urbs(ttusb);
-	kfree(ttusb);
 	return result;
 }
 

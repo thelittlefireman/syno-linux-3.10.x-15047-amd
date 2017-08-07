@@ -48,7 +48,6 @@ MODULE_PARM_DESC(enable, "Enable "NAME_ALLCAPS".");
 
 static int snd_us122l_card_used[SNDRV_CARDS];
 
-
 static int us122l_create_usbmidi(struct snd_card *card)
 {
 	static struct snd_usb_midi_endpoint_info quirk_data = {
@@ -186,7 +185,6 @@ static const struct vm_operations_struct usb_stream_hwdep_vm_ops = {
 	.fault = usb_stream_hwdep_vm_fault,
 	.close = usb_stream_hwdep_vm_close,
 };
-
 
 static int usb_stream_hwdep_open(struct snd_hwdep *hw, struct file *file)
 {
@@ -478,7 +476,6 @@ static int usb_stream_hwdep_new(struct snd_card *card)
 	return 0;
 }
 
-
 static bool us122l_create_card(struct snd_card *card)
 {
 	int err;
@@ -535,9 +532,7 @@ static void snd_us122l_free(struct snd_card *card)
 		snd_us122l_card_used[index] = 0;
 }
 
-static int usx2y_create_card(struct usb_device *device,
-			     struct usb_interface *intf,
-			     struct snd_card **cardp)
+static int usx2y_create_card(struct usb_device *device, struct snd_card **cardp)
 {
 	int		dev;
 	struct snd_card *card;
@@ -548,8 +543,8 @@ static int usx2y_create_card(struct usb_device *device,
 			break;
 	if (dev >= SNDRV_CARDS)
 		return -ENODEV;
-	err = snd_card_new(&intf->dev, index[dev], id[dev], THIS_MODULE,
-			   sizeof(struct us122l), &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct us122l), &card);
 	if (err < 0)
 		return err;
 	snd_us122l_card_used[US122L(card)->card_index = dev] = 1;
@@ -580,10 +575,11 @@ static int us122l_usb_probe(struct usb_interface *intf,
 	struct snd_card *card;
 	int err;
 
-	err = usx2y_create_card(device, intf, &card);
+	err = usx2y_create_card(device, &card);
 	if (err < 0)
 		return err;
 
+	snd_card_set_dev(card, &intf->dev);
 	if (!us122l_create_card(card)) {
 		snd_card_free(card);
 		return -EINVAL;

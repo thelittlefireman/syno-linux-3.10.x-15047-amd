@@ -91,7 +91,6 @@
 #define AUTOPROBE_IRQ
 #define AUTOSENSE
 
-
 #ifdef CONFIG_SCSI_GENERIC_NCR53C400
 #define NCR53C400_PSEUDO_DMA 1
 #define PSEUDO_DMA
@@ -192,7 +191,6 @@ static void __init internal_setup(int board, char *str, int *ints)
 		++commandline_current;
 	}
 }
-
 
 /**
  * 	do_NCR53C80_setup		-	set up entry point
@@ -461,7 +459,7 @@ int __init generic_NCR5380_detect(struct scsi_host_template * tpnt)
 
 		if (instance->irq != SCSI_IRQ_NONE)
 			if (request_irq(instance->irq, generic_NCR5380_intr,
-					0, "NCR5380", instance)) {
+					IRQF_DISABLED, "NCR5380", instance)) {
 				printk(KERN_WARNING "scsi%d : IRQ%d not free, interrupts disabled\n", instance->host_no, instance->irq);
 				instance->irq = SCSI_IRQ_NONE;
 			}
@@ -523,7 +521,6 @@ int generic_NCR5380_release_resources(struct Scsi_Host *instance)
 	iounmap(((struct NCR5380_hostdata *)instance->hostdata)->iomem);
 	release_mem_region(instance->NCR5380_instance_name, NCR5380_region_size);
 #endif
-
 
 	return 0;
 }

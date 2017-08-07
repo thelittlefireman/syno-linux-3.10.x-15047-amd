@@ -16,6 +16,7 @@
  */
 
 #include <linux/oprofile.h>
+#include <linux/init.h>
 #include <linux/smp.h>
 #include <asm/ptrace.h>
 #include <asm/processor.h>
@@ -165,7 +166,6 @@ static void fsl7450_stop(void)
 
 	mb();
 }
-
 
 /* Handle the interrupt on this CPU, and log a sample for each
  * event that triggered the interrupt */

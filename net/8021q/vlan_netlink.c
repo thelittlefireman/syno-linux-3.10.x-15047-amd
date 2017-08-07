@@ -17,7 +17,6 @@
 #include <net/rtnetlink.h>
 #include "vlan.h"
 
-
 static const struct nla_policy vlan_policy[IFLA_VLAN_MAX + 1] = {
 	[IFLA_VLAN_ID]		= { .type = NLA_U16 },
 	[IFLA_VLAN_FLAGS]	= { .len = sizeof(struct ifla_vlan_flags) },
@@ -29,7 +28,6 @@ static const struct nla_policy vlan_policy[IFLA_VLAN_MAX + 1] = {
 static const struct nla_policy vlan_map_policy[IFLA_VLAN_QOS_MAX + 1] = {
 	[IFLA_VLAN_QOS_MAPPING] = { .len = sizeof(struct ifla_vlan_qos_mapping) },
 };
-
 
 static inline int vlan_validate_qos_map(struct nlattr *attr)
 {
@@ -56,8 +54,8 @@ static int vlan_validate(struct nlattr *tb[], struct nlattr *data[])
 
 	if (data[IFLA_VLAN_PROTOCOL]) {
 		switch (nla_get_be16(data[IFLA_VLAN_PROTOCOL])) {
-		case htons(ETH_P_8021Q):
-		case htons(ETH_P_8021AD):
+		case __constant_htons(ETH_P_8021Q):
+		case __constant_htons(ETH_P_8021AD):
 			break;
 		default:
 			return -EPROTONOSUPPORT;

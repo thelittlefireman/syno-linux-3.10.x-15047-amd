@@ -28,8 +28,6 @@
 
 #include <uapi/asm/kvm_para.h>
 
-
-
 static inline long kvm_hypercall0(unsigned long nr)
 {
 	register unsigned long __nr asm("1") = nr;
@@ -79,7 +77,6 @@ static inline long kvm_hypercall3(unsigned long nr, unsigned long p1,
 			"d" (__p3) : "memory", "cc");
 	return __rc;
 }
-
 
 static inline long kvm_hypercall4(unsigned long nr, unsigned long p1,
 			       unsigned long p2, unsigned long p3,

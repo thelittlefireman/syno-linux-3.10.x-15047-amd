@@ -25,6 +25,7 @@
 #include <linux/moduleparam.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
+#include <linux/init.h>
 #include <linux/list.h>
 #include <linux/proc_fs.h>
 #include <linux/slab.h>
@@ -35,11 +36,9 @@
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
 
-
 #undef	VERBOSE_DEBUG
 
 #include "rndis.h"
-
 
 /* The driver for your USB chip needs to support ep0 OUT to work with
  * RNDIS, plus all three CDC Ethernet endpoints (interrupt not optional).
@@ -58,7 +57,6 @@ MODULE_PARM_DESC (rndis_debug, "enable debugging");
 
 #define RNDIS_MAX_CONFIGS	1
 
-
 static rndis_params rndis_per_dev_params[RNDIS_MAX_CONFIGS];
 
 /* Driver Version */
@@ -66,7 +64,6 @@ static const __le32 rndis_driver_version = cpu_to_le32(1);
 
 /* Function Prototypes */
 static rndis_resp_t *rndis_add_response(int configNr, u32 length);
-
 
 /* supported OIDs */
 static const u32 oid_supported_list[] =
@@ -156,7 +153,6 @@ static const u32 oid_supported_list[] =
 #endif	/* RNDIS_WAKEUP */
 #endif	/* RNDIS_PM */
 };
-
 
 /* NDIS Functions */
 static int gen_ndis_query_resp(int configNr, u32 OID, u8 *buf,
@@ -724,7 +720,6 @@ static int rndis_keepalive_response(int configNr,
 	return 0;
 }
 
-
 /*
  * Device to Host Comunication
  */
@@ -760,7 +755,6 @@ int rndis_signal_connect(int configNr)
 	return rndis_indicate_status_msg(configNr,
 					  RNDIS_STATUS_MEDIA_CONNECT);
 }
-EXPORT_SYMBOL(rndis_signal_connect);
 
 int rndis_signal_disconnect(int configNr)
 {
@@ -769,7 +763,6 @@ int rndis_signal_disconnect(int configNr)
 	return rndis_indicate_status_msg(configNr,
 					  RNDIS_STATUS_MEDIA_DISCONNECT);
 }
-EXPORT_SYMBOL(rndis_signal_disconnect);
 
 void rndis_uninit(int configNr)
 {
@@ -784,13 +777,11 @@ void rndis_uninit(int configNr)
 	while ((buf = rndis_get_next_response(configNr, &length)))
 		rndis_free_response(configNr, buf);
 }
-EXPORT_SYMBOL(rndis_uninit);
 
 void rndis_set_host_mac(int configNr, const u8 *addr)
 {
 	rndis_per_dev_params[configNr].host_mac = addr;
 }
-EXPORT_SYMBOL(rndis_set_host_mac);
 
 /*
  * Message Parser
@@ -873,7 +864,6 @@ int rndis_msg_parser(u8 configNr, u8 *buf)
 
 	return -ENOTSUPP;
 }
-EXPORT_SYMBOL(rndis_msg_parser);
 
 int rndis_register(void (*resp_avail)(void *v), void *v)
 {
@@ -895,7 +885,6 @@ int rndis_register(void (*resp_avail)(void *v), void *v)
 
 	return -ENODEV;
 }
-EXPORT_SYMBOL(rndis_register);
 
 void rndis_deregister(int configNr)
 {
@@ -904,7 +893,6 @@ void rndis_deregister(int configNr)
 	if (configNr >= RNDIS_MAX_CONFIGS) return;
 	rndis_per_dev_params[configNr].used = 0;
 }
-EXPORT_SYMBOL(rndis_deregister);
 
 int rndis_set_param_dev(u8 configNr, struct net_device *dev, u16 *cdc_filter)
 {
@@ -918,7 +906,6 @@ int rndis_set_param_dev(u8 configNr, struct net_device *dev, u16 *cdc_filter)
 
 	return 0;
 }
-EXPORT_SYMBOL(rndis_set_param_dev);
 
 int rndis_set_param_vendor(u8 configNr, u32 vendorID, const char *vendorDescr)
 {
@@ -931,7 +918,6 @@ int rndis_set_param_vendor(u8 configNr, u32 vendorID, const char *vendorDescr)
 
 	return 0;
 }
-EXPORT_SYMBOL(rndis_set_param_vendor);
 
 int rndis_set_param_medium(u8 configNr, u32 medium, u32 speed)
 {
@@ -943,7 +929,6 @@ int rndis_set_param_medium(u8 configNr, u32 medium, u32 speed)
 
 	return 0;
 }
-EXPORT_SYMBOL(rndis_set_param_medium);
 
 void rndis_add_hdr(struct sk_buff *skb)
 {
@@ -958,7 +943,6 @@ void rndis_add_hdr(struct sk_buff *skb)
 	header->DataOffset = cpu_to_le32(36);
 	header->DataLength = cpu_to_le32(skb->len - sizeof(*header));
 }
-EXPORT_SYMBOL(rndis_add_hdr);
 
 void rndis_free_response(int configNr, u8 *buf)
 {
@@ -975,7 +959,6 @@ void rndis_free_response(int configNr, u8 *buf)
 		}
 	}
 }
-EXPORT_SYMBOL(rndis_free_response);
 
 u8 *rndis_get_next_response(int configNr, u32 *length)
 {
@@ -997,7 +980,6 @@ u8 *rndis_get_next_response(int configNr, u32 *length)
 
 	return NULL;
 }
-EXPORT_SYMBOL(rndis_get_next_response);
 
 static rndis_resp_t *rndis_add_response(int configNr, u32 length)
 {
@@ -1041,7 +1023,6 @@ int rndis_rm_hdr(struct gether *port,
 	skb_queue_tail(list, skb);
 	return 0;
 }
-EXPORT_SYMBOL(rndis_rm_hdr);
 
 #ifdef CONFIG_USB_GADGET_DEBUG_FILES
 
@@ -1067,7 +1048,7 @@ static int rndis_proc_show(struct seq_file *m, void *v)
 				s = "RNDIS_INITIALIZED"; break;
 			 case RNDIS_DATA_INITIALIZED:
 				s = "RNDIS_DATA_INITIALIZED"; break;
-			} s; }),
+			}; s; }),
 			 param->medium,
 			 (param->media_state) ? 0 : param->speed*100,
 			 (param->media_state) ? "disconnected" : "connected",
@@ -1140,7 +1121,6 @@ static struct proc_dir_entry *rndis_connect_state [RNDIS_MAX_CONFIGS];
 
 #endif /* CONFIG_USB_GADGET_DEBUG_FILES */
 
-
 int rndis_init(void)
 {
 	u8 i;
@@ -1186,4 +1166,3 @@ void rndis_exit(void)
 	}
 #endif
 }
-

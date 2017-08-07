@@ -27,8 +27,6 @@ struct genlmsghdr {
  */
 #define GENL_ID_GENERATE	0
 #define GENL_ID_CTRL		NLMSG_MIN_TYPE
-#define GENL_ID_VFS_DQUOT	(NLMSG_MIN_TYPE + 1)
-#define GENL_ID_PMCRAID		(NLMSG_MIN_TYPE + 2)
 
 /**************************************************************************
  * Controller
@@ -81,6 +79,5 @@ enum {
 };
 
 #define CTRL_ATTR_MCAST_GRP_MAX (__CTRL_ATTR_MCAST_GRP_MAX - 1)
-
 
 #endif /* _UAPI__LINUX_GENERIC_NETLINK_H */

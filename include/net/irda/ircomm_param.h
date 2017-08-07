@@ -22,7 +22,9 @@
  *     GNU General Public License for more details.
  * 
  *     You should have received a copy of the GNU General Public License 
- *     along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *     along with this program; if not, write to the Free Software 
+ *     Foundation, Inc., 59 Temple Place, Suite 330, Boston, 
+ *     MA 02111-1307 USA
  *     
  ********************************************************************/
 
@@ -144,4 +146,3 @@ int ircomm_param_request(struct ircomm_tty_cb *self, __u8 pi, int flush);
 extern pi_param_info_t ircomm_param_info;
 
 #endif /* IRCOMM_PARAMS_H */
-

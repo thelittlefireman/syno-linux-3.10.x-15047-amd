@@ -26,7 +26,6 @@
 #include <asm/assembler.h>
 #include <asm/ptrace.h>
 #include <asm/asm-offsets.h>
-#include <asm/cache.h>
 #include <asm/cputype.h>
 #include <asm/memory.h>
 #include <asm/thread_info.h>
@@ -113,20 +112,11 @@
 	.quad	TEXT_OFFSET			// Image load offset from start of RAM
 	.quad	0				// reserved
 	.quad	0				// reserved
-	.quad	0				// reserved
-	.quad	0				// reserved
-	.quad	0				// reserved
-	.byte	0x41				// Magic number, "ARM\x64"
-	.byte	0x52
-	.byte	0x4d
-	.byte	0x64
-	.word	0				// reserved
 
 ENTRY(stext)
 	mov	x21, x0				// x21=FDT
-	bl	el2_setup			// Drop to EL1, w20=cpu_boot_mode
 	bl	__calc_phys_offset		// x24=PHYS_OFFSET, x28=PHYS_OFFSET-PAGE_OFFSET
-	bl	set_cpu_boot_mode_flag
+	bl	el2_setup			// Drop to EL1
 	mrs	x22, midr_el1			// x22=cpuid
 	mov	x0, x22
 	bl	lookup_processor_type
@@ -152,30 +142,21 @@ ENDPROC(stext)
 /*
  * If we're fortunate enough to boot at EL2, ensure that the world is
  * sane before dropping to EL1.
- *
- * Returns either BOOT_CPU_MODE_EL1 or BOOT_CPU_MODE_EL2 in x20 if
- * booted in EL1 or EL2 respectively.
  */
 ENTRY(el2_setup)
 	mrs	x0, CurrentEL
 	cmp	x0, #PSR_MODE_EL2t
 	ccmp	x0, #PSR_MODE_EL2h, #0x4, ne
-	b.ne	1f
-	mrs	x0, sctlr_el2
-CPU_BE(	orr	x0, x0, #(1 << 25)	)	// Set the EE bit for EL2
-CPU_LE(	bic	x0, x0, #(1 << 25)	)	// Clear the EE bit for EL2
-	msr	sctlr_el2, x0
-	b	2f
-1:	mrs	x0, sctlr_el1
-CPU_BE(	orr	x0, x0, #(3 << 24)	)	// Set the EE and E0E bits for EL1
-CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
-	msr	sctlr_el1, x0
-	mov	w20, #BOOT_CPU_MODE_EL1		// This cpu booted in EL1
-	isb
+	ldr	x0, =__boot_cpu_mode		// Compute __boot_cpu_mode
+	add	x0, x0, x28
+	b.eq	1f
+	str	wzr, [x0]			// Remember we don't have EL2...
 	ret
 
 	/* Hyp configuration. */
-2:	mov	x0, #(1 << 31)			// 64-bit EL1
+1:	ldr	w1, =BOOT_CPU_MODE_EL2
+	str	w1, [x0, #4]			// This CPU has EL2
+	mov	x0, #(1 << 31)			// 64-bit EL1
 	msr	hcr_el2, x0
 
 	/* Generic timers. */
@@ -192,8 +173,7 @@ CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
 
 	/* sctlr_el1 */
 	mov	x0, #0x0800			// Set/clear RES{1,0} bits
-CPU_BE(	movk	x0, #0x33d0, lsl #16	)	// Set EE and E0E on BE systems
-CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
+	movk	x0, #0x30d0, lsl #16
 	msr	sctlr_el1, x0
 
 	/* Coprocessor traps. */
@@ -203,6 +183,11 @@ CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
 #ifdef CONFIG_COMPAT
 	msr	hstr_el2, xzr			// Disable CP15 traps to EL2
 #endif
+
+	/* EL2 debug */
+	mrs	x0, pmcr_el0			// Disable debug access traps
+	ubfx	x0, x0, #11, #5			// to EL2 and allow access to
+	msr	mdcr_el2, x0			// all PMU counters from EL1
 
 	/* Stage-2 translation */
 	msr	vttbr_el2, xzr
@@ -216,27 +201,8 @@ CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
 		      PSR_MODE_EL1h)
 	msr	spsr_el2, x0
 	msr	elr_el2, lr
-	mov	w20, #BOOT_CPU_MODE_EL2		// This CPU booted in EL2
 	eret
 ENDPROC(el2_setup)
-
-/*
- * Sets the __boot_cpu_mode flag depending on the CPU boot mode passed
- * in x20. See arch/arm64/include/asm/virt.h for more info.
- */
-ENTRY(set_cpu_boot_mode_flag)
-	ldr	x1, =__boot_cpu_mode		// Compute __boot_cpu_mode
-	add	x1, x1, x28
-	cmp	w20, #BOOT_CPU_MODE_EL2
-	b.ne	1f
-	add	x1, x1, #4
-1:	dc	cvac, x1			// Clean potentially dirty cache line
-	dsb	sy
-	str	w20, [x1]			// This CPU has booted in EL1
-	dc	civac, x1			// Clean&invalidate potentially stale cache line
-	dsb	sy
-	ret
-ENDPROC(set_cpu_boot_mode_flag)
 
 /*
  * We need to find out the CPU boot mode long after boot, so we need to
@@ -245,9 +211,8 @@ ENDPROC(set_cpu_boot_mode_flag)
  * This is not in .bss, because we set it sufficiently early that the boot-time
  * zeroing of .bss would clobber it.
  */
-	.pushsection	.data..cacheline_aligned
+	.pushsection	.data
 ENTRY(__boot_cpu_mode)
-	.align	L1_CACHE_SHIFT
 	.long	BOOT_CPU_MODE_EL2
 	.long	0
 	.popsection
@@ -257,6 +222,7 @@ ENTRY(__boot_cpu_mode)
 	.quad	PAGE_OFFSET
 
 #ifdef CONFIG_SMP
+	.pushsection    .smp.pen.text, "ax"
 	.align	3
 1:	.quad	.
 	.quad	secondary_holding_pen_release
@@ -266,9 +232,8 @@ ENTRY(__boot_cpu_mode)
 	 * cores are held until we're ready for them to initialise.
 	 */
 ENTRY(secondary_holding_pen)
-	bl	el2_setup			// Drop to EL1, w20=cpu_boot_mode
-	bl	__calc_phys_offset		// x24=PHYS_OFFSET, x28=PHYS_OFFSET-PAGE_OFFSET
-	bl	set_cpu_boot_mode_flag
+	bl	__calc_phys_offset		// x24=phys offset
+	bl	el2_setup			// Drop to EL1
 	mrs	x0, mpidr_el1
 	ldr     x1, =MPIDR_HWID_BITMASK
 	and	x0, x0, x1
@@ -282,17 +247,7 @@ pen:	ldr	x4, [x3]
 	wfe
 	b	pen
 ENDPROC(secondary_holding_pen)
-
-	/*
-	 * Secondary entry point that jumps straight into the kernel. Only to
-	 * be used where CPUs are brought online dynamically by the kernel.
-	 */
-ENTRY(secondary_entry)
-	bl	el2_setup			// Drop to EL1
-	bl	__calc_phys_offset		// x24=PHYS_OFFSET, x28=PHYS_OFFSET-PAGE_OFFSET
-	bl	set_cpu_boot_mode_flag
-	b	secondary_startup
-ENDPROC(secondary_entry)
+	.popsection
 
 ENTRY(secondary_startup)
 	/*
@@ -390,18 +345,26 @@ ENDPROC(__calc_phys_offset)
  * Preserves:	tbl, flags
  * Corrupts:	phys, start, end, pstate
  */
-	.macro	create_block_map, tbl, flags, phys, start, end
+	.macro	create_block_map, tbl, flags, phys, start, end, idmap=0
 	lsr	\phys, \phys, #BLOCK_SHIFT
+	.if	\idmap
+	and	\start, \phys, #PTRS_PER_PTE - 1	// table index
+	.else
 	lsr	\start, \start, #BLOCK_SHIFT
 	and	\start, \start, #PTRS_PER_PTE - 1	// table index
+	.endif
 	orr	\phys, \flags, \phys, lsl #BLOCK_SHIFT	// table entry
+	.ifnc	\start,\end
 	lsr	\end, \end, #BLOCK_SHIFT
 	and	\end, \end, #PTRS_PER_PTE - 1		// table end index
+	.endif
 9999:	str	\phys, [\tbl, \start, lsl #3]		// store the entry
+	.ifnc	\start,\end
 	add	\start, \start, #1			// next entry
 	add	\phys, \phys, #BLOCK_SIZE		// next block
 	cmp	\start, \end
 	b.ls	9999b
+	.endif
 	.endm
 
 /*
@@ -410,19 +373,10 @@ ENDPROC(__calc_phys_offset)
  *   - identity mapping to enable the MMU (low address, TTBR0)
  *   - first few MB of the kernel linear mapping to jump to once the MMU has
  *     been enabled, including the FDT blob (TTBR1)
- *   - pgd entry for fixed mappings (TTBR1)
+ *   - UART mapping if CONFIG_EARLY_PRINTK is enabled (TTBR1)
  */
 __create_page_tables:
 	pgtbl	x25, x26, x24			// idmap_pg_dir and swapper_pg_dir addresses
-	mov	x27, lr
-
-	/*
-	 * Invalidate the idmap and swapper page tables to avoid potential
-	 * dirty cache lines being evicted.
-	 */
-	mov	x0, x25
-	add	x1, x26, #SWAPPER_DIR_SIZE
-	bl	__inval_cache_range
 
 	/*
 	 * Clear the idmap and swapper page tables.
@@ -442,13 +396,9 @@ __create_page_tables:
 	 * Create the identity mapping.
 	 */
 	add	x0, x25, #PAGE_SIZE		// section table address
-	ldr	x3, =KERNEL_START
-	add	x3, x3, x28			// __pa(KERNEL_START)
+	adr	x3, __turn_mmu_on		// virtual/physical address
 	create_pgd_entry x25, x0, x3, x5, x6
-	ldr	x6, =KERNEL_END
-	mov	x5, x3				// __pa(KERNEL_START)
-	add	x6, x6, x28			// __pa(KERNEL_END)
-	create_block_map x0, x7, x3, x5, x6
+	create_block_map x0, x7, x3, x5, x5, idmap=1
 
 	/*
 	 * Map the kernel image (starting with PHYS_OFFSET).
@@ -456,7 +406,7 @@ __create_page_tables:
 	add	x0, x26, #PAGE_SIZE		// section table address
 	mov	x5, #PAGE_OFFSET
 	create_pgd_entry x26, x0, x5, x3, x6
-	ldr	x6, =KERNEL_END
+	ldr	x6, =KERNEL_END - 1
 	mov	x3, x24				// phys offset
 	create_block_map x0, x7, x3, x5, x6
 
@@ -476,23 +426,15 @@ __create_page_tables:
 	sub	x6, x6, #1			// inclusive range
 	create_block_map x0, x7, x3, x5, x6
 1:
+#ifdef CONFIG_EARLY_PRINTK
 	/*
-	 * Create the pgd entry for the fixed mappings.
+	 * Create the pgd entry for the UART mapping. The full mapping is done
+	 * later based earlyprintk kernel parameter.
 	 */
-	ldr	x5, =FIXADDR_TOP		// Fixed mapping virtual address
+	ldr	x5, =EARLYCON_IOBASE		// UART virtual address
 	add	x0, x26, #2 * PAGE_SIZE		// section table address
 	create_pgd_entry x26, x0, x5, x6, x7
-
-	/*
-	 * Since the page tables have been populated with non-cacheable
-	 * accesses (MMU disabled), invalidate the idmap and swapper page
-	 * tables again to remove any speculatively loaded cache lines.
-	 */
-	mov	x0, x25
-	add	x1, x26, #SWAPPER_DIR_SIZE
-	bl	__inval_cache_range
-
-	mov	lr, x27
+#endif
 	ret
 ENDPROC(__create_page_tables)
 	.ltorg
@@ -501,6 +443,8 @@ ENDPROC(__create_page_tables)
 	.type	__switch_data, %object
 __switch_data:
 	.quad	__mmap_switched
+	.quad	__data_loc			// x4
+	.quad	_data				// x5
 	.quad	__bss_start			// x6
 	.quad	_end				// x7
 	.quad	processor_id			// x4
@@ -515,7 +459,15 @@ __switch_data:
 __mmap_switched:
 	adr	x3, __switch_data + 8
 
+	ldp	x4, x5, [x3], #16
 	ldp	x6, x7, [x3], #16
+	cmp	x4, x5				// Copy data segment if needed
+1:	ccmp	x5, x6, #4, ne
+	b.eq	2f
+	ldr	x16, [x4], #8
+	str	x16, [x5], #8
+	b	1b
+2:
 1:	cmp	x6, x7
 	b.hs	2f
 	str	xzr, [x6], #8			// Clear BSS

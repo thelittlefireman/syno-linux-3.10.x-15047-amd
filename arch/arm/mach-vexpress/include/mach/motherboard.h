@@ -39,7 +39,6 @@
 #define V2M_CF			(V2M_PA_CS7 + 0x0001a000)
 #define V2M_CLCD		(V2M_PA_CS7 + 0x0001f000)
 
-
 /*
  * Interrupts.  Those in {} are for AMBA devices
  */
@@ -61,7 +60,6 @@
 #define IRQ_V2M_LAN9118		(32 + 15)
 #define IRQ_V2M_ISP1761		(32 + 16)
 #define IRQ_V2M_PCIE		(32 + 17)
-
 
 /*
  * Core tile IDs

@@ -41,7 +41,6 @@
 #include <linux/init.h>
 #include <linux/seq_file.h>
 #include <linux/module.h>
-#include <linux/irq.h>
 
 #include <asm/traps.h>
 
@@ -51,7 +50,6 @@
 #include <asm/irq.h>
 #include <asm/entry.h>
 #include <asm/io.h>
-
 
 /*
  * Atari interrupt handling scheme:
@@ -157,7 +155,6 @@ static irqreturn_t mfptimer_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-
 static void atari_mfptimer_enable(struct irq_data *data)
 {
 	int mfp_num = data->irq - IRQ_MFP_TIMER1;
@@ -178,7 +175,6 @@ static struct irq_chip atari_mfptimer_chip = {
 	.irq_enable	= atari_mfptimer_enable,
 	.irq_disable	= atari_mfptimer_disable,
 };
-
 
 /*
  * EtherNAT CPLD interrupt handling
@@ -334,9 +330,6 @@ void __init atari_init_IRQ(void)
 	m68k_setup_irq_controller(&atari_mfptimer_chip, handle_simple_irq,
 				  IRQ_MFP_TIMER1, 8);
 
-	irq_set_status_flags(IRQ_MFP_TIMER1, IRQ_IS_POLLED);
-	irq_set_status_flags(IRQ_MFP_TIMER2, IRQ_IS_POLLED);
-
 	/* prepare timer D data for use as poll interrupt */
 	/* set Timer D data Register - needs to be > 0 */
 	st_mfp.tim_dt_d = 254;	/* < 100 Hz */
@@ -355,7 +348,6 @@ void __init atari_init_IRQ(void)
 	m68k_setup_irq_controller(&atari_ethernat_chip, handle_simple_irq,
 				  139, 2);
 }
-
 
 /*
  * atari_register_vme_int() returns the number of a free interrupt vector for
@@ -378,7 +370,6 @@ unsigned int atari_register_vme_int(void)
 }
 EXPORT_SYMBOL(atari_register_vme_int);
 
-
 void atari_unregister_vme_int(unsigned int irq)
 {
 	if (irq >= VME_SOURCE_BASE && irq < VME_SOURCE_BASE + VME_MAX_SOURCES) {
@@ -387,5 +378,3 @@ void atari_unregister_vme_int(unsigned int irq)
 	}
 }
 EXPORT_SYMBOL(atari_unregister_vme_int);
-
-

@@ -88,12 +88,11 @@ static struct machine *setup_fake_machine(struct machines *machines)
 	for (i = 0; i < ARRAY_SIZE(fake_threads); i++) {
 		struct thread *thread;
 
-		thread = machine__findnew_thread(machine, fake_threads[i].pid,
-						 fake_threads[i].pid);
+		thread = machine__findnew_thread(machine, fake_threads[i].pid);
 		if (thread == NULL)
 			goto out;
 
-		thread__set_comm(thread, fake_threads[i].comm, 0);
+		thread__set_comm(thread, fake_threads[i].comm);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(fake_mmap_info); i++) {
@@ -101,7 +100,6 @@ static struct machine *setup_fake_machine(struct machines *machines)
 			.mmap = {
 				.header = { .misc = PERF_RECORD_MISC_USER, },
 				.pid = fake_mmap_info[i].pid,
-				.tid = fake_mmap_info[i].pid,
 				.start = fake_mmap_info[i].start,
 				.len = 0x1000ULL,
 				.pgoff = 0ULL,
@@ -111,7 +109,7 @@ static struct machine *setup_fake_machine(struct machines *machines)
 		strcpy(fake_mmap_event.mmap.filename,
 		       fake_mmap_info[i].filename);
 
-		machine__process_mmap_event(machine, &fake_mmap_event, NULL);
+		machine__process_mmap_event(machine, &fake_mmap_event);
 	}
 
 	for (i = 0; i < ARRAY_SIZE(fake_symbols); i++) {
@@ -209,22 +207,23 @@ static int add_hist_entries(struct perf_evlist *evlist, struct machine *machine)
 	 * However the second evsel also has a collapsed entry for
 	 * "bash [libc] malloc" so total 9 entries will be in the tree.
 	 */
-	evlist__for_each(evlist, evsel) {
+	list_for_each_entry(evsel, &evlist->entries, node) {
 		for (k = 0; k < ARRAY_SIZE(fake_common_samples); k++) {
 			const union perf_event event = {
-				.header = {
-					.misc = PERF_RECORD_MISC_USER,
+				.ip = {
+					.header = {
+						.misc = PERF_RECORD_MISC_USER,
+					},
+					.pid = fake_common_samples[k].pid,
+					.ip  = fake_common_samples[k].ip,
 				},
 			};
 
-			sample.pid = fake_common_samples[k].pid;
-			sample.ip = fake_common_samples[k].ip;
 			if (perf_event__preprocess_sample(&event, machine, &al,
-							  &sample) < 0)
+							  &sample, 0) < 0)
 				goto out;
 
-			he = __hists__add_entry(&evsel->hists, &al, NULL,
-						NULL, NULL, 1, 1, 0);
+			he = __hists__add_entry(&evsel->hists, &al, NULL, 1, 1);
 			if (he == NULL)
 				goto out;
 
@@ -235,19 +234,20 @@ static int add_hist_entries(struct perf_evlist *evlist, struct machine *machine)
 
 		for (k = 0; k < ARRAY_SIZE(fake_samples[i]); k++) {
 			const union perf_event event = {
-				.header = {
-					.misc = PERF_RECORD_MISC_USER,
+				.ip = {
+					.header = {
+						.misc = PERF_RECORD_MISC_USER,
+					},
+					.pid = fake_samples[i][k].pid,
+					.ip  = fake_samples[i][k].ip,
 				},
 			};
 
-			sample.pid = fake_samples[i][k].pid;
-			sample.ip = fake_samples[i][k].ip;
 			if (perf_event__preprocess_sample(&event, machine, &al,
-							  &sample) < 0)
+							  &sample, 0) < 0)
 				goto out;
 
-			he = __hists__add_entry(&evsel->hists, &al, NULL,
-						NULL, NULL, 1, 1, 0);
+			he = __hists__add_entry(&evsel->hists, &al, NULL, 1, 1);
 			if (he == NULL)
 				goto out;
 
@@ -422,7 +422,7 @@ static void print_hists(struct hists *hists)
 		he = rb_entry(node, struct hist_entry, rb_node_in);
 
 		pr_info("%2d: entry: %-8s [%-8s] %20s: period = %"PRIu64"\n",
-			i, thread__comm_str(he->thread), he->ms.map->dso->short_name,
+			i, he->thread->comm, he->ms.map->dso->short_name,
 			he->ms.sym->name, he->stat.period);
 
 		i++;
@@ -467,8 +467,8 @@ int test__hists_link(void)
 	if (err < 0)
 		goto out;
 
-	evlist__for_each(evlist, evsel) {
-		hists__collapse_resort(&evsel->hists, NULL);
+	list_for_each_entry(evsel, &evlist->entries, node) {
+		hists__collapse_resort(&evsel->hists);
 
 		if (verbose > 2)
 			print_hists(&evsel->hists);

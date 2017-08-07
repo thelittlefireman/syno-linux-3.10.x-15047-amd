@@ -590,7 +590,6 @@ static ssize_t set_fan_div(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-
 #define define_fan_sysfs(offset)					\
 static SENSOR_DEVICE_ATTR(fan##offset##_input, S_IRUGO,			\
 		show_fan, NULL, offset - 1);				\
@@ -766,7 +765,7 @@ static struct platform_driver vt8231_driver = {
 	.remove	= vt8231_remove,
 };
 
-static const struct pci_device_id vt8231_pci_ids[] = {
+static DEFINE_PCI_DEVICE_TABLE(vt8231_pci_ids) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_VIA, PCI_DEVICE_ID_VIA_8231_4) },
 	{ 0, }
 };

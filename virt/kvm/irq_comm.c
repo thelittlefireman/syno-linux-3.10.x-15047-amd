@@ -136,7 +136,6 @@ int kvm_set_msi(struct kvm_kernel_irq_routing_entry *e,
 	return kvm_irq_delivery_to_apic(kvm, NULL, &irq, NULL);
 }
 
-
 static int kvm_set_msi_inatomic(struct kvm_kernel_irq_routing_entry *e,
 			 struct kvm *kvm)
 {

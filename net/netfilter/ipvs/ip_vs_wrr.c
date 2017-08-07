@@ -70,7 +70,6 @@ struct ip_vs_wrr_mark {
 	struct rcu_head		rcu_head;
 };
 
-
 static int ip_vs_wrr_gcd_weight(struct ip_vs_service *svc)
 {
 	struct ip_vs_dest *dest;
@@ -89,7 +88,6 @@ static int ip_vs_wrr_gcd_weight(struct ip_vs_service *svc)
 	return g ? g : 1;
 }
 
-
 /*
  *    Get the maximum weight of the service destinations.
  */
@@ -106,7 +104,6 @@ static int ip_vs_wrr_max_weight(struct ip_vs_service *svc)
 
 	return weight;
 }
-
 
 static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
 {
@@ -128,7 +125,6 @@ static int ip_vs_wrr_init_svc(struct ip_vs_service *svc)
 	return 0;
 }
 
-
 static void ip_vs_wrr_done_svc(struct ip_vs_service *svc)
 {
 	struct ip_vs_wrr_mark *mark = svc->sched_data;
@@ -138,7 +134,6 @@ static void ip_vs_wrr_done_svc(struct ip_vs_service *svc)
 	 */
 	kfree_rcu(mark, rcu_head);
 }
-
 
 static int ip_vs_wrr_dest_changed(struct ip_vs_service *svc,
 				  struct ip_vs_dest *dest)
@@ -157,13 +152,11 @@ static int ip_vs_wrr_dest_changed(struct ip_vs_service *svc,
 	return 0;
 }
 
-
 /*
  *    Weighted Round-Robin Scheduling
  */
 static struct ip_vs_dest *
-ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-		   struct ip_vs_iphdr *iph)
+ip_vs_wrr_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
 {
 	struct ip_vs_dest *dest, *last, *stop = NULL;
 	struct ip_vs_wrr_mark *mark = svc->sched_data;
@@ -239,7 +232,6 @@ err_over:
 			    "all destinations are overloaded");
 	goto out;
 }
-
 
 static struct ip_vs_scheduler ip_vs_wrr_scheduler = {
 	.name =			"wrr",

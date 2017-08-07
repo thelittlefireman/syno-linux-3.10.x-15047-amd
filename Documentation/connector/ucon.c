@@ -71,7 +71,7 @@ static int netlink_send(int s, struct cn_msg *msg)
 	nlh->nlmsg_seq = seq++;
 	nlh->nlmsg_pid = getpid();
 	nlh->nlmsg_type = NLMSG_DONE;
-	nlh->nlmsg_len = size;
+	nlh->nlmsg_len = NLMSG_LENGTH(size - sizeof(*nlh));
 	nlh->nlmsg_flags = 0;
 
 	m = NLMSG_DATA(nlh);
@@ -197,7 +197,6 @@ int main(int argc, char *argv[])
 
 		return 0;
 	}
-
 
 	pfd.fd = s;
 

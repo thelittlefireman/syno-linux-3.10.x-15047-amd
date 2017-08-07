@@ -224,7 +224,6 @@ do {									\
 
 #endif
 
-
 /* FPU hazards */
 
 #if defined(CONFIG_CPU_SB1)
@@ -290,14 +289,12 @@ do {									\
 	);								\
 } while (0)
 
-
 #define mtc0_tlbw_hazard()						\
 do {									\
 	__asm__ __volatile__(						\
 	__stringify(__mtc0_tlbw_hazard)					\
 	);								\
 } while (0)
-
 
 #define tlbw_use_hazard()						\
 do {									\
@@ -306,14 +303,12 @@ do {									\
 	);								\
 } while (0)
 
-
 #define tlb_probe_hazard()						\
 do {									\
 	__asm__ __volatile__(						\
 	__stringify(__tlb_probe_hazard)					\
 	);								\
 } while (0)
-
 
 #define irq_enable_hazard()						\
 do {									\
@@ -322,14 +317,12 @@ do {									\
 	);								\
 } while (0)
 
-
 #define irq_disable_hazard()						\
 do {									\
 	__asm__ __volatile__(						\
 	__stringify(__irq_disable_hazard)				\
 	);								\
 } while (0)
-
 
 #define back_to_back_c0_hazard() 					\
 do {									\
@@ -338,14 +331,12 @@ do {									\
 	);								\
 } while (0)
 
-
 #define enable_fpu_hazard()						\
 do {									\
 	__asm__ __volatile__(						\
 	__stringify(__enable_fpu_hazard)				\
 	);								\
 } while (0)
-
 
 #define disable_fpu_hazard()						\
 do {									\

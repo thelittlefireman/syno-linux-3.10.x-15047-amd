@@ -71,7 +71,6 @@
 *
 ************************************************************************************************************/
 
-
 /************************************************************************************************************
 *
 * The macros Xn(...) and XXn(...) are used to define the LTV's (short for Length Type Value[ ]) ,
@@ -102,7 +101,6 @@
 *         hcf_16  par1;
 *         hcf_16  par2;
 *    } RID_NAME_STRCT;
-
 
 * XX1(RID_NAME, par1type, par1name, ...) : expands to :
 *    typedef struct RID_NAME_STRCT {
@@ -531,7 +529,6 @@ X2( CFG_WOL_PATTERNS, nPatterns, buffer[WOL_BUF_SIZE]		 )  /*[STA] WakeOnLan pat
  X2( CFG_CUR_ASSOC_REQ_INFO,	frame_type, frame_body[1]			 ) /*	0xFD8C												*/
  X2( CFG_CUR_ASSOC_RESP_INFO,	frame_type, frame_body[1]			 ) /*	0xFD8D												*/
 
-
 /*	Modem INFORMATION */
  X1( CFG_PHY_TYPE,				phy_type 							 ) /*Physical layer type indication							*/
  X1( CFG_CUR_CHANNEL,			current_channel						 ) /*Actual frequency channel used for transmission			*/
@@ -539,11 +536,8 @@ X2( CFG_WOL_PATTERNS, nPatterns, buffer[WOL_BUF_SIZE]		 )  /*[STA] WakeOnLan pat
  X1( CFG_CCAMODE,				cca_mode							 ) /*Clear channel assessment mode indication				*/
  X1( CFG_SUPPORTED_DATA_RATES,	rates[5]							 ) /*Data rates capability information						*/
 
-
 /* FRAMES */
 XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*/
-
-
 
 //--------------------------------------------------------------------------------------
 // UIL management function to be passed to WaveLAN/IEEE Drivers in DUI_STRCT field fun
@@ -741,7 +735,6 @@ XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*
 //#define CFG_CNF_COUNTRY					0xFCFE	apparently not needed ;?
 #define CFG_RID_CFG_MAX					0xFCFF		//highest value representing an Configuration RID
 
-
 /*============================================================= INFORMATION RECORDS 	=====================*/
 /*============================================================= mask 0xFDxx				=====================*/
 //	NIC INFORMATION
@@ -821,9 +814,7 @@ XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*
 //	ENGINEERING INFORMATION
 #define CFG_RID_ENG_MIN					0xFFE0	//lowest value representing a Hermes engineering RID
 
-
 /****************************** General define *************************************************************/
-
 
 //IFB field related
 //		IFB_CardStat
@@ -841,7 +832,6 @@ XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*
 #define ENC_1042    			        0x00
 #define ENC_TUNNEL      	    		0xF8
 /****************************** Xxxxxxxx *******************************************************************/
-
 
 #define HCF_SUCCESS					0x00	// OK
 #define HCF_ERR_TIME_OUT			0x04	// Expected Hermes event did not occur in expected time
@@ -988,7 +978,6 @@ XX1( CFG_SCAN,					SCAN_RS_STRCT, scan_result[32]		 ) /*Scan results											*
 #define 	CFG_CMD_HCF_REG_ACCESS			0x0000	//Direct register access
 #define 	CFG_CMD_HCF_RX_MON				0x0001	//Rx-monitor
 
-
 /*============================================================= MSF Defined RECORDS	========================*/
 #define CFG_ENCRYPT_STRING				0x0900		//transfer encryption info from CPL to MSF
 #define CFG_AP_MODE						0x0901		//control mode of STAP driver from CPL
@@ -1058,7 +1047,6 @@ typedef struct DUI_STRCT {			/* "legacy", still used by WVLAN42/43, NDIS drivers
 typedef DUI_STRCT FAR *	DUIP;
 #endif //defined WVLAN_42 || defined WVLAN_43 //;?keepup with legacy a liitle while longer (4aug2003)
 
-
 typedef struct CFG_CMD_NIC_STRCT {	// CFG_CMD_NIC (0x0860)		Hermes Engineering command
 	hcf_16	len;					//default length of RID
 	hcf_16	typ;					//RID identification as defined by Hermes
@@ -1074,7 +1062,6 @@ typedef struct CFG_CMD_NIC_STRCT {	// CFG_CMD_NIC (0x0860)		Hermes Engineering c
 	hcf_16	ifb_err_cmd;			//IFB_ErrCmd
 	hcf_16	ifb_err_qualifier;		//IFB_ErrQualifier
 } CFG_CMD_NIC_STRCT;
-
 
 typedef struct CFG_DRV_INFO_STRCT {		//CFG_DRV_INFO (0x0825) driver information
 	hcf_16	len;					//default length of RID
@@ -1152,4 +1139,3 @@ typedef struct CFG_DRV_INFO_STRCT {		//CFG_DRV_INFO (0x0825) driver information
 #endif // HCF_LEGACY
 
 #endif // MDD_H
-

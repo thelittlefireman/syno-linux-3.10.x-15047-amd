@@ -15,7 +15,6 @@
 #include <linux/buffer_head.h>
 #include "qnx4.h"
 
-
 /*
  * check if the filename is correct. For some obscure reason, qnx writes a
  * new file twice in the directory entry, first with all possible options at 0
@@ -60,6 +59,10 @@ static struct buffer_head *qnx4_find_entry(int len, struct inode *dir,
 	struct buffer_head *bh;
 
 	*res_dir = NULL;
+	if (!dir->i_sb) {
+		printk(KERN_WARNING "qnx4: no superblock on dir.\n");
+		return NULL;
+	}
 	bh = NULL;
 	block = offset = blkofs = 0;
 	while (blkofs * QNX4_BLOCK_SIZE + offset < dir->i_size) {

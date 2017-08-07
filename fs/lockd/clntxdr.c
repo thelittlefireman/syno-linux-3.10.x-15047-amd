@@ -41,7 +41,6 @@
 #define NLM_res_sz		(NLM_cookie_sz+1)
 #define NLM_norep_sz		(0)
 
-
 static s32 loff_t_to_s32(loff_t offset)
 {
 	s32 res;
@@ -76,7 +75,6 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
 		"Remaining buffer length is %tu words.\n",
 		func, xdr->end - xdr->p);
 }
-
 
 /*
  * Encode/decode NLMv3 basic data types
@@ -355,7 +353,6 @@ static void encode_nlm_lock(struct xdr_stream *xdr,
 	*p   = cpu_to_be32(l_len);
 }
 
-
 /*
  * NLMv3 XDR encode functions
  *
@@ -484,7 +481,6 @@ static void nlm_xdr_enc_testres(struct rpc_rqst *req,
 	encode_nlm_testrply(xdr, result);
 }
 
-
 /*
  * NLMv3 XDR decode functions
  *
@@ -552,7 +548,6 @@ static int nlm_xdr_dec_res(struct rpc_rqst *req,
 out:
 	return error;
 }
-
 
 /*
  * For NLM, a void procedure really returns nothing

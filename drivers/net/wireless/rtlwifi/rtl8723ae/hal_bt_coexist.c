@@ -31,8 +31,6 @@
 #include "../pci.h"
 #include "dm.h"
 #include "fw.h"
-#include "../rtl8723com/fw_common.h"
-#include "../rtl8723com/fw_common.h"
 #include "phy.h"
 #include "reg.h"
 #include "hal_btc.h"
@@ -395,7 +393,6 @@ void rtl8723ae_dm_bt_balance(struct ieee80211_hw *hw,
 
 	rtl8723ae_fill_h2c_cmd(hw, 0xc, 3, h2c_parameter);
 }
-
 
 void rtl8723ae_dm_bt_agc_table(struct ieee80211_hw *hw, u8 type)
 {

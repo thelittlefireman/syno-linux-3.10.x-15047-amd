@@ -8,6 +8,7 @@
 #include <linux/kthread.h>
 #include <linux/random.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/mm.h>
 
 #include <asm/cacheflush.h>

@@ -80,10 +80,8 @@
 #include <linux/export.h>
 #include "wimax-internal.h"
 
-
 #define D_SUBMODULE op_msg
 #include "debug-levels.h"
-
 
 /**
  * wimax_msg_alloc - Create a new skb for sending a message to userspace
@@ -172,7 +170,6 @@ error_new:
 }
 EXPORT_SYMBOL_GPL(wimax_msg_alloc);
 
-
 /**
  * wimax_msg_data_len - Return a pointer and size of a message's payload
  *
@@ -197,7 +194,6 @@ const void *wimax_msg_data_len(struct sk_buff *msg, size_t *size)
 }
 EXPORT_SYMBOL_GPL(wimax_msg_data_len);
 
-
 /**
  * wimax_msg_data - Return a pointer to a message's payload
  *
@@ -218,7 +214,6 @@ const void *wimax_msg_data(struct sk_buff *msg)
 }
 EXPORT_SYMBOL_GPL(wimax_msg_data);
 
-
 /**
  * wimax_msg_len - Return a message's payload length
  *
@@ -238,7 +233,6 @@ ssize_t wimax_msg_len(struct sk_buff *msg)
 	return nla_len(nla);
 }
 EXPORT_SYMBOL_GPL(wimax_msg_len);
-
 
 /**
  * wimax_msg_send - Send a pre-allocated message to user space
@@ -279,12 +273,11 @@ int wimax_msg_send(struct wimax_dev *wimax_dev, struct sk_buff *skb)
 
 	d_printf(1, dev, "CTX: wimax msg, %zu bytes\n", size);
 	d_dump(2, dev, msg, size);
-	genlmsg_multicast(&wimax_gnl_family, skb, 0, 0, GFP_KERNEL);
+	genlmsg_multicast(skb, 0, wimax_gnl_mcg.id, GFP_KERNEL);
 	d_printf(1, dev, "CTX: genl multicast done\n");
 	return 0;
 }
 EXPORT_SYMBOL_GPL(wimax_msg_send);
-
 
 /**
  * wimax_msg - Send a message to user space
@@ -321,6 +314,15 @@ int wimax_msg(struct wimax_dev *wimax_dev, const char *pipe_name,
 }
 EXPORT_SYMBOL_GPL(wimax_msg);
 
+static const struct nla_policy wimax_gnl_msg_policy[WIMAX_GNL_ATTR_MAX + 1] = {
+	[WIMAX_GNL_MSG_IFIDX] = {
+		.type = NLA_U32,
+	},
+	[WIMAX_GNL_MSG_DATA] = {
+		.type = NLA_UNSPEC,	/* libnl doesn't grok BINARY yet */
+	},
+};
+
 /*
  * Relays a message from user space to the driver
  *
@@ -329,6 +331,7 @@ EXPORT_SYMBOL_GPL(wimax_msg);
  *
  * This call will block while handling/relaying the message.
  */
+static
 int wimax_gnl_doit_msg_from_user(struct sk_buff *skb, struct genl_info *info)
 {
 	int result, ifindex;
@@ -406,3 +409,14 @@ error_no_wimax_dev:
 	return result;
 }
 
+/*
+ * Generic Netlink glue
+ */
+
+struct genl_ops wimax_gnl_msg_from_user = {
+	.cmd = WIMAX_GNL_OP_MSG_FROM_USER,
+	.flags = GENL_ADMIN_PERM,
+	.policy = wimax_gnl_msg_policy,
+	.doit = wimax_gnl_doit_msg_from_user,
+	.dumpit = NULL,
+};

@@ -62,19 +62,12 @@
 /* Only include this file if USE_PROFILE is defined */
 #ifdef USE_PROFILE
 
-
-
-
 /*******************************************************************************
  *  constant definitions
  ******************************************************************************/
 
-
 /* Allow support for calling system fcns to parse config file */
 #define __KERNEL_SYSCALLS__
-
-
-
 
 /*******************************************************************************
  * include files
@@ -100,16 +93,19 @@
 #include <wl_main.h>
 #include <wl_profile.h>
 
+/*******************************************************************************
+ * global variables
+ ******************************************************************************/
 
 /* Definition needed to prevent unresolved external in unistd.h */
 static int errno;
 
 #if DBG
 extern p_u32    DebugFlag;
+extern dbg_info_t *DbgInfo;
 #endif
 
 int parse_yes_no(char *value);
-
 
 int parse_yes_no(char *value)
 {
@@ -124,7 +120,6 @@ int rc = 0;										/* default to NO for invalid parameters */
 	}
 	return rc;
 } /* parse_yes_no */
-
 
 /*******************************************************************************
  *	parse_config()
@@ -158,6 +153,10 @@ void parse_config(struct net_device *dev)
 	mm_segment_t	    fs;
 	struct wl_private   *wvlan_config = NULL;
 	ENCSTRCT            sEncryption;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC("parse_config");
+	DBG_ENTER(DbgInfo);
 
 	/* Get the wavelan specific info for this device */
 	wvlan_config = dev->priv;
@@ -263,6 +262,7 @@ void parse_config(struct net_device *dev)
 		set_fs(fs);			/* Return to the original context */
 #endif /* BIN_DL */
 
+	DBG_LEAVE(DbgInfo);
 	return;
 } /* parse_config */
 
@@ -343,6 +343,8 @@ void translate_option(char *buffer, struct wl_private *lp)
 	char *value = NULL;
 	u_char mac_value[ETH_ALEN];
 	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC("translate_option");
 
 	if (buffer == NULL || lp == NULL) {
 		DBG_ERROR(DbgInfo, "Config file buffer and/or wavelan buffer ptr NULL\n");
@@ -947,6 +949,10 @@ void ParseConfigLine(char *pszLine, char **ppszLVal, char **ppszRVal)
 {
 	int i;
 	int size;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC("ParseConfigLine");
+	DBG_ENTER(DbgInfo);
 
 	/* get a snapshot of our string size */
 	size      = strlen(pszLine);
@@ -989,6 +995,7 @@ void ParseConfigLine(char *pszLine, char **ppszLVal, char **ppszRVal)
 				pszLine[i] = '\0';
 		}
 	}
+	DBG_LEAVE(DbgInfo);
 } /* ParseConfigLine */
 /*============================================================================*/
 

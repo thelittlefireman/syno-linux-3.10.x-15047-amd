@@ -26,7 +26,6 @@
  * that appeared in Linux Weekly News.
  */
 
-
 /*
  * The IBMASM file virtual filesystem. It creates the following hierarchy
  * dynamically when mounted from user space:
@@ -90,7 +89,6 @@ static struct inode *ibmasmfs_make_inode(struct super_block *sb, int mode);
 static void ibmasmfs_create_files (struct super_block *sb);
 static int ibmasmfs_fill_super (struct super_block *sb, void *data, int silent);
 
-
 static struct dentry *ibmasmfs_mount(struct file_system_type *fst,
 			int flags, const char *name, void *data)
 {
@@ -149,7 +147,8 @@ static struct inode *ibmasmfs_make_inode(struct super_block *sb, int mode)
 	return ret;
 }
 
-static struct dentry *ibmasmfs_create_file(struct dentry *parent,
+static struct dentry *ibmasmfs_create_file (struct super_block *sb,
+			struct dentry *parent,
 			const char *name,
 			const struct file_operations *fops,
 			void *data,
@@ -162,7 +161,7 @@ static struct dentry *ibmasmfs_create_file(struct dentry *parent,
 	if (!dentry)
 		return NULL;
 
-	inode = ibmasmfs_make_inode(parent->d_sb, S_IFREG | mode);
+	inode = ibmasmfs_make_inode(sb, S_IFREG | mode);
 	if (!inode) {
 		dput(dentry);
 		return NULL;
@@ -175,7 +174,8 @@ static struct dentry *ibmasmfs_create_file(struct dentry *parent,
 	return dentry;
 }
 
-static struct dentry *ibmasmfs_create_dir(struct dentry *parent,
+static struct dentry *ibmasmfs_create_dir (struct super_block *sb,
+				struct dentry *parent,
 				const char *name)
 {
 	struct dentry *dentry;
@@ -185,7 +185,7 @@ static struct dentry *ibmasmfs_create_dir(struct dentry *parent,
 	if (!dentry)
 		return NULL;
 
-	inode = ibmasmfs_make_inode(parent->d_sb, S_IFDIR | 0500);
+	inode = ibmasmfs_make_inode(sb, S_IFDIR | 0500);
 	if (!inode) {
 		dput(dentry);
 		return NULL;
@@ -555,7 +555,6 @@ static ssize_t remote_settings_file_write(struct file *file, const char __user *
 	if (!buff)
 		return -ENOMEM;
 
-
 	if (copy_from_user(buff, ubuff, count)) {
 		kfree(buff);
 		return -EFAULT;
@@ -600,7 +599,6 @@ static const struct file_operations remote_settings_fops = {
 	.llseek =	generic_file_llseek,
 };
 
-
 static void ibmasmfs_create_files (struct super_block *sb)
 {
 	struct list_head *entry;
@@ -610,20 +608,20 @@ static void ibmasmfs_create_files (struct super_block *sb)
 		struct dentry *dir;
 		struct dentry *remote_dir;
 		sp = list_entry(entry, struct service_processor, node);
-		dir = ibmasmfs_create_dir(sb->s_root, sp->dirname);
+		dir = ibmasmfs_create_dir(sb, sb->s_root, sp->dirname);
 		if (!dir)
 			continue;
 
-		ibmasmfs_create_file(dir, "command", &command_fops, sp, S_IRUSR|S_IWUSR);
-		ibmasmfs_create_file(dir, "event", &event_fops, sp, S_IRUSR|S_IWUSR);
-		ibmasmfs_create_file(dir, "reverse_heartbeat", &r_heartbeat_fops, sp, S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, dir, "command", &command_fops, sp, S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, dir, "event", &event_fops, sp, S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, dir, "reverse_heartbeat", &r_heartbeat_fops, sp, S_IRUSR|S_IWUSR);
 
-		remote_dir = ibmasmfs_create_dir(dir, "remote_video");
+		remote_dir = ibmasmfs_create_dir(sb, dir, "remote_video");
 		if (!remote_dir)
 			continue;
 
-		ibmasmfs_create_file(remote_dir, "width", &remote_settings_fops, (void *)display_width(sp), S_IRUSR|S_IWUSR);
-		ibmasmfs_create_file(remote_dir, "height", &remote_settings_fops, (void *)display_height(sp), S_IRUSR|S_IWUSR);
-		ibmasmfs_create_file(remote_dir, "depth", &remote_settings_fops, (void *)display_depth(sp), S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, remote_dir, "width", &remote_settings_fops, (void *)display_width(sp), S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, remote_dir, "height", &remote_settings_fops, (void *)display_height(sp), S_IRUSR|S_IWUSR);
+		ibmasmfs_create_file(sb, remote_dir, "depth", &remote_settings_fops, (void *)display_depth(sp), S_IRUSR|S_IWUSR);
 	}
 }

@@ -35,4 +35,3 @@
 		tst	\rd, #1 << 11		@ UBUSYx
 		bne	1001b
 		.endm
-

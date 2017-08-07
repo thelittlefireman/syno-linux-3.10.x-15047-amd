@@ -23,6 +23,7 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/init.h>
 #include <linux/delay.h>
 #include <pcmcia/cistpl.h>
 #include <pcmcia/cisreg.h>
@@ -67,7 +68,6 @@ static void spectrum_cs_release(struct pcmcia_device *link);
 #define HCR_RUN		0x07	/* run firmware after reset */
 #define HCR_IDLE	0x0E	/* don't run firmware after reset */
 #define HCR_MEM16	0x10	/* memory width bit, should be preserved */
-
 
 /*
  * Reset the card using configuration registers COR and CCSR.
@@ -273,7 +273,6 @@ spectrum_cs_release(struct pcmcia_device *link)
 		ioport_unmap(priv->hw.iobase);
 }				/* spectrum_cs_release */
 
-
 static int
 spectrum_cs_suspend(struct pcmcia_device *link)
 {
@@ -294,7 +293,6 @@ spectrum_cs_resume(struct pcmcia_device *link)
 
 	return err;
 }
-
 
 /********************************************************************/
 /* Module initialization					    */

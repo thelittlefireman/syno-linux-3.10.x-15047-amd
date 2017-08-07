@@ -71,7 +71,6 @@ static __init int s3c2416_pm_init(void)
 
 arch_initcall(s3c2416_pm_init);
 
-
 static void s3c2416_pm_resume(void)
 {
 	/* unset the return-from-sleep amd inform flags */

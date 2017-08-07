@@ -139,7 +139,6 @@ int csio_is_hw_removing(struct csio_hw *hw)
 	return csio_match_state(hw, csio_hws_removing);
 }
 
-
 /*
  *	csio_hw_wait_op_done_val - wait until an operation is completed
  *	@hw: the HW module
@@ -852,6 +851,22 @@ csio_hw_get_flash_params(struct csio_hw *hw)
 	return 0;
 }
 
+static void
+csio_set_pcie_completion_timeout(struct csio_hw *hw, u8 range)
+{
+	uint16_t val;
+	int pcie_cap;
+
+	if (!csio_pci_capability(hw->pdev, PCI_CAP_ID_EXP, &pcie_cap)) {
+		pci_read_config_word(hw->pdev,
+				     pcie_cap + PCI_EXP_DEVCTL2, &val);
+		val &= 0xfff0;
+		val |= range ;
+		pci_write_config_word(hw->pdev,
+				      pcie_cap + PCI_EXP_DEVCTL2, val);
+	}
+}
+
 /*****************************************************************************/
 /* HW State machine assists                                                  */
 /*****************************************************************************/
@@ -1319,7 +1334,6 @@ csio_hw_fw_upgrade(struct csio_hw *hw, uint32_t mbox,
 	return csio_hw_fw_restart(hw, mbox, reset);
 }
 
-
 /*
  *	csio_hw_fw_config_file - setup an adapter via a Configuration File
  *	@hw: the HW module
@@ -1517,7 +1531,6 @@ csio_get_device_params(struct csio_hw *hw)
 	return 0;
 }
 
-
 /*
  * csio_config_device_caps - Get and set device capabilities.
  * @hw: HW module
@@ -1579,6 +1592,87 @@ csio_config_device_caps(struct csio_hw *hw)
 out:
 	mempool_free(mbp, hw->mb_mempool);
 	return rv;
+}
+
+static int
+csio_config_global_rss(struct csio_hw *hw)
+{
+	struct csio_mb	*mbp;
+	enum fw_retval retval;
+
+	mbp = mempool_alloc(hw->mb_mempool, GFP_ATOMIC);
+	if (!mbp) {
+		CSIO_INC_STATS(hw, n_err_nomem);
+		return -ENOMEM;
+	}
+
+	csio_rss_glb_config(hw, mbp, CSIO_MB_DEFAULT_TMO,
+			    FW_RSS_GLB_CONFIG_CMD_MODE_BASICVIRTUAL,
+			    FW_RSS_GLB_CONFIG_CMD_TNLMAPEN |
+			    FW_RSS_GLB_CONFIG_CMD_HASHTOEPLITZ |
+			    FW_RSS_GLB_CONFIG_CMD_TNLALLLKP,
+			    NULL);
+
+	if (csio_mb_issue(hw, mbp)) {
+		csio_err(hw, "Issue of FW_RSS_GLB_CONFIG_CMD failed!\n");
+		mempool_free(mbp, hw->mb_mempool);
+		return -EINVAL;
+	}
+
+	retval = csio_mb_fw_retval(mbp);
+	if (retval != FW_SUCCESS) {
+		csio_err(hw, "FW_RSS_GLB_CONFIG_CMD returned 0x%x!\n", retval);
+		mempool_free(mbp, hw->mb_mempool);
+		return -EINVAL;
+	}
+
+	mempool_free(mbp, hw->mb_mempool);
+
+	return 0;
+}
+
+/*
+ * csio_config_pfvf - Configure Physical/Virtual functions settings.
+ * @hw: HW module
+ *
+ */
+static int
+csio_config_pfvf(struct csio_hw *hw)
+{
+	struct csio_mb	*mbp;
+	enum fw_retval retval;
+
+	mbp = mempool_alloc(hw->mb_mempool, GFP_ATOMIC);
+	if (!mbp) {
+		CSIO_INC_STATS(hw, n_err_nomem);
+		return -ENOMEM;
+	}
+
+	/*
+	 * For now, allow all PFs to access to all ports using a pmask
+	 * value of 0xF (M_FW_PFVF_CMD_PMASK). Once we have VFs, we will
+	 * need to provide access based on some rule.
+	 */
+	csio_mb_pfvf(hw, mbp, CSIO_MB_DEFAULT_TMO, hw->pfn, 0, CSIO_NEQ,
+		     CSIO_NETH_CTRL, CSIO_NIQ_FLINT, 0, 0, CSIO_NVI, CSIO_CMASK,
+		     CSIO_PMASK, CSIO_NEXACTF, CSIO_R_CAPS, CSIO_WX_CAPS, NULL);
+
+	if (csio_mb_issue(hw, mbp)) {
+		csio_err(hw, "Issue of FW_PFVF_CMD failed!\n");
+		mempool_free(mbp, hw->mb_mempool);
+		return -EINVAL;
+	}
+
+	retval = csio_mb_fw_retval(mbp);
+	if (retval != FW_SUCCESS) {
+		csio_err(hw, "FW_PFVF_CMD returned 0x%x!\n", retval);
+		mempool_free(mbp, hw->mb_mempool);
+		return -EINVAL;
+	}
+
+	mempool_free(mbp, hw->mb_mempool);
+
+	return 0;
 }
 
 /*
@@ -1959,6 +2053,16 @@ csio_hw_no_fwconfig(struct csio_hw *hw, int reset)
 	if (rv != 0)
 		goto out;
 
+	/* Config Global RSS command */
+	rv = csio_config_global_rss(hw);
+	if (rv != 0)
+		goto out;
+
+	/* Configure PF/VF capabilities of device */
+	rv = csio_config_pfvf(hw);
+	if (rv != 0)
+		goto out;
+
 	/* device parameters */
 	rv = csio_get_device_params(hw);
 	if (rv != 0)
@@ -2022,7 +2126,6 @@ csio_hw_flash_fw(struct csio_hw *hw)
 	return ret;
 }
 
-
 /*
  * csio_hw_configure - Configure HW
  * @hw - HW module
@@ -2053,10 +2156,8 @@ csio_hw_configure(struct csio_hw *hw)
 		goto out;
 	}
 
-	/* Set PCIe completion timeout to 4 seconds */
-	if (pci_is_pcie(hw->pdev))
-		pcie_capability_clear_and_set_word(hw->pdev, PCI_EXP_DEVCTL2,
-				PCI_EXP_DEVCTL2_COMP_TIMEOUT, 0xd);
+	/* Set pci completion timeout value to 4 seconds. */
+	csio_set_pcie_completion_timeout(hw, 0xd);
 
 	hw->chip_ops->chip_set_mem_win(hw, MEMWIN_CSIOSTOR);
 
@@ -3454,7 +3555,6 @@ csio_evtq_cleanup(struct csio_hw *hw)
 	hw->stats.n_evt_freeq = 0;
 }
 
-
 static void
 csio_process_fwevtq_entry(struct csio_hw *hw, void *wr, uint32_t len,
 			  struct csio_fl_dma_buf *flb, void *priv)
@@ -3742,7 +3842,6 @@ csio_mgmtm_exit(struct csio_mgmtm *mgmtm)
 {
 	del_timer_sync(&mgmtm->mgmt_timer);
 }
-
 
 /**
  * csio_hw_start - Kicks off the HW State machine

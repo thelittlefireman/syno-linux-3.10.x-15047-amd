@@ -165,9 +165,6 @@ struct rtattr {
 #define RTA_DATA(rta)   ((void*)(((char*)(rta)) + RTA_LENGTH(0)))
 #define RTA_PAYLOAD(rta) ((int)((rta)->rta_len) - RTA_LENGTH(0))
 
-
-
-
 /******************************************************************************
  *		Definitions used in routing table administration.
  ****/
@@ -207,7 +204,6 @@ enum {
 };
 
 #define RTN_MAX (__RTN_MAX - 1)
-
 
 /* rtm_protocol */
 
@@ -274,7 +270,6 @@ enum rt_class_t {
 	RT_TABLE_LOCAL=255,
 	RT_TABLE_MAX=0xFFFFFFFF
 };
-
 
 /* Routing message attributes */
 
@@ -386,8 +381,6 @@ enum {
 #define RTAX_RTO_MIN RTAX_RTO_MIN
 	RTAX_INITRWND,
 #define RTAX_INITRWND RTAX_INITRWND
-	RTAX_QUICKACK,
-#define RTAX_QUICKACK RTAX_QUICKACK
 	__RTAX_MAX
 };
 
@@ -480,7 +473,6 @@ struct prefix_cacheinfo {
 	__u32	preferred_time;
 	__u32	valid_time;
 };
-
 
 /*****************************************************************
  *		Traffic control messages.
@@ -635,7 +627,5 @@ struct tcamsg {
 #define RTEXT_FILTER_BRVLAN	(1 << 1)
 
 /* End of information exported to user level */
-
-
 
 #endif /* _UAPI__LINUX_RTNETLINK_H */

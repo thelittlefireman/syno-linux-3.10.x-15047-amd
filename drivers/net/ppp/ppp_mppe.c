@@ -27,7 +27,8 @@
  *   GNU General Public License for more details.
  *
  *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, see <http://www.gnu.org/licenses/>.
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
  *
  * Changelog:
@@ -202,7 +203,6 @@ static void *mppe_alloc(unsigned char *options, int optlen)
 	state = kzalloc(sizeof(*state), GFP_KERNEL);
 	if (state == NULL)
 		goto out;
-
 
 	state->arc4 = crypto_alloc_blkcipher("ecb(arc4)", 0, CRYPTO_ALG_ASYNC);
 	if (IS_ERR(state->arc4)) {

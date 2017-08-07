@@ -40,7 +40,6 @@ struct zoran_sync {
 	struct timeval timestamp;	/* timestamp */
 };
 
-
 #define ZORAN_NAME    "ZORAN"	/* name of the device */
 
 #define ZR_DEVNAME(zr) ((zr)->name)

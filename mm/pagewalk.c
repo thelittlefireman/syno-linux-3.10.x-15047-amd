@@ -137,8 +137,6 @@ static int walk_hugetlb_range(struct vm_area_struct *vma,
 
 #endif /* CONFIG_HUGETLB_PAGE */
 
-
-
 /**
  * walk_page_range - walk a memory map's page tables with a callback
  * @addr: starting address
@@ -199,7 +197,10 @@ int walk_page_range(unsigned long addr, unsigned long end,
 			 */
 			if ((vma->vm_start <= addr) &&
 			    (vma->vm_flags & VM_PFNMAP)) {
-				next = vma->vm_end;
+				if (walk->pte_hole)
+					err = walk->pte_hole(addr, next, walk);
+				if (err)
+					break;
 				pgd = pgd_offset(walk->mm, next);
 				continue;
 			}

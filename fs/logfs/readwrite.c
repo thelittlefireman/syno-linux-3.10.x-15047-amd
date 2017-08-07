@@ -568,7 +568,6 @@ static void indirect_free_block(struct super_block *sb,
 	__free_block(sb, block);
 }
 
-
 static struct logfs_block_ops inode_block_ops = {
 	.write_block = inode_write_block,
 	.free_block = inode_free_block,
@@ -2180,7 +2179,7 @@ void logfs_evict_inode(struct inode *inode)
 			do_delete_inode(inode);
 		}
 	}
-	truncate_inode_pages_final(&inode->i_data);
+	truncate_inode_pages(&inode->i_data, 0);
 	clear_inode(inode);
 
 	/* Cheaper version of write_inode.  All changes are concealed in

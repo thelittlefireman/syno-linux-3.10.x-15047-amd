@@ -30,8 +30,6 @@
 #endif
 #define current_text_addr() ({ void *pc; current_ia(pc); pc; })
 
-#define HAVE_ARCH_PICK_MMAP_LAYOUT
-
 #define TASK_SIZE_OF(tsk)       ((tsk)->thread.task_size)
 #define TASK_SIZE	        TASK_SIZE_OF(current)
 #define TASK_UNMAPPED_BASE      (current->thread.map_base)
@@ -54,6 +52,8 @@
 
 #define STACK_TOP	TASK_SIZE
 #define STACK_TOP_MAX	DEFAULT_TASK_SIZE
+
+#define STACK_SIZE_MAX	(1 << 30)	/* 1 GB */
 
 #endif
 
@@ -83,7 +83,6 @@ struct system_cpuinfo_parisc {
 	const char	*cpu_name;	/* e.g. "PA7300LC (PCX-L2)" */
 	const char	*family_name;	/* e.g. "1.1e" */
 };
-
 
 /* Per CPU data structure - ie varies per CPU.  */
 struct cpuinfo_parisc {

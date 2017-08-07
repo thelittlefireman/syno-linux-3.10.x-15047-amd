@@ -172,7 +172,7 @@ static int pm860x_touch_dt_init(struct platform_device *pdev,
 static int pm860x_touch_probe(struct platform_device *pdev)
 {
 	struct pm860x_chip *chip = dev_get_drvdata(pdev->dev.parent);
-	struct pm860x_touch_pdata *pdata = dev_get_platdata(&pdev->dev);
+	struct pm860x_touch_pdata *pdata = pdev->dev.platform_data;
 	struct pm860x_touch *touch;
 	struct i2c_client *i2c = (chip->id == CHIP_PM8607) ? chip->client \
 				 : chip->companion;
@@ -237,7 +237,7 @@ static int pm860x_touch_probe(struct platform_device *pdev)
 	touch = kzalloc(sizeof(struct pm860x_touch), GFP_KERNEL);
 	if (touch == NULL)
 		return -ENOMEM;
-	platform_set_drvdata(pdev, touch);
+	dev_set_drvdata(&pdev->dev, touch);
 
 	touch->idev = input_allocate_device();
 	if (touch->idev == NULL) {
@@ -299,6 +299,7 @@ static int pm860x_touch_remove(struct platform_device *pdev)
 
 	input_unregister_device(touch->idev);
 	free_irq(touch->irq, touch);
+	platform_set_drvdata(pdev, NULL);
 	kfree(touch);
 	return 0;
 }
@@ -317,4 +318,3 @@ MODULE_DESCRIPTION("Touchscreen driver for Marvell Semiconductor 88PM860x");
 MODULE_AUTHOR("Haojian Zhuang <haojian.zhuang@marvell.com>");
 MODULE_LICENSE("GPL");
 MODULE_ALIAS("platform:88pm860x-touch");
-

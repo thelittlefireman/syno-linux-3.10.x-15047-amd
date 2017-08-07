@@ -230,7 +230,6 @@ static inline void octeon_npi_write32(uint64_t address, uint32_t val)
 	cvmx_read64_uint32(address ^ 4);
 }
 
-
 /**
  * Read a 32bit value from the Octeon NPI register space
  *
@@ -250,7 +249,5 @@ extern void (*octeon_irq_setup_secondary)(void);
 
 typedef void (*octeon_irq_ip4_handler_t)(void);
 void octeon_irq_set_ip4_handler(octeon_irq_ip4_handler_t);
-
-extern void octeon_fixup_irqs(void);
 
 #endif /* __ASM_OCTEON_OCTEON_H */

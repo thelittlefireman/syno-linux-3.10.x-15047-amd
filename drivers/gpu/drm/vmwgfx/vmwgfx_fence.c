@@ -121,7 +121,6 @@ static void vmw_fence_obj_destroy_locked(struct kref *kref)
 	spin_lock_irq(&fman->lock);
 }
 
-
 /**
  * Execute signal actions on fences recently signaled.
  * This is done from a workqueue so we don't have to execute
@@ -271,7 +270,7 @@ void vmw_fence_obj_unreference(struct vmw_fence_obj **fence_p)
 	spin_unlock_irq(&fman->lock);
 }
 
-static void vmw_fences_perform_actions(struct vmw_fence_manager *fman,
+void vmw_fences_perform_actions(struct vmw_fence_manager *fman,
 				struct list_head *list)
 {
 	struct vmw_fence_action *action, *next_action;
@@ -334,7 +333,6 @@ static bool vmw_fence_goal_new_locked(struct vmw_fence_manager *fman,
 
 	return true;
 }
-
 
 /**
  * vmw_fence_goal_check_locked - Replace the device fence goal seqno if
@@ -530,7 +528,6 @@ out_no_object:
 	return ret;
 }
 
-
 static void vmw_user_fence_destroy(struct vmw_fence_obj *fence)
 {
 	struct vmw_user_fence *ufence =
@@ -601,7 +598,6 @@ int vmw_user_fence_create(struct drm_file *file_priv,
 				   VMW_RES_FENCE,
 				   &vmw_user_fence_base_release, NULL);
 
-
 	if (unlikely(ret != 0)) {
 		/*
 		 * Free the base object's reference
@@ -621,7 +617,6 @@ out_no_object:
 	ttm_mem_global_free(mem_glob, fman->user_fence_size);
 	return ret;
 }
-
 
 /**
  * vmw_fence_fifo_down - signal all unsignaled fence objects.
@@ -677,7 +672,6 @@ void vmw_fence_fifo_up(struct vmw_fence_manager *fman)
 	fman->fifo_down = false;
 	spin_unlock_irqrestore(&fman->lock, irq_flags);
 }
-
 
 int vmw_fence_obj_wait_ioctl(struct drm_device *dev, void *data,
 			     struct drm_file *file_priv)
@@ -772,7 +766,6 @@ int vmw_fence_obj_signaled_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-
 int vmw_fence_obj_unref_ioctl(struct drm_device *dev, void *data,
 			      struct drm_file *file_priv)
 {
@@ -820,7 +813,6 @@ void vmw_event_fence_fpriv_gone(struct vmw_fence_manager *fman,
 out_unlock:
 	spin_unlock_irqrestore(&fman->lock, irq_flags);
 }
-
 
 /**
  * vmw_event_fence_action_seq_passed
@@ -887,7 +879,6 @@ static void vmw_event_fence_action_cleanup(struct vmw_fence_action *action)
 	kfree(eaction);
 }
 
-
 /**
  * vmw_fence_obj_add_action - Add an action to a fence object.
  *
@@ -897,7 +888,7 @@ static void vmw_event_fence_action_cleanup(struct vmw_fence_action *action)
  * Note that the action callbacks may be executed before this function
  * returns.
  */
-static void vmw_fence_obj_add_action(struct vmw_fence_obj *fence,
+void vmw_fence_obj_add_action(struct vmw_fence_obj *fence,
 			      struct vmw_fence_action *action)
 {
 	struct vmw_fence_manager *fman = fence->fman;
@@ -993,7 +984,7 @@ struct vmw_event_fence_pending {
 	struct drm_vmw_event_fence event;
 };
 
-static int vmw_event_fence_action_create(struct drm_file *file_priv,
+int vmw_event_fence_action_create(struct drm_file *file_priv,
 				  struct vmw_fence_obj *fence,
 				  uint32_t flags,
 				  uint64_t user_data,
@@ -1017,7 +1008,6 @@ static int vmw_event_fence_action_create(struct drm_file *file_priv,
 		goto out_no_space;
 	}
 
-
 	event = kzalloc(sizeof(*event), GFP_KERNEL);
 	if (unlikely(event == NULL)) {
 		DRM_ERROR("Failed to allocate an event.\n");
@@ -1033,7 +1023,6 @@ static int vmw_event_fence_action_create(struct drm_file *file_priv,
 	event->base.file_priv = file_priv;
 	event->base.destroy = (void (*) (struct drm_pending_event *)) kfree;
 
-
 	if (flags & DRM_VMW_FE_FLAG_REQ_TIME)
 		ret = vmw_event_fence_action_queue(file_priv, fence,
 						   &event->base,
@@ -1048,6 +1037,8 @@ static int vmw_event_fence_action_create(struct drm_file *file_priv,
 						   interruptible);
 	if (ret != 0)
 		goto out_no_queue;
+
+	return 0;
 
 out_no_queue:
 	event->base.destroy(&event->base);
@@ -1080,8 +1071,7 @@ int vmw_fence_event_ioctl(struct drm_device *dev, void *data,
 	 */
 	if (arg->handle) {
 		struct ttm_base_object *base =
-			ttm_base_object_lookup_for_ref(dev_priv->tdev,
-						       arg->handle);
+			ttm_base_object_lookup(vmw_fp->tfile, arg->handle);
 
 		if (unlikely(base == NULL)) {
 			DRM_ERROR("Fence event invalid fence object handle "
@@ -1124,17 +1114,10 @@ int vmw_fence_event_ioctl(struct drm_device *dev, void *data,
 
 	BUG_ON(fence == NULL);
 
-	if (arg->flags & DRM_VMW_FE_FLAG_REQ_TIME)
-		ret = vmw_event_fence_action_create(file_priv, fence,
-						    arg->flags,
-						    arg->user_data,
-						    true);
-	else
-		ret = vmw_event_fence_action_create(file_priv, fence,
-						    arg->flags,
-						    arg->user_data,
-						    true);
-
+	ret = vmw_event_fence_action_create(file_priv, fence,
+					    arg->flags,
+					    arg->user_data,
+					    true);
 	if (unlikely(ret != 0)) {
 		if (ret != -ERESTARTSYS)
 			DRM_ERROR("Failed to attach event to fence.\n");

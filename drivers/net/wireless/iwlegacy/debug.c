@@ -31,7 +31,7 @@
 
 #include "common.h"
 
-static void
+void
 il_clear_traffic_stats(struct il_priv *il)
 {
 	memset(&il->tx_stats, 0, sizeof(struct traffic_stats));
@@ -159,7 +159,6 @@ static ssize_t il_dbgfs_##name##_read(struct file *file,               \
 static ssize_t il_dbgfs_##name##_write(struct file *file,              \
 					const char __user *user_buf,    \
 					size_t count, loff_t *ppos);
-
 
 #define DEBUGFS_READ_FILE_OPS(name)				\
 	DEBUGFS_READ_FUNC(name);				\
@@ -567,12 +566,12 @@ il_dbgfs_channels_read(struct file *file, char __user *user_buf, size_t count,
 				      flags & IEEE80211_CHAN_RADAR ?
 				      " (IEEE 802.11h required)" : "",
 				      ((channels[i].
-					flags & IEEE80211_CHAN_NO_IR) ||
+					flags & IEEE80211_CHAN_NO_IBSS) ||
 				       (channels[i].
 					flags & IEEE80211_CHAN_RADAR)) ? "" :
 				      ", IBSS",
 				      channels[i].
-				      flags & IEEE80211_CHAN_NO_IR ?
+				      flags & IEEE80211_CHAN_PASSIVE_SCAN ?
 				      "passive only" : "active/passive");
 	}
 	supp_band = il_get_hw_mode(il, IEEE80211_BAND_5GHZ);
@@ -594,12 +593,12 @@ il_dbgfs_channels_read(struct file *file, char __user *user_buf, size_t count,
 				      flags & IEEE80211_CHAN_RADAR ?
 				      " (IEEE 802.11h required)" : "",
 				      ((channels[i].
-					flags & IEEE80211_CHAN_NO_IR) ||
+					flags & IEEE80211_CHAN_NO_IBSS) ||
 				       (channels[i].
 					flags & IEEE80211_CHAN_RADAR)) ? "" :
 				      ", IBSS",
 				      channels[i].
-				      flags & IEEE80211_CHAN_NO_IR ?
+				      flags & IEEE80211_CHAN_PASSIVE_SCAN ?
 				      "passive only" : "active/passive");
 	}
 	ret = simple_read_from_buffer(user_buf, count, ppos, buf, pos);

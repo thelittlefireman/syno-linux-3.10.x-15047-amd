@@ -109,7 +109,7 @@ struct driver_stats {
 	unsigned long ioctls;
 	unsigned long irqs;
 	unsigned long berrs;
-	unsigned long dmaerrors;
+	unsigned long dmaErrors;
 	unsigned long timeouts;
 	unsigned long external;
 };
@@ -119,14 +119,12 @@ static struct cdev *vme_user_cdev;		/* Character device */
 static struct class *vme_user_sysfs_class;	/* Sysfs class */
 static struct vme_dev *vme_user_bridge;		/* Pointer to user device */
 
-
 static const int type[VME_DEVS] = {	MASTER_MINOR,	MASTER_MINOR,
 					MASTER_MINOR,	MASTER_MINOR,
 					SLAVE_MINOR,	SLAVE_MINOR,
 					SLAVE_MINOR,	SLAVE_MINOR,
 					CONTROL_MINOR
 				};
-
 
 static int vme_user_open(struct inode *, struct file *);
 static int vme_user_release(struct inode *, struct file *);
@@ -147,9 +145,7 @@ static const struct file_operations vme_user_fops = {
 	.write = vme_user_write,
 	.llseek = vme_user_llseek,
 	.unlocked_ioctl = vme_user_unlocked_ioctl,
-	.compat_ioctl = vme_user_unlocked_ioctl,
 };
-
 
 /*
  * Reset all the statistic counters
@@ -161,7 +157,7 @@ static void reset_counters(void)
 	statistics.ioctls = 0;
 	statistics.irqs = 0;
 	statistics.berrs = 0;
-	statistics.dmaerrors = 0;
+	statistics.dmaErrors = 0;
 	statistics.timeouts = 0;
 }
 
@@ -590,7 +586,6 @@ vme_user_unlocked_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
-
 /*
  * Unallocate a previously allocated buffer
  */
@@ -622,7 +617,6 @@ static struct vme_driver vme_user_driver = {
 	.probe = vme_user_probe,
 	.remove = vme_user_remove,
 };
-
 
 static int __init vme_user_init(void)
 {
@@ -664,16 +658,9 @@ err_nocard:
 
 static int vme_user_match(struct vme_dev *vdev)
 {
-	int i;
-
-	int cur_bus = vme_bus_num(vdev);
-	int cur_slot = vme_slot_num(vdev);
-
-	for (i = 0; i < bus_num; i++)
-		if ((cur_bus == bus[i]) && (cur_slot == vdev->num))
-			return 1;
-
-	return 0;
+	if (vdev->num >= VME_USER_BUS_MAX)
+		return 0;
+	return 1;
 }
 
 /*
@@ -742,7 +729,6 @@ static int vme_user_probe(struct vme_dev *vdev)
 		if (image[i].resource == NULL) {
 			dev_warn(&vdev->dev,
 				 "Unable to allocate slave resource\n");
-			err = -ENOMEM;
 			goto err_slave;
 		}
 		image[i].size_buf = PCI_BUF_SIZE;
@@ -769,15 +755,13 @@ static int vme_user_probe(struct vme_dev *vdev)
 		if (image[i].resource == NULL) {
 			dev_warn(&vdev->dev,
 				 "Unable to allocate master resource\n");
-			err = -ENOMEM;
 			goto err_master;
 		}
 		image[i].size_buf = PCI_BUF_SIZE;
 		image[i].kern_buf = kmalloc(image[i].size_buf, GFP_KERNEL);
 		if (image[i].kern_buf == NULL) {
 			err = -ENOMEM;
-			vme_master_free(image[i].resource);
-			goto err_master;
+			goto err_master_buf;
 		}
 	}
 
@@ -820,6 +804,8 @@ static int vme_user_probe(struct vme_dev *vdev)
 
 	return 0;
 
+	/* Ensure counter set correcty to destroy all sysfs devices */
+	i = VME_DEVS;
 err_sysfs:
 	while (i > 0) {
 		i--;
@@ -829,10 +815,12 @@ err_sysfs:
 
 	/* Ensure counter set correcty to unalloc all master windows */
 	i = MASTER_MAX + 1;
+err_master_buf:
+	for (i = MASTER_MINOR; i < (MASTER_MAX + 1); i++)
+		kfree(image[i].kern_buf);
 err_master:
 	while (i > MASTER_MINOR) {
 		i--;
-		kfree(image[i].kern_buf);
 		vme_master_free(image[i].resource);
 	}
 
@@ -890,7 +878,6 @@ static void __exit vme_user_exit(void)
 {
 	vme_unregister_driver(&vme_user_driver);
 }
-
 
 MODULE_PARM_DESC(bus, "Enumeration of VMEbus to which the driver is connected");
 module_param_array(bus, int, &bus_num, 0);

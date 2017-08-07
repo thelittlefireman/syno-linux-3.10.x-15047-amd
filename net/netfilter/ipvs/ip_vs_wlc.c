@@ -31,11 +31,10 @@
  *	Weighted Least Connection scheduling
  */
 static struct ip_vs_dest *
-ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-		   struct ip_vs_iphdr *iph)
+ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
 {
 	struct ip_vs_dest *dest, *least;
-	int loh, doh;
+	unsigned int loh, doh;
 
 	IP_VS_DBG(6, "ip_vs_wlc_schedule(): Scheduling...\n");
 
@@ -71,8 +70,8 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
 		if (dest->flags & IP_VS_DEST_F_OVERLOAD)
 			continue;
 		doh = ip_vs_dest_conn_overhead(dest);
-		if ((__s64)loh * atomic_read(&dest->weight) >
-		    (__s64)doh * atomic_read(&least->weight)) {
+		if (loh * atomic_read(&dest->weight) >
+		    doh * atomic_read(&least->weight)) {
 			least = dest;
 			loh = doh;
 		}
@@ -88,7 +87,6 @@ ip_vs_wlc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
 	return least;
 }
 
-
 static struct ip_vs_scheduler ip_vs_wlc_scheduler =
 {
 	.name =			"wlc",
@@ -97,7 +95,6 @@ static struct ip_vs_scheduler ip_vs_wlc_scheduler =
 	.n_list =		LIST_HEAD_INIT(ip_vs_wlc_scheduler.n_list),
 	.schedule =		ip_vs_wlc_schedule,
 };
-
 
 static int __init ip_vs_wlc_init(void)
 {

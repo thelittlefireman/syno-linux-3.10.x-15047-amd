@@ -125,7 +125,7 @@
 #define FP_EX_DIVZERO         (1 << (31 - 5))
 #define FP_EX_INEXACT         (1 << (31 - 6))
 
-#define __FPU_FPSCR	(current->thread.fp_state.fpscr)
+#define __FPU_FPSCR	(current->thread.fpscr.val)
 
 /* We only actually write to the destination register
  * if exceptions signalled (if any) will not trap.
@@ -156,7 +156,6 @@
       }								\
     R##_c = FP_CLS_NAN;						\
   } while (0)
-
 
 #include <linux/kernel.h>
 #include <linux/sched.h>

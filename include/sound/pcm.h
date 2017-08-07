@@ -381,9 +381,10 @@ struct snd_pcm_substream {
 	struct pm_qos_request latency_pm_qos_req; /* pm_qos request */
 	size_t buffer_bytes_max;	/* limit ring buffer size */
 	struct snd_dma_buffer dma_buffer;
+	unsigned int dma_buf_id;
 	size_t dma_max;
 	/* -- hardware operations -- */
-	const struct snd_pcm_ops *ops;
+	struct snd_pcm_ops *ops;
 	/* -- runtime information -- */
 	struct snd_pcm_runtime *runtime;
         /* -- timer section -- */
@@ -420,7 +421,6 @@ struct snd_pcm_substream {
 };
 
 #define SUBSTREAM_BUSY(substream) ((substream)->ref_count > 0)
-
 
 struct snd_pcm_str {
 	int stream;				/* stream (direction) */
@@ -515,7 +515,6 @@ int snd_pcm_attach_substream(struct snd_pcm *pcm, int stream, struct file *file,
 void snd_pcm_detach_substream(struct snd_pcm_substream *substream);
 void snd_pcm_vma_notify_data(void *client, void *data);
 int snd_pcm_mmap_data(struct snd_pcm_substream *substream, struct file *file, struct vm_area_struct *area);
-
 
 #ifdef CONFIG_SND_DEBUG
 void snd_pcm_debug_name(struct snd_pcm_substream *substream,
@@ -870,8 +869,7 @@ const unsigned char *snd_pcm_format_silence_64(snd_pcm_format_t format);
 int snd_pcm_format_set_silence(snd_pcm_format_t format, void *buf, unsigned int frames);
 snd_pcm_format_t snd_pcm_build_linear_format(int width, int unsigned, int big_endian);
 
-void snd_pcm_set_ops(struct snd_pcm * pcm, int direction,
-		     const struct snd_pcm_ops *ops);
+void snd_pcm_set_ops(struct snd_pcm * pcm, int direction, struct snd_pcm_ops *ops);
 void snd_pcm_set_sync(struct snd_pcm_substream *substream);
 int snd_pcm_lib_interleave_len(struct snd_pcm_substream *substream);
 int snd_pcm_lib_ioctl(struct snd_pcm_substream *substream,
@@ -900,8 +898,6 @@ extern const struct snd_pcm_hw_constraint_list snd_pcm_known_rates;
 int snd_pcm_limit_hw_rates(struct snd_pcm_runtime *runtime);
 unsigned int snd_pcm_rate_to_rate_bit(unsigned int rate);
 unsigned int snd_pcm_rate_bit_to_rate(unsigned int rate_bit);
-unsigned int snd_pcm_rate_mask_intersect(unsigned int rates_a,
-					 unsigned int rates_b);
 
 static inline void snd_pcm_set_runtime_buffer(struct snd_pcm_substream *substream,
 					      struct snd_dma_buffer *bufp)
@@ -1140,13 +1136,5 @@ static inline u64 pcm_format_to_bits(snd_pcm_format_t pcm_format)
 {
 	return 1ULL << (__force int) pcm_format;
 }
-
-/* printk helpers */
-#define pcm_err(pcm, fmt, args...) \
-	dev_err((pcm)->card->dev, fmt, ##args)
-#define pcm_warn(pcm, fmt, args...) \
-	dev_warn((pcm)->card->dev, fmt, ##args)
-#define pcm_dbg(pcm, fmt, args...) \
-	dev_dbg((pcm)->card->dev, fmt, ##args)
 
 #endif /* __SOUND_PCM_H */

@@ -8,7 +8,6 @@
 #ifndef __ASMARC_SETUP_H
 #define __ASMARC_SETUP_H
 
-
 #include <linux/types.h>
 #include <uapi/asm/setup.h>
 
@@ -31,7 +30,7 @@ struct cpuinfo_data {
 extern int root_mountflags, end_mem;
 extern int running_on_hw;
 
-void setup_processor(void);
+void __init setup_processor(void);
 void __init setup_arch_memory(void);
 
 #endif /* __ASMARC_SETUP_H */

@@ -34,7 +34,6 @@
 
 #include <uapi/linux/usb/ch9.h>
 
-
 /**
  * usb_speed_string() - Returns human readable-name of the speed.
  * @speed: The speed to return human-readable name for.  If it's not
@@ -42,7 +41,6 @@
  *   USB_SPEED_UNKNOWN will be returned.
  */
 extern const char *usb_speed_string(enum usb_device_speed speed);
-
 
 /**
  * usb_state_string - Returns human readable name for the state.

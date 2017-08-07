@@ -308,7 +308,6 @@ extern int dump_task_fpu (struct task_struct *, elf_fpregset_t *);
 
 struct pt_regs;	/* forward declaration... */
 
-
 #define elf_check_arch(x) ((x)->e_machine == EM_PARISC && (x)->e_ident[EI_CLASS] == ELF_CLASS)
 
 /*
@@ -347,9 +346,5 @@ struct pt_regs;	/* forward declaration... */
    but it's not easy, and we've already done it here.  */
 
 #define ELF_HWCAP	0
-
-struct mm_struct;
-extern unsigned long arch_randomize_brk(struct mm_struct *);
-#define arch_randomize_brk arch_randomize_brk
 
 #endif

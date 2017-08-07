@@ -12,7 +12,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the
+ * Free Software Foundation, Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
  */
 
 #define pr_fmt(fmt) "llcp: %s: " fmt, __func__
@@ -56,7 +58,6 @@ static u16 llcp_tlv16(u8 *tlv, u8 type)
 
 	return be16_to_cpu(*((__be16 *)(tlv + 2)));
 }
-
 
 static u8 llcp_tlv_version(u8 *tlv)
 {
@@ -337,7 +338,7 @@ static struct sk_buff *llcp_allocate_pdu(struct nfc_llcp_sock *sock,
 	return skb;
 }
 
-int nfc_llcp_send_disconnect(struct nfc_llcp_sock *sock)
+int nfc_llcp_disconnect(struct nfc_llcp_sock *sock)
 {
 	struct sk_buff *skb;
 	struct nfc_dev *dev;
@@ -628,6 +629,26 @@ int nfc_llcp_send_dm(struct nfc_llcp_local *local, u8 ssap, u8 dsap, u8 reason)
 	return 0;
 }
 
+int nfc_llcp_send_disconnect(struct nfc_llcp_sock *sock)
+{
+	struct sk_buff *skb;
+	struct nfc_llcp_local *local;
+
+	pr_debug("Send DISC\n");
+
+	local = sock->local;
+	if (local == NULL)
+		return -ENODEV;
+
+	skb = llcp_allocate_pdu(sock, LLCP_PDU_DISC, 0);
+	if (skb == NULL)
+		return -ENOMEM;
+
+	skb_queue_head(&local->tx_queue, skb);
+
+	return 0;
+}
+
 int nfc_llcp_send_i_frame(struct nfc_llcp_sock *sock,
 			  struct msghdr *msg, size_t len)
 {
@@ -675,7 +696,7 @@ int nfc_llcp_send_i_frame(struct nfc_llcp_sock *sock,
 
 	do {
 		remote_miu = sock->remote_miu > LLCP_MAX_MIU ?
-				LLCP_DEFAULT_MIU : sock->remote_miu;
+				local->remote_miu : sock->remote_miu;
 
 		frag_len = min_t(size_t, remote_miu, remaining_len);
 
@@ -684,10 +705,8 @@ int nfc_llcp_send_i_frame(struct nfc_llcp_sock *sock,
 
 		pdu = llcp_allocate_pdu(sock, LLCP_PDU_I,
 					frag_len + LLCP_SEQUENCE_SIZE);
-		if (pdu == NULL) {
-			kfree(msg_data);
+		if (pdu == NULL)
 			return -ENOMEM;
-		}
 
 		skb_put(pdu, LLCP_SEQUENCE_SIZE);
 

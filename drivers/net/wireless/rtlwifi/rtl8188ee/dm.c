@@ -235,7 +235,7 @@ void rtl88e_dm_txpower_track_adjust(struct ieee80211_hw *hw,
 	u8 pwr_val = 0;
 	u8 cck_base = rtldm->swing_idx_cck_base;
 	u8 cck_val = rtldm->swing_idx_cck;
-	u8 ofdm_base = rtldm->swing_idx_ofdm_base[0];
+	u8 ofdm_base = rtldm->swing_idx_ofdm_base;
 	u8 ofdm_val = rtlpriv->dm.swing_idx_ofdm[RF90_PATH_A];
 
 	if (type == 0) {
@@ -262,7 +262,6 @@ void rtl88e_dm_txpower_track_adjust(struct ieee80211_hw *hw,
 	*poutwrite_val = pwr_val | (pwr_val << 8) | (pwr_val << 16) |
 			 (pwr_val << 24);
 }
-
 
 static void rtl88e_chk_tx_track(struct ieee80211_hw *hw,
 				enum pwr_track_control_method method,
@@ -726,7 +725,7 @@ static void rtl88e_dm_pwdb_monitor(struct ieee80211_hw *hw)
 	static u64 last_rx;
 	long tmp_entry_max_pwdb = 0, tmp_entry_min_pwdb = 0xff;
 
-	if (rtlhal->oem_id == RT_CID_819X_HP) {
+	if (rtlhal->oem_id == RT_CID_819x_HP) {
 		u64 cur_txok_cnt = 0;
 		u64 cur_rxok_cnt = 0;
 		cur_txok_cnt = rtlpriv->stats.txbytesunicast - last_txok;
@@ -851,8 +850,9 @@ static void rtl88e_dm_check_edca_turbo(struct ieee80211_hw *hw)
 	} else {
 		if (rtlpriv->dm.current_turbo_edca) {
 			u8 tmp = AC0_BE;
-			rtlpriv->cfg->ops->set_hw_reg(hw, HW_VAR_AC_PARAM,
-						      &tmp);
+			rtlpriv->cfg->ops->set_hw_reg(hw,
+						      HW_VAR_AC_PARAM,
+						      (u8 *)(&tmp));
 			rtlpriv->dm.current_turbo_edca = false;
 		}
 	}
@@ -911,7 +911,7 @@ static void rtl88e_dm_txpower_tracking_callback_thermalmeter(struct ieee80211_hw
 	for (i = 0; i < OFDM_TABLE_LENGTH; i++) {
 		if (ele_d == (ofdmswing_table[i] & MASKOFDM_D)) {
 			ofdm_old[0] = (u8) i;
-			rtldm->swing_idx_ofdm_base[0] = (u8)i;
+			rtldm->swing_idx_ofdm_base = (u8)i;
 			RT_TRACE(rtlpriv, COMP_POWER_TRACKING, DBG_LOUD,
 				 "Initial pathA ele_d reg0x%x = 0x%lx, ofdm_index = 0x%x\n",
 				 ROFDM0_XATXIQIMBAL,
@@ -1527,7 +1527,6 @@ static void rtl88e_dm_hw_ant_div(struct ieee80211_hw *hw)
 			target_ant = (main_rssi == aux_rssi) ?
 				      fat_tbl->rx_idle_ant : ((main_rssi >=
 				      aux_rssi) ? MAIN_ANT : AUX_ANT);
-
 
 			local_max_rssi = max_t(u32, main_rssi, aux_rssi);
 			if ((local_max_rssi > ant_div_max_rssi) &&

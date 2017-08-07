@@ -30,6 +30,7 @@
 #ifndef __RTL8723E_PWRSEQ_H__
 #define __RTL8723E_PWRSEQ_H__
 
+#include "pwrseqcmd.h"
 /*
 	Check document WM-20110607-Paul-RTL8188E_Power_Architecture-R02.vsd
 	There are 6 HW Power States:
@@ -62,7 +63,6 @@
 #define	RTL8188E_TRANS_ACT_TO_LPS_STEPS		15
 #define	RTL8188E_TRANS_LPS_TO_ACT_STEPS		15
 #define	RTL8188E_TRANS_END_STEPS		1
-
 
 #define RTL8188E_TRANS_CARDEMU_TO_ACT					\
 	/* format */							\
@@ -106,7 +106,6 @@
 	{0x0005, PWR_CUT_ALL_MSK, PWR_FAB_ALL_MSK, PWR_INTF_ALL_MSK,	\
 	/*wait till 0x04[9] = 0 polling until return 0 to disable*/	\
 	PWR_BASEADDR_MAC, PWR_CMD_POLLING, BIT(1), 0},			\
-
 
 #define RTL8188E_TRANS_CARDEMU_TO_SUS					\
 	/* format */							\
@@ -191,7 +190,6 @@
 	PWR_CMD_WRITE, BIT(3)|BIT(4), 0},				\
 	/*0x04[12:11] = 2b'01enable WL suspend*/
 
-
 #define RTL8188E_TRANS_CARDEMU_TO_PDN					\
 	/* format */							\
 	/* { offset, cut_msk, fab_msk|interface_msk, base|cmd, msk, value }, */\
@@ -200,13 +198,11 @@
 	{0x0005, PWR_CUT_ALL_MSK, PWR_FAB_ALL_MSK, PWR_INTF_ALL_MSK,	\
 	PWR_BASEADDR_MAC, PWR_CMD_WRITE, BIT(7), BIT(7)},/* 0x04[15] = 1*/
 
-
 #define RTL8188E_TRANS_PDN_TO_CARDEMU					\
 	/* format */							\
 	/* { offset, cut_msk, fab_msk|interface_msk, base|cmd, msk, value }, */\
 	{0x0005, PWR_CUT_ALL_MSK, PWR_FAB_ALL_MSK, PWR_INTF_ALL_MSK,	\
 	PWR_BASEADDR_MAC, PWR_CMD_WRITE, BIT(7), 0},/* 0x04[15] = 0*/
-
 
 #define RTL8188E_TRANS_ACT_TO_LPS					\
 	/* format */							\
@@ -239,7 +235,6 @@
 	/*Respond TxOK to scheduler*/					\
 	PWR_BASEADDR_MAC, PWR_CMD_WRITE, BIT(5), BIT(5)},		\
 
-
 #define RTL8188E_TRANS_LPS_TO_ACT					\
 	/* format */							\
 	/* { offset, cut_msk, fab_msk|interface_msk, base|cmd, msk, value }, */\
@@ -271,7 +266,6 @@
 	PWR_BASEADDR_MAC, PWR_CMD_WRITE, BIT(1)|BIT(0), BIT(1)|BIT(0)},	\
 	{0x0522, PWR_CUT_ALL_MSK, PWR_FAB_ALL_MSK, PWR_INTF_ALL_MSK,\
 	PWR_BASEADDR_MAC, PWR_CMD_WRITE, 0xFF, 0}, /*.	0x522 = 0*/
-
 
 #define RTL8188E_TRANS_END						\
 	/* format */							\

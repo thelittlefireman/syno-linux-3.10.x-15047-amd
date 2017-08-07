@@ -64,7 +64,6 @@ MODULE_PARM_DESC(disable_ir, "Disable IR support");
 		printk(KERN_DEBUG "%s: " fmt, core->name , ## arg);	\
 	} while(0)
 
-
 /* ------------------------------------------------------------------ */
 /* board config info                                                  */
 
@@ -744,7 +743,7 @@ static const struct cx88_board cx88_boards[] = {
 		.tuner_addr	= ADDR_UNSET,
 		.radio_addr	= ADDR_UNSET,
 		/* Some variants use a tda9874 and so need the tvaudio module. */
-		.audio_chip     = CX88_AUDIO_TVAUDIO,
+		.audio_chip     = V4L2_IDENT_TVAUDIO,
 		.input          = {{
 			.type   = CX88_VMUX_TELEVISION,
 			.vmux   = 0,
@@ -976,7 +975,7 @@ static const struct cx88_board cx88_boards[] = {
 		.radio_type	= UNSET,
 		.tuner_addr	= ADDR_UNSET,
 		.radio_addr	= ADDR_UNSET,
-		.audio_chip	= CX88_AUDIO_WM8775,
+		.audio_chip	= V4L2_IDENT_WM8775,
 		.i2sinputcntl   = 2,
 		.input		= {{
 			.type	= CX88_VMUX_DVB,
@@ -1014,7 +1013,7 @@ static const struct cx88_board cx88_boards[] = {
 		.radio_type	= UNSET,
 		.tuner_addr	= ADDR_UNSET,
 		.radio_addr	= ADDR_UNSET,
-		.audio_chip = CX88_AUDIO_WM8775,
+		.audio_chip = V4L2_IDENT_WM8775,
 		.input		= {{
 			.type	= CX88_VMUX_DVB,
 			.vmux	= 0,
@@ -1376,7 +1375,7 @@ static const struct cx88_board cx88_boards[] = {
 		.tuner_addr     = ADDR_UNSET,
 		.radio_addr     = ADDR_UNSET,
 		.tda9887_conf   = TDA9887_PRESENT,
-		.audio_chip     = CX88_AUDIO_WM8775,
+		.audio_chip     = V4L2_IDENT_WM8775,
 		.input          = {{
 			.type   = CX88_VMUX_TELEVISION,
 			.vmux   = 0,
@@ -1461,7 +1460,7 @@ static const struct cx88_board cx88_boards[] = {
 		.tuner_addr	= ADDR_UNSET,
 		.radio_addr	= ADDR_UNSET,
 		.tda9887_conf   = TDA9887_PRESENT,
-		.audio_chip     = CX88_AUDIO_WM8775,
+		.audio_chip     = V4L2_IDENT_WM8775,
 		/*
 		 * gpio0 as reported by Mike Crash <mike AT mikecrash.com>
 		 */
@@ -1929,7 +1928,7 @@ static const struct cx88_board cx88_boards[] = {
 		.tuner_addr     = ADDR_UNSET,
 		.radio_addr     = ADDR_UNSET,
 		.tda9887_conf   = TDA9887_PRESENT,
-		.audio_chip     = CX88_AUDIO_WM8775,
+		.audio_chip     = V4L2_IDENT_WM8775,
 		/*
 		 * GPIO0 (WINTV2000)
 		 *
@@ -2994,7 +2993,6 @@ static int cx88_dvico_xc2028_callback(struct cx88_core *core,
 	return 0;
 }
 
-
 /* ----------------------------------------------------------------------- */
 /* some Geniatech specific stuff                                           */
 
@@ -3552,7 +3550,6 @@ static void cx88_card_setup(struct cx88_core *core)
 		msleep(100);
 		break;
 	} /*end switch() */
-
 
 	/* Setup tuners */
 	if ((core->board.radio_type != UNSET)) {

@@ -34,7 +34,6 @@
 #include <asm/hyperv.h>
 #include "hyperv_vmbus.h"
 
-
 struct vmbus_connection vmbus_connection = {
 	.conn_state		= DISCONNECTED,
 	.next_gpadl_handle	= ATOMIC_INIT(0xE1E10),
@@ -78,8 +77,11 @@ static int vmbus_negotiate_version(struct vmbus_channel_msginfo *msginfo,
 	msg->header.msgtype = CHANNELMSG_INITIATE_CONTACT;
 	msg->vmbus_version_requested = version;
 	msg->interrupt_page = virt_to_phys(vmbus_connection.int_page);
-	msg->monitor_page1 = virt_to_phys(vmbus_connection.monitor_pages[0]);
-	msg->monitor_page2 = virt_to_phys(vmbus_connection.monitor_pages[1]);
+	msg->monitor_page1 = virt_to_phys(vmbus_connection.monitor_pages);
+	msg->monitor_page2 = virt_to_phys(
+			(void *)((unsigned long)vmbus_connection.monitor_pages +
+				 PAGE_SIZE));
+
 	if (version == VERSION_WIN8_1)
 		msg->target_vcpu = hv_context.vp_index[smp_processor_id()];
 
@@ -163,10 +165,9 @@ int vmbus_connect(void)
 	 * Setup the monitor notification facility. The 1st page for
 	 * parent->child and the 2nd page for child->parent
 	 */
-	vmbus_connection.monitor_pages[0] = (void *)__get_free_pages((GFP_KERNEL|__GFP_ZERO), 0);
-	vmbus_connection.monitor_pages[1] = (void *)__get_free_pages((GFP_KERNEL|__GFP_ZERO), 0);
-	if ((vmbus_connection.monitor_pages[0] == NULL) ||
-	    (vmbus_connection.monitor_pages[1] == NULL)) {
+	vmbus_connection.monitor_pages =
+	(void *)__get_free_pages((GFP_KERNEL|__GFP_ZERO), 1);
+	if (vmbus_connection.monitor_pages == NULL) {
 		ret = -ENOMEM;
 		goto cleanup;
 	}
@@ -190,10 +191,7 @@ int vmbus_connect(void)
 
 	do {
 		ret = vmbus_negotiate_version(msginfo, version);
-		if (ret == -ETIMEDOUT)
-			goto cleanup;
-
-		if (vmbus_connection.conn_state == CONNECTED)
+		if (ret == 0)
 			break;
 
 		version = vmbus_get_next_version(version);
@@ -224,16 +222,15 @@ cleanup:
 		vmbus_connection.int_page = NULL;
 	}
 
-	free_pages((unsigned long)vmbus_connection.monitor_pages[0], 1);
-	free_pages((unsigned long)vmbus_connection.monitor_pages[1], 1);
-	vmbus_connection.monitor_pages[0] = NULL;
-	vmbus_connection.monitor_pages[1] = NULL;
+	if (vmbus_connection.monitor_pages) {
+		free_pages((unsigned long)vmbus_connection.monitor_pages, 1);
+		vmbus_connection.monitor_pages = NULL;
+	}
 
 	kfree(msginfo);
 
 	return ret;
 }
-
 
 /*
  * relid2channel - Get the channel object given its
@@ -244,26 +241,12 @@ struct vmbus_channel *relid2channel(u32 relid)
 	struct vmbus_channel *channel;
 	struct vmbus_channel *found_channel  = NULL;
 	unsigned long flags;
-	struct list_head *cur, *tmp;
-	struct vmbus_channel *cur_sc;
 
 	spin_lock_irqsave(&vmbus_connection.channel_lock, flags);
 	list_for_each_entry(channel, &vmbus_connection.chn_list, listentry) {
 		if (channel->offermsg.child_relid == relid) {
 			found_channel = channel;
 			break;
-		} else if (!list_empty(&channel->sc_list)) {
-			/*
-			 * Deal with sub-channels.
-			 */
-			list_for_each_safe(cur, tmp, &channel->sc_list) {
-				cur_sc = list_entry(cur, struct vmbus_channel,
-							sc_list);
-				if (cur_sc->offermsg.child_relid == relid) {
-					found_channel = cur_sc;
-					break;
-				}
-			}
 		}
 	}
 	spin_unlock_irqrestore(&vmbus_connection.channel_lock, flags);
@@ -319,9 +302,13 @@ static void process_chn_event(u32 relid)
 		 */
 
 		do {
-			hv_begin_read(&channel->inbound);
+			if (read_state)
+				hv_begin_read(&channel->inbound);
 			channel->onchannel_callback(arg);
-			bytes_to_read = hv_end_read(&channel->inbound);
+			if (read_state)
+				bytes_to_read = hv_end_read(&channel->inbound);
+			else
+				bytes_to_read = 0;
 		} while (read_state && (bytes_to_read != 0));
 	} else {
 		pr_err("no channel callback for relid - %u\n", relid);
@@ -360,8 +347,6 @@ void vmbus_on_event(unsigned long data)
 						 VMBUS_MESSAGE_SINT;
 		recv_int_page = event->flags32;
 	}
-
-
 
 	/* Check events */
 	if (!recv_int_page)
@@ -404,10 +389,21 @@ int vmbus_post_msg(void *buffer, size_t buflen)
 	 * insufficient resources. Retry the operation a couple of
 	 * times before giving up.
 	 */
-	while (retries < 3) {
-		ret =  hv_post_message(conn_id, 1, buffer, buflen);
-		if (ret != HV_STATUS_INSUFFICIENT_BUFFERS)
+	while (retries < 10) {
+		ret = hv_post_message(conn_id, 1, buffer, buflen);
+
+		switch (ret) {
+		case HV_STATUS_INSUFFICIENT_BUFFERS:
+			ret = -ENOMEM;
+		case -ENOMEM:
+			break;
+		case HV_STATUS_SUCCESS:
 			return ret;
+		default:
+			pr_err("hv_post_msg() failed; error code:%d\n", ret);
+			return -EINVAL;
+		}
+
 		retries++;
 		msleep(100);
 	}

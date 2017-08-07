@@ -29,7 +29,6 @@
 #define ISR_TxBcnErr			BIT26
 #define ISR_BcnTimerIntr		BIT13
 
-
 struct cmpk_txfb {
 	u8	element_id;
 	u8	length;
@@ -63,7 +62,6 @@ struct cmpk_intr_sta {
 	u16	reserve;
 	u32	interrupt_status;
 };
-
 
 struct cmpk_set_cfg {
 	u8	element_id;
@@ -117,7 +115,6 @@ struct cmpk_rx_dbginfo {
 	u8	length;
 	u8	element_id;
 
-
 };
 
 struct cmpk_tx_rahis {
@@ -128,10 +125,6 @@ struct cmpk_tx_rahis {
 	u16	cck[4];
 
 	u16	ofdm[8];
-
-
-
-
 
 	u16	ht_mcs[4][16];
 
@@ -154,6 +147,5 @@ extern  u32 cmpk_message_handle_rx(struct net_device *dev,
 extern bool cmpk_message_handle_tx(struct net_device *dev,
 				   u8 *codevirtualaddress, u32 packettype,
 				   u32 buffer_len);
-
 
 #endif

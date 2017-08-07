@@ -245,7 +245,6 @@ static int aureon_universe_inmux_put(struct snd_kcontrol *kcontrol,
 	return change;
 }
 
-
 static void aureon_ac97_write(struct snd_ice1712 *ice, unsigned short reg,
 			      unsigned short val)
 {
@@ -1348,7 +1347,6 @@ static int aureon_hpamp_get(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_v
 	return 0;
 }
 
-
 static int aureon_hpamp_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_ice1712 *ice = snd_kcontrol_chip(kcontrol);
@@ -1937,12 +1935,9 @@ static int aureon_add_controls(struct snd_ice1712 *ice)
 		snd_ice1712_save_gpio_status(ice);
 		id = aureon_cs8415_get(ice, CS8415_ID);
 		if (id != 0x41)
-			dev_info(ice->card->dev,
-				 "No CS8415 chip. Skipping CS8415 controls.\n");
+			snd_printk(KERN_INFO "No CS8415 chip. Skipping CS8415 controls.\n");
 		else if ((id & 0x0F) != 0x01)
-			dev_info(ice->card->dev,
-				 "Detected unsupported CS8415 rev. (%c)\n",
-				 (char)((id & 0x0F) + 'A' - 1));
+			snd_printk(KERN_INFO "Detected unsupported CS8415 rev. (%c)\n", (char)((id & 0x0F) + 'A' - 1));
 		else {
 			for (i = 0; i < ARRAY_SIZE(cs8415_controls); i++) {
 				struct snd_kcontrol *kctl;
@@ -2170,7 +2165,6 @@ static int aureon_init(struct snd_ice1712 *ice)
 
 	return 0;
 }
-
 
 /*
  * Aureon boards don't provide the EEPROM data except for the vendor IDs.

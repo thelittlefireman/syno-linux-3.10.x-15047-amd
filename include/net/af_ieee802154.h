@@ -36,7 +36,7 @@ enum {
 /* address length, octets */
 #define IEEE802154_ADDR_LEN	8
 
-struct ieee802154_addr_sa {
+struct ieee802154_addr {
 	int addr_type;
 	u16 pan_id;
 	union {
@@ -51,7 +51,7 @@ struct ieee802154_addr_sa {
 
 struct sockaddr_ieee802154 {
 	sa_family_t family; /* AF_IEEE802154 */
-	struct ieee802154_addr_sa addr;
+	struct ieee802154_addr addr;
 };
 
 /* get/setsockopt */

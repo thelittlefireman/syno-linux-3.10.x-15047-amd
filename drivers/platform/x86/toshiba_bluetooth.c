@@ -23,7 +23,8 @@
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/types.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 
 MODULE_AUTHOR("Jes Sorensen <Jes.Sorensen@gmail.com>");
 MODULE_DESCRIPTION("Toshiba Laptop ACPI Bluetooth Enable Driver");
@@ -56,7 +57,6 @@ static struct acpi_driver toshiba_bt_rfkill_driver = {
 	.owner = 	THIS_MODULE,
 	.drv.pm =	&toshiba_bt_pm,
 };
-
 
 static int toshiba_bluetooth_enable(acpi_handle handle)
 {

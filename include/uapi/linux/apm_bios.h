@@ -15,7 +15,6 @@
 #ifndef _UAPI_LINUX_APM_H
 #define _UAPI_LINUX_APM_H
 
-
 #include <linux/types.h>
 
 typedef unsigned short	apm_event_t;
@@ -32,7 +31,6 @@ struct apm_bios_info {
 	__u16	cseg_16_len;
 	__u16	dseg_len;
 };
-
 
 /*
  * Power states
@@ -67,8 +65,6 @@ struct apm_bios_info {
 #define APM_USER_SUSPEND	0x000a
 #define APM_STANDBY_RESUME	0x000b
 #define APM_CAPABILITY_CHANGE	0x000c
-#define APM_USER_HIBERNATION	0x000d
-#define APM_HIBERNATION_RESUME	0x000e
 
 /*
  * Error codes
@@ -107,7 +103,6 @@ struct apm_bios_info {
 #define APM_DEVICE_OLD_ALL	0xffff
 #define APM_DEVICE_CLASS	0x00ff
 #define APM_DEVICE_MASK		0xff00
-
 
 /*
  * Battery status

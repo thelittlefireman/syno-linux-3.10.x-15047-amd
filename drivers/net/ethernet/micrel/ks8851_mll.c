@@ -35,9 +35,6 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/ks8851_mll.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
-#include <linux/of_net.h>
 
 #define	DRV_NAME	"ks8851_mll"
 
@@ -133,7 +130,6 @@ static u8 KS_DEFAULT_MAC_ADDRESS[] = { 0x00, 0x10, 0xA1, 0x86, 0x95, 0x11 };
 #define TXSR_TXFID_MASK			(0x3f << 0)
 #define TXSR_TXFID_SHIFT		(0)
 #define TXSR_TXFID_GET(_v)		(((_v) >> 0) & 0x3f)
-
 
 #define KS_RXCR1			0x74
 #define RXCR1_FRXQ			(1 << 15)
@@ -687,8 +683,7 @@ static void ks_soft_reset(struct ks_net *ks, unsigned op)
 	mdelay(1);	/* wait for condition to clear */
 }
 
-
-static void ks_enable_qmu(struct ks_net *ks)
+void ks_enable_qmu(struct ks_net *ks)
 {
 	u16 w;
 
@@ -902,7 +897,6 @@ static irqreturn_t ks_irq(int irq, void *pw)
 	return IRQ_HANDLED;
 }
 
-
 /**
  * ks_net_open - open network device
  * @netdev: The network device being opened.
@@ -915,7 +909,7 @@ static int ks_net_open(struct net_device *netdev)
 	struct ks_net *ks = netdev_priv(netdev);
 	int err;
 
-#define	KS_INT_FLAGS	IRQF_TRIGGER_LOW
+#define	KS_INT_FLAGS	(IRQF_DISABLED|IRQF_TRIGGER_LOW)
 	/* lock the card, even if we may not actually do anything
 	 * else at the moment.
 	 */
@@ -975,7 +969,6 @@ static int ks_net_stop(struct net_device *netdev)
 	mutex_unlock(&ks->lock);
 	return 0;
 }
-
 
 /**
  * ks_write_qmu - write 1 pkt data to the QMU.
@@ -1248,7 +1241,7 @@ static void ks_set_mac(struct ks_net *ks, u8 *data)
 	w = ((u & 0xFF) << 8) | ((u >> 8) & 0xFF);
 	ks_wrreg16(ks, KS_MARL, w);
 
-	memcpy(ks->mac_addr, data, ETH_ALEN);
+	memcpy(ks->mac_addr, data, 6);
 
 	if (ks->enabled)
 		ks_start_rx(ks);
@@ -1501,7 +1494,6 @@ static void ks_setup(struct ks_net *ks)
 	ks_wrreg16(ks, KS_RXCR1, w);
 }  /*ks_setup */
 
-
 static void ks_setup_int(struct ks_net *ks)
 {
 	ks->rc_ier = 0x00;
@@ -1527,14 +1519,6 @@ static int ks_hw_init(struct ks_net *ks)
 	return true;
 }
 
-#if defined(CONFIG_OF)
-static const struct of_device_id ks8851_ml_dt_ids[] = {
-	{ .compatible = "micrel,ks8851-mll" },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, ks8851_ml_dt_ids);
-#endif
-
 static int ks8851_probe(struct platform_device *pdev)
 {
 	int err = -ENOMEM;
@@ -1542,7 +1526,7 @@ static int ks8851_probe(struct platform_device *pdev)
 	struct net_device *netdev;
 	struct ks_net *ks;
 	u16 id, data;
-	const char *mac;
+	struct ks8851_mll_platform_data *pdata;
 
 	io_d = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	io_c = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -1629,21 +1613,13 @@ static int ks8851_probe(struct platform_device *pdev)
 	ks_wrreg16(ks, KS_OBCR, data | OBCR_ODS_16MA);
 
 	/* overwriting the default MAC address */
-	if (pdev->dev.of_node) {
-		mac = of_get_mac_address(pdev->dev.of_node);
-		if (mac)
-			memcpy(ks->mac_addr, mac, ETH_ALEN);
-	} else {
-		struct ks8851_mll_platform_data *pdata;
-
-		pdata = dev_get_platdata(&pdev->dev);
-		if (!pdata) {
-			netdev_err(netdev, "No platform data\n");
-			err = -ENODEV;
-			goto err_pdata;
-		}
-		memcpy(ks->mac_addr, pdata->mac_addr, ETH_ALEN);
+	pdata = pdev->dev.platform_data;
+	if (!pdata) {
+		netdev_err(netdev, "No platform data\n");
+		err = -ENODEV;
+		goto err_pdata;
 	}
+	memcpy(ks->mac_addr, pdata->mac_addr, 6);
 	if (!is_valid_ether_addr(ks->mac_addr)) {
 		/* Use random MAC address if none passed */
 		eth_random_addr(ks->mac_addr);
@@ -1651,7 +1627,7 @@ static int ks8851_probe(struct platform_device *pdev)
 	}
 	netdev_info(netdev, "Mac address is: %pM\n", ks->mac_addr);
 
-	memcpy(netdev->dev_addr, ks->mac_addr, ETH_ALEN);
+	memcpy(netdev->dev_addr, ks->mac_addr, 6);
 
 	ks_set_mac(ks, netdev->dev_addr);
 
@@ -1689,6 +1665,7 @@ static int ks8851_remove(struct platform_device *pdev)
 	iounmap(ks->hw_addr);
 	free_netdev(netdev);
 	release_mem_region(iomem->start, resource_size(iomem));
+	platform_set_drvdata(pdev, NULL);
 	return 0;
 
 }
@@ -1697,7 +1674,6 @@ static struct platform_driver ks8851_platform_driver = {
 	.driver = {
 		.name = DRV_NAME,
 		.owner = THIS_MODULE,
-		.of_match_table	= of_match_ptr(ks8851_ml_dt_ids),
 	},
 	.probe = ks8851_probe,
 	.remove = ks8851_remove,
@@ -1710,4 +1686,3 @@ MODULE_AUTHOR("David Choi <david.choi@micrel.com>");
 MODULE_LICENSE("GPL");
 module_param_named(message, msg_enable, int, 0);
 MODULE_PARM_DESC(message, "Message verbosity level (0=none, 31=all)");
-

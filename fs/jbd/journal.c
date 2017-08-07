@@ -90,24 +90,6 @@ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
 static void __journal_abort_soft (journal_t *journal, int errno);
 static const char *journal_dev_name(journal_t *journal, char *buffer);
 
-#ifdef CONFIG_JBD_DEBUG
-void __jbd_debug(int level, const char *file, const char *func,
-		 unsigned int line, const char *fmt, ...)
-{
-	struct va_format vaf;
-	va_list args;
-
-	if (level > journal_enable_debug)
-		return;
-	va_start(args, fmt);
-	vaf.fmt = fmt;
-	vaf.va = &args;
-	printk(KERN_DEBUG "%s: (%s, %u): %pV\n", file, func, line, &vaf);
-	va_end(args);
-}
-EXPORT_SYMBOL(__jbd_debug);
-#endif
-
 /*
  * Helper function used to manage commit timeouts
  */
@@ -573,7 +555,7 @@ int log_wait_commit(journal_t *journal, tid_t tid)
 #ifdef CONFIG_JBD_DEBUG
 	spin_lock(&journal->j_state_lock);
 	if (!tid_geq(journal->j_commit_request, tid)) {
-		printk(KERN_ERR
+		printk(KERN_EMERG
 		       "%s: error: j_commit_request=%d, tid=%d\n",
 		       __func__, journal->j_commit_request, tid);
 	}
@@ -604,8 +586,10 @@ int log_wait_commit(journal_t *journal, tid_t tid)
 out_unlock:
 	spin_unlock(&journal->j_state_lock);
 
-	if (unlikely(is_journal_aborted(journal)))
+	if (unlikely(is_journal_aborted(journal))) {
+		printk(KERN_EMERG "journal commit I/O error\n");
 		err = -EIO;
+	}
 	return err;
 }
 
@@ -1272,7 +1256,6 @@ static int load_superblock(journal_t *journal)
 	return 0;
 }
 
-
 /**
  * int journal_load() - Read journal from disk.
  * @journal: Journal to act on.
@@ -1337,7 +1320,6 @@ int journal_destroy(journal_t *journal)
 {
 	int err = 0;
 
-	
 	/* Wait for the commit thread to wake up and die. */
 	journal_kill_thread(journal);
 
@@ -1382,7 +1364,6 @@ int journal_destroy(journal_t *journal)
 
 	return err;
 }
-
 
 /**
  *int journal_check_used_features () - Check if features specified are used.
@@ -1482,7 +1463,6 @@ int journal_set_features (journal_t *journal, unsigned long compat,
 	return 1;
 }
 
-
 /**
  * int journal_update_format () - Update on-disk journal structure.
  * @journal: Journal to act on.
@@ -1536,7 +1516,6 @@ static int journal_convert_superblock_v1(journal_t *journal,
 	sync_dirty_buffer(bh);
 	return 0;
 }
-
 
 /**
  * int journal_flush () - Flush journal
@@ -2134,7 +2113,7 @@ static void __exit journal_exit(void)
 #ifdef CONFIG_JBD_DEBUG
 	int n = atomic_read(&nr_journal_heads);
 	if (n)
-		printk(KERN_ERR "JBD: leaked %d journal_heads!\n", n);
+		printk(KERN_EMERG "JBD: leaked %d journal_heads!\n", n);
 #endif
 	jbd_remove_debugfs_entry();
 	journal_destroy_caches();
@@ -2143,4 +2122,3 @@ static void __exit journal_exit(void)
 MODULE_LICENSE("GPL");
 module_init(journal_init);
 module_exit(journal_exit);
-

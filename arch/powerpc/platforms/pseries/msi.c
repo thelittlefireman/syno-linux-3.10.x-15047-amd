@@ -130,8 +130,7 @@ static int check_req(struct pci_dev *pdev, int nvec, char *prop_name)
 {
 	struct device_node *dn;
 	struct pci_dn *pdn;
-	const __be32 *p;
-	u32 req_msi;
+	const u32 *req_msi;
 
 	pdn = pci_get_pdn(pdev);
 	if (!pdn)
@@ -139,20 +138,19 @@ static int check_req(struct pci_dev *pdev, int nvec, char *prop_name)
 
 	dn = pdn->node;
 
-	p = of_get_property(dn, prop_name, NULL);
-	if (!p) {
+	req_msi = of_get_property(dn, prop_name, NULL);
+	if (!req_msi) {
 		pr_debug("rtas_msi: No %s on %s\n", prop_name, dn->full_name);
 		return -ENOENT;
 	}
 
-	req_msi = be32_to_cpup(p);
-	if (req_msi < nvec) {
+	if (*req_msi < nvec) {
 		pr_debug("rtas_msi: %s requests < %d MSIs\n", prop_name, nvec);
 
-		if (req_msi == 0) /* Be paranoid */
+		if (*req_msi == 0) /* Be paranoid */
 			return -ENOSPC;
 
-		return req_msi;
+		return *req_msi;
 	}
 
 	return 0;
@@ -173,7 +171,7 @@ static int check_req_msix(struct pci_dev *pdev, int nvec)
 static struct device_node *find_pe_total_msi(struct pci_dev *dev, int *total)
 {
 	struct device_node *dn;
-	const __be32 *p;
+	const u32 *p;
 
 	dn = of_node_get(pci_device_to_OF_node(dev));
 	while (dn) {
@@ -181,7 +179,7 @@ static struct device_node *find_pe_total_msi(struct pci_dev *dev, int *total)
 		if (p) {
 			pr_debug("rtas_msi: found prop on dn %s\n",
 				dn->full_name);
-			*total = be32_to_cpup(p);
+			*total = *p;
 			return dn;
 		}
 
@@ -234,13 +232,13 @@ struct msi_counts {
 static void *count_non_bridge_devices(struct device_node *dn, void *data)
 {
 	struct msi_counts *counts = data;
-	const __be32 *p;
+	const u32 *p;
 	u32 class;
 
 	pr_debug("rtas_msi: counting %s\n", dn->full_name);
 
 	p = of_get_property(dn, "class-code", NULL);
-	class = p ? be32_to_cpup(p) : 0;
+	class = p ? *p : 0;
 
 	if ((class >> 8) != PCI_CLASS_BRIDGE_PCI)
 		counts->num_devices++;
@@ -251,7 +249,7 @@ static void *count_non_bridge_devices(struct device_node *dn, void *data)
 static void *count_spare_msis(struct device_node *dn, void *data)
 {
 	struct msi_counts *counts = data;
-	const __be32 *p;
+	const u32 *p;
 	int req;
 
 	if (dn == counts->requestor)
@@ -262,11 +260,11 @@ static void *count_spare_msis(struct device_node *dn, void *data)
 		req = 0;
 		p = of_get_property(dn, "ibm,req#msi", NULL);
 		if (p)
-			req = be32_to_cpup(p);
+			req = *p;
 
 		p = of_get_property(dn, "ibm,req#msi-x", NULL);
 		if (p)
-			req = max(req, (int)be32_to_cpup(p));
+			req = max(req, (int)*p);
 	}
 
 	if (req < counts->quota)
@@ -428,7 +426,7 @@ static int rtas_setup_msi_irqs(struct pci_dev *pdev, int nvec_in, int type)
 	 */
 again:
 	if (type == PCI_CAP_ID_MSI) {
-		if (pdn->force_32bit_msi) {
+		if (pdev->no_64bit_msi) {
 			rc = rtas_change_msi(pdn, RTAS_CHANGE_32MSI_FN, nvec);
 			if (rc < 0) {
 				/*
@@ -533,4 +531,3 @@ static int rtas_msi_init(void)
 	return 0;
 }
 arch_initcall(rtas_msi_init);
-

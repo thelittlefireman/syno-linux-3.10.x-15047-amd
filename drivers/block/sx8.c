@@ -69,7 +69,6 @@ static int max_queue = 1;
 module_param(max_queue, int, 0444);
 MODULE_PARM_DESC(max_queue, "Maximum number of queued commands. (min==1, max==30, safe==1)");
 
-
 #define NEXT_RESP(idx)	((idx + 1) % RMSG_Q_LEN)
 
 /* 0xf is just arbitrary, non-zero noise; this is sorta like poisoning */
@@ -430,8 +429,6 @@ static const struct block_device_operations carm_bd_ops = {
 
 static unsigned int carm_host_id;
 static unsigned long carm_major_alloc;
-
-
 
 static int carm_bdev_getgeo(struct block_device *bdev, struct hd_geometry *geo)
 {
@@ -1744,6 +1741,18 @@ static void carm_remove_one (struct pci_dev *pdev)
 	kfree(host);
 	pci_release_regions(pdev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 }
 
-module_pci_driver(carm_driver);
+static int __init carm_init(void)
+{
+	return pci_register_driver(&carm_driver);
+}
+
+static void __exit carm_exit(void)
+{
+	pci_unregister_driver(&carm_driver);
+}
+
+module_init(carm_init);
+module_exit(carm_exit);

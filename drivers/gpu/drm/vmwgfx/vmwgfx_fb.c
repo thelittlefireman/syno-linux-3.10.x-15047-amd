@@ -179,7 +179,6 @@ static int vmw_fb_set_par(struct fb_info *info)
 		vmw_write(vmw_priv, SVGA_REG_DISPLAY_POSITION_Y, info->var.yoffset);
 		vmw_write(vmw_priv, SVGA_REG_DISPLAY_WIDTH, info->var.xres);
 		vmw_write(vmw_priv, SVGA_REG_DISPLAY_HEIGHT, info->var.yres);
-		vmw_write(vmw_priv, SVGA_REG_BYTES_PER_LINE, info->fix.line_length);
 		vmw_write(vmw_priv, SVGA_REG_DISPLAY_ID, SVGA_ID_INVALID);
 	}
 
@@ -380,13 +379,14 @@ static int vmw_fb_create_bo(struct vmw_private *vmw_priv,
 
 	ne_placement.lpfn = (size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 
-	(void) ttm_write_lock(&vmw_priv->reservation_sem, false);
+	/* interuptable? */
+	ret = ttm_write_lock(&vmw_priv->fbdev_master.lock, false);
+	if (unlikely(ret != 0))
+		return ret;
 
 	vmw_bo = kmalloc(sizeof(*vmw_bo), GFP_KERNEL);
-	if (!vmw_bo) {
-		ret = -ENOMEM;
+	if (!vmw_bo)
 		goto err_unlock;
-	}
 
 	ret = vmw_dmabuf_init(vmw_priv, vmw_bo, size,
 			      &ne_placement,

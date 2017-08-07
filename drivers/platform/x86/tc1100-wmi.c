@@ -32,7 +32,9 @@
 #include <linux/slab.h>
 #include <linux/init.h>
 #include <linux/types.h>
-#include <linux/acpi.h>
+#include <acpi/acpi.h>
+#include <acpi/acpi_bus.h>
+#include <acpi/acpi_drivers.h>
 #include <linux/platform_device.h>
 
 #define GUID "C364AC71-36DB-495A-8494-B439D472A505"
@@ -183,7 +185,6 @@ static int __init tc1100_probe(struct platform_device *device)
 {
 	return sysfs_create_group(&device->dev.kobj, &tc1100_attribute_group);
 }
-
 
 static int tc1100_remove(struct platform_device *device)
 {

@@ -40,9 +40,7 @@
 #include "vxfs_inode.h"
 #include "vxfs_extern.h"
 
-
 struct kmem_cache		*vxfs_inode_cachep;
-
 
 #ifdef DIAGNOSTIC
 /*
@@ -66,7 +64,6 @@ vxfs_dumpi(struct vxfs_inode_info *vip, ino_t ino)
 	printk(KERN_DEBUG "orgtype:%u\n", vip->vii_orgtype);
 }
 #endif
-
 
 /**
  * vxfs_blkiget - find inode based on extent #
@@ -354,7 +351,7 @@ static void vxfs_i_callback(struct rcu_head *head)
 void
 vxfs_evict_inode(struct inode *ip)
 {
-	truncate_inode_pages_final(&ip->i_data);
+	truncate_inode_pages(&ip->i_data, 0);
 	clear_inode(ip);
 	call_rcu(&ip->i_rcu, vxfs_i_callback);
 }

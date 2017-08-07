@@ -16,6 +16,7 @@
 #include <linux/acpi.h>
 #include <linux/pci.h>
 #include <linux/usb/hcd.h>
+#include <acpi/acpi_bus.h>
 
 #include "usb.h"
 
@@ -91,7 +92,7 @@ static int usb_acpi_check_port_connect_type(struct usb_device *hdev,
 	int ret = 0;
 
 	/*
-	 * According to ACPI Spec 9.13. PLD indicates whether usb port is
+	 * Accoding to ACPI Spec 9.13. PLD indicates whether usb port is
 	 * user visible and _UPC indicates whether it is connectable. If
 	 * the port was visible and connectable, it could be freely connected
 	 * and disconnected with USB devices. If no visible and connectable,
@@ -126,7 +127,7 @@ out:
 	return ret;
 }
 
-static struct acpi_device *usb_acpi_find_companion(struct device *dev)
+static int usb_acpi_find_device(struct device *dev, acpi_handle *handle)
 {
 	struct usb_device *udev;
 	acpi_handle *parent_handle;
@@ -168,15 +169,16 @@ static struct acpi_device *usb_acpi_find_companion(struct device *dev)
 				break;
 			}
 
-			return NULL;
+			return -ENODEV;
 		}
 
 		/* root hub's parent is the usb hcd. */
-		return acpi_find_child_device(ACPI_COMPANION(dev->parent),
-					      udev->portnum, false);
+		parent_handle = DEVICE_ACPI_HANDLE(dev->parent);
+		*handle = acpi_get_child(parent_handle, udev->portnum);
+		if (!*handle)
+			return -ENODEV;
+		return 0;
 	} else if (is_usb_port(dev)) {
-		struct acpi_device *adev = NULL;
-
 		sscanf(dev_name(dev), "port%d", &port_num);
 		/* Get the struct usb_device point of port's hub */
 		udev = to_usb_device(dev->parent->parent);
@@ -192,27 +194,26 @@ static struct acpi_device *usb_acpi_find_companion(struct device *dev)
 
 			raw_port_num = usb_hcd_find_raw_port_number(hcd,
 				port_num);
-			adev = acpi_find_child_device(ACPI_COMPANION(&udev->dev),
-						      raw_port_num, false);
-			if (!adev)
-				return NULL;
+			*handle = acpi_get_child(DEVICE_ACPI_HANDLE(&udev->dev),
+				raw_port_num);
+			if (!*handle)
+				return -ENODEV;
 		} else {
 			parent_handle =
 				usb_get_hub_port_acpi_handle(udev->parent,
 				udev->portnum);
 			if (!parent_handle)
-				return NULL;
+				return -ENODEV;
 
-			acpi_bus_get_device(parent_handle, &adev);
-			adev = acpi_find_child_device(adev, port_num, false);
-			if (!adev)
-				return NULL;
+			*handle = acpi_get_child(parent_handle,	port_num);
+			if (!*handle)
+				return -ENODEV;
 		}
-		usb_acpi_check_port_connect_type(udev, adev->handle, port_num);
-		return adev;
-	}
+		usb_acpi_check_port_connect_type(udev, *handle, port_num);
+	} else
+		return -ENODEV;
 
-	return NULL;
+	return 0;
 }
 
 static bool usb_acpi_bus_match(struct device *dev)
@@ -223,7 +224,7 @@ static bool usb_acpi_bus_match(struct device *dev)
 static struct acpi_bus_type usb_acpi_bus = {
 	.name = "USB",
 	.match = usb_acpi_bus_match,
-	.find_companion = usb_acpi_find_companion,
+	.find_device = usb_acpi_find_device,
 };
 
 int usb_acpi_register(void)

@@ -38,8 +38,8 @@
 
 #include <asm-generic/rtc.h>
 #include <asm/intel_scu_ipc.h>
-#include <asm/intel-mid.h>
-#include <asm/intel_mid_vrtc.h>
+#include <asm/mrst.h>
+#include <asm/mrst-vrtc.h>
 
 struct mrst_rtc {
 	struct rtc_device	*rtc;
@@ -265,7 +265,6 @@ static int mrst_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	return 0;
 }
 
-
 #if defined(CONFIG_RTC_INTF_PROC) || defined(CONFIG_RTC_INTF_PROC_MODULE)
 
 static int mrst_procfs(struct device *dev, struct seq_file *seq)
@@ -380,6 +379,7 @@ static int vrtc_mrst_do_probe(struct device *dev, struct resource *iomem,
 cleanup1:
 	rtc_device_unregister(mrst_rtc.rtc);
 cleanup0:
+	dev_set_drvdata(dev, NULL);
 	mrst_rtc.dev = NULL;
 	release_mem_region(iomem->start, resource_size(iomem));
 	dev_err(dev, "rtc-mrst: unable to initialise\n");
@@ -411,6 +411,7 @@ static void rtc_mrst_do_remove(struct device *dev)
 	mrst->iomem = NULL;
 
 	mrst->dev = NULL;
+	dev_set_drvdata(dev, NULL);
 }
 
 #ifdef	CONFIG_PM

@@ -34,7 +34,6 @@
 
 #define VMWGFX_NUM_DISPLAY_UNITS 8
 
-
 #define vmw_framebuffer_to_vfb(x) \
 	container_of(x, struct vmw_framebuffer, base)
 
@@ -53,7 +52,6 @@ struct vmw_framebuffer {
 	uint32_t user_handle;
 };
 
-
 #define vmw_crtc_to_du(x) \
 	container_of(x, struct vmw_display_unit, crtc)
 
@@ -69,7 +67,6 @@ int vmw_cursor_update_dmabuf(struct vmw_private *dev_priv,
 			     u32 hotspotX, u32 hotspotY);
 void vmw_cursor_update_position(struct vmw_private *dev_priv,
 				bool show, int x, int y);
-
 
 /**
  * Base class display unit.
@@ -116,15 +113,13 @@ struct vmw_display_unit {
 #define vmw_connector_to_du(x) \
 	container_of(x, struct vmw_display_unit, connector)
 
-
 /*
  * Shared display unit functions - vmwgfx_kms.c
  */
 void vmw_display_unit_cleanup(struct vmw_display_unit *du);
 int vmw_du_page_flip(struct drm_crtc *crtc,
 		     struct drm_framebuffer *fb,
-		     struct drm_pending_vblank_event *event,
-		     uint32_t page_flip_flags);
+		     struct drm_pending_vblank_event *event);
 void vmw_du_crtc_save(struct drm_crtc *crtc);
 void vmw_du_crtc_restore(struct drm_crtc *crtc);
 void vmw_du_crtc_gamma_set(struct drm_crtc *crtc,
@@ -144,7 +139,6 @@ int vmw_du_connector_set_property(struct drm_connector *connector,
 				  struct drm_property *property,
 				  uint64_t val);
 
-
 /*
  * Legacy display unit functions - vmwgfx_ldu.c
  */
@@ -162,6 +156,5 @@ bool vmw_kms_screen_object_flippable(struct vmw_private *dev_priv,
 				     struct drm_crtc *crtc);
 void vmw_kms_screen_object_update_implicit_fb(struct vmw_private *dev_priv,
 					      struct drm_crtc *crtc);
-
 
 #endif

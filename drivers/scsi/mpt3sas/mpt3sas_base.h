@@ -3,7 +3,7 @@
  * for access to MPT (Message Passing Technology) firmware.
  *
  * This code is based on drivers/scsi/mpt3sas/mpt3sas_base.h
- * Copyright (C) 2012-2013  LSI Corporation
+ * Copyright (C) 2012  LSI Corporation
  *  (mailto:DL-MPTFusionLinux@lsi.com)
  *
  * This program is free software; you can redistribute it and/or
@@ -70,10 +70,10 @@
 #define MPT3SAS_DRIVER_NAME		"mpt3sas"
 #define MPT3SAS_AUTHOR	"LSI Corporation <DL-MPTFusionLinux@lsi.com>"
 #define MPT3SAS_DESCRIPTION	"LSI MPT Fusion SAS 3.0 Device Driver"
-#define MPT3SAS_DRIVER_VERSION		"02.100.00.00"
-#define MPT3SAS_MAJOR_VERSION		2
+#define MPT3SAS_DRIVER_VERSION		"01.100.01.00"
+#define MPT3SAS_MAJOR_VERSION		1
 #define MPT3SAS_MINOR_VERSION		100
-#define MPT3SAS_BUILD_VERSION		0
+#define MPT3SAS_BUILD_VERSION		1
 #define MPT3SAS_RELEASE_VERSION	00
 
 /*
@@ -87,7 +87,6 @@
 #define MPT3SAS_SG_DEPTH		MPT3SAS_MAX_PHYS_SEGMENTS
 #endif
 
-
 /*
  * Generic Defines
  */
@@ -99,7 +98,6 @@
 #define MPT_STRING_LENGTH		64
 
 #define MPT_MAX_CALLBACKS		32
-
 
 #define	 CAN_SLEEP			1
 #define  NO_SLEEP			0
@@ -130,15 +128,12 @@
 #define MPT_TARGET_FLAGS_DELETED	0x04
 #define MPT_TARGET_FASTPATH_IO		0x08
 
-
-
 /*
  * status bits for ioc->diag_buffer_status
  */
 #define MPT3_DIAG_BUFFER_IS_REGISTERED	(0x01)
 #define MPT3_DIAG_BUFFER_IS_RELEASED	(0x02)
 #define MPT3_DIAG_BUFFER_IS_DIAG_RESET	(0x04)
-
 
 /* OEM Identifiers */
 #define MFG10_OEM_ID_INVALID                   (0x00000000)
@@ -168,7 +163,6 @@ struct Mpi2ManufacturingPage10_t {
 	U32	OEMSpecificFlags1;		/* 20h */
 	U32	Reserved5[18];			/* 24h - 60h*/
 };
-
 
 /* Miscellaneous options */
 struct Mpi2ManufacturingPage11_t {
@@ -200,7 +194,6 @@ struct MPT3SAS_TARGET {
 	u8	deleted;
 	u8	tm_busy;
 };
-
 
 /*
  * per device private data
@@ -252,8 +245,6 @@ struct _internal_cmd {
 	u16	status;
 	u16	smid;
 };
-
-
 
 /**
  * struct _sas_device - attached device information
@@ -465,7 +456,6 @@ struct _tr_list {
 	u16	state;
 };
 
-
 /**
  * struct adapter_reply_queue - the reply queue struct
  * @ioc: per adapter object
@@ -498,8 +488,6 @@ typedef void (*MPT_BUILD_SG)(struct MPT3SAS_ADAPTER *ioc, void *psge,
 		dma_addr_t data_in_dma, size_t data_in_sz);
 typedef void (*MPT_BUILD_ZERO_LEN_SGE)(struct MPT3SAS_ADAPTER *ioc,
 		void *paddr);
-
-
 
 /* IOC Facts and Port Facts converted from little endian to cpu */
 union mpi3_version_union {
@@ -923,7 +911,6 @@ struct MPT3SAS_ADAPTER {
 typedef u8 (*MPT_CALLBACK)(struct MPT3SAS_ADAPTER *ioc, u16 smid, u8 msix_index,
 	u32 reply);
 
-
 /* base shared API */
 extern struct list_head mpt3sas_ioc_list;
 void mpt3sas_base_start_watchdog(struct MPT3SAS_ADAPTER *ioc);
@@ -984,7 +971,6 @@ void mpt3sas_base_update_missing_delay(struct MPT3SAS_ADAPTER *ioc,
 	u16 device_missing_delay, u8 io_missing_delay);
 
 int mpt3sas_port_enable(struct MPT3SAS_ADAPTER *ioc);
-
 
 /* scsih shared API */
 u8 mpt3sas_scsih_event_callback(struct MPT3SAS_ADAPTER *ioc, u8 msix_index,

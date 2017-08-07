@@ -8,7 +8,6 @@
 #include <linux/compiler.h>
 #include <linux/types.h>
 
-
 /*
  * Current version of the filter code architecture.
  */
@@ -133,6 +132,5 @@ struct sock_fprog {	/* Required for SO_ATTACH_FILTER. */
 #define SKF_AD_MAX	56
 #define SKF_NET_OFF   (-0x100000)
 #define SKF_LL_OFF    (-0x200000)
-
 
 #endif /* _UAPI__LINUX_FILTER_H__ */

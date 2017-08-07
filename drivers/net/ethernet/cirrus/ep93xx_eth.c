@@ -18,6 +18,7 @@
 #include <linux/mii.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
+#include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/moduleparam.h>
 #include <linux/platform_device.h>
@@ -773,7 +774,6 @@ static struct net_device *ep93xx_dev_alloc(struct ep93xx_eth_data *data)
 	return dev;
 }
 
-
 static int ep93xx_eth_remove(struct platform_device *pdev)
 {
 	struct net_device *dev;
@@ -782,6 +782,7 @@ static int ep93xx_eth_remove(struct platform_device *pdev)
 	dev = platform_get_drvdata(pdev);
 	if (dev == NULL)
 		return 0;
+	platform_set_drvdata(pdev, NULL);
 
 	ep = netdev_priv(dev);
 
@@ -813,7 +814,7 @@ static int ep93xx_eth_probe(struct platform_device *pdev)
 
 	if (pdev == NULL)
 		return -ENODEV;
-	data = dev_get_platdata(&pdev->dev);
+	data = pdev->dev.platform_data;
 
 	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq = platform_get_irq(pdev, 0);
@@ -874,7 +875,6 @@ err_out:
 	ep93xx_eth_remove(pdev);
 	return err;
 }
-
 
 static struct platform_driver ep93xx_eth_driver = {
 	.probe		= ep93xx_eth_probe,

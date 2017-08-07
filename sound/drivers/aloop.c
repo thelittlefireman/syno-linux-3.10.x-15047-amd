@@ -1142,8 +1142,8 @@ static int loopback_probe(struct platform_device *devptr)
 	int dev = devptr->id;
 	int err;
 
-	err = snd_card_new(&devptr->dev, index[dev], id[dev], THIS_MODULE,
-			   sizeof(struct loopback), &card);
+	err = snd_card_create(index[dev], id[dev], THIS_MODULE,
+			      sizeof(struct loopback), &card);
 	if (err < 0)
 		return err;
 	loopback = card->private_data;
@@ -1183,6 +1183,7 @@ static int loopback_probe(struct platform_device *devptr)
 static int loopback_remove(struct platform_device *devptr)
 {
 	snd_card_free(platform_get_drvdata(devptr));
+	platform_set_drvdata(devptr, NULL);
 	return 0;
 }
 
@@ -1241,7 +1242,6 @@ static int __init alsa_card_loopback_init(void)
 	err = platform_driver_register(&loopback_driver);
 	if (err < 0)
 		return err;
-
 
 	cards = 0;
 	for (i = 0; i < SNDRV_CARDS; i++) {

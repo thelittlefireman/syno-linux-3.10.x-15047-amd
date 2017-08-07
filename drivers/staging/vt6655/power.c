@@ -260,7 +260,7 @@ PSvSendPSPOLL(
 		DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "Send PS-Poll packet failed..\n");
 	} else {
 //        DBG_PRT(MSG_LEVEL_DEBUG, KERN_INFO "Send PS-Poll packet success..\n");
-	}
+	};
 
 	return;
 }
@@ -284,15 +284,16 @@ PSbSendNullPacket(
 	PSMgmtObject        pMgmt = pDevice->pMgmt;
 	unsigned int uIdx;
 
-	if (!pDevice->bLinkPass) {
+	if (pDevice->bLinkPass == false) {
 		return false;
 	}
 #ifdef TxInSleep
-	if (!pDevice->bEnablePSMode && !pDevice->fTxDataInSleep) {
+	if ((pDevice->bEnablePSMode == false) &&
+	    (pDevice->fTxDataInSleep == false)) {
 		return false;
 	}
 #else
-	if (!pDevice->bEnablePSMode) {
+	if (pDevice->bEnablePSMode == false) {
 		return false;
 	}
 #endif

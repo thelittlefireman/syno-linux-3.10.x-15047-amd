@@ -11,7 +11,6 @@
 #include "tuner-i2c.h"
 #include "tda9887.h"
 
-
 /* Chips:
    TDA9885 (PAL, NTSC)
    TDA9886 (PAL, SECAM, NTSC)
@@ -72,7 +71,6 @@ struct tvnorm {
 #define cFmRadio                0x08    // bit b3:4
 #define cNegativeFmTV           0x10    // bit b3:4
 
-
 #define cForcedMuteAudioON      0x20    // bit b5
 #define cForcedMuteAudioOFF     0x00    // bit b5
 
@@ -81,7 +79,6 @@ struct tvnorm {
 
 #define cOutputPort2Active      0x00    // bit b7
 #define cOutputPort2Inactive    0x80    // bit b7
-
 
 //// second reg (c)
 #define cDeemphasisOFF          0x00    // bit c5
@@ -101,7 +98,6 @@ struct tvnorm {
 #define cAudioIF_5_5             0x01    // bit e0:1
 #define cAudioIF_6_0             0x02    // bit e0:1
 #define cAudioIF_6_5             0x03    // bit e0:1
-
 
 #define cVideoIFMask		0x1c	// bit e2:4
 /* Video IF selection in TV Mode (bit B3=0) */
@@ -536,8 +532,8 @@ static int tda9887_status(struct dvb_frontend *fe)
 	unsigned char buf[1];
 	int rc;
 
-	rc = tuner_i2c_xfer_recv(&priv->i2c_props, buf, 1);
-	if (rc != 1)
+	memset(buf,0,sizeof(buf));
+	if (1 != (rc = tuner_i2c_xfer_recv(&priv->i2c_props,buf,1)))
 		tuner_info("i2c i/o error: rc == %d (should be 1)\n", rc);
 	dump_read_message(fe, buf);
 	return 0;

@@ -18,7 +18,6 @@ static char ErrorBuffer[256];
  * Functions for accessing Amiga-FFS structures.
  */
 
-
 /* Insert a header block bh into the directory dir
  * caller must hold AFFS_DIR->i_hash_lock!
  */
@@ -126,7 +125,7 @@ affs_fix_dcache(struct inode *inode, u32 entry_ino)
 {
 	struct dentry *dentry;
 	spin_lock(&inode->i_lock);
-	hlist_for_each_entry(dentry, &inode->i_dentry, d_alias) {
+	hlist_for_each_entry(dentry, &inode->i_dentry, d_u.d_alias) {
 		if (entry_ino == (u32)(long)dentry->d_fsdata) {
 			dentry->d_fsdata = (void *)inode->i_ino;
 			break;
@@ -134,7 +133,6 @@ affs_fix_dcache(struct inode *inode, u32 entry_ino)
 	}
 	spin_unlock(&inode->i_lock);
 }
-
 
 /* Remove header from link chain */
 
@@ -229,7 +227,6 @@ done:
 	return retval;
 }
 
-
 static int
 affs_empty_dir(struct inode *inode)
 {
@@ -252,7 +249,6 @@ not_empty:
 done:
 	return retval;
 }
-
 
 /* Remove a filesystem object. If the object to be removed has
  * links to it, one of the links must be changed to inherit
@@ -471,27 +467,20 @@ affs_warning(struct super_block *sb, const char *function, const char *fmt, ...)
 		function,ErrorBuffer);
 }
 
-bool
-affs_nofilenametruncate(const struct dentry *dentry)
-{
-	struct inode *inode = dentry->d_inode;
-	return AFFS_SB(inode->i_sb)->s_flags & SF_NO_TRUNCATE;
-
-}
-
 /* Check if the name is valid for a affs object. */
 
 int
-affs_check_name(const unsigned char *name, int len, bool notruncate)
+affs_check_name(const unsigned char *name, int len)
 {
 	int	 i;
 
-	if (len > 30) {
-		if (notruncate)
-			return -ENAMETOOLONG;
-		else
-			len = 30;
-	}
+	if (len > 30)
+#ifdef AFFS_NO_TRUNCATE
+		return -ENAMETOOLONG;
+#else
+		len = 30;
+#endif
+
 	for (i = 0; i < len; i++) {
 		if (name[i] < ' ' || name[i] == ':'
 		    || (name[i] > 0x7e && name[i] < 0xa0))

@@ -444,7 +444,6 @@ static struct sensor_device_attribute sda_in_max[] = {
 	SENSOR_ATTR(in9_max, S_IWUSR | S_IRUGO, show_in_max, store_in_max, 9),
 };
 
-
 static ssize_t show_beep(struct device *dev, struct device_attribute *attr,
 			char *buf)
 {
@@ -1043,7 +1042,7 @@ static struct sensor_device_attribute sda_temp_alarm[] = {
 	SENSOR_ATTR(temp3_alarm, S_IRUGO, show_alarm, NULL, 13),
 };
 
-/* get realtime status of all sensors items: voltage, temp, fan */
+/* get reatime status of all sensors items: voltage, temp, fan */
 static ssize_t show_alarms_reg(struct device *dev,
 				struct device_attribute *attr, char *buf)
 {
@@ -1071,7 +1070,6 @@ static ssize_t show_beep_mask(struct device *dev,
 	struct w83791d_data *data = w83791d_update_device(dev);
 	return sprintf(buf, "%d\n", BEEP_MASK_FROM_REG(data->beep_mask));
 }
-
 
 static ssize_t store_beep_mask(struct device *dev,
 				struct device_attribute *attr,
@@ -1322,7 +1320,6 @@ error_sc_1:
 error_sc_0:
 	return err;
 }
-
 
 /* Return 0 if detection is successful, -ENODEV otherwise */
 static int w83791d_detect(struct i2c_client *client,

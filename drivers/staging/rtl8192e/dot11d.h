@@ -21,8 +21,6 @@
 
 #include "rtllib.h"
 
-
-
 struct chnl_txpow_triple {
 	u8 FirstChnl;
 	u8  NumChnls;
@@ -38,7 +36,7 @@ enum dot11d_state {
 /**
  * struct rt_dot11d_info * @CountryIeLen: value greater than 0 if @CountryIeBuf contains
  *		  valid country information element.
- * @channel_map: holds channel values
+ * @chanell_map: holds channel values
  *		0 - invalid,
  *		1 - valid (active scan),
  *		2 - valid (passive scan)
@@ -87,10 +85,7 @@ static inline void cpMacAddr(unsigned char *des, unsigned char *src)
 #define CIE_WATCHDOG_TH 1
 #define GET_CIE_WATCHDOG(__pIeeeDev)				\
 	 (GET_DOT11D_INFO(__pIeeeDev)->CountryIeWatchdog)
-static inline void RESET_CIE_WATCHDOG(struct rtllib_device *__pIeeeDev)
-{
-	GET_CIE_WATCHDOG(__pIeeeDev) = 0;
-}
+#define RESET_CIE_WATCHDOG(__pIeeeDev) GET_CIE_WATCHDOG(__pIeeeDev) = 0
 #define UPDATE_CIE_WATCHDOG(__pIeeeDev) (++GET_CIE_WATCHDOG(__pIeeeDev))
 
 #define IS_DOT11D_STATE_DONE(__pIeeeDev)			\

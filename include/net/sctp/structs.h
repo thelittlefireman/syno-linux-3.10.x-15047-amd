@@ -19,12 +19,16 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * along with GNU CC; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  *
  * Please send any bug reports or fixes you make to the
  * email addresses:
- *    lksctp developers <linux-sctp@vger.kernel.org>
+ *    lksctp developers <lksctp-developers@lists.sourceforge.net>
+ *
+ * Or submit a bug report through the following website:
+ *    http://www.sf.net/projects/lksctp
  *
  * Written or modified by:
  *    Randall Stewart	    <randall@sctp.chicago.il.us>
@@ -42,12 +46,15 @@
  *    Ryan Layer	    <rmlayer@us.ibm.com>
  *    Anup Pemmaiah	    <pemmaiah@cc.usu.edu>
  *    Kevin Gao             <kevin.gao@intel.com>
+ *
+ * Any bugs reported given to us we will try to fix... any fixes shared will
+ * be incorporated into the next SCTP release.
  */
 
 #ifndef __sctp_structs_h__
 #define __sctp_structs_h__
 
-#include <linux/ktime.h>
+#include <linux/time.h>		/* We get struct timespec.    */
 #include <linux/socket.h>	/* linux/in.h needs this!!    */
 #include <linux/in.h>		/* We get struct sockaddr_in. */
 #include <linux/in6.h>		/* We get struct in6_addr     */
@@ -83,7 +90,6 @@ struct sctp_ep_common;
 struct sctp_ssnmap;
 struct crypto_hash;
 
-
 #include <net/sctp/tsnmap.h>
 #include <net/sctp/ulpevent.h>
 #include <net/sctp/ulpqueue.h>
@@ -109,29 +115,30 @@ struct sctp_hashbucket {
 	struct hlist_head	chain;
 } __attribute__((__aligned__(8)));
 
-
 /* The SCTP globals structure. */
 extern struct sctp_globals {
+	/* The following variables are implementation specific.	 */
+
+	/* Default initialization values to be applied to new associations. */
+	__u16 max_instreams;
+	__u16 max_outstreams;
+
 	/* This is a list of groups of functions for each address
 	 * family that we support.
 	 */
 	struct list_head address_families;
 
 	/* This is the hash of all endpoints. */
-	struct sctp_hashbucket *ep_hashtable;
-	/* This is the hash of all associations. */
-	struct sctp_hashbucket *assoc_hashtable;
-	/* This is the sctp port control hash.	*/
-	struct sctp_bind_hashbucket *port_hashtable;
-
-	/* Sizes of above hashtables. */
 	int ep_hashsize;
-	int assoc_hashsize;
-	int port_hashsize;
+	struct sctp_hashbucket *ep_hashtable;
 
-	/* Default initialization values to be applied to new associations. */
-	__u16 max_instreams;
-	__u16 max_outstreams;
+	/* This is the hash of all associations. */
+	int assoc_hashsize;
+	struct sctp_hashbucket *assoc_hashtable;
+
+	/* This is the sctp port control hash.	*/
+	int port_hashsize;
+	struct sctp_bind_hashbucket *port_hashtable;
 
 	/* Flag to indicate whether computing and verifying checksum
 	 * is disabled. */
@@ -219,6 +226,10 @@ struct sctp_sock {
 	atomic_t pd_mode;
 	/* Receive to here while partial delivery is in effect. */
 	struct sk_buff_head pd_lobby;
+
+	/* These must be the last fields, as they will skipped on copies,
+	 * like on accept and peeloff operations
+	 */
 	struct list_head auto_asconf_list;
 	int do_auto_asconf;
 };
@@ -239,7 +250,6 @@ struct sctp6_sock {
        struct ipv6_pinfo inet6;
 };
 #endif /* CONFIG_IPV6 */
-
 
 /* This is our APPLICATION-SPECIFIC state cookie.
  * THIS IS NOT DICTATED BY THE SPECIFICATION.
@@ -275,7 +285,7 @@ struct sctp_cookie {
 	__u32 peer_ttag;
 
 	/* When does this cookie expire? */
-	ktime_t expiration;
+	struct timeval expiration;
 
 	/* Number of inbound/outbound streams which are set
 	 * and negotiated during the INIT process.
@@ -314,7 +324,6 @@ struct sctp_cookie {
 	__u32 raw_addr_list_len;
 	struct sctp_init_chunk peer_init[0];
 };
-
 
 /* The format of our cookie that we send to our peer. */
 struct sctp_signed_cookie {
@@ -509,7 +518,6 @@ struct sctp_pf {
 	struct sctp_af *af;
 };
 
-
 /* Structure to track chunk fragments that have been acked, but peer
  * fragments of the same message have not.
  */
@@ -628,7 +636,6 @@ struct sctp_chunk {
 #define SCTP_NEED_FRTX 0x1
 #define SCTP_DONT_FRTX 0x2
 	__u16	rtt_in_progress:1,	/* This chunk used for RTT calc? */
-		resent:1,		/* Has this chunk ever been resent. */
 		has_tsn:1,		/* Does this chunk have a TSN yet? */
 		has_ssn:1,		/* Does this chunk have a SSN yet? */
 		singleton:1,		/* Only chunk in the packet? */
@@ -649,6 +656,7 @@ int sctp_user_addto_chunk(struct sctp_chunk *chunk, int off, int len,
 			  struct iovec *data);
 void sctp_chunk_free(struct sctp_chunk *);
 void  *sctp_addto_chunk(struct sctp_chunk *, int len, const void *data);
+void  *sctp_addto_chunk_fixed(struct sctp_chunk *, int len, const void *data);
 struct sctp_chunk *sctp_chunkify(struct sk_buff *,
 				 const struct sctp_association *,
 				 struct sock *);
@@ -773,7 +781,6 @@ struct sctp_transport {
 
 	/* Has this transport moved the ctsn since we last sacked */
 	__u32 sack_generation;
-	u32 dst_cookie;
 
 	struct flowi fl;
 
@@ -961,7 +968,6 @@ void sctp_transport_reset(struct sctp_transport *);
 void sctp_transport_update_pmtu(struct sock *, struct sctp_transport *, u32);
 void sctp_transport_immediate_rtx(struct sctp_transport *);
 
-
 /* This is the structure we use to queue packets as they come into
  * SCTP.  We write packets to it and read chunks from it.
  */
@@ -1044,6 +1050,9 @@ struct sctp_outq {
 
 	/* Corked? */
 	char cork;
+
+	/* Is this structure empty?  */
+	char empty;
 };
 
 void sctp_outq_init(struct sctp_association *, struct sctp_outq *);
@@ -1117,7 +1126,6 @@ int sctp_is_any(struct sock *sk, const union sctp_addr *addr);
 int sctp_addr_is_valid(const union sctp_addr *addr);
 int sctp_is_ep_boundall(struct sock *sk);
 
-
 /* What type of endpoint?  */
 typedef enum {
 	SCTP_EP_TYPE_SOCKET,
@@ -1168,7 +1176,6 @@ struct sctp_ep_common {
 	 */
 	struct sctp_bind_addr bind_addr;
 };
-
 
 /* RFC Section 1.4 Key Terms
  *
@@ -1334,7 +1341,6 @@ struct sctp_priv_assoc_stats {
  * parameters for optimization.
  */
 
-
 /* Here we have information about each individual association. */
 struct sctp_association {
 
@@ -1358,6 +1364,12 @@ struct sctp_association {
 
 	/* This is all information about our peer.  */
 	struct {
+		/* rwnd
+		 *
+		 * Peer Rwnd   : Current calculated value of the peer's rwnd.
+		 */
+		__u32 rwnd;
+
 		/* transport_addr_list
 		 *
 		 * Peer	       : A list of SCTP transport addresses that the
@@ -1374,12 +1386,6 @@ struct sctp_association {
 		 * It is a list of SCTP_transport's.
 		 */
 		struct list_head transport_addr_list;
-
-		/* rwnd
-		 *
-		 * Peer Rwnd   : Current calculated value of the peer's rwnd.
-		 */
-		__u32 rwnd;
 
 		/* transport_count
 		 *
@@ -1463,20 +1469,6 @@ struct sctp_association {
 		 */
 		struct sctp_tsnmap tsn_map;
 
-		/* This mask is used to disable sending the ASCONF chunk
-		 * with specified parameter to peer.
-		 */
-		__be16 addip_disabled_mask;
-
-		/* These are capabilities which our peer advertised.  */
-		__u8	ecn_capable:1,      /* Can peer do ECN? */
-			ipv4_address:1,     /* Peer understands IPv4 addresses? */
-			ipv6_address:1,     /* Peer understands IPv6 addresses? */
-			hostname_address:1, /* Peer understands DNS addresses? */
-			asconf_capable:1,   /* Does peer support ADDIP? */
-			prsctp_capable:1,   /* Can peer do PR-SCTP? */
-			auth_capable:1;     /* Is peer doing SCTP-AUTH? */
-
 		/* Ack State   : This flag indicates if the next received
 		 *             : packet is to be responded to with a
 		 *             : SACK. This is initializedto 0.  When a packet
@@ -1491,11 +1483,25 @@ struct sctp_association {
 		__u32	sack_cnt;
 		__u32	sack_generation;
 
+		/* These are capabilities which our peer advertised.  */
+		__u8	ecn_capable:1,	    /* Can peer do ECN? */
+			ipv4_address:1,	    /* Peer understands IPv4 addresses? */
+			ipv6_address:1,	    /* Peer understands IPv6 addresses? */
+			hostname_address:1, /* Peer understands DNS addresses? */
+			asconf_capable:1,   /* Does peer support ADDIP? */
+			prsctp_capable:1,   /* Can peer do PR-SCTP? */
+			auth_capable:1;	    /* Is peer doing SCTP-AUTH? */
+
 		__u32   adaptation_ind;	 /* Adaptation Code point. */
 
+		/* This mask is used to disable sending the ASCONF chunk
+		 * with specified parameter to peer.
+		 */
+		__be16 addip_disabled_mask;
+
 		struct sctp_inithdr_host i;
-		void *cookie;
 		int cookie_len;
+		void *cookie;
 
 		/* ADDIP Section 4.2 Upon reception of an ASCONF Chunk.
 		 * C1) ... "Peer-Serial-Number'. This value MUST be initialized to the
@@ -1527,13 +1533,13 @@ struct sctp_association {
 	 */
 	sctp_state_t state;
 
+	/* The cookie life I award for any cookie.  */
+	struct timeval cookie_life;
+
 	/* Overall     : The overall association error count.
 	 * Error Count : [Clear this any time I get something.]
 	 */
 	int overall_error_count;
-
-	/* The cookie life I award for any cookie.  */
-	ktime_t cookie_life;
 
 	/* These are the association's initial, max, and min RTO values.
 	 * These values will be initialized by system defaults, but can
@@ -1589,9 +1595,9 @@ struct sctp_association {
 	/* Flags controlling Heartbeat, SACK delay, and Path MTU Discovery. */
 	__u32 param_flags;
 
-	__u32 sackfreq;
 	/* SACK delay timeout */
 	unsigned long sackdelay;
+	__u32 sackfreq;
 
 	unsigned long timeouts[SCTP_NUM_TIMEOUT_TYPES];
 	struct timer_list timers[SCTP_NUM_TIMEOUT_TYPES];
@@ -1599,11 +1605,11 @@ struct sctp_association {
 	/* Transport to which SHUTDOWN chunk was last sent.  */
 	struct sctp_transport *shutdown_last_sent_to;
 
-	/* Transport to which INIT chunk was last sent.  */
-	struct sctp_transport *init_last_sent_to;
-
 	/* How many times have we resent a SHUTDOWN */
 	int shutdown_retries;
+
+	/* Transport to which INIT chunk was last sent.  */
+	struct sctp_transport *init_last_sent_to;
 
 	/* Next TSN    : The next TSN number to be assigned to a new
 	 *	       : DATA chunk.  This is sent in the INIT or INIT
@@ -1722,14 +1728,18 @@ struct sctp_association {
 	/* How many duplicated TSNs have we seen?  */
 	int numduptsns;
 
+	/* Number of seconds of idle time before an association is closed.
+	 * In the association context, this is really used as a boolean
+	 * since the real timeout is stored in the timeouts array
+	 */
+	__u32 autoclose;
+
 	/* These are to support
 	 * "SCTP Extensions for Dynamic Reconfiguration of IP Addresses
 	 *  and Enforcement of Flow and Message Limits"
 	 * <draft-ietf-tsvwg-addip-sctp-02.txt>
 	 * or "ADDIP" for short.
 	 */
-
-
 
 	/* ADDIP Section 4.1.1 Congestion Control of ASCONF Chunks
 	 *
@@ -1809,8 +1819,8 @@ struct sctp_association {
 	 * after reaching 4294967295.
 	 */
 	__u32 addip_serial;
-	int src_out_of_asoc_ok;
 	union sctp_addr *asconf_addr_del_pending;
+	int src_out_of_asoc_ok;
 	struct sctp_transport *new_transport;
 
 	/* SCTP AUTH: list of the endpoint shared keys.  These
@@ -1837,7 +1847,6 @@ struct sctp_association {
 	struct sctp_priv_assoc_stats stats;
 };
 
-
 /* An eyecatcher for determining if we are really looking at an
  * association data structure.
  */
@@ -1855,7 +1864,6 @@ static inline struct sctp_association *sctp_assoc(struct sctp_ep_common *base)
 }
 
 /* These are function signatures for manipulating associations.	 */
-
 
 struct sctp_association *
 sctp_association_new(const struct sctp_endpoint *, const struct sock *,

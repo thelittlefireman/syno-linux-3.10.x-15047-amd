@@ -1,13 +1,13 @@
-/*
- * Functions related to generic timeout handling of requests.
- */
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/blkdev.h>
 #include <linux/fault-inject.h>
 
 #include "blk.h"
-#include "blk-mq.h"
 
 #ifdef CONFIG_FAIL_IO_TIMEOUT
 
@@ -32,7 +32,7 @@ static int __init fail_io_timeout_debugfs(void)
 	struct dentry *dir = fault_create_debugfs_attr("fail_io_timeout",
 						NULL, &fail_io_timeout);
 
-	return PTR_ERR_OR_ZERO(dir);
+	return IS_ERR(dir) ? PTR_ERR(dir) : 0;
 }
 
 late_initcall(fail_io_timeout_debugfs);
@@ -68,13 +68,8 @@ ssize_t part_timeout_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 
-#endif /* CONFIG_FAIL_IO_TIMEOUT */
+#endif  
 
-/*
- * blk_delete_timer - Delete/cancel timer for a given function.
- * @req:	request that we are canceling timer for
- *
- */
 void blk_delete_timer(struct request *req)
 {
 	list_del_init(&req->timeout_list);
@@ -83,54 +78,23 @@ void blk_delete_timer(struct request *req)
 static void blk_rq_timed_out(struct request *req)
 {
 	struct request_queue *q = req->q;
-	enum blk_eh_timer_return ret = BLK_EH_RESET_TIMER;
+	enum blk_eh_timer_return ret;
 
-	if (q->rq_timed_out_fn)
-		ret = q->rq_timed_out_fn(req);
+	ret = q->rq_timed_out_fn(req);
 	switch (ret) {
 	case BLK_EH_HANDLED:
-		/* Can we use req->errors here? */
-		if (q->mq_ops)
-			__blk_mq_complete_request(req);
-		else
-			__blk_complete_request(req);
+		__blk_complete_request(req);
 		break;
 	case BLK_EH_RESET_TIMER:
-		if (q->mq_ops)
-			blk_mq_add_timer(req);
-		else
-			blk_add_timer(req);
-
+		blk_add_timer(req);
 		blk_clear_rq_complete(req);
 		break;
 	case BLK_EH_NOT_HANDLED:
-		/*
-		 * LLD handles this for now but in the future
-		 * we can send a request msg to abort the command
-		 * and we can move more of the generic scsi eh code to
-		 * the blk layer.
-		 */
+		 
 		break;
 	default:
 		printk(KERN_ERR "block: bad eh return: %d\n", ret);
 		break;
-	}
-}
-
-void blk_rq_check_expired(struct request *rq, unsigned long *next_timeout,
-			  unsigned int *next_set)
-{
-	if (time_after_eq(jiffies, rq->deadline)) {
-		list_del_init(&rq->timeout_list);
-
-		/*
-		 * Check if we raced with end io completion
-		 */
-		if (!blk_mark_rq_complete(rq))
-			blk_rq_timed_out(rq);
-	} else if (!*next_set || time_after(*next_timeout, rq->deadline)) {
-		*next_timeout = rq->deadline;
-		*next_set = 1;
 	}
 }
 
@@ -143,8 +107,18 @@ void blk_rq_timed_out_timer(unsigned long data)
 
 	spin_lock_irqsave(q->queue_lock, flags);
 
-	list_for_each_entry_safe(rq, tmp, &q->timeout_list, timeout_list)
-		blk_rq_check_expired(rq, &next, &next_set);
+	list_for_each_entry_safe(rq, tmp, &q->timeout_list, timeout_list) {
+		if (time_after_eq(jiffies, rq->deadline)) {
+			list_del_init(&rq->timeout_list);
+
+			if (blk_mark_rq_complete(rq))
+				continue;
+			blk_rq_timed_out(rq);
+		} else if (!next_set || time_after(next, rq->deadline)) {
+			next = rq->deadline;
+			next_set = 1;
+		}
+	}
 
 	if (next_set)
 		mod_timer(&q->timeout, round_jiffies_up(next));
@@ -152,15 +126,6 @@ void blk_rq_timed_out_timer(unsigned long data)
 	spin_unlock_irqrestore(q->queue_lock, flags);
 }
 
-/**
- * blk_abort_request -- Request request recovery for the specified command
- * @req:	pointer to the request of interest
- *
- * This function requests that the block layer start recovery for the
- * request by deleting the timer and calling the q's timeout function.
- * LLDDs who implement their own error recovery MAY ignore the timeout
- * event if they generated blk_abort_req. Must hold queue lock.
- */
 void blk_abort_request(struct request *req)
 {
 	if (blk_mark_rq_complete(req))
@@ -170,7 +135,12 @@ void blk_abort_request(struct request *req)
 }
 EXPORT_SYMBOL_GPL(blk_abort_request);
 
-void __blk_add_timer(struct request *req, struct list_head *timeout_list)
+#ifdef MY_ABC_HERE
+unsigned int blk_timeout_factory = 0;
+EXPORT_SYMBOL(blk_timeout_factory);
+#endif  
+
+void blk_add_timer(struct request *req)
 {
 	struct request_queue *q = req->q;
 	unsigned long expiry;
@@ -180,40 +150,21 @@ void __blk_add_timer(struct request *req, struct list_head *timeout_list)
 
 	BUG_ON(!list_empty(&req->timeout_list));
 
-	/*
-	 * Some LLDs, like scsi, peek at the timeout to prevent a
-	 * command from being retried forever.
-	 */
 	if (!req->timeout)
 		req->timeout = q->rq_timeout;
 
-	req->deadline = jiffies + req->timeout;
-	if (timeout_list)
-		list_add_tail(&req->timeout_list, timeout_list);
+#ifdef MY_ABC_HERE
+	if (blk_timeout_factory) {
+		req->timeout = 3 * HZ;
+	}
+#endif  
 
-	/*
-	 * If the timer isn't already pending or this timeout is earlier
-	 * than an existing one, modify the timer. Round up to next nearest
-	 * second.
-	 */
+	req->deadline = jiffies + req->timeout;
+	list_add_tail(&req->timeout_list, &q->timeout_list);
+
 	expiry = round_jiffies_up(req->deadline);
 
 	if (!timer_pending(&q->timeout) ||
 	    time_before(expiry, q->timeout.expires))
 		mod_timer(&q->timeout, expiry);
-
 }
-
-/**
- * blk_add_timer - Start timeout timer for a single request
- * @req:	request that is about to start running.
- *
- * Notes:
- *    Each request has its own timer, and as it is added to the queue, we
- *    set up the timer. When the request completes, we cancel the timer.
- */
-void blk_add_timer(struct request *req)
-{
-	__blk_add_timer(req, &req->q->timeout_list);
-}
-

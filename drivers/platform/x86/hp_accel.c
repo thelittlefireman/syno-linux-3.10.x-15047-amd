@@ -36,7 +36,7 @@
 #include <linux/uaccess.h>
 #include <linux/leds.h>
 #include <linux/atomic.h>
-#include <linux/acpi.h>
+#include <acpi/acpi_drivers.h>
 #include "../../misc/lis3lv02d/lis3lv02d.h"
 
 #define DRIVER_NAME     "hp_accel"
@@ -82,14 +82,13 @@ static struct acpi_device_id lis3lv02d_device_ids[] = {
 };
 MODULE_DEVICE_TABLE(acpi, lis3lv02d_device_ids);
 
-
 /**
  * lis3lv02d_acpi_init - ACPI _INI method: initialize the device.
  * @lis3: pointer to the device struct
  *
  * Returns 0 on success.
  */
-static int lis3lv02d_acpi_init(struct lis3lv02d *lis3)
+int lis3lv02d_acpi_init(struct lis3lv02d *lis3)
 {
 	struct acpi_device *dev = lis3->bus_priv;
 	if (acpi_evaluate_object(dev->handle, METHOD_NAME__INI,
@@ -107,7 +106,7 @@ static int lis3lv02d_acpi_init(struct lis3lv02d *lis3)
  *
  * Returns 0 on success.
  */
-static int lis3lv02d_acpi_read(struct lis3lv02d *lis3, int reg, u8 *ret)
+int lis3lv02d_acpi_read(struct lis3lv02d *lis3, int reg, u8 *ret)
 {
 	struct acpi_device *dev = lis3->bus_priv;
 	union acpi_object arg0 = { ACPI_TYPE_INTEGER };
@@ -130,7 +129,7 @@ static int lis3lv02d_acpi_read(struct lis3lv02d *lis3, int reg, u8 *ret)
  *
  * Returns 0 on success.
  */
-static int lis3lv02d_acpi_write(struct lis3lv02d *lis3, int reg, u8 val)
+int lis3lv02d_acpi_write(struct lis3lv02d *lis3, int reg, u8 val)
 {
 	struct acpi_device *dev = lis3->bus_priv;
 	unsigned long long ret; /* Not used when writting */
@@ -237,6 +236,7 @@ static struct dmi_system_id lis3lv02d_dmi_ids[] = {
 	AXIS_DMI_MATCH("HPB64xx", "HP ProBook 64", xy_swap),
 	AXIS_DMI_MATCH("HPB64xx", "HP EliteBook 84", xy_swap),
 	AXIS_DMI_MATCH("HPB65xx", "HP ProBook 65", x_inverted),
+	AXIS_DMI_MATCH("HPZBook15", "HP ZBook 15", x_inverted),
 	{ NULL, }
 /* Laptop models without axis info (yet):
  * "NC6910" "HP Compaq 6910"
@@ -351,7 +351,6 @@ static int lis3lv02d_remove(struct acpi_device *device)
 
 	return lis3lv02d_remove_fs(&lis3_dev);
 }
-
 
 #ifdef CONFIG_PM_SLEEP
 static int lis3lv02d_suspend(struct device *dev)

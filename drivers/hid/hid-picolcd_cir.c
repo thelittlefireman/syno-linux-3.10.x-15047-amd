@@ -39,7 +39,6 @@
 
 #include "hid-picolcd.h"
 
-
 int picolcd_raw_cir(struct picolcd_data *data,
 		struct hid_report *report, u8 *raw_data, int size)
 {
@@ -114,7 +113,7 @@ int picolcd_init_cir(struct picolcd_data *data, struct hid_report *report)
 
 	rdev->priv             = data;
 	rdev->driver_type      = RC_DRIVER_IR_RAW;
-	rc_set_allowed_protocols(rdev, RC_BIT_ALL);
+	rdev->allowed_protos   = RC_BIT_ALL;
 	rdev->open             = picolcd_cir_open;
 	rdev->close            = picolcd_cir_close;
 	rdev->input_name       = data->hdev->name;
@@ -148,4 +147,3 @@ void picolcd_exit_cir(struct picolcd_data *data)
 	if (rdev)
 		rc_unregister_device(rdev);
 }
-

@@ -11,6 +11,7 @@
 #include <linux/slab.h>
 #include <linux/mutex.h>
 #include <linux/ioport.h>
+#include <linux/init.h>
 #include <linux/miscdevice.h>
 #include <linux/mm.h>
 #include <linux/of.h>
@@ -431,7 +432,6 @@ static struct platform_driver uctrl_driver = {
 	.probe		= uctrl_probe,
 	.remove		= uctrl_remove,
 };
-
 
 module_platform_driver(uctrl_driver);
 

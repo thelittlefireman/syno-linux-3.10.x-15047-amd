@@ -137,10 +137,6 @@ lockd(void *vrqstp)
 
 	dprintk("NFS locking service started (ver " LOCKD_VERSION ").\n");
 
-	if (!nlm_timeout)
-		nlm_timeout = LOCKD_DFLT_TIMEO;
-	nlmsvc_timeout = nlm_timeout * HZ;
-
 	/*
 	 * The main request loop. We don't terminate until the last
 	 * NFS mount or NFS daemon has gone away.
@@ -253,13 +249,11 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
 
 	error = make_socks(serv, net);
 	if (error < 0)
-		goto err_socks;
+		goto err_bind;
 	set_grace_period(net);
 	dprintk("lockd_up_net: per-net data created; net=%p\n", net);
 	return 0;
 
-err_socks:
-	svc_rpcb_cleanup(serv, net);
 err_bind:
 	ln->nlmsvc_users--;
 	return error;
@@ -306,7 +300,7 @@ static int lockd_start_svc(struct svc_serv *serv)
 	svc_sock_update_bufs(serv);
 	serv->sv_maxconn = nlm_max_connections;
 
-	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, "%s", serv->sv_name);
+	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, serv->sv_name);
 	if (IS_ERR(nlmsvc_task)) {
 		error = PTR_ERR(nlmsvc_task);
 		printk(KERN_WARNING
@@ -347,6 +341,10 @@ static struct svc_serv *lockd_create_svc(void)
 	if (nlmsvc_users)
 		printk(KERN_WARNING
 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+
+	if (!nlm_timeout)
+		nlm_timeout = LOCKD_DFLT_TIMEO;
+	nlmsvc_timeout = nlm_timeout * HZ;
 
 	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
 	if (!serv) {
@@ -536,7 +534,6 @@ static inline int is_callback(u32 proc)
 		|| proc == NLMPROC_NSM_NOTIFY;
 }
 
-
 static int lockd_authenticate(struct svc_rqst *rqstp)
 {
 	rqstp->rq_client = NULL;
@@ -555,7 +552,6 @@ static int lockd_authenticate(struct svc_rqst *rqstp)
 	}
 	return SVC_DENIED;
 }
-
 
 param_set_min_max(port, int, simple_strtol, 0, 65535)
 param_set_min_max(grace_period, unsigned long, simple_strtoul,
@@ -585,6 +581,7 @@ static int lockd_init_net(struct net *net)
 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
 	INIT_LIST_HEAD(&ln->grace_list);
 	spin_lock_init(&ln->nsm_clnt_lock);
+	INIT_LIST_HEAD(&ln->nsm_handles);
 	return 0;
 }
 
@@ -598,7 +595,6 @@ static struct pernet_operations lockd_net_ops = {
 	.id = &lockd_net_id,
 	.size = sizeof(struct lockd_net),
 };
-
 
 /*
  * Initialising and terminating the module.

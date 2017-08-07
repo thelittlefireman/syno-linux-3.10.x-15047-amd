@@ -17,7 +17,7 @@
 #include <linux/device.h>
 #include <linux/serial.h>
 #include <linux/tty.h>
-#include <linux/module.h>
+#include <linux/export.h>
 
 struct ttyprintk_port {
 	struct tty_port port;
@@ -125,7 +125,6 @@ static int tpk_write(struct tty_struct *tty,
 	struct ttyprintk_port *tpkp = tty->driver_data;
 	int ret;
 
-
 	/* exclusive use of tpk_printk within this tty */
 	mutex_lock(&tpkp->port_write_mutex);
 	ret = tpk_printk(buf, count);
@@ -210,19 +209,10 @@ static int __init ttyprintk_init(void)
 	return 0;
 
 error:
-	put_tty_driver(ttyprintk_driver);
-	tty_port_destroy(&tpk_port.port);
-	return ret;
-}
-
-static void __exit ttyprintk_exit(void)
-{
 	tty_unregister_driver(ttyprintk_driver);
 	put_tty_driver(ttyprintk_driver);
 	tty_port_destroy(&tpk_port.port);
+	ttyprintk_driver = NULL;
+	return ret;
 }
-
-device_initcall(ttyprintk_init);
-module_exit(ttyprintk_exit);
-
-MODULE_LICENSE("GPL");
+module_init(ttyprintk_init);

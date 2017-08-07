@@ -29,7 +29,6 @@
 
 #include "../wifi.h"
 #include "../pci.h"
-#include "../core.h"
 #include "../ps.h"
 #include "reg.h"
 #include "def.h"
@@ -152,7 +151,18 @@ static bool config_bb_with_pgheader(struct ieee80211_hw *hw,
 			v2 = table_pg[i + 1];
 
 			if (v1 < 0xcdcdcdcd) {
-				rtl_addr_delay(table_pg[i]);
+				if (table_pg[i] == 0xfe)
+					mdelay(50);
+				else if (table_pg[i] == 0xfd)
+					mdelay(5);
+				else if (table_pg[i] == 0xfc)
+					mdelay(1);
+				else if (table_pg[i] == 0xfb)
+					udelay(50);
+				else if (table_pg[i] == 0xfa)
+					udelay(5);
+				else if (table_pg[i] == 0xf9)
+					udelay(1);
 
 				store_pwrindex_offset(hw, table_pg[i],
 						      table_pg[i + 1],
@@ -530,7 +540,6 @@ u32 rtl88e_phy_query_rf_reg(struct ieee80211_hw *hw,
 
 	spin_lock_irqsave(&rtlpriv->locks.rf_lock, flags);
 
-
 	original_value = rf_serial_read(hw, rfpath, regaddr);
 	bitshift = cal_bit_shift(bitmask);
 	readback_value = (original_value & bitmask) >> bitshift;
@@ -566,7 +575,6 @@ void rtl88e_phy_set_rf_reg(struct ieee80211_hw *hw,
 		}
 
 	rf_serial_write(hw, rfpath, regaddr, data);
-
 
 	spin_unlock_irqrestore(&rtlpriv->locks.rf_lock, flags);
 
@@ -662,9 +670,24 @@ static void _rtl8188e_config_rf_reg(struct ieee80211_hw *hw,
 				    u32 addr, u32 data, enum radio_path rfpath,
 				    u32 regaddr)
 {
-	rtl_rfreg_delay(hw, rfpath, regaddr,
-			RFREG_OFFSET_MASK,
-			data);
+	if (addr == 0xffe) {
+		mdelay(50);
+	} else if (addr == 0xfd) {
+		mdelay(5);
+	} else if (addr == 0xfc) {
+		mdelay(1);
+	} else if (addr == 0xfb) {
+		udelay(50);
+	} else if (addr == 0xfa) {
+		udelay(5);
+	} else if (addr == 0xf9) {
+		udelay(1);
+	} else {
+		rtl_set_rfreg(hw, rfpath, regaddr,
+			      RFREG_OFFSET_MASK,
+			      data);
+		udelay(1);
+	}
 }
 
 static void rtl88_config_s(struct ieee80211_hw *hw,
@@ -675,6 +698,27 @@ static void rtl88_config_s(struct ieee80211_hw *hw,
 
 	_rtl8188e_config_rf_reg(hw, addr, data, RF90_PATH_A,
 				addr | maskforphyset);
+}
+
+static void _rtl8188e_config_bb_reg(struct ieee80211_hw *hw,
+				    u32 addr, u32 data)
+{
+	if (addr == 0xfe) {
+		mdelay(50);
+	} else if (addr == 0xfd) {
+		mdelay(5);
+	} else if (addr == 0xfc) {
+		mdelay(1);
+	} else if (addr == 0xfb) {
+		udelay(50);
+	} else if (addr == 0xfa) {
+		udelay(5);
+	} else if (addr == 0xf9) {
+		udelay(1);
+	} else {
+		rtl_set_bbreg(hw, addr, MASKDWORD, data);
+		udelay(1);
+	}
 }
 
 #define NEXT_PAIR(v1, v2, i)				\
@@ -748,7 +792,7 @@ static void set_baseband_phy_config(struct ieee80211_hw *hw)
 		v1 = array_table[i];
 		v2 = array_table[i + 1];
 		if (v1 < 0xcdcdcdcd) {
-			rtl_bb_delay(hw, v1, v2);
+			_rtl8188e_config_bb_reg(hw, v1, v2);
 		} else {/*This line is the start line of branch.*/
 			if (!check_cond(hw, array_table[i])) {
 				/*Discard the following (offset, data) pairs*/
@@ -764,7 +808,7 @@ static void set_baseband_phy_config(struct ieee80211_hw *hw)
 				while (v2 != 0xDEAD &&
 				       v2 != 0xCDEF &&
 				       v2 != 0xCDCD && i < arraylen - 2) {
-					rtl_bb_delay(hw, v1, v2);
+					_rtl8188e_config_bb_reg(hw, v1, v2);
 					NEXT_PAIR(v1, v2, i);
 				}
 
@@ -955,7 +999,7 @@ bool rtl88e_phy_config_rf_with_headerfile(struct ieee80211_hw *hw,
 			}
 		}
 
-		if (rtlhal->oem_id == RT_CID_819X_HP)
+		if (rtlhal->oem_id == RT_CID_819x_HP)
 			rtl88_config_s(hw, 0x52, 0x7E4BD);
 
 		break;
@@ -1087,6 +1131,34 @@ void rtl88e_phy_set_txpower_level(struct ieee80211_hw *hw, u8 channel)
 	rtl88e_phy_rf6052_set_cck_txpower(hw, &cckpower[0]);
 	rtl88e_phy_rf6052_set_ofdm_txpower(hw, &ofdm[0], &bw20_pwr[0],
 					   &bw40_pwr[0], channel);
+}
+
+void rtl88e_phy_scan_operation_backup(struct ieee80211_hw *hw, u8 operation)
+{
+	struct rtl_priv *rtlpriv = rtl_priv(hw);
+	struct rtl_hal *rtlhal = rtl_hal(rtl_priv(hw));
+	enum io_type iotype;
+
+	if (!is_hal_stop(rtlhal)) {
+		switch (operation) {
+		case SCAN_OPT_BACKUP:
+			iotype = IO_CMD_PAUSE_DM_BY_SCAN;
+			rtlpriv->cfg->ops->set_hw_reg(hw,
+						      HW_VAR_IO_CMD,
+						      (u8 *)&iotype);
+			break;
+		case SCAN_OPT_RESTORE:
+			iotype = IO_CMD_RESUME_DM_BY_SCAN;
+			rtlpriv->cfg->ops->set_hw_reg(hw,
+						      HW_VAR_IO_CMD,
+						      (u8 *)&iotype);
+			break;
+		default:
+			RT_TRACE(rtlpriv, COMP_ERR, DBG_EMERG,
+				 "Unknown Scan Backup operation.\n");
+			break;
+		}
+	}
 }
 
 void rtl88e_phy_set_bw_mode_callback(struct ieee80211_hw *hw)
@@ -1327,7 +1399,6 @@ static u8 _rtl88e_phy_path_a_rx_iqk(struct ieee80211_hw *hw, bool config_pathb)
 	reg_eac = rtl_get_bbreg(hw, RRX_POWER_AFTER_IQK_A_2, MASKDWORD);
 	reg_e94 = rtl_get_bbreg(hw, RTX_POWER_BEFORE_IQK_A, MASKDWORD);
 	reg_e9c = rtl_get_bbreg(hw, RTX_POWER_AFTER_IQK_A, MASKDWORD);
-
 
 	if (!(reg_eac & BIT(28)) &&
 	    (((reg_e94 & 0x03FF0000) >> 16) != 0x142) &&

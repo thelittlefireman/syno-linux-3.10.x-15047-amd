@@ -17,7 +17,6 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/tle62x0.h>
 
-
 #define CMD_READ	0x00
 #define CMD_SET		0xff
 
@@ -52,7 +51,8 @@ static inline int tle62x0_write(struct tle62x0_state *st)
 		buff[1] = gpio_state;
 	}
 
-	dev_dbg(&st->us->dev, "buff %3ph\n", buff);
+	dev_dbg(&st->us->dev, "buff %02x,%02x,%02x\n",
+		buff[0], buff[1], buff[2]);
 
 	return spi_write(st->us, buff, (st->nr_gpio == 16) ? 3 : 2);
 }
@@ -246,7 +246,7 @@ static int tle62x0_probe(struct spi_device *spi)
 	int ptr;
 	int ret;
 
-	pdata = dev_get_platdata(&spi->dev);
+	pdata = spi->dev.platform_data;
 	if (pdata == NULL) {
 		dev_err(&spi->dev, "no device data specified\n");
 		return -EINVAL;

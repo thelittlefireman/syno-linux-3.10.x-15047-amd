@@ -399,7 +399,6 @@ static int mg_get_disk_id(struct mg_host *host)
 	return err;
 }
 
-
 static int mg_disk_init(struct mg_host *host)
 {
 	struct mg_drv_data *prv_data = host->dev->platform_data;
@@ -636,7 +635,7 @@ ok_to_write:
 		mg_request(host->breq);
 }
 
-static void mg_times_out(unsigned long data)
+void mg_times_out(unsigned long data)
 {
 	struct mg_host *host = (struct mg_host *)data;
 	char *name;
@@ -915,7 +914,7 @@ static int mg_probe(struct platform_device *plat_dev)
 
 	/* disk reset */
 	if (prv_data->dev_attr == MG_STORAGE_DEV) {
-		/* If POR seq. not yet finished, wait */
+		/* If POR seq. not yet finised, wait */
 		err = mg_wait_rstout(host->rstout, MG_TMAX_RSTOUT);
 		if (err)
 			goto probe_err_3b;
@@ -936,7 +935,7 @@ static int mg_probe(struct platform_device *plat_dev)
 			goto probe_err_3b;
 		}
 		err = request_irq(host->irq, mg_irq,
-				IRQF_TRIGGER_RISING,
+				IRQF_DISABLED | IRQF_TRIGGER_RISING,
 				MG_DEV_NAME, host);
 		if (err) {
 			printk(KERN_ERR "%s:%d fail (request_irq err=%d)\n",

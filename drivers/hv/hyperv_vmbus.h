@@ -379,7 +379,6 @@ union hv_x64_msr_hypercall_contents {
 	};
 };
 
-
 enum {
 	VMBUS_MESSAGE_CONNECTION_ID	= 1,
 	VMBUS_MESSAGE_PORT_ID		= 1,
@@ -437,16 +436,13 @@ static inline  __u64 generate_guest_id(__u8 d_info1, __u32 kernel_version,
 	return guest_id;
 }
 
-
 #define HV_CPU_POWER_MANAGEMENT		(1 << 0)
 #define HV_RECOMMENDATIONS_MAX		4
 
 #define HV_X64_MAX			5
 #define HV_CAPS_MAX			8
 
-
 #define HV_HYPERCALL_PARAM_ALIGN	sizeof(u64)
-
 
 /* Service definitions */
 
@@ -480,8 +476,6 @@ static const uuid_le VMBUS_SERVICE_ID = {
 	},
 };
 
-
-
 struct hv_context {
 	/* We only support running on top of Hyper-V
 	* So at this point this really can only contain the Hyper-V ID
@@ -514,14 +508,6 @@ struct hv_context {
 
 extern struct hv_context hv_context;
 
-struct hv_ring_buffer_debug_info {
-	u32 current_interrupt_mask;
-	u32 current_read_index;
-	u32 current_write_index;
-	u32 bytes_avail_toread;
-	u32 bytes_avail_towrite;
-};
-
 /* Hv Interface */
 
 extern int hv_init(void);
@@ -533,10 +519,6 @@ extern int hv_post_message(union hv_connection_id connection_id,
 			 void *payload, size_t payload_size);
 
 extern u16 hv_signal_event(void *con_id);
-
-extern int hv_synic_alloc(void);
-
-extern void hv_synic_free(void);
 
 extern void hv_synic_init(void *irqarg);
 
@@ -552,15 +534,14 @@ extern unsigned int host_info_edx;
 
 /* Interface */
 
-
 int hv_ringbuffer_init(struct hv_ring_buffer_info *ring_info, void *buffer,
 		   u32 buflen);
 
 void hv_ringbuffer_cleanup(struct hv_ring_buffer_info *ring_info);
 
 int hv_ringbuffer_write(struct hv_ring_buffer_info *ring_info,
-		    struct kvec *kv_list,
-		    u32 kv_count, bool *signal);
+		    struct scatterlist *sglist,
+		    u32 sgcount, bool *signal);
 
 int hv_ringbuffer_peek(struct hv_ring_buffer_info *ring_info, void *buffer,
 		   u32 buflen);
@@ -569,7 +550,6 @@ int hv_ringbuffer_read(struct hv_ring_buffer_info *ring_info,
 		   void *buffer,
 		   u32 buflen,
 		   u32 offset, bool *signal);
-
 
 void hv_ringbuffer_get_debuginfo(struct hv_ring_buffer_info *ring_info,
 			    struct hv_ring_buffer_debug_info *debug_info);
@@ -588,7 +568,6 @@ u32 hv_end_read(struct hv_ring_buffer_info *rbi);
 /* The value here must be in multiple of 32 */
 /* TODO: Need to make this configurable */
 #define MAX_NUM_CHANNELS_SUPPORTED	256
-
 
 enum vmbus_connect_state {
 	DISCONNECTED,
@@ -619,7 +598,7 @@ struct vmbus_connection {
 	 * 2 pages - 1st page for parent->child notification and 2nd
 	 * is child->parent notification
 	 */
-	struct hv_monitor_page *monitor_pages[2];
+	void *monitor_pages;
 	struct list_head chn_msg_list;
 	spinlock_t channelmsg_lock;
 
@@ -630,7 +609,6 @@ struct vmbus_connection {
 	struct workqueue_struct *work_queue;
 };
 
-
 struct vmbus_msginfo {
 	/* Bookkeeping stuff */
 	struct list_head msglist_entry;
@@ -638,7 +616,6 @@ struct vmbus_msginfo {
 	/* The message itself */
 	unsigned char msg[0];
 };
-
 
 extern struct vmbus_connection vmbus_connection;
 
@@ -668,10 +645,5 @@ int vmbus_post_msg(void *buffer, size_t buflen);
 int vmbus_set_event(struct vmbus_channel *channel);
 
 void vmbus_on_event(unsigned long data);
-
-int hv_fcopy_init(struct hv_util_service *);
-void hv_fcopy_deinit(void);
-void hv_fcopy_onchannelcallback(void *);
-
 
 #endif /* _HYPERV_VMBUS_H */

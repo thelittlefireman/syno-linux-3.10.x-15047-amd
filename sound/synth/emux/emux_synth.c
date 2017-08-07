@@ -52,7 +52,6 @@ static int calc_pan(struct snd_emux_voice *vp);
 static int calc_volume(struct snd_emux_voice *vp);
 static int calc_pitch(struct snd_emux_voice *vp);
 
-
 /*
  * Start a note.
  */
@@ -263,7 +262,6 @@ snd_emux_key_press(void *p, int note, int vel, struct snd_midi_channel *chan)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
-
 /*
  * Modulate the voices which belong to the channel
  */
@@ -318,7 +316,6 @@ snd_emux_update_port(struct snd_emux_port *port, int update)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
-
 /*
  * Deal with a controller type event.  This includes all types of
  * control events, not just the midi controllers
@@ -372,7 +369,6 @@ snd_emux_control(void *p, int type, struct snd_midi_channel *chan)
 	}
 }
 
-
 /*
  * terminate note - if free flag is true, free the terminated voice
  */
@@ -393,7 +389,6 @@ terminate_note1(struct snd_emux *emu, int note, struct snd_midi_channel *chan, i
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
-
 /*
  * terminate note - exported for midi emulation
  */
@@ -413,7 +408,6 @@ snd_emux_terminate_note(void *p, int note, struct snd_midi_channel *chan)
 
 	terminate_note1(emu, note, chan, 1);
 }
-
 
 /*
  * Terminate all the notes
@@ -478,7 +472,6 @@ snd_emux_sounds_off_all(struct snd_emux_port *port)
 	spin_unlock_irqrestore(&emu->voice_lock, flags);
 }
 
-
 /*
  * Terminate all voices that have the same exclusive class.  This
  * is mainly for drums.
@@ -519,7 +512,6 @@ terminate_voice(struct snd_emux *emu, struct snd_emux_voice *vp, int free)
 		emu->ops.free_voice(vp);
 }
 
-
 /*
  * Modulate the voice
  */
@@ -541,7 +533,6 @@ update_voice(struct snd_emux *emu, struct snd_emux_voice *vp, int update)
 	}
 	emu->ops.update(vp, update);
 }
-
 
 #if 0 // not used
 /* table for volume target calculation */
@@ -689,7 +680,6 @@ calc_pan(struct snd_emux_voice *vp)
 		return 0;
 	}
 }
-
 
 /*
  * calculate volume attenuation
@@ -896,7 +886,6 @@ get_bank(struct snd_emux_port *port, struct snd_midi_channel *chan)
 		return chan->control[MIDI_CTL_MSB_BANK];
 	}
 }
-
 
 /* Look for the zones matching with the given note and velocity.
  * The resultant zones are stored on table.

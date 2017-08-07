@@ -1,23 +1,14 @@
 #ifndef _UAPI__LINUX_FUNCTIONFS_H__
 #define _UAPI__LINUX_FUNCTIONFS_H__
 
-
 #include <linux/types.h>
 #include <linux/ioctl.h>
 
 #include <linux/usb/ch9.h>
 
-
 enum {
 	FUNCTIONFS_DESCRIPTORS_MAGIC = 1,
-	FUNCTIONFS_STRINGS_MAGIC = 2,
-	FUNCTIONFS_DESCRIPTORS_MAGIC_V2 = 3,
-};
-
-enum functionfs_flags {
-	FUNCTIONFS_HAS_FS_DESC = 1,
-	FUNCTIONFS_HAS_HS_DESC = 2,
-	FUNCTIONFS_HAS_SS_DESC = 4,
+	FUNCTIONFS_STRINGS_MAGIC     = 2
 };
 
 #ifndef __KERNEL__
@@ -33,41 +24,30 @@ struct usb_endpoint_descriptor_no_audio {
 	__u8  bInterval;
 } __attribute__((packed));
 
+/*
+ * All numbers must be in little endian order.
+ */
+
+struct usb_functionfs_descs_head {
+	__le32 magic;
+	__le32 length;
+	__le32 fs_count;
+	__le32 hs_count;
+} __attribute__((packed));
 
 /*
  * Descriptors format:
  *
  * | off | name      | type         | description                          |
  * |-----+-----------+--------------+--------------------------------------|
- * |   0 | magic     | LE32         | FUNCTIONFS_DESCRIPTORS_MAGIC_V2      |
- * |   4 | length    | LE32         | length of the whole data chunk       |
- * |   8 | flags     | LE32         | combination of functionfs_flags      |
- * |     | fs_count  | LE32         | number of full-speed descriptors     |
- * |     | hs_count  | LE32         | number of high-speed descriptors     |
- * |     | ss_count  | LE32         | number of super-speed descriptors    |
- * |     | fs_descrs | Descriptor[] | list of full-speed descriptors       |
- * |     | hs_descrs | Descriptor[] | list of high-speed descriptors       |
- * |     | ss_descrs | Descriptor[] | list of super-speed descriptors      |
- *
- * Depending on which flags are set, various fields may be missing in the
- * structure.  Any flags that are not recognised cause the whole block to be
- * rejected with -ENOSYS.
- *
- * Legacy descriptors format:
- *
- * | off | name      | type         | description                          |
- * |-----+-----------+--------------+--------------------------------------|
- * |   0 | magic     | LE32         | FUNCTIONFS_DESCRIPTORS_MAGIC         |
+ * |   0 | magic     | LE32         | FUNCTIONFS_{FS,HS}_DESCRIPTORS_MAGIC |
  * |   4 | length    | LE32         | length of the whole data chunk       |
  * |   8 | fs_count  | LE32         | number of full-speed descriptors     |
  * |  12 | hs_count  | LE32         | number of high-speed descriptors     |
  * |  16 | fs_descrs | Descriptor[] | list of full-speed descriptors       |
  * |     | hs_descrs | Descriptor[] | list of high-speed descriptors       |
  *
- * All numbers must be in little endian order.
- *
- * Descriptor[] is an array of valid USB descriptors which have the following
- * format:
+ * descs are just valid USB descriptors and have the following format:
  *
  * | off | name            | type | description              |
  * |-----+-----------------+------+--------------------------|
@@ -109,7 +89,6 @@ struct usb_functionfs_strings_head {
 
 #endif
 
-
 /*
  * Events are delivered on the ep0 file descriptor, when the user mode driver
  * reads from this file descriptor after writing the descriptors.  Don't
@@ -143,7 +122,6 @@ struct usb_functionfs_event {
 	__u8				type;
 	__u8				_pad[3];
 } __attribute__((packed));
-
 
 /* Endpoint ioctls */
 /* The same as in gadgetfs */
@@ -179,7 +157,5 @@ struct usb_functionfs_event {
  * active returns -ENODEV.
  */
 #define	FUNCTIONFS_ENDPOINT_REVMAP	_IO('g', 129)
-
-
 
 #endif /* _UAPI__LINUX_FUNCTIONFS_H__ */

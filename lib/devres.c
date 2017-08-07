@@ -81,12 +81,10 @@ EXPORT_SYMBOL(devm_ioremap_nocache);
 void devm_iounmap(struct device *dev, void __iomem *addr)
 {
 	WARN_ON(devres_destroy(dev, devm_ioremap_release, devm_ioremap_match,
-			       (__force void *)addr));
+			       (void *)addr));
 	iounmap(addr);
 }
 EXPORT_SYMBOL(devm_iounmap);
-
-#define IOMEM_ERR_PTR(err) (__force void __iomem *)ERR_PTR(err)
 
 /**
  * devm_ioremap_resource() - check, request region, and ioremap resource
@@ -116,7 +114,7 @@ void __iomem *devm_ioremap_resource(struct device *dev, struct resource *res)
 
 	if (!res || resource_type(res) != IORESOURCE_MEM) {
 		dev_err(dev, "invalid resource\n");
-		return IOMEM_ERR_PTR(-EINVAL);
+		return ERR_PTR(-EINVAL);
 	}
 
 	size = resource_size(res);
@@ -124,7 +122,7 @@ void __iomem *devm_ioremap_resource(struct device *dev, struct resource *res)
 
 	if (!devm_request_mem_region(dev, res->start, size, name)) {
 		dev_err(dev, "can't request region for resource %pR\n", res);
-		return IOMEM_ERR_PTR(-EBUSY);
+		return ERR_PTR(-EBUSY);
 	}
 
 	if (res->flags & IORESOURCE_CACHEABLE)
@@ -135,7 +133,7 @@ void __iomem *devm_ioremap_resource(struct device *dev, struct resource *res)
 	if (!dest_ptr) {
 		dev_err(dev, "ioremap failed for resource %pR\n", res);
 		devm_release_mem_region(dev, res->start, size);
-		dest_ptr = IOMEM_ERR_PTR(-ENOMEM);
+		dest_ptr = ERR_PTR(-ENOMEM);
 	}
 
 	return dest_ptr;
@@ -170,7 +168,7 @@ void __iomem *devm_request_and_ioremap(struct device *device,
 }
 EXPORT_SYMBOL(devm_request_and_ioremap);
 
-#ifdef CONFIG_HAS_IOPORT_MAP
+#ifdef CONFIG_HAS_IOPORT
 /*
  * Generic iomap devres
  */
@@ -226,10 +224,10 @@ void devm_ioport_unmap(struct device *dev, void __iomem *addr)
 {
 	ioport_unmap(addr);
 	WARN_ON(devres_destroy(dev, devm_ioport_map_release,
-			       devm_ioport_map_match, (__force void *)addr));
+			       devm_ioport_map_match, (void *)addr));
 }
 EXPORT_SYMBOL(devm_ioport_unmap);
-#endif /* CONFIG_HAS_IOPORT_MAP */
+#endif /* CONFIG_HAS_IOPORT */
 
 #ifdef CONFIG_PCI
 /*
@@ -425,7 +423,7 @@ void pcim_iounmap_regions(struct pci_dev *pdev, int mask)
 	if (!iomap)
 		return;
 
-	for (i = 0; i < DEVICE_COUNT_RESOURCE; i++) {
+	for (i = 0; i < PCIM_IOMAP_MAX; i++) {
 		if (!(mask & (1 << i)))
 			continue;
 

@@ -40,14 +40,13 @@ MODULE_AUTHOR("Bluecherry <maintainers@bluecherrydvr.com>");
 MODULE_VERSION(SOLO6X10_VERSION);
 MODULE_LICENSE("GPL");
 
-static unsigned video_nr = -1;
+unsigned video_nr = -1;
 module_param(video_nr, uint, 0644);
 MODULE_PARM_DESC(video_nr, "videoX start number, -1 is autodetect (default)");
 
 static int full_eeprom; /* default is only top 64B */
 module_param(full_eeprom, uint, 0644);
 MODULE_PARM_DESC(full_eeprom, "Allow access to full 128B EEPROM (dangerous)");
-
 
 static void solo_set_time(struct solo_dev *solo_dev)
 {
@@ -669,7 +668,7 @@ static void solo_pci_remove(struct pci_dev *pdev)
 	free_solo_dev(solo_dev);
 }
 
-static const struct pci_device_id solo_id_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(solo_id_table) = {
 	/* 6010 based cards */
 	{ PCI_DEVICE(PCI_VENDOR_ID_SOFTLOGIC, PCI_DEVICE_ID_SOLO6010),
 	  .driver_data = SOLO_DEV_6010 },

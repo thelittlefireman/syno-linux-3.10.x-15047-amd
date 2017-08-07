@@ -46,7 +46,6 @@ module_param(usedma, uint, 0644);
 #define AU1550_SPI_DEBUG_LOOPBACK
 */
 
-
 #define AU1550_SPI_DBDMA_DESCRIPTORS 1
 #define AU1550_SPI_DMA_RXTMP_MINSIZE 2048U
 
@@ -55,6 +54,8 @@ struct au1550_spi {
 
 	volatile psc_spi_t __iomem *regs;
 	int irq;
+	unsigned freq_max;
+	unsigned freq_min;
 
 	unsigned len;
 	unsigned tx_count;
@@ -85,7 +86,6 @@ struct au1550_spi {
 	struct resource *ioarea;
 };
 
-
 /* we use an 8-bit memory device for dma transfers to/from spi fifo */
 static dbdev_tab_t au1550_spi_mem_dbdev =
 {
@@ -101,7 +101,6 @@ static dbdev_tab_t au1550_spi_mem_dbdev =
 static int ddma_memid;	/* id to above mem dma device */
 
 static void au1550_spi_bits_handlers_set(struct au1550_spi *hw, int bpw);
-
 
 /*
  *  compute BRG and DIV bits to setup spi clock based on main input clock rate
@@ -246,8 +245,16 @@ static int au1550_spi_setupxfer(struct spi_device *spi, struct spi_transfer *t)
 			hz = t->speed_hz;
 	}
 
-	if (!hz)
+	if (bpw < 4 || bpw > 24) {
+		dev_err(&spi->dev, "setupxfer: invalid bits_per_word=%d\n",
+			bpw);
 		return -EINVAL;
+	}
+	if (hz > spi->max_speed_hz || hz > hw->freq_max || hz < hw->freq_min) {
+		dev_err(&spi->dev, "setupxfer: clock rate=%d out of range\n",
+			hz);
+		return -EINVAL;
+	}
 
 	au1550_spi_bits_handlers_set(hw, spi->bits_per_word);
 
@@ -279,6 +286,29 @@ static int au1550_spi_setupxfer(struct spi_device *spi, struct spi_transfer *t)
 
 	au1550_spi_reset_fifos(hw);
 	au1550_spi_mask_ack_all(hw);
+	return 0;
+}
+
+static int au1550_spi_setup(struct spi_device *spi)
+{
+	struct au1550_spi *hw = spi_master_get_devdata(spi->master);
+
+	if (spi->bits_per_word < 4 || spi->bits_per_word > 24) {
+		dev_err(&spi->dev, "setup: invalid bits_per_word=%d\n",
+			spi->bits_per_word);
+		return -EINVAL;
+	}
+
+	if (spi->max_speed_hz == 0)
+		spi->max_speed_hz = hw->freq_max;
+	if (spi->max_speed_hz > hw->freq_max
+			|| spi->max_speed_hz < hw->freq_min)
+		return -EINVAL;
+	/*
+	 * NOTE: cannot change speed and other hw settings immediately,
+	 *       otherwise sharing of spi bus is not possible,
+	 *       so do not call setupxfer(spi, NULL) here
+	 */
 	return 0;
 }
 
@@ -477,7 +507,6 @@ static irqreturn_t au1550_spi_dma_irq_callback(struct au1550_spi *hw)
 	}
 	return IRQ_HANDLED;
 }
-
 
 /* routines to handle different word sizes in pio mode */
 #define AU1550_SPI_RX_WORD(size, mask)					\
@@ -705,7 +734,6 @@ static void au1550_spi_setup_psc_as_spi(struct au1550_spi *hw)
 		au_sync();
 	} while ((stat & PSC_SPISTAT_SR) == 0);
 
-
 	cfg = hw->usedma ? 0 : PSC_SPICFG_DD_DISABLE;
 	cfg |= PSC_SPICFG_SET_LEN(8);
 	cfg |= PSC_SPICFG_RT_FIFO8 | PSC_SPICFG_TT_FIFO8;
@@ -732,7 +760,6 @@ static void au1550_spi_setup_psc_as_spi(struct au1550_spi *hw)
 	au1550_spi_reset_fifos(hw);
 }
 
-
 static int au1550_spi_probe(struct platform_device *pdev)
 {
 	struct au1550_spi *hw;
@@ -749,12 +776,11 @@ static int au1550_spi_probe(struct platform_device *pdev)
 
 	/* the spi->mode bits understood by this driver: */
 	master->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
-	master->bits_per_word_mask = SPI_BPW_RANGE_MASK(4, 24);
 
 	hw = spi_master_get_devdata(master);
 
-	hw->master = master;
-	hw->pdata = dev_get_platdata(&pdev->dev);
+	hw->master = spi_master_get(master);
+	hw->pdata = pdev->dev.platform_data;
 	hw->dev = &pdev->dev;
 
 	if (hw->pdata == NULL) {
@@ -816,6 +842,7 @@ static int au1550_spi_probe(struct platform_device *pdev)
 	hw->bitbang.master = hw->master;
 	hw->bitbang.setup_transfer = au1550_spi_setupxfer;
 	hw->bitbang.chipselect = au1550_spi_chipsel;
+	hw->bitbang.master->setup = au1550_spi_setup;
 	hw->bitbang.txrx_bufs = au1550_spi_txrx_bufs;
 
 	if (hw->usedma) {
@@ -835,7 +862,6 @@ static int au1550_spi_probe(struct platform_device *pdev)
 			err = -ENXIO;
 			goto err_no_txdma_descr;
 		}
-
 
 		hw->dma_rx_ch = au1xxx_dbdma_chan_alloc(hw->dma_rx_id,
 			ddma_memid, NULL, (void *)hw);
@@ -886,9 +912,8 @@ static int au1550_spi_probe(struct platform_device *pdev)
 	{
 		int min_div = (2 << 0) * (2 * (4 + 1));
 		int max_div = (2 << 3) * (2 * (63 + 1));
-		master->max_speed_hz = hw->pdata->mainclk_hz / min_div;
-		master->min_speed_hz =
-				hw->pdata->mainclk_hz / (max_div + 1) + 1;
+		hw->freq_max = hw->pdata->mainclk_hz / min_div;
+		hw->freq_min = hw->pdata->mainclk_hz / (max_div + 1) + 1;
 	}
 
 	au1550_spi_setup_psc_as_spi(hw);
@@ -955,6 +980,8 @@ static int au1550_spi_remove(struct platform_device *pdev)
 		au1xxx_dbdma_chan_free(hw->dma_tx_ch);
 	}
 
+	platform_set_drvdata(pdev, NULL);
+
 	spi_master_put(hw->master);
 	return 0;
 }
@@ -963,7 +990,6 @@ static int au1550_spi_remove(struct platform_device *pdev)
 MODULE_ALIAS("platform:au1550-spi");
 
 static struct platform_driver au1550_spi_drv = {
-	.probe = au1550_spi_probe,
 	.remove = au1550_spi_remove,
 	.driver = {
 		.name = "au1550-spi",
@@ -977,22 +1003,13 @@ static int __init au1550_spi_init(void)
 	 * create memory device with 8 bits dev_devwidth
 	 * needed for proper byte ordering to spi fifo
 	 */
-	switch (alchemy_get_cputype()) {
-	case ALCHEMY_CPU_AU1550:
-	case ALCHEMY_CPU_AU1200:
-	case ALCHEMY_CPU_AU1300:
-		break;
-	default:
-		return -ENODEV;
-	}
-
 	if (usedma) {
 		ddma_memid = au1xxx_ddma_add_device(&au1550_spi_mem_dbdev);
 		if (!ddma_memid)
 			printk(KERN_ERR "au1550-spi: cannot add memory"
 					"dbdma device\n");
 	}
-	return platform_driver_register(&au1550_spi_drv);
+	return platform_driver_probe(&au1550_spi_drv, au1550_spi_probe);
 }
 module_init(au1550_spi_init);
 

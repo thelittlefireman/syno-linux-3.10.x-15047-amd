@@ -79,9 +79,7 @@ int udp6_csum_init(struct sk_buff *skb, struct udphdr *uh, int proto)
 		/* RFC 2460 section 8.1 says that we SHOULD log
 		   this error. Well, it is reasonable.
 		 */
-		LIMIT_NETDEBUG(KERN_INFO "IPv6: udp checksum is 0 for [%pI6c]:%u->[%pI6c]:%u\n",
-			       &ipv6_hdr(skb)->saddr, ntohs(uh->source),
-			       &ipv6_hdr(skb)->daddr, ntohs(uh->dest));
+		LIMIT_NETDEBUG(KERN_INFO "IPv6: udp checksum is 0\n");
 		return 1;
 	}
 	if (skb->ip_summed == CHECKSUM_COMPLETE &&

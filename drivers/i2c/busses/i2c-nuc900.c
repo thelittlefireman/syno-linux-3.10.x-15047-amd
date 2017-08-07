@@ -126,7 +126,6 @@ static inline void nuc900_i2c_enable_irq(struct nuc900_i2c *i2c)
 	writel(tmp | IRQEN, i2c->regs + CSR);
 }
 
-
 /* nuc900_i2c_message_start
  *
  * put the start of a message onto the bus
@@ -382,7 +381,6 @@ static irqreturn_t nuc900_i2c_irq(int irqno, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-
 /* nuc900_i2c_set_master
  *
  * get the i2c bus for a master transaction
@@ -525,7 +523,7 @@ static int nuc900_i2c_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 
-	pdata = dev_get_platdata(&pdev->dev);
+	pdata = pdev->dev.platform_data;
 	if (!pdata) {
 		dev_err(&pdev->dev, "no platform data\n");
 		return -EINVAL;

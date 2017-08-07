@@ -56,14 +56,14 @@ void hard_reset_now (void)
 	 * code to know about it than the watchdog handler in entry.S and
 	 * this code, implementing hard reset through the watchdog.
 	 */
-#if defined(CONFIG_ETRAX_WATCHDOG)
+#if defined(CONFIG_ETRAX_WATCHDOG) && !defined(CONFIG_SVINTO_SIM)
 	extern int cause_of_death;
 #endif
 
 	printk("*** HARD RESET ***\n");
 	local_irq_disable();
 
-#if defined(CONFIG_ETRAX_WATCHDOG)
+#if defined(CONFIG_ETRAX_WATCHDOG) && !defined(CONFIG_SVINTO_SIM)
 	cause_of_death = 0xbedead;
 #else
 	/* Since we dont plan to keep on resetting the watchdog,
@@ -190,4 +190,3 @@ void show_regs(struct pt_regs * regs)
 	printk("r12: %08lx r13: %08lx oR10: %08lx\n",
 	       regs->r12, regs->r13, regs->orig_r10);
 }
-

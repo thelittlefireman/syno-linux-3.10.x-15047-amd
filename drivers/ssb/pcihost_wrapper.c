@@ -16,7 +16,6 @@
 #include <linux/slab.h>
 #include <linux/ssb/ssb.h>
 
-
 #ifdef CONFIG_PM
 static int ssb_pcihost_suspend(struct pci_dev *dev, pm_message_t state)
 {
@@ -38,7 +37,7 @@ static int ssb_pcihost_resume(struct pci_dev *dev)
 	struct ssb_bus *ssb = pci_get_drvdata(dev);
 	int err;
 
-	pci_set_power_state(dev, PCI_D0);
+	pci_set_power_state(dev, 0);
 	err = pci_enable_device(dev);
 	if (err)
 		return err;

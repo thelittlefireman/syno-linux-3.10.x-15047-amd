@@ -156,7 +156,6 @@ static void __init lpd270_init_irq(void)
 	irq_set_irq_type(PXA_GPIO_TO_IRQ(0), IRQ_TYPE_EDGE_FALLING);
 }
 
-
 #ifdef CONFIG_PM
 static void lpd270_irq_resume(void)
 {
@@ -178,7 +177,6 @@ static int __init lpd270_irq_device_init(void)
 
 device_initcall(lpd270_irq_device_init);
 #endif
-
 
 static struct resource smc91x_resources[] = {
 	[0] = {
@@ -269,7 +267,6 @@ static struct platform_pwm_backlight_data lpd270_backlight_data = {
 	.max_brightness	= 1,
 	.dft_brightness	= 1,
 	.pwm_period_ns	= 78770,
-	.enable_gpio	= -1,
 };
 
 static struct platform_device lpd270_backlight_device = {
@@ -476,7 +473,6 @@ static void __init lpd270_init(void)
 
 	pxa_set_ohci_info(&lpd270_ohci_platform_data);
 }
-
 
 static struct map_desc lpd270_io_desc[] __initdata = {
 	{

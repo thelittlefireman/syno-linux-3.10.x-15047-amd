@@ -260,5 +260,4 @@ const struct inode_operations reiserfs_file_inode_operations = {
 	.removexattr = reiserfs_removexattr,
 	.permission = reiserfs_permission,
 	.get_acl = reiserfs_get_acl,
-	.set_acl = reiserfs_set_acl,
 };

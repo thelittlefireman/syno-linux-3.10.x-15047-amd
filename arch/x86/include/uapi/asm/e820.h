@@ -38,7 +38,6 @@
 #define E820_NVS	4
 #define E820_UNUSABLE	5
 
-
 /*
  * reserved RAM used by kernel itself
  * if CONFIG_INTEL_TXT is enabled, memory of this type will be
@@ -70,6 +69,5 @@ struct e820map {
 #define BIOS_ROM_END		0xffffffff
 
 #endif /* __ASSEMBLY__ */
-
 
 #endif /* _UAPI_ASM_X86_E820_H */

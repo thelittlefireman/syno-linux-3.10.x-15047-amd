@@ -199,7 +199,6 @@ int kvm_dev_ioctl_check_extension(long ext)
 	case KVM_CAP_IRQCHIP:
 	case KVM_CAP_MP_STATE:
 	case KVM_CAP_IRQ_INJECT_STATUS:
-	case KVM_CAP_IOAPIC_POLARITY_IGNORED:
 		r = 1;
 		break;
 	case KVM_CAP_COALESCED_MMIO:
@@ -703,7 +702,7 @@ again:
 out:
 	srcu_read_unlock(&vcpu->kvm->srcu, idx);
 	if (r > 0) {
-		cond_resched();
+		kvm_resched(vcpu);
 		idx = srcu_read_lock(&vcpu->kvm->srcu);
 		goto again;
 	}
@@ -1468,7 +1467,6 @@ void kvm_arch_vcpu_uninit(struct kvm_vcpu *vcpu)
 	kfree(vcpu->arch.apic);
 }
 
-
 long kvm_arch_vcpu_ioctl(struct file *filp,
 			 unsigned int ioctl, unsigned long arg)
 {
@@ -1551,19 +1549,14 @@ int kvm_arch_vcpu_fault(struct kvm_vcpu *vcpu, struct vm_fault *vmf)
 	return VM_FAULT_SIGBUS;
 }
 
-void kvm_arch_free_memslot(struct kvm *kvm, struct kvm_memory_slot *free,
+void kvm_arch_free_memslot(struct kvm_memory_slot *free,
 			   struct kvm_memory_slot *dont)
 {
 }
 
-int kvm_arch_create_memslot(struct kvm *kvm, struct kvm_memory_slot *slot,
-			    unsigned long npages)
+int kvm_arch_create_memslot(struct kvm_memory_slot *slot, unsigned long npages)
 {
 	return 0;
-}
-
-void kvm_arch_memslots_updated(struct kvm *kvm)
-{
 }
 
 int kvm_arch_prepare_memory_region(struct kvm *kvm,
@@ -1655,7 +1648,6 @@ static int vti_cpu_has_kvm_support(void)
 out:
 	return 0;
 }
-
 
 /*
  * On SN2, the ITC isn't stable, so copy in fast path code to use the

@@ -13,12 +13,12 @@ static B_UINT16 CFG_CalculateChecksum(B_UINT8 *pu8Buffer, B_UINT32 u32Size)
 	return u16CheckSum;
 }
 
-bool IsReqGpioIsLedInNVM(struct bcm_mini_adapter *Adapter, UINT gpios)
+BOOLEAN IsReqGpioIsLedInNVM(struct bcm_mini_adapter *Adapter, UINT gpios)
 {
 	INT Status;
 	Status = (Adapter->gpioBitMap & gpios) ^ gpios;
 	if (Status)
-		return false;
+		return FALSE;
 	else
 		return TRUE;
 }
@@ -27,7 +27,7 @@ static INT LED_Blink(struct bcm_mini_adapter *Adapter, UINT GPIO_Num, UCHAR uiLe
 		ULONG timeout, INT num_of_time, enum bcm_led_events currdriverstate)
 {
 	int Status = STATUS_SUCCESS;
-	bool bInfinite = false;
+	BOOLEAN bInfinite = FALSE;
 
 	/* Check if num_of_time is -ve. If yes, blink led in infinite loop */
 	if (num_of_time < 0) {
@@ -67,7 +67,7 @@ static INT LED_Blink(struct bcm_mini_adapter *Adapter, UINT GPIO_Num, UCHAR uiLe
 				currdriverstate != Adapter->DriverState ||
 					kthread_should_stop(),
 				msecs_to_jiffies(timeout));
-		if (bInfinite == false)
+		if (bInfinite == FALSE)
 			num_of_time--;
 	}
 	return Status;
@@ -93,8 +93,6 @@ static INT ScaleRateofTransfer(ULONG rate)
 		return MAX_NUM_OF_BLINKS;
 }
 
-
-
 static INT LED_Proportional_Blink(struct bcm_mini_adapter *Adapter, UCHAR GPIO_Num_tx,
 		UCHAR uiTxLedIndex, UCHAR GPIO_Num_rx, UCHAR uiRxLedIndex,
 		enum bcm_led_events currdriverstate)
@@ -108,7 +106,7 @@ static INT LED_Proportional_Blink(struct bcm_mini_adapter *Adapter, UCHAR GPIO_N
 	int Status = STATUS_SUCCESS;
 	INT num_of_time = 0, num_of_time_tx = 0, num_of_time_rx = 0;
 	UINT remDelay = 0;
-	bool bBlinkBothLED = TRUE;
+	BOOLEAN bBlinkBothLED = TRUE;
 	/* UINT GPIO_num = DISABLE_GPIO_NUM; */
 	ulong timeout = 0;
 
@@ -120,7 +118,7 @@ static INT LED_Proportional_Blink(struct bcm_mini_adapter *Adapter, UCHAR GPIO_N
 	num_of_time_tx = ScaleRateofTransfer((ULONG)rate_of_transfer_tx);
 	num_of_time_rx = ScaleRateofTransfer((ULONG)rate_of_transfer_rx);
 
-	while ((Adapter->device_removed == false)) {
+	while ((Adapter->device_removed == FALSE)) {
 		timeout = 50;
 		/*
 		 * Blink Tx and Rx LED when both Tx and Rx is
@@ -331,7 +329,6 @@ exit:
 	return Status;
 }
 
-
 /*
  * -----------------------------------------------------------------------------
  * Procedure:   ValidateHWParmStructure
@@ -389,7 +386,6 @@ static int ReadLEDInformationFromEEPROM(struct bcm_mini_adapter *Adapter,
 		"usEEPROMVersion: Minor:0x%X Major:0x%x",
 		usEEPROMVersion&0xFF, ((usEEPROMVersion>>8)&0xFF));
 
-
 	if (((usEEPROMVersion>>8)&0xFF) < EEPROM_MAP5_MAJORVERSION) {
 		BeceemNVMRead(Adapter, (PUINT)&usHwParamData,
 			EEPROM_HW_PARAM_POINTER_ADDRESS, 2);
@@ -411,7 +407,6 @@ static int ReadLEDInformationFromEEPROM(struct bcm_mini_adapter *Adapter,
 			EEPROM_HW_PARAM_POINTER_ADDRRES_MAP5, 4);
 		dwReadValue = ntohl(dwReadValue);
 	}
-
 
 	BCM_DEBUG_PRINT(Adapter, DBG_TYPE_OTHERS, LED_DUMP_INFO, DBG_LVL_ALL,
 		"LED Thread: Start address of HW_PARAM structure = 0x%lx",
@@ -476,9 +471,8 @@ static int ReadLEDInformationFromEEPROM(struct bcm_mini_adapter *Adapter,
 	return Status;
 }
 
-
 static int ReadConfigFileStructure(struct bcm_mini_adapter *Adapter,
-					bool *bEnableThread)
+					BOOLEAN *bEnableThread)
 {
 	int Status = STATUS_SUCCESS;
 	/* Array to store GPIO numbers from EEPROM */
@@ -499,10 +493,10 @@ static int ReadConfigFileStructure(struct bcm_mini_adapter *Adapter,
 	/* Read the GPIO numbers from EEPROM */
 	Status = ReadLEDInformationFromEEPROM(Adapter, GPIO_Array);
 	if (Status == STATUS_IMAGE_CHECKSUM_MISMATCH) {
-		*bEnableThread = false;
+		*bEnableThread = FALSE;
 		return STATUS_SUCCESS;
 	} else if (Status) {
-		*bEnableThread = false;
+		*bEnableThread = FALSE;
 		return Status;
 	}
 
@@ -561,7 +555,7 @@ static int ReadConfigFileStructure(struct bcm_mini_adapter *Adapter,
 			uiNum_of_LED_Type++;
 	}
 	if (uiNum_of_LED_Type >= NUM_OF_LEDS)
-		*bEnableThread = false;
+		*bEnableThread = FALSE;
 
 	return Status;
 }
@@ -602,7 +596,7 @@ static VOID LedGpioInit(struct bcm_mini_adapter *Adapter)
 		BCM_DEBUG_PRINT (Adapter, DBG_TYPE_OTHERS, LED_DUMP_INFO,
 			DBG_LVL_ALL, "LED Thread: WRM Failed\n");
 
-	Adapter->LEDInfo.bIdle_led_off = false;
+	Adapter->LEDInfo.bIdle_led_off = FALSE;
 }
 
 static INT BcmGetGPIOPinInfo(struct bcm_mini_adapter *Adapter, UCHAR *GPIO_num_tx,
@@ -660,7 +654,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 	UCHAR dummyIndex = 0;
 
 	/* currdriverstate = Adapter->DriverState; */
-	Adapter->LEDInfo.bIdleMode_tx_from_host = false;
+	Adapter->LEDInfo.bIdleMode_tx_from_host = FALSE;
 
 	/*
 	 * Wait till event is triggered
@@ -698,7 +692,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 		if (GPIO_num != DISABLE_GPIO_NUM)
 			TURN_OFF_LED(1 << GPIO_num, uiLedIndex);
 
-		if (Adapter->LEDInfo.bLedInitDone == false) {
+		if (Adapter->LEDInfo.bLedInitDone == FALSE) {
 			LedGpioInit(Adapter);
 			Adapter->LEDInfo.bLedInitDone = TRUE;
 		}
@@ -757,7 +751,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 				UCHAR uiLEDTx = 0;
 				UCHAR uiLEDRx = 0;
 				currdriverstate = NORMAL_OPERATION;
-				Adapter->LEDInfo.bIdle_led_off = false;
+				Adapter->LEDInfo.bIdle_led_off = FALSE;
 
 				BcmGetGPIOPinInfo(Adapter, &GPIO_num_tx,
 					&GPIO_num_rx, &uiLEDTx, &uiLEDRx,
@@ -803,7 +797,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 
 			}
 			/* Turn off LED And WAKE-UP for Sendinf IDLE mode ACK */
-			Adapter->LEDInfo.bLedInitDone = false;
+			Adapter->LEDInfo.bLedInitDone = FALSE;
 			Adapter->LEDInfo.bIdle_led_off = TRUE;
 			wake_up(&Adapter->LEDInfo.idleModeSyncEvent);
 			GPIO_num = DISABLE_GPIO_NUM;
@@ -830,7 +824,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 			currdriverstate = LED_THREAD_INACTIVE;
 			Adapter->LEDInfo.led_thread_running =
 					BCM_LED_THREAD_RUNNING_INACTIVELY;
-			Adapter->LEDInfo.bLedInitDone = false;
+			Adapter->LEDInfo.bLedInitDone = FALSE;
 			/* disable ALL LED */
 			for (uiIndex = 0; uiIndex < NUM_OF_LEDS; uiIndex++) {
 				if (Adapter->LEDInfo.LEDState[uiIndex].GPIO_Num
@@ -841,7 +835,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 		case LED_THREAD_ACTIVE:
 			BCM_DEBUG_PRINT(Adapter, DBG_TYPE_OTHERS, LED_DUMP_INFO,
 				DBG_LVL_ALL, "Activating LED thread again...");
-			if (Adapter->LinkUpStatus == false)
+			if (Adapter->LinkUpStatus == FALSE)
 				Adapter->DriverState = NO_NETWORK_ENTRY;
 			else
 				Adapter->DriverState = NORMAL_OPERATION;
@@ -860,7 +854,7 @@ static VOID LEDControlThread(struct bcm_mini_adapter *Adapter)
 int InitLedSettings(struct bcm_mini_adapter *Adapter)
 {
 	int Status = STATUS_SUCCESS;
-	bool bEnableThread = TRUE;
+	BOOLEAN bEnableThread = TRUE;
 	UCHAR uiIndex = 0;
 
 	/*
@@ -899,7 +893,7 @@ int InitLedSettings(struct bcm_mini_adapter *Adapter)
 		init_waitqueue_head(&Adapter->LEDInfo.idleModeSyncEvent);
 		Adapter->LEDInfo.led_thread_running =
 					BCM_LED_THREAD_RUNNING_ACTIVELY;
-		Adapter->LEDInfo.bIdle_led_off = false;
+		Adapter->LEDInfo.bIdle_led_off = FALSE;
 		Adapter->LEDInfo.led_cntrl_threadid =
 			kthread_run((int (*)(void *)) LEDControlThread,
 			Adapter, "led_control_thread");

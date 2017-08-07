@@ -57,7 +57,6 @@ enum {
 	TILE_IRQ_SW_CLEAR,
 };
 
-
 /*
  * Paravirtualized drivers should call this when they dynamically
  * allocate a new IRQ or discover an IRQ that was pre-allocated by the

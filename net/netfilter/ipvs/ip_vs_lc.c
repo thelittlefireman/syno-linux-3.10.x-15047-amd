@@ -26,8 +26,7 @@
  *	Least Connection scheduling
  */
 static struct ip_vs_dest *
-ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
-		  struct ip_vs_iphdr *iph)
+ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb)
 {
 	struct ip_vs_dest *dest, *least = NULL;
 	unsigned int loh = 0, doh;
@@ -67,7 +66,6 @@ ip_vs_lc_schedule(struct ip_vs_service *svc, const struct sk_buff *skb,
 	return least;
 }
 
-
 static struct ip_vs_scheduler ip_vs_lc_scheduler = {
 	.name =			"lc",
 	.refcnt =		ATOMIC_INIT(0),
@@ -75,7 +73,6 @@ static struct ip_vs_scheduler ip_vs_lc_scheduler = {
 	.n_list =		LIST_HEAD_INIT(ip_vs_lc_scheduler.n_list),
 	.schedule =		ip_vs_lc_schedule,
 };
-
 
 static int __init ip_vs_lc_init(void)
 {

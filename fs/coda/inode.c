@@ -73,7 +73,7 @@ static void init_once(void *foo)
 	inode_init_once(&ei->vfs_inode);
 }
 
-int __init coda_init_inodecache(void)
+int coda_init_inodecache(void)
 {
 	coda_inode_cachep = kmem_cache_create("coda_inode_cache",
 				sizeof(struct coda_inode_info),
@@ -251,14 +251,14 @@ static void coda_put_super(struct super_block *sb)
 
 static void coda_evict_inode(struct inode *inode)
 {
-	truncate_inode_pages_final(&inode->i_data);
+	truncate_inode_pages(&inode->i_data, 0);
 	clear_inode(inode);
 	coda_cache_clear_inode(inode);
 }
 
 int coda_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
 {
-	int err = coda_revalidate_inode(dentry->d_inode);
+	int err = coda_revalidate_inode(dentry);
 	if (!err)
 		generic_fillattr(dentry->d_inode, stat);
 	return err;
@@ -331,4 +331,3 @@ struct file_system_type coda_fs_type = {
 	.fs_flags	= FS_BINARY_MOUNTDATA,
 };
 MODULE_ALIAS_FS("coda");
-

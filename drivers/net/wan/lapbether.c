@@ -257,7 +257,6 @@ static int lapbeth_set_mac_address(struct net_device *dev, void *addr)
 	return 0;
 }
 
-
 static const struct lapb_register_struct lapbeth_callbacks = {
 	.connect_confirmation    = lapbeth_connected,
 	.connect_indication      = lapbeth_connected,
@@ -370,7 +369,7 @@ static int lapbeth_device_event(struct notifier_block *this,
 				unsigned long event, void *ptr)
 {
 	struct lapbethdev *lapbeth;
-	struct net_device *dev = netdev_notifier_info_to_dev(ptr);
+	struct net_device *dev = ptr;
 
 	if (dev_net(dev) != &init_net)
 		return NOTIFY_DONE;

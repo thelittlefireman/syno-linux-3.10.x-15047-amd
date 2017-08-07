@@ -15,7 +15,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
  *
  * vendor id: 0x108E (Sun Microsystems, Inc.)
  * device id: 0xabba (Cassini)
@@ -425,7 +427,6 @@
 						    1 = mac core led ctrl
 						    polarity active low. */
 
-
 /** transmit dma registers **/
 #define MAX_TX_RINGS_SHIFT            2
 #define MAX_TX_RINGS                  (1 << MAX_TX_RINGS_SHIFT)
@@ -648,7 +649,6 @@
 							 RX free desc ring 2.
 							 def: 0x8 = 8k */
 #define    RX_CFG_DESC_RING1_SHIFT      16
-
 
 /* the page size register allows cassini chips to do the following with
  * received data:
@@ -1232,7 +1232,6 @@
 							 RAM */
 #define    HP_RAM_BIST_SUMMARY             0x00000002 /* all BIST tests */
 #define    HP_RAM_BIST_START               0x00000001 /* start/stop BIST */
-
 
 /** MAC registers.  **/
 /* reset bits are set using a PIO write and self-cleared after the command
@@ -2712,7 +2711,6 @@ typedef struct cas_page {
 	dma_addr_t dma_addr;
 	int used;
 } cas_page_t;
-
 
 /* some alignment constraints:
  * TX DESC, RX DESC, and RX COMP must each be 8K aligned.

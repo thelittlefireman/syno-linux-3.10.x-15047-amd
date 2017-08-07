@@ -95,7 +95,7 @@ static const struct hc_driver ohci_tilegx_hc_driver = {
 static int ohci_hcd_tilegx_drv_probe(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd;
-	struct tilegx_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct tilegx_usb_platform_data *pdata = pdev->dev.platform_data;
 	pte_t pte = { 0 };
 	int my_cpu = smp_processor_id();
 	int ret;
@@ -159,7 +159,6 @@ static int ohci_hcd_tilegx_drv_probe(struct platform_device *pdev)
 	ret = usb_add_hcd(hcd, pdata->irq, IRQF_SHARED);
 	if (ret == 0) {
 		platform_set_drvdata(pdev, hcd);
-		device_wakeup_enable(hcd->self.controller);
 		return ret;
 	}
 
@@ -176,13 +175,14 @@ err_hcd:
 static int ohci_hcd_tilegx_drv_remove(struct platform_device *pdev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(pdev);
-	struct tilegx_usb_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct tilegx_usb_platform_data* pdata = pdev->dev.platform_data;
 
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
 	tilegx_stop_ohc();
 	gxio_usb_host_destroy(&pdata->usb_ctx);
 	destroy_irq(pdata->irq);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

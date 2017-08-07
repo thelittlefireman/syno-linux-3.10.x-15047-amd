@@ -20,12 +20,17 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *
+ * You should also find the complete GPL in the COPYING file accompanying
+ * this source code.
  */
 
-#include <linux/module.h>
 #include <linux/pci.h>
 #include <linux/interrupt.h>
-#include <linux/slab.h>
 
 #include "../comedidev.h"
 #include "addi_watchdog.h"
@@ -57,10 +62,16 @@ static int apci2032_do_insn_bits(struct comedi_device *dev,
 				 struct comedi_insn *insn,
 				 unsigned int *data)
 {
-	s->state = inl(dev->iobase + APCI2032_DO_REG);
+	unsigned int mask = data[0];
+	unsigned int bits = data[1];
 
-	if (comedi_dio_update_state(s, data))
+	s->state = inl(dev->iobase + APCI2032_DO_REG);
+	if (mask) {
+		s->state &= ~mask;
+		s->state |= (bits & mask);
+
 		outl(s->state, dev->iobase + APCI2032_DO_REG);
+	}
 
 	data[1] = s->state;
 
@@ -343,6 +354,7 @@ static void apci2032_detach(struct comedi_device *dev)
 		free_irq(dev->irq, dev);
 	if (dev->read_subdev)
 		kfree(dev->read_subdev->private);
+	comedi_spriv_free(dev, 1);
 	comedi_pci_disable(dev);
 }
 
@@ -359,7 +371,7 @@ static int apci2032_pci_probe(struct pci_dev *dev,
 	return comedi_pci_auto_config(dev, &apci2032_driver, id->driver_data);
 }
 
-static const struct pci_device_id apci2032_pci_table[] = {
+static DEFINE_PCI_DEVICE_TABLE(apci2032_pci_table) = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_ADDIDATA, 0x1004) },
 	{ 0 }
 };

@@ -46,7 +46,6 @@ static dma_addr_t dma_iommu_map_page(struct device *dev, struct page *page,
 			      size, device_to_mask(dev), direction, attrs);
 }
 
-
 static void dma_iommu_unmap_page(struct device *dev, dma_addr_t dma_handle,
 				 size_t size, enum dma_data_direction direction,
 				 struct dma_attrs *attrs)
@@ -54,7 +53,6 @@ static void dma_iommu_unmap_page(struct device *dev, dma_addr_t dma_handle,
 	iommu_unmap_page(get_iommu_table_base(dev), dma_handle, size, direction,
 			 attrs);
 }
-
 
 static int dma_iommu_map_sg(struct device *dev, struct scatterlist *sglist,
 			    int nelems, enum dma_data_direction direction,
@@ -83,10 +81,10 @@ static int dma_iommu_dma_supported(struct device *dev, u64 mask)
 		return 0;
 	}
 
-	if (tbl->it_offset > (mask >> tbl->it_page_shift)) {
+	if (tbl->it_offset > (mask >> IOMMU_PAGE_SHIFT)) {
 		dev_info(dev, "Warning: IOMMU offset too big for device mask\n");
 		dev_info(dev, "mask: 0x%08llx, table offset: 0x%08lx\n",
-				mask, tbl->it_offset << tbl->it_page_shift);
+				mask, tbl->it_offset << IOMMU_PAGE_SHIFT);
 		return 0;
 	} else
 		return 1;

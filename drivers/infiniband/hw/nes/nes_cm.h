@@ -58,8 +58,6 @@
 #define IETF_RDMA0_WRITE        0x8000
 #define IETF_RDMA0_READ         0x4000
 #define IETF_NO_IRD_ORD         0x3FFF
-#define NES_MAX_IRD		 0x40
-#define NES_MAX_ORD		 0x7F
 
 enum ietf_mpa_flags {
 	IETF_MPA_FLAGS_MARKERS = 0x80,	/* receive Markers */
@@ -252,7 +250,6 @@ enum nes_tcpip_pkt_type {
 	NES_PKT_TYPE_RST
 };
 
-
 /* type of nes connection */
 enum nes_cm_conn_type {
 	NES_CM_IWARP_CONN_TYPE,
@@ -281,7 +278,6 @@ struct nes_cm_tcp_context {
 	struct nes_cm_tsa_context tsa_cntxt;
 	struct timeval            sent_ts;
 };
-
 
 enum nes_cm_listener_state {
 	NES_CM_LISTENER_PASSIVE_STATE = 1,
@@ -335,7 +331,6 @@ struct nes_cm_node {
 	enum mpa_frame_version    mpa_frame_rev;
 	u16			  ird_size;
 	u16                       ord_size;
-	u16			  mpav2_ird_ord;
 
 	u16                       mpa_frame_size;
 	struct iw_cm_id           *cm_id;
@@ -428,7 +423,6 @@ struct nes_cm_core {
 
 	struct nes_cm_node      *current_listen_node;
 };
-
 
 #define NES_CM_SET_PKT_SIZE        (1 << 1)
 #define NES_CM_SET_FREE_PKT_Q_SIZE (1 << 2)

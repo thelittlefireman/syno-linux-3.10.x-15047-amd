@@ -14,7 +14,6 @@ ext3_xattr_security_list(struct dentry *dentry, char *list, size_t list_size,
 	const size_t prefix_len = XATTR_SECURITY_PREFIX_LEN;
 	const size_t total_len = prefix_len + name_len + 1;
 
-
 	if (list && total_len <= list_size) {
 		memcpy(list, XATTR_SECURITY_PREFIX, prefix_len);
 		memcpy(list+prefix_len, name, name_len);
@@ -43,9 +42,8 @@ ext3_xattr_security_set(struct dentry *dentry, const char *name,
 			      name, value, size, flags);
 }
 
-static int ext3_initxattrs(struct inode *inode,
-			   const struct xattr *xattr_array,
-			   void *fs_info)
+int ext3_initxattrs(struct inode *inode, const struct xattr *xattr_array,
+		    void *fs_info)
 {
 	const struct xattr *xattr;
 	handle_t *handle = fs_info;

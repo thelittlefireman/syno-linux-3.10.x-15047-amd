@@ -65,8 +65,8 @@ struct rt_sigframe {
 	struct siginfo __user *pinfo;
 	void __user *puc;
 	struct siginfo info;
-	/* New 64 bit little-endian ABI allows redzone of 512 bytes below sp */
-	char abigap[USER_REDZONE_SIZE];
+	/* 64 bit ABI allows for 288 bytes below sp before decrementing it. */
+	char abigap[288];
 } __attribute__ ((aligned (16)));
 
 static const char fmt32[] = KERN_INFO \
@@ -96,6 +96,8 @@ static long setup_sigcontext(struct sigcontext __user *sc, struct pt_regs *regs,
 	unsigned long msr = regs->msr;
 	long err = 0;
 
+	flush_fp_to_thread(current);
+
 #ifdef CONFIG_ALTIVEC
 	err |= __put_user(v_regs, &sc->v_regs);
 
@@ -103,8 +105,7 @@ static long setup_sigcontext(struct sigcontext __user *sc, struct pt_regs *regs,
 	if (current->thread.used_vr) {
 		flush_altivec_to_thread(current);
 		/* Copy 33 vec registers (vr0..31 and vscr) to the stack */
-		err |= __copy_to_user(v_regs, &current->thread.vr_state,
-				      33 * sizeof(vector128));
+		err |= __copy_to_user(v_regs, current->thread.vr, 33 * sizeof(vector128));
 		/* set MSR_VEC in the MSR value in the frame to indicate that sc->v_reg)
 		 * contains valid data.
 		 */
@@ -113,8 +114,6 @@ static long setup_sigcontext(struct sigcontext __user *sc, struct pt_regs *regs,
 	/* We always copy to/from vrsave, it's 0 if we don't have or don't
 	 * use altivec.
 	 */
-	if (cpu_has_feature(CPU_FTR_ALTIVEC))
-		current->thread.vrsave = mfspr(SPRN_VRSAVE);
 	err |= __put_user(current->thread.vrsave, (u32 __user *)&v_regs[33]);
 #else /* CONFIG_ALTIVEC */
 	err |= __put_user(0, &sc->v_regs);
@@ -192,13 +191,6 @@ static long setup_tm_sigcontexts(struct sigcontext __user *sc,
 
 	BUG_ON(!MSR_TM_ACTIVE(regs->msr));
 
-	/* Remove TM bits from thread's MSR.  The MSR in the sigcontext
-	 * just indicates to userland that we were doing a transaction, but we
-	 * don't want to return in transactional state.  This also ensures
-	 * that flush_fp_to_thread won't set TIF_RESTORE_TM again.
-	 */
-	regs->msr &= ~MSR_TS_MASK;
-
 	flush_fp_to_thread(current);
 
 #ifdef CONFIG_ALTIVEC
@@ -209,18 +201,18 @@ static long setup_tm_sigcontexts(struct sigcontext __user *sc,
 	if (current->thread.used_vr) {
 		flush_altivec_to_thread(current);
 		/* Copy 33 vec registers (vr0..31 and vscr) to the stack */
-		err |= __copy_to_user(v_regs, &current->thread.vr_state,
+		err |= __copy_to_user(v_regs, current->thread.vr,
 				      33 * sizeof(vector128));
 		/* If VEC was enabled there are transactional VRs valid too,
 		 * else they're a copy of the checkpointed VRs.
 		 */
 		if (msr & MSR_VEC)
 			err |= __copy_to_user(tm_v_regs,
-					      &current->thread.transact_vr,
+					      current->thread.transact_vr,
 					      33 * sizeof(vector128));
 		else
 			err |= __copy_to_user(tm_v_regs,
-					      &current->thread.vr_state,
+					      current->thread.vr,
 					      33 * sizeof(vector128));
 
 		/* set MSR_VEC in the MSR value in the frame to indicate
@@ -231,8 +223,6 @@ static long setup_tm_sigcontexts(struct sigcontext __user *sc,
 	/* We always copy to/from vrsave, it's 0 if we don't have or don't
 	 * use altivec.
 	 */
-	if (cpu_has_feature(CPU_FTR_ALTIVEC))
-		current->thread.vrsave = mfspr(SPRN_VRSAVE);
 	err |= __put_user(current->thread.vrsave, (u32 __user *)&v_regs[33]);
 	if (msr & MSR_VEC)
 		err |= __put_user(current->thread.transact_vrsave,
@@ -362,18 +352,16 @@ static long restore_sigcontext(struct pt_regs *regs, sigset_t *set, int sig,
 	if (v_regs && !access_ok(VERIFY_READ, v_regs, 34 * sizeof(vector128)))
 		return -EFAULT;
 	/* Copy 33 vec registers (vr0..31 and vscr) from the stack */
-	if (v_regs != NULL && (msr & MSR_VEC) != 0)
-		err |= __copy_from_user(&current->thread.vr_state, v_regs,
+	if (v_regs != 0 && (msr & MSR_VEC) != 0)
+		err |= __copy_from_user(current->thread.vr, v_regs,
 					33 * sizeof(vector128));
 	else if (current->thread.used_vr)
-		memset(&current->thread.vr_state, 0, 33 * sizeof(vector128));
+		memset(current->thread.vr, 0, 33 * sizeof(vector128));
 	/* Always get VRSAVE back */
-	if (v_regs != NULL)
+	if (v_regs != 0)
 		err |= __get_user(current->thread.vrsave, (u32 __user *)&v_regs[33]);
 	else
 		current->thread.vrsave = 0;
-	if (cpu_has_feature(CPU_FTR_ALTIVEC))
-		mtspr(SPRN_VRSAVE, current->thread.vrsave);
 #endif /* CONFIG_ALTIVEC */
 	/* restore floating point */
 	err |= copy_fpr_from_user(current, &sc->fp_regs);
@@ -388,7 +376,7 @@ static long restore_sigcontext(struct pt_regs *regs, sigset_t *set, int sig,
 		err |= copy_vsx_from_user(current, v_regs);
 	else
 		for (i = 0; i < 32 ; i++)
-			current->thread.fp_state.fpr[i][TS_VSRLOWOFFSET] = 0;
+			current->thread.fpr[i][TS_VSRLOWOFFSET] = 0;
 #endif
 	return err;
 }
@@ -428,6 +416,10 @@ static long restore_tm_sigcontexts(struct pt_regs *regs,
 
 	/* get MSR separately, transfer the LE bit if doing signal return */
 	err |= __get_user(msr, &sc->gp_regs[PT_MSR]);
+	/* Don't allow reserved mode. */
+	if (MSR_TM_RESV(msr))
+		return -EINVAL;
+
 	/* pull in MSR TM from user context */
 	regs->msr = (regs->msr & ~MSR_TS_MASK) | (msr & MSR_TS_MASK);
 
@@ -481,18 +473,18 @@ static long restore_tm_sigcontexts(struct pt_regs *regs,
 				    tm_v_regs, 34 * sizeof(vector128)))
 		return -EFAULT;
 	/* Copy 33 vec registers (vr0..31 and vscr) from the stack */
-	if (v_regs != NULL && tm_v_regs != NULL && (msr & MSR_VEC) != 0) {
-		err |= __copy_from_user(&current->thread.vr_state, v_regs,
+	if (v_regs != 0 && tm_v_regs != 0 && (msr & MSR_VEC) != 0) {
+		err |= __copy_from_user(current->thread.vr, v_regs,
 					33 * sizeof(vector128));
-		err |= __copy_from_user(&current->thread.transact_vr, tm_v_regs,
+		err |= __copy_from_user(current->thread.transact_vr, tm_v_regs,
 					33 * sizeof(vector128));
 	}
 	else if (current->thread.used_vr) {
-		memset(&current->thread.vr_state, 0, 33 * sizeof(vector128));
-		memset(&current->thread.transact_vr, 0, 33 * sizeof(vector128));
+		memset(current->thread.vr, 0, 33 * sizeof(vector128));
+		memset(current->thread.transact_vr, 0, 33 * sizeof(vector128));
 	}
 	/* Always get VRSAVE back */
-	if (v_regs != NULL && tm_v_regs != NULL) {
+	if (v_regs != 0 && tm_v_regs != 0) {
 		err |= __get_user(current->thread.vrsave,
 				  (u32 __user *)&v_regs[33]);
 		err |= __get_user(current->thread.transact_vrsave,
@@ -502,8 +494,6 @@ static long restore_tm_sigcontexts(struct pt_regs *regs,
 		current->thread.vrsave = 0;
 		current->thread.transact_vrsave = 0;
 	}
-	if (cpu_has_feature(CPU_FTR_ALTIVEC))
-		mtspr(SPRN_VRSAVE, current->thread.vrsave);
 #endif /* CONFIG_ALTIVEC */
 	/* restore floating point */
 	err |= copy_fpr_from_user(current, &sc->fp_regs);
@@ -521,8 +511,8 @@ static long restore_tm_sigcontexts(struct pt_regs *regs,
 		err |= copy_transact_vsx_from_user(current, tm_v_regs);
 	} else {
 		for (i = 0; i < 32 ; i++) {
-			current->thread.fp_state.fpr[i][TS_VSRLOWOFFSET] = 0;
-			current->thread.transact_fp.fpr[i][TS_VSRLOWOFFSET] = 0;
+			current->thread.fpr[i][TS_VSRLOWOFFSET] = 0;
+			current->thread.transact_fpr[i][TS_VSRLOWOFFSET] = 0;
 		}
 	}
 #endif
@@ -651,7 +641,6 @@ int sys_swapcontext(struct ucontext __user *old_ctx,
 	return 0;
 }
 
-
 /*
  * Do a signal return; undo the signal stack.
  */
@@ -716,6 +705,12 @@ badframe:
 int handle_rt_signal64(int signr, struct k_sigaction *ka, siginfo_t *info,
 		sigset_t *set, struct pt_regs *regs)
 {
+	/* Handler is *really* a pointer to the function descriptor for
+	 * the signal routine.  The first entry in the function
+	 * descriptor is the entry address of signal and the second
+	 * entry is the TOC value we need to use.
+	 */
+	func_descr_t __user *funct_desc_ptr;
 	struct rt_sigframe __user *frame;
 	unsigned long newsp = 0;
 	long err = 0;
@@ -757,7 +752,14 @@ int handle_rt_signal64(int signr, struct k_sigaction *ka, siginfo_t *info,
 		goto badframe;
 
 	/* Make sure signal handler doesn't get spurious FP exceptions */
-	current->thread.fp_state.fpscr = 0;
+	current->thread.fpscr.val = 0;
+#ifdef CONFIG_PPC_TRANSACTIONAL_MEM
+	/* Remove TM bits from thread's MSR.  The MSR in the sigcontext
+	 * just indicates to userland that we were doing a transaction, but we
+	 * don't want to return in transactional state:
+	 */
+	regs->msr &= ~MSR_TS_MASK;
+#endif
 
 	/* Set up to return from userspace. */
 	if (vdso64_rt_sigtramp && current->mm->context.vdso_base) {
@@ -768,32 +770,18 @@ int handle_rt_signal64(int signr, struct k_sigaction *ka, siginfo_t *info,
 			goto badframe;
 		regs->link = (unsigned long) &frame->tramp[0];
 	}
+	funct_desc_ptr = (func_descr_t __user *) ka->sa.sa_handler;
 
 	/* Allocate a dummy caller frame for the signal handler. */
 	newsp = ((unsigned long)frame) - __SIGNAL_FRAMESIZE;
 	err |= put_user(regs->gpr[1], (unsigned long __user *)newsp);
 
 	/* Set up "regs" so we "return" to the signal handler. */
-	if (is_elf2_task()) {
-		regs->nip = (unsigned long) ka->sa.sa_handler;
-		regs->gpr[12] = regs->nip;
-	} else {
-		/* Handler is *really* a pointer to the function descriptor for
-		 * the signal routine.  The first entry in the function
-		 * descriptor is the entry address of signal and the second
-		 * entry is the TOC value we need to use.
-		 */
-		func_descr_t __user *funct_desc_ptr =
-			(func_descr_t __user *) ka->sa.sa_handler;
-
-		err |= get_user(regs->nip, &funct_desc_ptr->entry);
-		err |= get_user(regs->gpr[2], &funct_desc_ptr->toc);
-	}
-
-	/* enter the signal handler in native-endian mode */
+	err |= get_user(regs->nip, &funct_desc_ptr->entry);
+	/* enter the signal handler in big-endian mode */
 	regs->msr &= ~MSR_LE;
-	regs->msr |= (MSR_KERNEL & MSR_LE);
 	regs->gpr[1] = newsp;
+	err |= get_user(regs->gpr[2], &funct_desc_ptr->toc);
 	regs->gpr[3] = signr;
 	regs->result = 0;
 	if (ka->sa.sa_flags & SA_SIGINFO) {

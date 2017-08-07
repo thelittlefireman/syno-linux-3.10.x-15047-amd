@@ -364,7 +364,6 @@ struct nv04_graph_chan {
 	u32 nv04[ARRAY_SIZE(nv04_graph_ctx_regs)];
 };
 
-
 static inline struct nv04_graph_priv *
 nv04_graph_priv(struct nv04_graph_chan *chan)
 {

@@ -73,7 +73,6 @@
 #include "zoran_device.h"
 #include "zoran_card.h"
 
-
 const struct zoran_format zoran_formats[] = {
 	{
 		.name = "15-bit RGB LE",
@@ -1032,7 +1031,6 @@ zoran_close(struct file  *file)
 	return 0;
 }
 
-
 static ssize_t
 zoran_read (struct file *file,
 	    char        __user *data,
@@ -1130,7 +1128,6 @@ static int setup_fbuffer(struct zoran_fh *fh,
 	return 0;
 }
 
-
 static int setup_window(struct zoran_fh *fh,
 			int x,
 			int y,
@@ -1143,7 +1140,6 @@ static int setup_window(struct zoran_fh *fh,
 	struct zoran *zr = fh->zr;
 	struct v4l2_clip *vcp = NULL;
 	int on, end;
-
 
 	if (!zr->vbuf_base) {
 		dprintk(1,
@@ -1456,6 +1452,29 @@ zoran_set_norm (struct zoran *zr,
 		return -EINVAL;
 	}
 
+	if (norm == V4L2_STD_ALL) {
+		unsigned int status = 0;
+		v4l2_std_id std = 0;
+
+		decoder_call(zr, video, querystd, &std);
+		decoder_call(zr, core, s_std, std);
+
+		/* let changes come into effect */
+		ssleep(2);
+
+		decoder_call(zr, video, g_input_status, &status);
+		if (status & V4L2_IN_ST_NO_SIGNAL) {
+			dprintk(1,
+				KERN_ERR
+				"%s: %s - no norm detected\n",
+				ZR_DEVNAME(zr), __func__);
+			/* reset norm */
+			decoder_call(zr, core, s_std, zr->norm);
+			return -EIO;
+		}
+
+		norm = std;
+	}
 	if (norm & V4L2_STD_SECAM)
 		zr->timing = zr->card.tvn[2];
 	else if (norm & V4L2_STD_NTSC)
@@ -2763,7 +2782,6 @@ zoran_poll (struct file *file,
 	return res;
 }
 
-
 /*
  * This maps the buffers to user space.
  *
@@ -2813,7 +2831,6 @@ zoran_vm_close (struct vm_area_struct *vma)
 
 	dprintk(3, KERN_INFO "%s: %s - free %s buffers\n", ZR_DEVNAME(zr),
 		__func__, mode_name(fh->map_mode));
-
 
 	if (fh->map_mode == ZORAN_MAP_MODE_RAW) {
 		if (fh->buffers.active != ZORAN_FREE) {
@@ -3065,4 +3082,3 @@ struct video_device zoran_template = {
 	.release = &zoran_vdev_release,
 	.tvnorms = V4L2_STD_NTSC | V4L2_STD_PAL | V4L2_STD_SECAM,
 };
-

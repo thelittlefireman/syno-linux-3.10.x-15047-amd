@@ -19,18 +19,20 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * along with GNU CC; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  *
- * Please send any bug reports or fixes you make to the
- * email address(es):
- *    lksctp developers <linux-sctp@vger.kernel.org>
+ * Please send any bug reports or fixes you make to one of the
+ * following email addresses:
  *
- * Written or modified by:
- *   La Monte H.P. Yarroll <piggy@acm.org>
- *   Karl Knutson <karl@athena.chicago.il.us>
- *   Ardelle Fan <ardelle.fan@intel.com>
- *   Sridhar Samudrala <sri@us.ibm.com>
+ * La Monte H.P. Yarroll <piggy@acm.org>
+ * Karl Knutson <karl@athena.chicago.il.us>
+ * Ardelle Fan <ardelle.fan@intel.com>
+ * Sridhar Samudrala <sri@us.ibm.com>
+ *
+ * Any bugs reported given to us we will try to fix... any fixes shared will
+ * be incorporated into the next SCTP release.
  */
 
 #ifndef __net_sctp_command_h__
@@ -38,7 +40,6 @@
 
 #include <net/sctp/constants.h>
 #include <net/sctp/structs.h>
-
 
 typedef enum {
 	SCTP_CMD_NOP = 0,	/* Do nothing. */
@@ -115,7 +116,7 @@ typedef enum {
  * analysis of the state functions, but in reality just taken from
  * thin air in the hopes othat we don't trigger a kernel panic.
  */
-#define SCTP_MAX_NUM_COMMANDS 14
+#define SCTP_MAX_NUM_COMMANDS 20
 
 typedef union {
 	__s32 i32;
@@ -206,7 +207,6 @@ typedef struct {
 	__u8 next_cmd;
 } sctp_cmd_seq_t;
 
-
 /* Initialize a block of memory as a command sequence.
  * Return 0 if the initialization fails.
  */
@@ -225,4 +225,3 @@ void sctp_add_cmd_sf(sctp_cmd_seq_t *seq, sctp_verb_t verb, sctp_arg_t obj);
 sctp_cmd_t *sctp_next_cmd(sctp_cmd_seq_t *seq);
 
 #endif /* __net_sctp_command_h__ */
-

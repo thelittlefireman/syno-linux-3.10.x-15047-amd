@@ -16,7 +16,6 @@
 #include "iomux-v3.h"
 #define __NA_	0x000
 
-
 /* Pad control groupings */
 #define MX51_UART_PAD_CTRL	(PAD_CTL_PKE | PAD_CTL_PUE | PAD_CTL_DSE_HIGH | \
 				PAD_CTL_HYS | PAD_CTL_SRE_FAST)

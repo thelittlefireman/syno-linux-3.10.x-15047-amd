@@ -53,7 +53,6 @@ int mesh_paths_generation;
  */
 static DEFINE_RWLOCK(pathtbl_resize_lock);
 
-
 static inline struct mesh_table *resize_dereference_mesh_paths(void)
 {
 	return rcu_dereference_protected(mesh_paths,
@@ -75,7 +74,6 @@ static inline struct mesh_table *resize_dereference_mpp_paths(void)
 #define for_each_mesh_entry(tbl, node, i) \
 	for (i = 0; i <= tbl->hash_mask; i++) \
 		hlist_for_each_entry_rcu(node, &tbl->hash_buckets[i], list)
-
 
 static struct mesh_table *mesh_table_alloc(int size_order)
 {
@@ -191,7 +189,6 @@ static u32 mesh_table_hash(const u8 *addr, struct ieee80211_sub_if_data *sdata,
 	return jhash_2words(*(u32 *)(addr+2), sdata->dev->ifindex,
 			    tbl->hash_rnd) & tbl->hash_mask;
 }
-
 
 /**
  *
@@ -328,7 +325,6 @@ static void mesh_path_move_to_queue(struct mesh_path *gate_mpath,
 	spin_unlock_irqrestore(&from_mpath->frame_queue.lock, flags);
 }
 
-
 static struct mesh_path *mpath_lookup(struct mesh_table *tbl, const u8 *dst,
 				      struct ieee80211_sub_if_data *sdata)
 {
@@ -372,7 +368,6 @@ mpp_path_lookup(struct ieee80211_sub_if_data *sdata, const u8 *dst)
 {
 	return mpath_lookup(rcu_dereference(mpp_paths), dst, sdata);
 }
-
 
 /**
  * mesh_path_lookup_by_idx - look up a path in the mesh path table by its index
@@ -705,7 +700,6 @@ err_path_alloc:
 	return err;
 }
 
-
 /**
  * mesh_plink_broken - deactivates paths and sends perr when a link breaks
  *
@@ -722,6 +716,7 @@ void mesh_plink_broken(struct sta_info *sta)
 	struct mpath_node *node;
 	struct ieee80211_sub_if_data *sdata = sta->sdata;
 	int i;
+	__le16 reason = cpu_to_le16(WLAN_REASON_MESH_PATH_DEST_UNREACHABLE);
 
 	rcu_read_lock();
 	tbl = rcu_dereference(mesh_paths);
@@ -735,9 +730,9 @@ void mesh_plink_broken(struct sta_info *sta)
 			++mpath->sn;
 			spin_unlock_bh(&mpath->state_lock);
 			mesh_path_error_tx(sdata,
-				sdata->u.mesh.mshcfg.element_ttl,
-				mpath->dst, mpath->sn,
-				WLAN_REASON_MESH_PATH_DEST_UNREACHABLE, bcast);
+					   sdata->u.mesh.mshcfg.element_ttl,
+					   mpath->dst, cpu_to_le32(mpath->sn),
+					   reason, bcast);
 		}
 	}
 	rcu_read_unlock();
@@ -746,10 +741,8 @@ void mesh_plink_broken(struct sta_info *sta)
 static void mesh_path_node_reclaim(struct rcu_head *rp)
 {
 	struct mpath_node *node = container_of(rp, struct mpath_node, rcu);
-	struct ieee80211_sub_if_data *sdata = node->mpath->sdata;
 
 	del_timer_sync(&node->mpath->timer);
-	atomic_dec(&sdata->u.mesh.mpaths);
 	kfree(node->mpath);
 	kfree(node);
 }
@@ -757,8 +750,9 @@ static void mesh_path_node_reclaim(struct rcu_head *rp)
 /* needs to be called with the corresponding hashwlock taken */
 static void __mesh_path_del(struct mesh_table *tbl, struct mpath_node *node)
 {
-	struct mesh_path *mpath;
-	mpath = node->mpath;
+	struct mesh_path *mpath = node->mpath;
+	struct ieee80211_sub_if_data *sdata = node->mpath->sdata;
+
 	spin_lock(&mpath->state_lock);
 	mpath->flags |= MESH_PATH_RESOLVING;
 	if (mpath->is_gate)
@@ -766,6 +760,7 @@ static void __mesh_path_del(struct mesh_table *tbl, struct mpath_node *node)
 	hlist_del_rcu(&node->list);
 	call_rcu(&node->rcu, mesh_path_node_reclaim);
 	spin_unlock(&mpath->state_lock);
+	atomic_dec(&sdata->u.mesh.mpaths);
 	atomic_dec(&tbl->entries);
 }
 
@@ -1050,7 +1045,6 @@ int mesh_pathtbl_init(void)
 		goto free_path;
 	}
 	INIT_HLIST_HEAD(tbl_path->known_gates);
-
 
 	tbl_mpp = mesh_table_alloc(INIT_PATHS_SIZE_ORDER);
 	if (!tbl_mpp) {

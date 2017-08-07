@@ -133,7 +133,6 @@ struct hfcPCI_hw {
 #define CLKDEL_TE	0x0e	/* CLKDEL in TE mode */
 #define CLKDEL_NT	0x6c	/* CLKDEL in NT mode */
 
-
 struct hfc_pci {
 	u_char			subtype;
 	u_char			chanlimit;
@@ -310,7 +309,6 @@ hfcpci_Timer(struct hfc_pci *hc)
  *	add_timer(&hc->hw.timer);
  */
 }
-
 
 /*
  * select a b-channel entry matching and active
@@ -912,8 +910,6 @@ hfcpci_fill_fifo(struct bchannel *bch)
 	get_next_bframe(bch);
 }
 
-
-
 /*
  * handle L1 state changes TE
  */
@@ -1307,11 +1303,11 @@ mode_hfcpci(struct bchannel *bch, int bc, int protocol)
 		}
 		if (fifo2 & 2) {
 			hc->hw.fifo_en &= ~HFCPCI_FIFOEN_B2;
-			hc->hw.int_m1 &= ~(HFCPCI_INTS_B2TRANS |
+			hc->hw.int_m1 &= ~(HFCPCI_INTS_B2TRANS +
 					   HFCPCI_INTS_B2REC);
 		} else {
 			hc->hw.fifo_en &= ~HFCPCI_FIFOEN_B1;
-			hc->hw.int_m1 &= ~(HFCPCI_INTS_B1TRANS |
+			hc->hw.int_m1 &= ~(HFCPCI_INTS_B1TRANS +
 					   HFCPCI_INTS_B1REC);
 		}
 #ifdef REVERSE_BITORDER
@@ -1346,14 +1342,14 @@ mode_hfcpci(struct bchannel *bch, int bc, int protocol)
 		if (fifo2 & 2) {
 			hc->hw.fifo_en |= HFCPCI_FIFOEN_B2;
 			if (!tics)
-				hc->hw.int_m1 |= (HFCPCI_INTS_B2TRANS |
+				hc->hw.int_m1 |= (HFCPCI_INTS_B2TRANS +
 						  HFCPCI_INTS_B2REC);
 			hc->hw.ctmt |= 2;
 			hc->hw.conn &= ~0x18;
 		} else {
 			hc->hw.fifo_en |= HFCPCI_FIFOEN_B1;
 			if (!tics)
-				hc->hw.int_m1 |= (HFCPCI_INTS_B1TRANS |
+				hc->hw.int_m1 |= (HFCPCI_INTS_B1TRANS +
 						  HFCPCI_INTS_B1REC);
 			hc->hw.ctmt |= 1;
 			hc->hw.conn &= ~0x03;
@@ -1375,14 +1371,14 @@ mode_hfcpci(struct bchannel *bch, int bc, int protocol)
 		if (fifo2 & 2) {
 			hc->hw.last_bfifo_cnt[1] = 0;
 			hc->hw.fifo_en |= HFCPCI_FIFOEN_B2;
-			hc->hw.int_m1 |= (HFCPCI_INTS_B2TRANS |
+			hc->hw.int_m1 |= (HFCPCI_INTS_B2TRANS +
 					  HFCPCI_INTS_B2REC);
 			hc->hw.ctmt &= ~2;
 			hc->hw.conn &= ~0x18;
 		} else {
 			hc->hw.last_bfifo_cnt[0] = 0;
 			hc->hw.fifo_en |= HFCPCI_FIFOEN_B1;
-			hc->hw.int_m1 |= (HFCPCI_INTS_B1TRANS |
+			hc->hw.int_m1 |= (HFCPCI_INTS_B1TRANS +
 					  HFCPCI_INTS_B1REC);
 			hc->hw.ctmt &= ~1;
 			hc->hw.conn &= ~0x03;
@@ -1725,7 +1721,6 @@ inithfcpci(struct hfc_pci *hc)
 	mode_hfcpci(&hc->bch[1], 2, -1);
 }
 
-
 static int
 init_card(struct hfc_pci *hc)
 {
@@ -1733,7 +1728,6 @@ init_card(struct hfc_pci *hc)
 	u_long	flags;
 
 	printk(KERN_DEBUG "init_card: entered\n");
-
 
 	spin_lock_irqsave(&hc->lock, flags);
 	disable_hwirq(hc);
@@ -2259,7 +2253,6 @@ hfc_remove_pci(struct pci_dev *pdev)
 			       __func__);
 }
 
-
 static struct pci_driver hfc_driver = {
 	.name = "hfcpci",
 	.probe = hfc_probe,
@@ -2295,8 +2288,8 @@ _hfcpci_softirq(struct device *dev, void *arg)
 static void
 hfcpci_softirq(void *arg)
 {
-	WARN_ON_ONCE(driver_for_each_device(&hfc_driver.driver, NULL, arg,
-				      _hfcpci_softirq) != 0);
+	(void) driver_for_each_device(&hfc_driver.driver, NULL, arg,
+				      _hfcpci_softirq);
 
 	/* if next event would be in the past ... */
 	if ((s32)(hfc_jiffies + tics - jiffies) <= 0)

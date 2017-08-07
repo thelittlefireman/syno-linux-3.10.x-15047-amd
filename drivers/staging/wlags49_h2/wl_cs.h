@@ -61,14 +61,11 @@
 #ifndef __WL_CS_H__
 #define __WL_CS_H__
 
-
-
-
 /*******************************************************************************
- *  function prototypes
+ *  function protoypes
  ******************************************************************************/
 
-int wl_adapter_insert(struct pcmcia_device *link);
+void wl_adapter_insert(struct pcmcia_device *link);
 
 void wl_adapter_release(struct pcmcia_device *link);
 
@@ -84,6 +81,4 @@ int wl_adapter_is_open(struct net_device *dev);
 
 const char *DbgEvent( int mask );
 
-
-
-#endif  /* __WL_CS_H__ */
+#endif  // __WL_CS_H__

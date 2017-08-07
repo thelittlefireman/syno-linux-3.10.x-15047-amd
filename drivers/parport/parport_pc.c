@@ -92,7 +92,6 @@
 #define DPRINTK(stuff...)
 #endif
 
-
 #define NR_SUPERIOS 3
 static struct superio_struct {	/* For Super-IO chips autodetection */
 	int io;
@@ -895,7 +894,6 @@ static size_t parport_pc_ecp_write_block_pio(struct parport *port,
 #endif /* IEEE 1284 support */
 #endif /* Allowed to use FIFO/DMA */
 
-
 /*
  *	******************************************
  *	INITIALISATION AND MODULE STUFF BELOW HERE
@@ -950,7 +948,6 @@ static struct superio_struct *find_free_superio(void)
 			return &superios[i];
 	return NULL;
 }
-
 
 /* Super-IO chipset detection, Winbond, SMSC */
 static void show_parconfig_smsc37c669(int io, int key)
@@ -1036,7 +1033,6 @@ static void show_parconfig_smsc37c669(int io, int key)
 		}
 	}
 }
-
 
 static void show_parconfig_winbond(int io, int key)
 {
@@ -1191,7 +1187,6 @@ static void decode_smsc(int efer, int key, int devid, int devrev)
 		func(efer, key);
 }
 
-
 static void winbond_check(int io, int key)
 {
 	int origval, devid, devrev, oldid, x_devid, x_devrev, x_oldid;
@@ -1314,7 +1309,6 @@ out:
 	release_region(io, 3);
 }
 
-
 static void detect_and_report_winbond(void)
 {
 	if (verbose_probing)
@@ -1397,7 +1391,6 @@ static int get_superio_irq(struct parport *p)
 		return s->irq;
 	return PARPORT_IRQ_NONE;
 }
-
 
 /* --- Mode detection ------------------------------------- */
 
@@ -2004,7 +1997,6 @@ struct parport *parport_pc_probe_port(unsigned long int base,
 	struct resource	*ECR_res = NULL;
 	struct resource	*EPP_res = NULL;
 	struct platform_device *pdev = NULL;
-	int ret;
 
 	if (!dev) {
 		/* We need a physical device to attach to, but none was
@@ -2015,11 +2007,8 @@ struct parport *parport_pc_probe_port(unsigned long int base,
 			return NULL;
 		dev = &pdev->dev;
 
-		ret = dma_coerce_mask_and_coherent(dev, DMA_BIT_MASK(24));
-		if (ret) {
-			dev_err(dev, "Unable to set coherent dma mask: disabling DMA\n");
-			dma = PARPORT_DMA_NONE;
-		}
+		dev->coherent_dma_mask = DMA_BIT_MASK(24);
+		dev->dma_mask = &dev->coherent_dma_mask;
 	}
 
 	ops = kmalloc(sizeof(struct parport_operations), GFP_KERNEL);
@@ -2563,7 +2552,6 @@ static int sio_via_probe(struct pci_dev *pdev, int autoirq, int autodma,
 	return 0;
 }
 
-
 enum parport_pc_sio_types {
 	sio_via_686a = 0,   /* Via VT82C686A motherboard Super I/O */
 	sio_via_8231,	    /* Via VT8231 south bridge integrated Super IO */
@@ -2617,7 +2605,6 @@ enum parport_pc_pci_cards {
 	netmos_9865,
 	quatech_sppxp100,
 };
-
 
 /* each element directly indexed from enum list, above
  * (but offset by last_sio) */
@@ -2821,12 +2808,16 @@ static int parport_pc_pci_probe(struct pci_dev *dev,
 		if (irq == IRQ_NONE) {
 			printk(KERN_DEBUG
 	"PCI parallel port detected: %04x:%04x, I/O at %#lx(%#lx)\n",
-				id->vendor, id->device, io_lo, io_hi);
+				parport_pc_pci_tbl[i + last_sio].vendor,
+				parport_pc_pci_tbl[i + last_sio].device,
+				io_lo, io_hi);
 			irq = PARPORT_IRQ_NONE;
 		} else {
 			printk(KERN_DEBUG
 	"PCI parallel port detected: %04x:%04x, I/O at %#lx(%#lx), IRQ %d\n",
-				id->vendor, id->device, io_lo, io_hi, irq);
+				parport_pc_pci_tbl[i + last_sio].vendor,
+				parport_pc_pci_tbl[i + last_sio].device,
+				io_lo, io_hi, irq);
 		}
 		data->ports[count] =
 			parport_pc_probe_port(io_lo, io_hi, irq,
@@ -2855,6 +2846,8 @@ static void parport_pc_pci_remove(struct pci_dev *dev)
 {
 	struct pci_parport_data *data = pci_get_drvdata(dev);
 	int i;
+
+	pci_set_drvdata(dev, NULL);
 
 	if (data) {
 		for (i = data->num - 1; i >= 0; i--)

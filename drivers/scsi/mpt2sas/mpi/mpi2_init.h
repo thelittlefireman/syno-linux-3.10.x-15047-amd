@@ -1,12 +1,12 @@
 /*
- *  Copyright (c) 2000-2013 LSI Corporation.
+ *  Copyright (c) 2000-2012 LSI Corporation.
  *
  *
  *           Name:  mpi2_init.h
  *          Title:  MPI SCSI initiator mode messages and structures
  *  Creation Date:  June 23, 2006
  *
- *    mpi2_init.h Version:  02.00.14
+ *    mpi2_init.h Version:  02.00.13
  *
  *  Version History
  *  ---------------
@@ -36,7 +36,6 @@
  *  11-10-10  02.00.11  Added MPI2_SCSIIO_NUM_SGLOFFSETS define.
  *  02-06-12  02.00.13  Added alternate defines for Task Priority / Command
  *                      Priority to match SAM-4.
- *  07-10-12  02.00.14  Added MPI2_SCSIIO_CONTROL_SHIFT_DATADIRECTION.
  *  --------------------------------------------------------------------------
  */
 
@@ -190,7 +189,6 @@ typedef struct _MPI2_SCSI_IO_REQUEST
 #define MPI2_SCSIIO_CONTROL_ADDCDBLEN_SHIFT     (26)
 
 #define MPI2_SCSIIO_CONTROL_DATADIRECTION_MASK  (0x03000000)
-#define MPI2_SCSIIO_CONTROL_SHIFT_DATADIRECTION (24)
 #define MPI2_SCSIIO_CONTROL_NODATATRANSFER      (0x00000000)
 #define MPI2_SCSIIO_CONTROL_WRITE               (0x01000000)
 #define MPI2_SCSIIO_CONTROL_READ                (0x02000000)
@@ -212,7 +210,6 @@ typedef struct _MPI2_SCSI_IO_REQUEST
 #define MPI2_SCSIIO_CONTROL_NO_TLR              (0x00000000)
 #define MPI2_SCSIIO_CONTROL_TLR_ON              (0x00000040)
 #define MPI2_SCSIIO_CONTROL_TLR_OFF             (0x00000080)
-
 
 /* SCSI IO Error Reply Message */
 typedef struct _MPI2_SCSI_IO_REPLY
@@ -270,7 +267,6 @@ typedef struct _MPI2_SCSI_IO_REPLY
 
 #define MPI2_SCSI_TASKTAG_UNKNOWN               (0xFFFF)
 
-
 /****************************************************************************
 *  SCSI Task Management messages
 ****************************************************************************/
@@ -322,8 +318,6 @@ typedef struct _MPI2_SCSI_TASK_MANAGE_REQUEST
 
 #define MPI2_SCSITASKMGMT_MSGFLAGS_DO_NOT_SEND_TASK_IU  (0x01)
 
-
-
 /* SCSI Task Management Reply Message */
 typedef struct _MPI2_SCSI_TASK_MANAGE_REPLY
 {
@@ -367,7 +361,6 @@ typedef struct _MPI2_SCSI_TASK_MANAGE_REPLY
 #define MPI2_SCSITASKMGMT_RI_SHIFT_ARI1                 (16)
 #define MPI2_SCSITASKMGMT_RI_MASK_ARI0                  (0xFF000000)
 #define MPI2_SCSITASKMGMT_RI_SHIFT_ARI0                 (24)
-
 
 /****************************************************************************
 *  SCSI Enclosure Processor messages
@@ -416,7 +409,6 @@ typedef struct _MPI2_SEP_REQUEST
 #define MPI2_SEP_REQ_SLOTSTATUS_DEV_FAULTY              (0x00000002)
 #define MPI2_SEP_REQ_SLOTSTATUS_NO_ERROR                (0x00000001)
 
-
 /* SCSI Enclosure Processor Reply Message */
 typedef struct _MPI2_SEP_REPLY
 {
@@ -453,7 +445,4 @@ typedef struct _MPI2_SEP_REPLY
 #define MPI2_SEP_REPLY_SLOTSTATUS_DEV_FAULTY            (0x00000002)
 #define MPI2_SEP_REPLY_SLOTSTATUS_NO_ERROR              (0x00000001)
 
-
 #endif
-
-

@@ -101,7 +101,7 @@ struct swsusp_header {
 	unsigned int flags;	/* Flags to pass to the "boot" kernel */
 	char	orig_sig[10];
 	char	sig[10];
-} __packed;
+} __attribute__((packed));
 
 static struct swsusp_header *swsusp_header;
 
@@ -430,7 +430,6 @@ static int swap_writer_finish(struct swap_map_handle *handle,
 /* Minimum/maximum number of pages for read buffering. */
 #define LZO_MIN_RD_PAGES	1024
 #define LZO_MAX_RD_PAGES	8192
-
 
 /**
  *	save_image - save the suspend image data

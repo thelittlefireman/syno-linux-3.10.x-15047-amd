@@ -40,7 +40,6 @@
 #include <net/net_namespace.h>
 #include <net/ip_vs.h>
 
-
 #ifndef CONFIG_IP_VS_TAB_BITS
 #define CONFIG_IP_VS_TAB_BITS	12
 #endif
@@ -95,7 +94,6 @@ static inline void ct_write_unlock_bh(unsigned int key)
 {
 	spin_unlock_bh(&__ip_vs_conntbl_lock_array[key&CT_LOCKARRAY_MASK].l);
 }
-
 
 /*
  *	Returns hash value for IPVS connection entry
@@ -187,7 +185,6 @@ static inline int ip_vs_conn_hash(struct ip_vs_conn *cp)
 	return ret;
 }
 
-
 /*
  *	UNhashes ip_vs_conn from ip_vs_conn_tab.
  *	returns bool success. Caller should hold conn reference.
@@ -246,7 +243,6 @@ static inline bool ip_vs_conn_unlink(struct ip_vs_conn *cp)
 
 	return ret;
 }
-
 
 /*
  *  Gets ip_vs_conn associated with supplied parameters in the ip_vs_conn_tab.
@@ -455,7 +451,6 @@ void ip_vs_conn_put(struct ip_vs_conn *cp)
 	__ip_vs_conn_put(cp);
 }
 
-
 /*
  *	Fill a no_client_port connection with a client port number
  */
@@ -474,7 +469,6 @@ void ip_vs_conn_fill_cport(struct ip_vs_conn *cp, __be16 cport)
 		ip_vs_conn_hash(cp);
 	}
 }
-
 
 /*
  *	Bind a connection entry with the corresponding packet_xmit.
@@ -531,7 +525,6 @@ static inline void ip_vs_bind_xmit_v6(struct ip_vs_conn *cp)
 	}
 }
 #endif
-
 
 static inline int ip_vs_dest_totalconns(struct ip_vs_dest *dest)
 {
@@ -606,7 +599,6 @@ ip_vs_bind_dest(struct ip_vs_conn *cp, struct ip_vs_dest *dest)
 		dest->flags |= IP_VS_DEST_F_OVERLOAD;
 }
 
-
 /*
  * Check if there is a destination for the connection, if so
  * bind the connection to the destination.
@@ -652,7 +644,6 @@ void ip_vs_try_bind_dest(struct ip_vs_conn *cp)
 	}
 	rcu_read_unlock();
 }
-
 
 /*
  *	Unbind a connection entry with its VS destination
@@ -797,7 +788,6 @@ static void ip_vs_conn_expire(unsigned long data)
 			ip_vs_control_del(cp);
 
 		if (cp->flags & IP_VS_CONN_F_NFCT) {
-			ip_vs_conn_drop_conntrack(cp);
 			/* Do not access conntracks during subsys cleanup
 			 * because nf_conntrack_find_get can not be used after
 			 * conntrack cleanup for the net.
@@ -844,7 +834,6 @@ void ip_vs_conn_expire_now(struct ip_vs_conn *cp)
 		mod_timer_pending(&cp->timer, jiffies);
 }
 
-
 /*
  *	Create a new connection entry and hash it into the ip_vs_conn_tab
  */
@@ -871,11 +860,11 @@ ip_vs_conn_new(const struct ip_vs_conn_param *p,
 	cp->protocol	   = p->protocol;
 	ip_vs_addr_set(p->af, &cp->caddr, p->caddr);
 	cp->cport	   = p->cport;
-	/* proto should only be IPPROTO_IP if p->vaddr is a fwmark */
-	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
-		       &cp->vaddr, p->vaddr);
+	ip_vs_addr_set(p->af, &cp->vaddr, p->vaddr);
 	cp->vport	   = p->vport;
-	ip_vs_addr_set(p->af, &cp->daddr, daddr);
+	/* proto should only be IPPROTO_IP if d_addr is a fwmark */
+	ip_vs_addr_set(p->protocol == IPPROTO_IP ? AF_UNSPEC : p->af,
+		       &cp->daddr, daddr);
 	cp->dport          = dport;
 	cp->flags	   = flags;
 	cp->fwmark         = fwmark;
@@ -975,7 +964,8 @@ static void *ip_vs_conn_array(struct seq_file *seq, loff_t pos)
 				return cp;
 			}
 		}
-		cond_resched_rcu();
+		rcu_read_unlock();
+		rcu_read_lock();
 	}
 
 	return NULL;
@@ -1014,7 +1004,8 @@ static void *ip_vs_conn_seq_next(struct seq_file *seq, void *v, loff_t *pos)
 			iter->l = &ip_vs_conn_tab[idx];
 			return cp;
 		}
-		cond_resched_rcu();
+		rcu_read_unlock();
+		rcu_read_lock();
 	}
 	iter->l = NULL;
 	return NULL;
@@ -1166,7 +1157,6 @@ static const struct file_operations ip_vs_conn_sync_fops = {
 
 #endif
 
-
 /*
  *      Randomly drop connection entries before running out of memory
  */
@@ -1204,12 +1194,16 @@ void ip_vs_random_dropentry(struct net *net)
 	int idx;
 	struct ip_vs_conn *cp, *cp_c;
 
-	rcu_read_lock();
 	/*
 	 * Randomly scan 1/32 of the whole table every second
 	 */
 	for (idx = 0; idx < (ip_vs_conn_tab_size>>5); idx++) {
-		unsigned int hash = prandom_u32() & ip_vs_conn_tab_mask;
+		unsigned int hash = net_random() & ip_vs_conn_tab_mask;
+
+		/*
+		 *  Lock is actually needed in this loop.
+		 */
+		rcu_read_lock();
 
 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[hash], c_list) {
 			if (cp->flags & IP_VS_CONN_F_TEMPLATE)
@@ -1231,18 +1225,6 @@ void ip_vs_random_dropentry(struct net *net)
 				default:
 					continue;
 				}
-			} else if (cp->protocol == IPPROTO_SCTP) {
-				switch (cp->state) {
-				case IP_VS_SCTP_S_INIT1:
-				case IP_VS_SCTP_S_INIT:
-					break;
-				case IP_VS_SCTP_S_ESTABLISHED:
-					if (todrop_entry(cp))
-						break;
-					continue;
-				default:
-					continue;
-				}
 			} else {
 				if (!todrop_entry(cp))
 					continue;
@@ -1258,11 +1240,9 @@ void ip_vs_random_dropentry(struct net *net)
 				__ip_vs_conn_put(cp);
 			}
 		}
-		cond_resched_rcu();
+		rcu_read_unlock();
 	}
-	rcu_read_unlock();
 }
-
 
 /*
  *      Flush all the connection entries in the ip_vs_conn_tab
@@ -1274,8 +1254,11 @@ static void ip_vs_conn_flush(struct net *net)
 	struct netns_ipvs *ipvs = net_ipvs(net);
 
 flush_again:
-	rcu_read_lock();
 	for (idx = 0; idx < ip_vs_conn_tab_size; idx++) {
+		/*
+		 *  Lock is actually needed in this loop.
+		 */
+		rcu_read_lock();
 
 		hlist_for_each_entry_rcu(cp, &ip_vs_conn_tab[idx], c_list) {
 			if (!ip_vs_conn_net_eq(cp, net))
@@ -1290,9 +1273,8 @@ flush_again:
 				__ip_vs_conn_put(cp);
 			}
 		}
-		cond_resched_rcu();
+		rcu_read_unlock();
 	}
-	rcu_read_unlock();
 
 	/* the counter may be not NULL, because maybe some conn entries
 	   are run by slow timer handler or unhashed but still referred */

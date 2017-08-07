@@ -299,7 +299,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 	pac207_write_regs(gspca_dev, 0x0042, pac207_sensor_init[3], 8);
 
 	/* Compression Balance */
-	if (gspca_dev->pixfmt.width == 176)
+	if (gspca_dev->width == 176)
 		pac207_write_reg(gspca_dev, 0x4a, 0xff);
 	else
 		pac207_write_reg(gspca_dev, 0x4a, 0x30);
@@ -317,7 +317,7 @@ static int sd_start(struct gspca_dev *gspca_dev)
 		mode = 0x00;
 	else
 		mode = 0x02;
-	if (gspca_dev->pixfmt.width == 176) {	/* 176x144 */
+	if (gspca_dev->width == 176) {	/* 176x144 */
 		mode |= 0x01;
 		PDEBUG(D_STREAM, "pac207_start mode 176x144");
 	} else {				/* 352x288 */
@@ -349,7 +349,6 @@ static void sd_stopN(struct gspca_dev *gspca_dev)
 	pac207_write_reg(gspca_dev, 0x41, mode); /* Turn off LED */
 	pac207_write_reg(gspca_dev, 0x0f, 0x00); /* Power Control */
 }
-
 
 static void pac207_do_auto_gain(struct gspca_dev *gspca_dev)
 {
@@ -416,7 +415,7 @@ static void sd_pkt_scan(struct gspca_dev *gspca_dev,
 #if IS_ENABLED(CONFIG_INPUT)
 static int sd_int_pkt_scan(struct gspca_dev *gspca_dev,
 			u8 *data,		/* interrupt packet data */
-			int len)		/* interrupt packet length */
+			int len)		/* interrput packet length */
 {
 	int ret = -EINVAL;
 

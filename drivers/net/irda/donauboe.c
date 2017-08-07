@@ -85,7 +85,6 @@
 #define TX_SLOTS    8
 #define RX_SLOTS    8
 
-
 /* Less user servicable parts below here */
 
 /* Test, Transmit and receive buffer sizes, adjust at your peril */
@@ -106,7 +105,6 @@
 #define BUF_SAFETY  0x7a
 #define RX_BUF_SZ   (RX_LEN)
 #define TX_BUF_SZ   (TX_LEN+BUF_SAFETY)
-
 
 /* Logic of the netdev part of this driver                             */
 
@@ -198,7 +196,6 @@ static int max_baud = 4000000;
 #ifdef USE_PROBE
 static bool do_probe = false;
 #endif
-
 
 /**********************************************************************/
 static int
@@ -841,7 +838,6 @@ toshoboe_probe (struct toshoboe_cb *self)
       int fir = (j > 1);
       toshoboe_stopchip (self);
 
-
       spin_lock_irqsave(&self->spinlock, flags);
       /*Address is already setup */
       toshoboe_startchip (self);
@@ -1333,7 +1329,6 @@ dumpbufs(self->rx_bufs[self->rxs],len,'<');
   return IRQ_HANDLED;
 }
 
-
 static int
 toshoboe_net_open (struct net_device *dev)
 {
@@ -1352,7 +1347,7 @@ toshoboe_net_open (struct net_device *dev)
     return 0;
 
   rc = request_irq (self->io.irq, toshoboe_interrupt,
-                    IRQF_SHARED, dev->name, self);
+                    IRQF_SHARED | IRQF_DISABLED, dev->name, self);
   if (rc)
   	return rc;
 
@@ -1488,7 +1483,7 @@ static void
 toshoboe_close (struct pci_dev *pci_dev)
 {
   int i;
-  struct toshoboe_cb *self = pci_get_drvdata(pci_dev);
+  struct toshoboe_cb *self = (struct toshoboe_cb*)pci_get_drvdata(pci_dev);
 
   IRDA_DEBUG (4, "%s()\n", __func__);
 
@@ -1559,7 +1554,7 @@ toshoboe_open (struct pci_dev *pci_dev, const struct pci_device_id *pdid)
   self->io.fir_base = self->base;
   self->io.fir_ext = OBOE_IO_EXTENT;
   self->io.irq = pci_dev->irq;
-  self->io.irqflags = IRQF_SHARED;
+  self->io.irqflags = IRQF_SHARED | IRQF_DISABLED;
 
   self->speed = self->io.speed = 9600;
   self->async = 0;
@@ -1649,7 +1644,6 @@ toshoboe_open (struct pci_dev *pci_dev, const struct pci_device_id *pdid)
       goto freebufs;
     }
 
-
 #ifdef USE_PROBE
   if (do_probe)
     if (!toshoboe_probe (self))
@@ -1696,7 +1690,7 @@ freeself:
 static int
 toshoboe_gotosleep (struct pci_dev *pci_dev, pm_message_t crap)
 {
-  struct toshoboe_cb *self = pci_get_drvdata(pci_dev);
+  struct toshoboe_cb *self = (struct toshoboe_cb*)pci_get_drvdata(pci_dev);
   unsigned long flags;
   int i = 10;
 
@@ -1725,7 +1719,7 @@ toshoboe_gotosleep (struct pci_dev *pci_dev, pm_message_t crap)
 static int
 toshoboe_wakeup (struct pci_dev *pci_dev)
 {
-  struct toshoboe_cb *self = pci_get_drvdata(pci_dev);
+  struct toshoboe_cb *self = (struct toshoboe_cb*)pci_get_drvdata(pci_dev);
   unsigned long flags;
 
   IRDA_DEBUG (4, "%s()\n", __func__);

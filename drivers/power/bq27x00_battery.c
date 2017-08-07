@@ -738,7 +738,6 @@ static void bq27x00_powersupply_unregister(struct bq27x00_device_info *di)
 	mutex_destroy(&di->lock);
 }
 
-
 /* i2c specific code */
 #ifdef CONFIG_BATTERY_BQ27X00_I2C
 
@@ -966,6 +965,7 @@ static int bq27000_battery_probe(struct platform_device *pdev)
 	return 0;
 
 err_free:
+	platform_set_drvdata(pdev, NULL);
 	kfree(di);
 
 	return ret;
@@ -977,6 +977,7 @@ static int bq27000_battery_remove(struct platform_device *pdev)
 
 	bq27x00_powersupply_unregister(di);
 
+	platform_set_drvdata(pdev, NULL);
 	kfree(di);
 
 	return 0;

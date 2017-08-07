@@ -215,7 +215,6 @@ void bmwrite(struct net_device *dev, unsigned long reg_offset, unsigned data )
 	out_le16((void __iomem *)dev->base_addr + reg_offset, data);
 }
 
-
 static inline
 unsigned short bmread(struct net_device *dev, unsigned long reg_offset )
 {
@@ -397,7 +396,6 @@ bmac_enable_interrupts(struct net_device *dev)
 	bmwrite(dev, INTDISABLE, EnableNormal);
 }
 #endif
-
 
 static void
 bmac_start_chip(struct net_device *dev)
@@ -639,7 +637,6 @@ bmac_init_rx_ring(struct net_device *dev)
 
 	return 1;
 }
-
 
 static int bmac_transmit_packet(struct sk_buff *skb, struct net_device *dev)
 {
@@ -1016,6 +1013,7 @@ static void bmac_set_multicast(struct net_device *dev)
 static void bmac_set_multicast(struct net_device *dev)
 {
 	struct netdev_hw_addr *ha;
+	int i;
 	unsigned short rx_cfg;
 	u32 crc;
 
@@ -1029,11 +1027,13 @@ static void bmac_set_multicast(struct net_device *dev)
 		rx_cfg |= RxPromiscEnable;
 		bmwrite(dev, RXCFG, rx_cfg);
 	} else {
-		u16 hash_table[4] = { 0 };
+		u16 hash_table[4];
 
 		rx_cfg = bmread(dev, RXCFG);
 		rx_cfg &= ~RxPromiscEnable;
 		bmwrite(dev, RXCFG, rx_cfg);
+
+		for(i = 0; i < 4; i++) hash_table[i] = 0;
 
 		netdev_for_each_mc_addr(ha, dev) {
 			crc = ether_crc_le(6, ha->addr);
@@ -1180,7 +1180,6 @@ bmac_verify_checksum(struct net_device *dev)
 	return 0;
 }
 
-
 static void
 bmac_get_station_address(struct net_device *dev, unsigned char *ea)
 {
@@ -1220,8 +1219,8 @@ static void bmac_reset_and_enable(struct net_device *dev)
 	if (skb != NULL) {
 		data = skb_put(skb, ETHERMINPACKET);
 		memset(data, 0, ETHERMINPACKET);
-		memcpy(data, dev->dev_addr, ETH_ALEN);
-		memcpy(data + ETH_ALEN, dev->dev_addr, ETH_ALEN);
+		memcpy(data, dev->dev_addr, 6);
+		memcpy(data+6, dev->dev_addr, 6);
 		bmac_transmit_packet(skb, dev);
 	}
 	spin_unlock_irqrestore(&bp->lock, flags);
@@ -1650,7 +1649,6 @@ static struct macio_driver bmac_driver =
 	.resume		= bmac_resume,
 #endif
 };
-
 
 static int __init bmac_init(void)
 {

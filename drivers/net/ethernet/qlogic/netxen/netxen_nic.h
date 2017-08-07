@@ -14,7 +14,9 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, see <http://www.gnu.org/licenses/>.
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston,
+ * MA  02111-1307, USA.
  *
  * The full GNU General Public License is included in this distribution
  * in the file called "COPYING".
@@ -51,8 +53,8 @@
 
 #define _NETXEN_NIC_LINUX_MAJOR 4
 #define _NETXEN_NIC_LINUX_MINOR 0
-#define _NETXEN_NIC_LINUX_SUBVERSION 82
-#define NETXEN_NIC_LINUX_VERSIONID  "4.0.82"
+#define _NETXEN_NIC_LINUX_SUBVERSION 80
+#define NETXEN_NIC_LINUX_VERSIONID  "4.0.80"
 
 #define NETXEN_VERSION_CODE(a, b, c)	(((a) << 24) + ((b) << 16) + (c))
 #define _major(v)	(((v) >> 24) & 0xff)
@@ -419,7 +421,6 @@ struct rcv_desc {
 	((sts_data) & 0x0FFFFFFFF)
 #define netxen_get_lro_sts_mss(sts_data1)		\
 	((sts_data1 >> 32) & 0x0FFFF)
-
 
 struct status_desc {
 	__le64 status_desc_data[2];
@@ -938,7 +939,6 @@ typedef struct {
 #define NX_HOST_INT_CRB_MODE_NOTX	3
 #define NX_HOST_INT_CRB_MODE_NORXTX	4
 
-
 /* MAC */
 
 #define MC_COUNT_P2	16
@@ -1169,6 +1169,7 @@ typedef struct {
 
 #define NETXEN_DB_MAPSIZE_BYTES    	0x1000
 
+#define NETXEN_NETDEV_WEIGHT 128
 #define NETXEN_ADAPTER_UP_MAGIC 777
 #define NETXEN_NIC_PEG_TUNE 0
 
@@ -1194,7 +1195,6 @@ typedef struct {
 #define NX_CDRP_CMD_TEMP_SIZE           0x0000002f
 #define NX_CDRP_CMD_GET_TEMP_HDR        0x00000030
 
-
 #define NX_DUMP_STATE_ARRAY_LEN		16
 #define NX_DUMP_CAP_SIZE_ARRAY_LEN	8
 
@@ -1203,7 +1203,6 @@ typedef struct {
 #define NX_ENABLE_FW_DUMP               0xaddfeed
 #define NX_DISABLE_FW_DUMP              0xbadfeed
 #define NX_FORCE_FW_RESET               0xdeaddead
-
 
 /* Fw dump levels */
 static const u32 FW_DUMP_LEVELS[] = { 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff };
@@ -1233,7 +1232,6 @@ static const u32 FW_DUMP_LEVELS[] = { 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f, 0xff };
 	writel(data, (void __iomem *) (bar0 + NX_FW_DUMP_REG2 + LSW(addr)));\
 	readl((void __iomem *) (bar0 + NX_FW_DUMP_REG2 + LSW(addr)));  \
 } while (0)
-
 
 /*
 Entry Type Defines
@@ -1298,8 +1296,6 @@ Entry Type Defines
 #define NX_PCI_READ_32(ADDR)			readl((ADDR))
 #define NX_PCI_WRITE_32(DATA, ADDR)	writel(DATA, (ADDR))
 
-
-
 struct netxen_minidump {
 	u32 pos;			/* position in the dump buffer */
 	u8  fw_supports_md;		/* FW supports Mini cordump */
@@ -1314,8 +1310,6 @@ struct netxen_minidump {
 	void *md_template;		/* FW template will be stored */
 	void *md_capture_buff;		/* FW dump will be stored */
 };
-
-
 
 struct netxen_minidump_template_hdr {
 	u32 entry_type;
@@ -1355,7 +1349,6 @@ struct netxen_common_entry_hdr {
 		u32 entry_ctrl_word;
 	};
 };
-
 
 /* Generic Entry Including Header */
 struct netxen_minidump_entry {
@@ -1414,7 +1407,6 @@ struct netxen_minidump_entry_rdrom {
 	u32 read_addr;
 	u32 read_data_size;
 };
-
 
 /* Read CRB and Control Entry Header */
 struct netxen_minidump_entry_crb {
@@ -1852,7 +1844,7 @@ static const struct netxen_brdinfo netxen_boards[] = {
 
 #define NUM_SUPPORTED_BOARDS ARRAY_SIZE(netxen_boards)
 
-static inline int netxen_nic_get_brd_name_by_type(u32 type, char *name)
+static inline void get_brd_name_by_type(u32 type, char *name)
 {
 	int i, found = 0;
 	for (i = 0; i < NUM_SUPPORTED_BOARDS; ++i) {
@@ -1861,14 +1853,10 @@ static inline int netxen_nic_get_brd_name_by_type(u32 type, char *name)
 			found = 1;
 			break;
 		}
-	}
 
-	if (!found) {
-		strcpy(name, "Unknown");
-		return -EINVAL;
 	}
-
-	return 0;
+	if (!found)
+		name = "Unknown";
 }
 
 static inline u32 netxen_tx_avail(struct nx_host_tx_ring *tx_ring)
@@ -1881,8 +1869,9 @@ static inline u32 netxen_tx_avail(struct nx_host_tx_ring *tx_ring)
 
 int netxen_get_flash_mac_addr(struct netxen_adapter *adapter, u64 *mac);
 int netxen_p3_get_mac_addr(struct netxen_adapter *adapter, u64 *mac);
-void netxen_change_ringparam(struct netxen_adapter *adapter);
-int netxen_rom_fast_read(struct netxen_adapter *adapter, int addr, int *valp);
+extern void netxen_change_ringparam(struct netxen_adapter *adapter);
+extern int netxen_rom_fast_read(struct netxen_adapter *adapter, int addr,
+				int *valp);
 
 extern const struct ethtool_ops netxen_nic_ethtool_ops;
 

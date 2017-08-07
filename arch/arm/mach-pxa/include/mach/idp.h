@@ -15,15 +15,12 @@
  *             Changes for 2.6 kernel.
  */
 
-
 /*
  * Note: this file must be safe to include in assembly files
  *
  * Support for the Vibren PXA255 IDP requires rev04 or later
  * IDP hardware.
  */
-
-#include "irqs.h" /* PXA_GPIO_TO_IRQ */
 
 #define IDP_FLASH_PHYS		(PXA_CS0_PHYS)
 #define IDP_ALT_FLASH_PHYS	(PXA_CS1_PHYS)
@@ -32,7 +29,6 @@
 #define IDP_ETH_PHYS		(PXA_CS5_PHYS + 0x03400000)
 #define IDP_COREVOLT_PHYS	(PXA_CS5_PHYS + 0x03800000)
 #define IDP_CPLD_PHYS		(PXA_CS5_PHYS + 0x03C00000)
-
 
 /*
  * virtual memory map
@@ -101,7 +97,6 @@
 #define IDP_CPLD_PCCARD1_STATUS	        __CPLD_REG(_IDP_CPLD_PCCARD1_STATUS)
 #define IDP_CPLD_MISC_STATUS		__CPLD_REG(_IDP_CPLD_MISC_STATUS)
 
-
 /*
  * Bit masks for various registers
  */
@@ -153,7 +148,6 @@
 #define PCMCIA_S0_RDYINT		PXA_GPIO_TO_IRQ(19)
 #define PCMCIA_S1_RDYINT		PXA_GPIO_TO_IRQ(22)
 
-
 /*
  * Macros for LED Driver
  */
@@ -194,5 +188,3 @@
 {\
 	inputs = (IDP_CPLD_KB_ROW & 0x7f);\
 }
-
-

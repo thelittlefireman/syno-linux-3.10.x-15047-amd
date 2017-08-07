@@ -22,7 +22,6 @@
 	.set noat
 	.align	5
 
-
 /* preparatory stuff */
 .macro	SETUP_SLEEP
 	subu	sp, PT_SIZE
@@ -95,7 +94,7 @@ LEAF(alchemy_sleep_au1000)
 
 	/* cache following instructions, as memory gets put to sleep */
 	la	t0, 1f
-	.set	arch=r4000
+	.set	mips3
 	cache	0x14, 0(t0)
 	cache	0x14, 32(t0)
 	cache	0x14, 64(t0)
@@ -121,7 +120,7 @@ LEAF(alchemy_sleep_au1550)
 
 	/* cache following instructions, as memory gets put to sleep */
 	la	t0, 1f
-	.set	arch=r4000
+	.set	mips3
 	cache	0x14, 0(t0)
 	cache	0x14, 32(t0)
 	cache	0x14, 64(t0)
@@ -163,7 +162,7 @@ LEAF(alchemy_sleep_au1300)
 	la	t1, 4f
 	subu	t2, t1, t0
 
-	.set	arch=r4000
+	.set	mips3
 
 1:	cache	0x14, 0(t0)
 	subu	t2, t2, 32
@@ -225,7 +224,6 @@ LEAF(alchemy_sleep_au1300)
 4:
 
 END(alchemy_sleep_au1300)
-
 
 	/* This is where we return upon wakeup.
 	 * Reload all of the registers and return.

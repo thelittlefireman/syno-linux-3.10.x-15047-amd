@@ -418,7 +418,6 @@ struct ec_response_get_comms_status {
 	uint32_t flags;		/* Mask of enum ec_comms_status */
 } __packed;
 
-
 /*****************************************************************************/
 /* Flash commands */
 
@@ -1322,7 +1321,6 @@ struct ec_params_reboot_ec {
 
 /* Current version of ACPI memory address space */
 #define EC_ACPI_MEM_VERSION_CURRENT 1
-
 
 /*****************************************************************************/
 /*

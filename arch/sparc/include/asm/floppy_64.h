@@ -21,7 +21,6 @@
  */
 #undef PCI_FDC_SWAP_DRIVES
 
-
 /* References:
  * 1) Netbsd Sun floppy driver.
  * 2) NCR 82077 controller manual
@@ -254,7 +253,7 @@ static int sun_fd_request_irq(void)
 		once = 1;
 
 		error = request_irq(FLOPPY_IRQ, sparc_floppy_irq,
-				    0, "floppy", NULL);
+				    IRQF_DISABLED, "floppy", NULL);
 
 		return ((error == 0) ? 0 : -1);
 	}

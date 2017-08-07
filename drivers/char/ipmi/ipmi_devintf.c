@@ -119,7 +119,6 @@ static int ipmi_open(struct inode *inode, struct file *file)
 	int                      rv;
 	struct ipmi_file_private *priv;
 
-
 	priv = kmalloc(sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -278,7 +277,6 @@ static int ipmi_ioctl(struct file   *file,
 		struct ipmi_recv_msg  *msg;
 		unsigned long    flags;
 		
-
 		rv = 0;
 		if (copy_from_user(&rsp, arg, sizeof(rsp))) {
 			rv = -EFAULT;
@@ -810,7 +808,6 @@ static long compat_ipmi_ioctl(struct file *filep, unsigned int cmd,
 		struct ipmi_recv   __user *precv64;
 		struct ipmi_recv   recv64;
 
-		memset(&recv64, 0, sizeof(recv64));
 		if (get_compat_ipmi_recv(&recv64, compat_ptr(arg)))
 			return -EFAULT;
 

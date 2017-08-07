@@ -212,8 +212,6 @@ struct snd_wm8776 {
 	u16 regs[WM8776_REG_COUNT];	/* 9-bit registers */
 };
 
-
-
 void snd_wm8776_init(struct snd_wm8776 *wm);
 void snd_wm8776_resume(struct snd_wm8776 *wm);
 void snd_wm8776_set_dac_if(struct snd_wm8776 *wm, u16 dac);

@@ -236,7 +236,6 @@ static void ide_cd_complete_failed_rq(ide_drive_t *drive, struct request *rq)
 		cdrom_analyze_sense_data(drive, NULL);
 }
 
-
 /*
  * Allow the drive 5 seconds to recover; some devices will return NOT_READY
  * while flushing data from cache.
@@ -1690,7 +1689,6 @@ static int idecd_ioctl(struct block_device *bdev, fmode_t mode,
 	return ret;
 }
 
-
 static unsigned int idecd_check_events(struct gendisk *disk,
 				       unsigned int clearing)
 {
@@ -1756,7 +1754,7 @@ static int ide_cd_probe(ide_drive_t *drive)
 
 	info->dev.parent = &drive->gendev;
 	info->dev.release = ide_cd_release;
-	dev_set_name(&info->dev, "%s", dev_name(&drive->gendev));
+	dev_set_name(&info->dev, dev_name(&drive->gendev));
 
 	if (device_register(&info->dev))
 		goto out_free_disk;

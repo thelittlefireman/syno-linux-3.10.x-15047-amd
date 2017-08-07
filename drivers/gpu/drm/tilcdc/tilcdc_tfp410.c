@@ -16,6 +16,7 @@
  */
 
 #include <linux/i2c.h>
+#include <linux/of_i2c.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/pinctrl/pinmux.h>
@@ -29,7 +30,6 @@ struct tfp410_module {
 	int gpio;
 };
 #define to_tfp410_module(x) container_of(x, struct tfp410_module, base)
-
 
 static const struct tilcdc_panel_info dvi_info = {
 		.ac_bias                = 255,
@@ -53,7 +53,6 @@ struct tfp410_encoder {
 	int dpms;
 };
 #define to_tfp410_encoder(x) container_of(x, struct tfp410_encoder, base)
-
 
 static void tfp410_encoder_destroy(struct drm_encoder *encoder)
 {
@@ -163,10 +162,10 @@ struct tfp410_connector {
 };
 #define to_tfp410_connector(x) container_of(x, struct tfp410_connector, base)
 
-
 static void tfp410_connector_destroy(struct drm_connector *connector)
 {
 	struct tfp410_connector *tfp410_connector = to_tfp410_connector(connector);
+	drm_sysfs_connector_remove(connector);
 	drm_connector_cleanup(connector);
 	kfree(tfp410_connector);
 }
@@ -352,8 +351,6 @@ static int tfp410_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "could not get i2c bus phandle\n");
 		goto fail;
 	}
-
-	mod->preferred_bpp = dvi_info.bpp;
 
 	i2c_node = of_find_node_by_phandle(i2c_phandle);
 	if (!i2c_node) {

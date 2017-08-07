@@ -20,7 +20,6 @@
 	410 Severn Ave., Suite 210
 	Annapolis MD 21403
 
-
 	This driver contains some changes from the original Donald Becker
 	version. He may or may not be interested in bug reports on this
 	code. You can find his versions at:
@@ -65,7 +64,6 @@ static bool avoid_D3;
 /* Maximum number of multicast addresses to filter (vs. rx-all-multicast).
    The Rhine has a 64 element 8390-like hash table. */
 static const int multicast_filter_limit = 32;
-
 
 /* Operational parameters that are set at compile time. */
 
@@ -219,7 +217,6 @@ http://www.scyld.com/expert/NWay.html
 ftp://ftp.via.com.tw/public/lan/Products/NIC/VT86C100A/Datasheet/VT86C100A03.pdf
 ftp://ftp.via.com.tw/public/lan/Products/NIC/VT6102/Datasheet/VT6102_021.PDF
 
-
 IVc. Errata
 
 The VT86C100A manual is not reliable information.
@@ -229,7 +226,6 @@ and unaligned IP headers on receive.
 The chip does not pad to minimum transmit length.
 
 */
-
 
 /* This table drives the PCI probe routines. It's mostly boilerplate in all
    of the drivers, and will likely be provided by some future kernel.
@@ -278,7 +274,6 @@ static DEFINE_PCI_DEVICE_TABLE(rhine_pci_tbl) = {
 	{ }	/* terminate list */
 };
 MODULE_DEVICE_TABLE(pci, rhine_pci_tbl);
-
 
 /* Offsets to the device registers. */
 enum register_offsets {
@@ -489,7 +484,6 @@ struct rhine_private {
 #define BYTE_REG_BITS_SET(x, m, p)   do { iowrite8((ioread8((p)) & (~(m)))|(x), (p)); } while (0)
 #define WORD_REG_BITS_SET(x, m, p)   do { iowrite16((ioread16((p)) & (~(m)))|(x), (p)); } while (0)
 #define DWORD_REG_BITS_SET(x, m, p)  do { iowrite32((ioread32((p)) & (~(m)))|(x), (p)); } while (0)
-
 
 static int  mdio_read(struct net_device *dev, int phy_id, int location);
 static void mdio_write(struct net_device *dev, int phy_id, int location, int value);
@@ -923,7 +917,7 @@ static int rhine_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	if (rc) {
 		dev_err(&pdev->dev,
 			"32-bit PCI DMA addresses not supported by the card!?\n");
-		goto err_out_pci_disable;
+		goto err_out;
 	}
 
 	/* sanity check */
@@ -931,7 +925,7 @@ static int rhine_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	    (pci_resource_len(pdev, 1) < io_size)) {
 		rc = -EIO;
 		dev_err(&pdev->dev, "Insufficient PCI resources, aborting\n");
-		goto err_out_pci_disable;
+		goto err_out;
 	}
 
 	pioaddr = pci_resource_start(pdev, 0);
@@ -942,7 +936,7 @@ static int rhine_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 	dev = alloc_etherdev(sizeof(struct rhine_private));
 	if (!dev) {
 		rc = -ENOMEM;
-		goto err_out_pci_disable;
+		goto err_out;
 	}
 	SET_NETDEV_DEV(dev, &pdev->dev);
 
@@ -987,9 +981,6 @@ static int rhine_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	rp->base = ioaddr;
 
-	u64_stats_init(&rp->tx_stats.syncp);
-	u64_stats_init(&rp->rx_stats.syncp);
-
 	/* Get chip registers into a sane state */
 	rhine_power_init(dev);
 	rhine_hw_init(dev, pioaddr);
@@ -1022,7 +1013,7 @@ static int rhine_init_one(struct pci_dev *pdev, const struct pci_device_id *ent)
 
 	/* The chip-specific entries in the device structure. */
 	dev->netdev_ops = &rhine_netdev_ops;
-	dev->ethtool_ops = &netdev_ethtool_ops;
+	dev->ethtool_ops = &netdev_ethtool_ops,
 	dev->watchdog_timeo = TX_TIMEOUT;
 
 	netif_napi_add(dev, &rp->napi, rhine_napipoll, 64);
@@ -1084,8 +1075,6 @@ err_out_free_res:
 	pci_release_regions(pdev);
 err_out_free_netdev:
 	free_netdev(dev);
-err_out_pci_disable:
-	pci_disable_device(pdev);
 err_out:
 	return rc;
 }
@@ -1176,11 +1165,7 @@ static void alloc_rbufs(struct net_device *dev)
 		rp->rx_skbuff_dma[i] =
 			pci_map_single(rp->pdev, skb->data, rp->rx_buf_sz,
 				       PCI_DMA_FROMDEVICE);
-		if (dma_mapping_error(&rp->pdev->dev, rp->rx_skbuff_dma[i])) {
-			rp->rx_skbuff_dma[i] = 0;
-			dev_kfree_skb(skb);
-			break;
-		}
+
 		rp->rx_ring[i].addr = cpu_to_le32(rp->rx_skbuff_dma[i]);
 		rp->rx_ring[i].rx_status = cpu_to_le32(DescOwn);
 	}
@@ -1678,7 +1663,7 @@ static netdev_tx_t rhine_start_tx(struct sk_buff *skb,
 		/* Must use alignment buffer. */
 		if (skb->len > PKT_BUF_SZ) {
 			/* packet too long, drop it */
-			dev_kfree_skb_any(skb);
+			dev_kfree_skb(skb);
 			rp->tx_skbuff[entry] = NULL;
 			dev->stats.tx_dropped++;
 			return NETDEV_TX_OK;
@@ -1697,12 +1682,6 @@ static netdev_tx_t rhine_start_tx(struct sk_buff *skb,
 		rp->tx_skbuff_dma[entry] =
 			pci_map_single(rp->pdev, skb->data, skb->len,
 				       PCI_DMA_TODEVICE);
-		if (dma_mapping_error(&rp->pdev->dev, rp->tx_skbuff_dma[entry])) {
-			dev_kfree_skb_any(skb);
-			rp->tx_skbuff_dma[entry] = 0;
-			dev->stats.tx_dropped++;
-			return NETDEV_TX_OK;
-		}
 		rp->tx_ring[entry].addr = cpu_to_le32(rp->tx_skbuff_dma[entry]);
 	}
 
@@ -1836,7 +1815,7 @@ static void rhine_tx(struct net_device *dev)
 					 rp->tx_skbuff[entry]->len,
 					 PCI_DMA_TODEVICE);
 		}
-		dev_consume_skb_any(rp->tx_skbuff[entry]);
+		dev_kfree_skb(rp->tx_skbuff[entry]);
 		rp->tx_skbuff[entry] = NULL;
 		entry = (++rp->dirty_tx) % TX_RING_SIZE;
 	}
@@ -1982,11 +1961,6 @@ static int rhine_rx(struct net_device *dev, int limit)
 				pci_map_single(rp->pdev, skb->data,
 					       rp->rx_buf_sz,
 					       PCI_DMA_FROMDEVICE);
-			if (dma_mapping_error(&rp->pdev->dev, rp->rx_skbuff_dma[entry])) {
-				dev_kfree_skb(skb);
-				rp->rx_skbuff_dma[entry] = 0;
-				break;
-			}
 			rp->rx_ring[entry].addr = cpu_to_le32(rp->rx_skbuff_dma[entry]);
 		}
 		rp->rx_ring[entry].rx_status = cpu_to_le32(DescOwn);
@@ -2072,16 +2046,16 @@ rhine_get_stats64(struct net_device *dev, struct rtnl_link_stats64 *stats)
 	netdev_stats_to_stats64(stats, &dev->stats);
 
 	do {
-		start = u64_stats_fetch_begin_irq(&rp->rx_stats.syncp);
+		start = u64_stats_fetch_begin_bh(&rp->rx_stats.syncp);
 		stats->rx_packets = rp->rx_stats.packets;
 		stats->rx_bytes = rp->rx_stats.bytes;
-	} while (u64_stats_fetch_retry_irq(&rp->rx_stats.syncp, start));
+	} while (u64_stats_fetch_retry_bh(&rp->rx_stats.syncp, start));
 
 	do {
-		start = u64_stats_fetch_begin_irq(&rp->tx_stats.syncp);
+		start = u64_stats_fetch_begin_bh(&rp->tx_stats.syncp);
 		stats->tx_packets = rp->tx_stats.packets;
 		stats->tx_bytes = rp->tx_stats.bytes;
-	} while (u64_stats_fetch_retry_irq(&rp->tx_stats.syncp, start));
+	} while (u64_stats_fetch_retry_bh(&rp->tx_stats.syncp, start));
 
 	return stats;
 }
@@ -2285,7 +2259,6 @@ static int rhine_close(struct net_device *dev)
 	return 0;
 }
 
-
 static void rhine_remove_one(struct pci_dev *pdev)
 {
 	struct net_device *dev = pci_get_drvdata(pdev);
@@ -2298,6 +2271,7 @@ static void rhine_remove_one(struct pci_dev *pdev)
 
 	free_netdev(dev);
 	pci_disable_device(pdev);
+	pci_set_drvdata(pdev, NULL);
 }
 
 static void rhine_shutdown (struct pci_dev *pdev)
@@ -2417,7 +2391,7 @@ static struct pci_driver rhine_driver = {
 	.driver.pm	= RHINE_PM_OPS,
 };
 
-static struct dmi_system_id rhine_dmi_table[] __initdata = {
+static struct dmi_system_id __initdata rhine_dmi_table[] = {
 	{
 		.ident = "EPIA-M",
 		.matches = {
@@ -2452,12 +2426,10 @@ static int __init rhine_init(void)
 	return pci_register_driver(&rhine_driver);
 }
 
-
 static void __exit rhine_cleanup(void)
 {
 	pci_unregister_driver(&rhine_driver);
 }
-
 
 module_init(rhine_init);
 module_exit(rhine_cleanup);

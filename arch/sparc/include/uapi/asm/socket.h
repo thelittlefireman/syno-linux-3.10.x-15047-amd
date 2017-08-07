@@ -32,7 +32,6 @@
 #define SO_PROTOCOL	0x1028
 #define SO_DOMAIN	0x1029
 
-
 /* Linux specific, keep the same. */
 #define SO_NO_CHECK	0x000b
 #define SO_PRIORITY	0x000c
@@ -69,12 +68,6 @@
 #define SO_LOCK_FILTER		0x0028
 
 #define SO_SELECT_ERR_QUEUE	0x0029
-
-#define SO_BUSY_POLL		0x0030
-
-#define SO_MAX_PACING_RATE	0x0031
-
-#define SO_BPF_EXTENSIONS	0x0032
 
 /* Security levels - as per NRL IPv6 - don't actually do anything */
 #define SO_SECURITY_AUTHENTICATION		0x5001

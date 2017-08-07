@@ -15,6 +15,12 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
     GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+************************************************************************
 */
 /*
 Driver: das800
@@ -53,19 +59,19 @@ cmd triggers supported:
 	convert_src:    TRIG_TIMER | TRIG_EXT
 	stop_src:       TRIG_NONE | TRIG_COUNT
 
-
 */
 
-#include <linux/module.h>
 #include <linux/interrupt.h>
 #include "../comedidev.h"
 
+#include <linux/ioport.h>
 #include <linux/delay.h>
 
 #include "8253.h"
 #include "comedi_fc.h"
 
 #define DAS800_SIZE           8
+#define TIMER_BASE            1000
 #define N_CHAN_AI             8	/*  number of analog input channels */
 
 /* Registers for the das800 */
@@ -355,10 +361,11 @@ static int das800_ai_do_cmdtest(struct comedi_device *dev,
 		int tmp = cmd->convert_arg;
 
 		/* calculate counter values that give desired timing */
-		i8253_cascade_ns_to_timer(I8254_OSC_BASE_1MHZ,
-					  &devpriv->divisor1,
-					  &devpriv->divisor2,
-					  &cmd->convert_arg, cmd->flags);
+		i8253_cascade_ns_to_timer_2div(TIMER_BASE,
+					       &devpriv->divisor1,
+					       &devpriv->divisor2,
+					       &cmd->convert_arg,
+					       cmd->flags & TRIG_ROUND_MASK);
 		if (tmp != cmd->convert_arg)
 			err++;
 	}
@@ -420,12 +427,17 @@ static int das800_ai_do_cmd(struct comedi_device *dev,
 	gain &= 0xf;
 	outb(gain, dev->iobase + DAS800_GAIN);
 
-	if (async->cmd.stop_src == TRIG_COUNT) {
+	switch (async->cmd.stop_src) {
+	case TRIG_COUNT:
 		devpriv->count = async->cmd.stop_arg * async->cmd.chanlist_len;
 		devpriv->forever = false;
-	} else {	/* TRIG_NONE */
+		break;
+	case TRIG_NONE:
 		devpriv->forever = true;
 		devpriv->count = 0;
+		break;
+	default:
+		break;
 	}
 
 	/* enable auto channel scan, send interrupts on end of conversion
@@ -435,19 +447,26 @@ static int das800_ai_do_cmd(struct comedi_device *dev,
 	conv_bits |= EACS | IEOC;
 	if (async->cmd.start_src == TRIG_EXT)
 		conv_bits |= DTEN;
-	if (async->cmd.convert_src == TRIG_TIMER) {
+	switch (async->cmd.convert_src) {
+	case TRIG_TIMER:
 		conv_bits |= CASC | ITE;
 		/* set conversion frequency */
 		if (das800_set_frequency(dev) < 0) {
 			comedi_error(dev, "Error setting up counters");
 			return -1;
 		}
+		break;
+	case TRIG_EXT:
+		break;
+	default:
+		break;
 	}
 
 	spin_lock_irqsave(&dev->spinlock, irq_flags);
 	das800_ind_write(dev, conv_bits, CONV_CONTROL);
 	spin_unlock_irqrestore(&dev->spinlock, irq_flags);
 
+	async->events = 0;
 	das800_enable(dev);
 	return 0;
 }
@@ -520,8 +539,10 @@ static irqreturn_t das800_interrupt(int irq, void *d)
 
 	if (fifo_overflow) {
 		spin_unlock_irqrestore(&dev->spinlock, irq_flags);
+		das800_cancel(dev, s);
 		async->events |= COMEDI_CB_ERROR | COMEDI_CB_EOA;
-		cfc_handle_events(dev, s);
+		comedi_event(dev, s);
+		async->events = 0;
 		return IRQ_HANDLED;
 	}
 
@@ -537,21 +558,20 @@ static irqreturn_t das800_interrupt(int irq, void *d)
 		das800_disable(dev);
 		async->events |= COMEDI_CB_EOA;
 	}
-	cfc_handle_events(dev, s);
+	comedi_event(dev, s);
+	async->events = 0;
 	return IRQ_HANDLED;
 }
 
-static int das800_ai_eoc(struct comedi_device *dev,
-			 struct comedi_subdevice *s,
-			 struct comedi_insn *insn,
-			 unsigned long context)
+static int das800_wait_for_conv(struct comedi_device *dev, int timeout)
 {
-	unsigned int status;
+	int i;
 
-	status = inb(dev->iobase + DAS800_STATUS);
-	if ((status & BUSY) == 0)
-		return 0;
-	return -EBUSY;
+	for (i = 0; i < timeout; i++) {
+		if (!(inb(dev->iobase + DAS800_STATUS) & BUSY))
+			return 0;
+	}
+	return -ETIME;
 }
 
 static int das800_ai_insn_read(struct comedi_device *dev,
@@ -586,7 +606,7 @@ static int das800_ai_insn_read(struct comedi_device *dev,
 		/* trigger conversion */
 		outb_p(0, dev->iobase + DAS800_MSB);
 
-		ret = comedi_timeout(dev, s, insn, das800_ai_eoc, 0);
+		ret = das800_wait_for_conv(dev, 1000);
 		if (ret)
 			return ret;
 
@@ -615,9 +635,13 @@ static int das800_do_insn_bits(struct comedi_device *dev,
 			       unsigned int *data)
 {
 	struct das800_private *devpriv = dev->private;
+	unsigned int mask = data[0];
+	unsigned int bits = data[1];
 	unsigned long irq_flags;
 
-	if (comedi_dio_update_state(s, data)) {
+	if (mask) {
+		s->state &= ~mask;
+		s->state |= (bits & mask);
 		devpriv->do_bits = s->state << 4;
 
 		spin_lock_irqsave(&dev->spinlock, irq_flags);
@@ -681,9 +705,10 @@ static int das800_attach(struct comedi_device *dev, struct comedi_devconfig *it)
 	int board;
 	int ret;
 
-	devpriv = comedi_alloc_devpriv(dev, sizeof(*devpriv));
+	devpriv = kzalloc(sizeof(*devpriv), GFP_KERNEL);
 	if (!devpriv)
 		return -ENOMEM;
+	dev->private = devpriv;
 
 	ret = comedi_request_region(dev, it->options[0], DAS800_SIZE);
 	if (ret)

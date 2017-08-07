@@ -1,25 +1,7 @@
-/*
- * Enclosure Services
- *
- * Copyright (C) 2008 James Bottomley <James.Bottomley@HansenPartnership.com>
- *
-**-----------------------------------------------------------------------------
-**
-**  This program is free software; you can redistribute it and/or
-**  modify it under the terms of the GNU General Public License
-**  version 2 as published by the Free Software Foundation.
-**
-**  This program is distributed in the hope that it will be useful,
-**  but WITHOUT ANY WARRANTY; without even the implied warranty of
-**  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-**  GNU General Public License for more details.
-**
-**  You should have received a copy of the GNU General Public License
-**  along with this program; if not, write to the Free Software
-**  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-**
-**-----------------------------------------------------------------------------
-*/
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/device.h>
 #include <linux/enclosure.h>
 #include <linux/err.h>
@@ -28,29 +10,19 @@
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#ifdef MY_ABC_HERE
+#include <scsi/scsi_device.h>
+#endif  
 
 static LIST_HEAD(container_list);
 static DEFINE_MUTEX(container_list_lock);
 static struct class enclosure_class;
 
-/**
- * enclosure_find - find an enclosure given a parent device
- * @dev:	the parent to match against
- * @start:	Optional enclosure device to start from (NULL if none)
- *
- * Looks through the list of registered enclosures to find all those
- * with @dev as a parent.  Returns NULL if no enclosure is
- * found. @start can be used as a starting point to obtain multiple
- * enclosures per parent (should begin with NULL and then be set to
- * each returned enclosure device). Obtains a reference to the
- * enclosure class device which must be released with device_put().
- * If @start is not NULL, a reference must be taken on it which is
- * released before returning (this allows a loop through all
- * enclosures to exit with only the reference on the enclosure of
- * interest held).  Note that the @dev may correspond to the actual
- * device housing the enclosure, in which case no iteration via @start
- * is required.
- */
+#ifdef MY_ABC_HERE
+ 
+static void enclosure_remove_links(struct enclosure_component *cdev);
+#endif  
+
 struct enclosure_device *enclosure_find(struct device *dev,
 					struct enclosure_device *start)
 {
@@ -63,8 +35,7 @@ struct enclosure_device *enclosure_find(struct device *dev,
 
 	list_for_each_entry_continue(edev, &container_list, node) {
 		struct device *parent = edev->edev.parent;
-		/* parent might not be immediate, so iterate up to
-		 * the root of the tree if necessary */
+		 
 		while (parent) {
 			if (parent == dev) {
 				get_device(&edev->edev);
@@ -80,18 +51,6 @@ struct enclosure_device *enclosure_find(struct device *dev,
 }
 EXPORT_SYMBOL_GPL(enclosure_find);
 
-/**
- * enclosure_for_each_device - calls a function for each enclosure
- * @fn:		the function to call
- * @data:	the data to pass to each call
- *
- * Loops over all the enclosures calling the function.
- *
- * Note, this function uses a mutex which will be held across calls to
- * @fn, so it must have non atomic context, and @fn may (although it
- * should not) sleep or otherwise cause the mutex to be held for
- * indefinite periods
- */
 int enclosure_for_each_device(int (*fn)(struct enclosure_device *, void *),
 			      void *data)
 {
@@ -110,16 +69,6 @@ int enclosure_for_each_device(int (*fn)(struct enclosure_device *, void *),
 }
 EXPORT_SYMBOL_GPL(enclosure_for_each_device);
 
-/**
- * enclosure_register - register device as an enclosure
- *
- * @dev:	device containing the enclosure
- * @components:	number of components in the enclosure
- *
- * This sets up the device for being an enclosure.  Note that @dev does
- * not have to be a dedicated enclosure device.  It may be some other type
- * of device that additionally responds to enclosure services
- */
 struct enclosure_device *
 enclosure_register(struct device *dev, const char *name, int components,
 		   struct enclosure_component_callbacks *cb)
@@ -163,24 +112,56 @@ EXPORT_SYMBOL_GPL(enclosure_register);
 
 static struct enclosure_component_callbacks enclosure_null_callbacks;
 
-/**
- * enclosure_unregister - remove an enclosure
- *
- * @edev:	the registered enclosure to remove;
- */
 void enclosure_unregister(struct enclosure_device *edev)
 {
 	int i;
+#ifdef MY_ABC_HERE
+	struct enclosure_component *cdev = NULL;
+#endif  
+#ifdef MY_ABC_HERE
+	struct scsi_device *scsi_dev;
+	struct scsi_device *scsi_enc;
+#endif  
 
 	mutex_lock(&container_list_lock);
 	list_del(&edev->node);
 	mutex_unlock(&container_list_lock);
 
+#ifdef MY_ABC_HERE
+	for (i = 0; i < edev->components; i++) {
+		if (edev->component[i].number != -1) {
+			 
+			cdev = &edev->component[i];
+			if (cdev->dev != NULL) {
+#ifdef MY_ABC_HERE
+				if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == cdev->type) {
+					scsi_dev = to_scsi_device(cdev->dev);
+					scsi_enc = to_scsi_device(edev->edev.parent);
+#ifdef MY_ABC_HERE
+					printk(KERN_INFO "SCSI device (%s) with disk name (%s) removed from SLOT%02d of enclosure(%s), %.8s-%."CONFIG_SYNO_DISK_MODEL_LEN"s",
+							dev_name(cdev->dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+							scsi_enc->vendor, scsi_enc->model);
+#else  
+					printk(KERN_INFO "SCSI device (%s) with disk name (%s) removed from SLOT%02d of enclosure(%s), %.8s-%.16s",
+							dev_name(cdev->dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+							scsi_enc->vendor, scsi_enc->model);
+#endif  
+				}
+#endif  
+				enclosure_remove_links(cdev);
+				put_device(cdev->dev);
+				cdev->dev = NULL;
+			}
+			 
+			device_unregister(&edev->component[i].cdev);
+		}
+	}
+#else  
 	for (i = 0; i < edev->components; i++)
 		if (edev->component[i].number != -1)
 			device_unregister(&edev->component[i].cdev);
+#endif  
 
-	/* prevent any callbacks into service user */
 	edev->cb = &enclosure_null_callbacks;
 	device_unregister(&edev->edev);
 }
@@ -198,10 +179,6 @@ static void enclosure_remove_links(struct enclosure_component *cdev)
 {
 	char name[ENCLOSURE_NAME_SIZE];
 
-	/*
-	 * In odd circumstances, like multipath devices, something else may
-	 * already have removed the links, so check for this condition first.
-	 */
 	if (!cdev->dev->kobj.sd)
 		return;
 
@@ -237,30 +214,22 @@ static void enclosure_release(struct device *cdev)
 
 static void enclosure_component_release(struct device *dev)
 {
+#ifdef MY_ABC_HERE
+	 
+#else  
 	struct enclosure_component *cdev = to_enclosure_component(dev);
 
 	if (cdev->dev) {
 		enclosure_remove_links(cdev);
 		put_device(cdev->dev);
 	}
+#endif  
+
 	put_device(dev->parent);
 }
 
-static const struct attribute_group *enclosure_component_groups[];
+static const struct attribute_group *enclosure_groups[];
 
-/**
- * enclosure_component_register - add a particular component to an enclosure
- * @edev:	the enclosure to add the component
- * @num:	the device number
- * @type:	the type of component being added
- * @name:	an optional name to appear in sysfs (leave NULL if none)
- *
- * Registers the component.  The name is optional for enclosures that
- * give their components a unique name.  If not, leave the field NULL
- * and a name will be assigned.
- *
- * Returns a pointer to the enclosure component or an error.
- */
 struct enclosure_component *
 enclosure_component_register(struct enclosure_device *edev,
 			     unsigned int number,
@@ -289,7 +258,7 @@ enclosure_component_register(struct enclosure_device *edev,
 		dev_set_name(cdev, "%u", number);
 
 	cdev->release = enclosure_component_release;
-	cdev->groups = enclosure_component_groups;
+	cdev->groups = enclosure_groups;
 
 	err = device_register(cdev);
 	if (err) {
@@ -298,28 +267,25 @@ enclosure_component_register(struct enclosure_device *edev,
 		return ERR_PTR(err);
 	}
 
+#ifdef MY_ABC_HERE
+	 
+	if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == ecomp->type && edev->cb->set_locate) {
+		edev->cb->set_locate(edev, ecomp, 0);
+	}
+#endif  
+
 	return ecomp;
 }
 EXPORT_SYMBOL_GPL(enclosure_component_register);
 
-/**
- * enclosure_add_device - add a device as being part of an enclosure
- * @edev:	the enclosure device being added to.
- * @num:	the number of the component
- * @dev:	the device being added
- *
- * Declares a real device to reside in slot (or identifier) @num of an
- * enclosure.  This will cause the relevant sysfs links to appear.
- * This function may also be used to change a device associated with
- * an enclosure without having to call enclosure_remove_device() in
- * between.
- *
- * Returns zero on success or an error.
- */
 int enclosure_add_device(struct enclosure_device *edev, int component,
 			 struct device *dev)
 {
 	struct enclosure_component *cdev;
+#ifdef MY_ABC_HERE
+	struct scsi_device *scsi_dev;
+	struct scsi_device *scsi_enc;
+#endif  
 
 	if (!edev || component >= edev->components)
 		return -EINVAL;
@@ -334,21 +300,40 @@ int enclosure_add_device(struct enclosure_device *edev, int component,
 
 	put_device(cdev->dev);
 	cdev->dev = get_device(dev);
+
+#ifdef MY_ABC_HERE
+	 
+	if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == cdev->type && edev->cb->set_locate) {
+		edev->cb->set_locate(edev, cdev, 1);
+	}
+#endif  
+#ifdef MY_ABC_HERE
+	if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == cdev->type) {
+		scsi_dev = to_scsi_device(dev);
+		scsi_enc = to_scsi_device(edev->edev.parent);
+#ifdef MY_ABC_HERE
+		printk(KERN_INFO "SCSI device (%s) with disk name (%s) plugged in SLOT%02d of enclosure(%s), %.8s-%."CONFIG_SYNO_DISK_MODEL_LEN"s",
+				dev_name(dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+				scsi_enc->vendor, scsi_enc->model);
+#else  
+		printk(KERN_INFO "SCSI device (%s) with disk name (%s) plugged in SLOT%02d of enclosure(%s), %.8s-%.16s",
+				dev_name(dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+				scsi_enc->vendor, scsi_enc->model);
+#endif  
+	}
+#endif  
+
 	return enclosure_add_links(cdev);
 }
 EXPORT_SYMBOL_GPL(enclosure_add_device);
 
-/**
- * enclosure_remove_device - remove a device from an enclosure
- * @edev:	the enclosure device
- * @num:	the number of the component to remove
- *
- * Returns zero on success or an error.
- *
- */
 int enclosure_remove_device(struct enclosure_device *edev, struct device *dev)
 {
 	struct enclosure_component *cdev;
+#ifdef MY_ABC_HERE
+	struct scsi_device *scsi_dev;
+	struct scsi_device *scsi_enc;
+#endif  
 	int i;
 
 	if (!edev || !dev)
@@ -357,6 +342,27 @@ int enclosure_remove_device(struct enclosure_device *edev, struct device *dev)
 	for (i = 0; i < edev->components; i++) {
 		cdev = &edev->component[i];
 		if (cdev->dev == dev) {
+#ifdef MY_ABC_HERE
+			 
+			if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == cdev->type && edev->cb->set_locate) {
+				edev->cb->set_locate(edev, cdev, 0);
+			}
+#endif  
+#ifdef MY_ABC_HERE
+			if (ENCLOSURE_COMPONENT_ARRAY_DEVICE == cdev->type) {
+				scsi_dev = to_scsi_device(dev);
+				scsi_enc = to_scsi_device(edev->edev.parent);
+#ifdef MY_ABC_HERE
+				printk(KERN_INFO "SCSI device (%s) with disk name (%s) removed from SLOT%02d of enclosure(%s), %.8s-%."CONFIG_SYNO_DISK_MODEL_LEN"s",
+						dev_name(dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+						scsi_enc->vendor, scsi_enc->model);
+#else  
+				printk(KERN_INFO "SCSI device (%s) with disk name (%s) removed from SLOT%02d of enclosure(%s), %.8s-%.16s",
+						dev_name(dev), scsi_dev->syno_disk_name, cdev->number + 1, dev_name(&(edev->edev)),
+						scsi_enc->vendor, scsi_enc->model);
+#endif  
+			}
+#endif  
 			enclosure_remove_links(cdev);
 			device_del(&cdev->cdev);
 			put_device(dev);
@@ -368,30 +374,25 @@ int enclosure_remove_device(struct enclosure_device *edev, struct device *dev)
 }
 EXPORT_SYMBOL_GPL(enclosure_remove_device);
 
-/*
- * sysfs pieces below
- */
-
-static ssize_t components_show(struct device *cdev,
-			       struct device_attribute *attr, char *buf)
+static ssize_t enclosure_show_components(struct device *cdev,
+					 struct device_attribute *attr,
+					 char *buf)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev);
 
 	return snprintf(buf, 40, "%d\n", edev->components);
 }
-static DEVICE_ATTR_RO(components);
 
-static struct attribute *enclosure_class_attrs[] = {
-	&dev_attr_components.attr,
-	NULL,
+static struct device_attribute enclosure_attrs[] = {
+	__ATTR(components, S_IRUGO, enclosure_show_components, NULL),
+	__ATTR_NULL
 };
-ATTRIBUTE_GROUPS(enclosure_class);
 
 static struct class enclosure_class = {
 	.name			= "enclosure",
 	.owner			= THIS_MODULE,
 	.dev_release		= enclosure_release,
-	.dev_groups		= enclosure_class_groups,
+	.dev_attrs		= enclosure_attrs,
 };
 
 static const char *const enclosure_status [] = {
@@ -525,7 +526,6 @@ static ssize_t get_component_type(struct device *cdev,
 	return snprintf(buf, 40, "%s\n", enclosure_type[ecomp->type]);
 }
 
-
 static DEVICE_ATTR(fault, S_IRUGO | S_IWUSR, get_component_fault,
 		    set_component_fault);
 static DEVICE_ATTR(status, S_IRUGO | S_IWUSR, get_component_status,
@@ -544,7 +544,15 @@ static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_type.attr,
 	NULL
 };
-ATTRIBUTE_GROUPS(enclosure_component);
+
+static struct attribute_group enclosure_group = {
+	.attrs = enclosure_component_attrs,
+};
+
+static const struct attribute_group *enclosure_groups[] = {
+	&enclosure_group,
+	NULL
+};
 
 static int __init enclosure_init(void)
 {

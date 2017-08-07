@@ -1840,7 +1840,6 @@ static ssize_t abx500_chargalg_curr_step_store(struct abx500_chargalg *di,
 	return strlen(buf);
 }
 
-
 static ssize_t abx500_chargalg_en_show(struct abx500_chargalg *di,
 				       char *buf)
 {
@@ -2035,6 +2034,7 @@ static int abx500_chargalg_remove(struct platform_device *pdev)
 	destroy_workqueue(di->chargalg_wq);
 
 	power_supply_unregister(&di->chargalg_psy);
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

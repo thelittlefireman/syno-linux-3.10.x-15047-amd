@@ -172,7 +172,6 @@ static struct power_supply test_power_supplies[] = {
 	},
 };
 
-
 static int __init test_power_init(void)
 {
 	int i;
@@ -216,8 +215,6 @@ static void __exit test_power_exit(void)
 	module_initialized = false;
 }
 module_exit(test_power_exit);
-
-
 
 #define MAX_KEYLENGTH 256
 struct battery_property_map {
@@ -264,7 +261,6 @@ static struct battery_property_map map_technology[] = {
 	{ -1,				NULL   },
 };
 
-
 static int map_get_value(struct battery_property_map *map, const char *key,
 				int def_val)
 {
@@ -286,7 +282,6 @@ static int map_get_value(struct battery_property_map *map, const char *key,
 
 	return def_val;
 }
-
 
 static const char *map_get_key(struct battery_property_map *map, int value,
 				const char *def_key)
@@ -470,7 +465,6 @@ static struct kernel_param_ops param_ops_battery_voltage = {
 #define param_check_battery_health(name, p) __param_check(name, p, void);
 #define param_check_battery_capacity(name, p) __param_check(name, p, void);
 #define param_check_battery_voltage(name, p) __param_check(name, p, void);
-
 
 module_param(ac_online, ac_online, 0644);
 MODULE_PARM_DESC(ac_online, "AC charging state <on|off>");

@@ -46,7 +46,6 @@ MODULE_PARM_DESC(debug,"enable debug messages [alsa]");
 #define MIXER_ADDR_LINE2	2
 #define MIXER_ADDR_LAST		2
 
-
 static int index[SNDRV_CARDS] = SNDRV_DEFAULT_IDX;	/* Index 0-MAX */
 static char *id[SNDRV_CARDS] = SNDRV_DEFAULT_STR;	/* ID for this card */
 static int enable[SNDRV_CARDS] = {1, [1 ... (SNDRV_CARDS - 1)] = 1};
@@ -58,8 +57,6 @@ MODULE_PARM_DESC(enable, "Enable (or not) the SAA7134 capture interface(s).");
 
 #define dprintk(fmt, arg...)    if (debug) \
 	printk(KERN_DEBUG "%s/alsa: " fmt, dev->name , ##arg)
-
-
 
 /*
  * Main chip structure
@@ -82,7 +79,6 @@ typedef struct snd_card_saa7134 {
 	spinlock_t lock;
 } snd_card_saa7134_t;
 
-
 /*
  * PCM structure
  */
@@ -96,7 +92,6 @@ typedef struct snd_card_saa7134_pcm {
 } snd_card_saa7134_pcm_t;
 
 static struct snd_card *snd_saa7134_cards[SNDRV_CARDS];
-
 
 /*
  * saa7134 DMA audio stop
@@ -595,7 +590,6 @@ static void snd_card_saa7134_runtime_free(struct snd_pcm_runtime *runtime)
 	kfree(pcm);
 }
 
-
 /*
  * ALSA hardware params
  *
@@ -1066,14 +1060,13 @@ static int alsa_card_saa7134_create(struct saa7134_dev *dev, int devnum)
 	snd_card_saa7134_t *chip;
 	int err;
 
-
 	if (devnum >= SNDRV_CARDS)
 		return -ENODEV;
 	if (!enable[devnum])
 		return -ENODEV;
 
-	err = snd_card_new(&dev->pci->dev, index[devnum], id[devnum],
-			   THIS_MODULE, sizeof(snd_card_saa7134_t), &card);
+	err = snd_card_create(index[devnum], id[devnum], THIS_MODULE,
+			      sizeof(snd_card_saa7134_t), &card);
 	if (err < 0)
 		return err;
 
@@ -1094,9 +1087,8 @@ static int alsa_card_saa7134_create(struct saa7134_dev *dev, int devnum)
 	chip->pci = dev->pci;
 	chip->iobase = pci_resource_start(dev->pci, 0);
 
-
 	err = request_irq(dev->pci->irq, saa7134_alsa_irq,
-				IRQF_SHARED, dev->name,
+				IRQF_SHARED | IRQF_DISABLED, dev->name,
 				(void*) &dev->dmasound);
 
 	if (err < 0) {
@@ -1114,6 +1106,8 @@ static int alsa_card_saa7134_create(struct saa7134_dev *dev, int devnum)
 
 	if ((err = snd_card_saa7134_pcm(chip, 0)) < 0)
 		goto __nodev;
+
+	snd_card_set_dev(card, &chip->pci->dev);
 
 	/* End of "creation" */
 
@@ -1133,7 +1127,6 @@ __nodev:
 	return err;
 }
 
-
 static int alsa_device_init(struct saa7134_dev *dev)
 {
 	dev->dmasound.priv_data = dev;
@@ -1143,6 +1136,8 @@ static int alsa_device_init(struct saa7134_dev *dev)
 
 static int alsa_device_exit(struct saa7134_dev *dev)
 {
+	if (!snd_saa7134_cards[dev->nr])
+		return 1;
 
 	snd_card_free(snd_saa7134_cards[dev->nr]);
 	snd_saa7134_cards[dev->nr] = NULL;
@@ -1192,7 +1187,8 @@ static void saa7134_alsa_exit(void)
 	int idx;
 
 	for (idx = 0; idx < SNDRV_CARDS; idx++) {
-		snd_card_free(snd_saa7134_cards[idx]);
+		if (snd_saa7134_cards[idx])
+			snd_card_free(snd_saa7134_cards[idx]);
 	}
 
 	saa7134_dmasound_init = NULL;

@@ -126,7 +126,6 @@ static irqreturn_t w90p910_ts_interrupt(int irq, void *dev_id)
 		w90p910_prepare_x_reading(w90p910_ts);
 		break;
 
-
 	case TS_WAIT_X_COORD:
 		w90p910_prepare_y_reading(w90p910_ts);
 		break;
@@ -317,6 +316,8 @@ static int w90x900ts_remove(struct platform_device *pdev)
 
 	input_unregister_device(w90p910_ts->input);
 	kfree(w90p910_ts);
+
+	platform_set_drvdata(pdev, NULL);
 
 	return 0;
 }

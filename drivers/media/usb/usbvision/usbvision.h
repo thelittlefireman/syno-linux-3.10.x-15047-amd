@@ -27,7 +27,6 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-
 #ifndef __LINUX_USBVISION_H
 #define __LINUX_USBVISION_H
 
@@ -155,7 +154,6 @@
 
 #define USBVISION_POWEROFF_TIME		(3 * HZ)		/* 3 seconds */
 
-
 #define FRAMERATE_MIN	0
 #define FRAMERATE_MAX	31
 
@@ -201,6 +199,14 @@ enum {
 	mb = LIMIT_RGB(mm_b); \
 	mg = LIMIT_RGB(mm_g); \
 	mr = LIMIT_RGB(mm_r); \
+}
+
+/* Debugging aid */
+#define USBVISION_SAY_AND_WAIT(what) { \
+	wait_queue_head_t wq; \
+	init_waitqueue_head(&wq); \
+	printk(KERN_INFO "Say: %s\n", what); \
+	interruptible_sleep_on_timeout(&wq, HZ * 3); \
 }
 
 /*

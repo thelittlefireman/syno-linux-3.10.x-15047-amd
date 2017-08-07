@@ -19,6 +19,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/pci.h>
+#include <linux/init.h>
 #include <linux/blkdev.h>
 #include <linux/delay.h>
 #include <scsi/scsi_host.h>
@@ -119,7 +120,6 @@ static struct hpt_clock hpt37x_timings_66[] = {
 	{ XFER_PIO_1,		0x0d029d26 },
 	{ XFER_PIO_0,		0x0d029d5e }
 };
-
 
 static const struct hpt_chip hpt370 = {
 	"HPT370",
@@ -578,7 +578,6 @@ static void hpt37x_bmdma_stop(struct ata_queued_cmd *qc)
 		pci_write_config_byte(pdev, mscreg, msc_stat | 0x30);
 	ata_bmdma_stop(qc);
 }
-
 
 static struct scsi_host_template hpt37x_sht = {
 	ATA_BMDMA_SHT(DRV_NAME),

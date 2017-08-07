@@ -26,7 +26,8 @@
  * ALSA that we support all rates and let the codec driver decide what rates
  * are really supported.
  */
-#define PSC_I2S_RATES SNDRV_PCM_RATE_CONTINUOUS
+#define PSC_I2S_RATES (SNDRV_PCM_RATE_5512 | SNDRV_PCM_RATE_8000_192000 | \
+			SNDRV_PCM_RATE_CONTINUOUS)
 
 /**
  * PSC_I2S_FORMATS: audio formats supported by the PSC I2S mode
@@ -239,4 +240,3 @@ module_platform_driver(psc_i2s_driver);
 MODULE_AUTHOR("Grant Likely <grant.likely@secretlab.ca>");
 MODULE_DESCRIPTION("Freescale MPC5200 PSC in I2S mode ASoC Driver");
 MODULE_LICENSE("GPL");
-

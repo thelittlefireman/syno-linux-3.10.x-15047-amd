@@ -133,7 +133,6 @@
 #define	BTINFO_B_SCO_ESCO			BIT(1)
 #define	BTINFO_B_CONNECTION			BIT(0)
 
-
 void rtl8723ae_btdm_coex_all_off(struct ieee80211_hw *hw);
 void rtl8723ae_dm_bt_fw_coex_all_off(struct ieee80211_hw *hw);
 

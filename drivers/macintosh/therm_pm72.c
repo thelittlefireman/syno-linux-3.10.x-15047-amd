@@ -142,7 +142,6 @@
 #define DBG(args...)	do { } while(0)
 #endif
 
-
 /*
  * Driver statics
  */
@@ -626,7 +625,6 @@ static void tickle_fcu(void)
 	/* That is hopefully enough to make the FCU happy */
 	set_pwm_fan(SLOTS_FAN_PWM_INDEX, pwm);
 }
-
 
 /*
  * Utility routine to read the CPU calibration EEPROM data
@@ -1158,7 +1156,6 @@ static int init_processor_state(struct cpu_pid_state *state, int index)
 	state->rpm = (cpu_pid_type == CPU_PID_TYPE_RACKMAC) ? 4000 : 1000;
 	state->overtemp = 0;
 	state->adc_config = 0x00;
-
 
 	if (index == 0)
 		state->monitor = attach_i2c_chip(SUPPLY_MONITOR_ID, "CPU0_monitor");
@@ -1769,7 +1766,6 @@ static void dispose_slots_state(struct slots_pid_state *state)
 	state->monitor = NULL;
 }
 
-
 static int call_critical_overtemp(void)
 {
 	char *argv[] = { critical_overtemp_path, NULL };
@@ -1781,7 +1777,6 @@ static int call_critical_overtemp(void)
 	return call_usermodehelper(critical_overtemp_path,
 				   argv, envp, UMH_WAIT_EXEC);
 }
-
 
 /*
  * Here's the kernel thread that calls the various control loops
@@ -2276,4 +2271,3 @@ module_exit(therm_pm72_exit);
 MODULE_AUTHOR("Benjamin Herrenschmidt <benh@kernel.crashing.org>");
 MODULE_DESCRIPTION("Driver for Apple's PowerMac G5 thermal control");
 MODULE_LICENSE("GPL");
-

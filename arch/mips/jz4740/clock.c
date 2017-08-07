@@ -358,7 +358,6 @@ static struct main_clk jz_clk_high_speed_peripheral = {
 	.div_offset = JZ_CLOCK_CTRL_HDIV_OFFSET,
 };
 
-
 static struct main_clk jz_clk_low_speed_peripheral = {
 	.clk = {
 		.name = "pclk",
@@ -687,7 +686,7 @@ static struct clk jz4740_clock_simple_clks[] = {
 	[3] = {
 		.name = "dma",
 		.parent = &jz_clk_high_speed_peripheral.clk,
-		.gate_bit = JZ_CLOCK_GATE_DMAC,
+		.gate_bit = JZ_CLOCK_GATE_UART0,
 		.ops = &jz_clk_simple_ops,
 	},
 	[4] = {

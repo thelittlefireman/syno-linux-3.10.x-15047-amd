@@ -1,28 +1,12 @@
-/*
- * Copyright (C) 2007 Oracle.  All rights reserved.
- * Copyright (C) 2014 Fujitsu.  All rights reserved.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public
- * License v2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
- *
- * You should have received a copy of the GNU General Public
- * License along with this program; if not, write to the
- * Free Software Foundation, Inc., 59 Temple Place - Suite 330,
- * Boston, MA 021110-1307, USA.
- */
-
+#ifndef MY_ABC_HERE
+#define MY_ABC_HERE
+#endif
+ 
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <linux/list.h>
 #include <linux/spinlock.h>
 #include <linux/freezer.h>
-#include <linux/workqueue.h>
 #include "async-thread.h"
 #include "ctree.h"
 
@@ -35,13 +19,11 @@
 
 struct __btrfs_workqueue {
 	struct workqueue_struct *normal_wq;
-	/* List head pointing to ordered work list */
+	 
 	struct list_head ordered_list;
 
-	/* Spinlock for ordered_list */
 	spinlock_t list_lock;
 
-	/* Thresholding related variants */
 	atomic_t pending;
 	int max_active;
 	int current_max;
@@ -55,8 +37,42 @@ struct btrfs_workqueue {
 	struct __btrfs_workqueue *high;
 };
 
-static inline struct __btrfs_workqueue
-*__btrfs_alloc_workqueue(const char *name, int flags, int max_active,
+static void normal_work_helper(struct btrfs_work *work);
+
+#define BTRFS_WORK_HELPER(name)					\
+void btrfs_##name(struct work_struct *arg)				\
+{									\
+	struct btrfs_work *work = container_of(arg, struct btrfs_work,	\
+					       normal_work);		\
+	normal_work_helper(work);					\
+}
+
+BTRFS_WORK_HELPER(worker_helper);
+BTRFS_WORK_HELPER(delalloc_helper);
+BTRFS_WORK_HELPER(flush_delalloc_helper);
+BTRFS_WORK_HELPER(cache_helper);
+BTRFS_WORK_HELPER(submit_helper);
+BTRFS_WORK_HELPER(fixup_helper);
+BTRFS_WORK_HELPER(endio_helper);
+BTRFS_WORK_HELPER(endio_meta_helper);
+BTRFS_WORK_HELPER(endio_meta_write_helper);
+BTRFS_WORK_HELPER(endio_raid56_helper);
+BTRFS_WORK_HELPER(rmw_helper);
+BTRFS_WORK_HELPER(endio_write_helper);
+BTRFS_WORK_HELPER(freespace_write_helper);
+BTRFS_WORK_HELPER(delayed_meta_helper);
+BTRFS_WORK_HELPER(readahead_helper);
+#ifdef MY_ABC_HERE
+BTRFS_WORK_HELPER(reada_path_start_helper);
+#endif
+BTRFS_WORK_HELPER(qgroup_rescan_helper);
+BTRFS_WORK_HELPER(extent_refs_helper);
+BTRFS_WORK_HELPER(scrub_helper);
+BTRFS_WORK_HELPER(scrubwrc_helper);
+BTRFS_WORK_HELPER(scrubnc_helper);
+
+static struct __btrfs_workqueue *
+__btrfs_alloc_workqueue(const char *name, int flags, int max_active,
 			 int thresh)
 {
 	struct __btrfs_workqueue *ret = kzalloc(sizeof(*ret), GFP_NOFS);
@@ -68,7 +84,7 @@ static inline struct __btrfs_workqueue
 	atomic_set(&ret->pending, 0);
 	if (thresh == 0)
 		thresh = DFT_THRESHOLD;
-	/* For low threshold, disabling threshold is a better choice */
+	 
 	if (thresh < DFT_THRESHOLD) {
 		ret->current_max = max_active;
 		ret->thresh = NO_THRESHOLD;
@@ -129,11 +145,6 @@ struct btrfs_workqueue *btrfs_alloc_workqueue(const char *name,
 	return ret;
 }
 
-/*
- * Hook for threshold which will be called in btrfs_queue_work.
- * This hook WILL be called in IRQ handler context,
- * so workqueue_set_max_active MUST NOT be called in this hook
- */
 static inline void thresh_queue_hook(struct __btrfs_workqueue *wq)
 {
 	if (wq->thresh == NO_THRESHOLD)
@@ -141,11 +152,6 @@ static inline void thresh_queue_hook(struct __btrfs_workqueue *wq)
 	atomic_inc(&wq->pending);
 }
 
-/*
- * Hook for threshold which will be called before executing the work,
- * This hook is called in kthread content.
- * So workqueue_set_max_active is called here.
- */
 static inline void thresh_exec_hook(struct __btrfs_workqueue *wq)
 {
 	int new_max_active;
@@ -157,20 +163,13 @@ static inline void thresh_exec_hook(struct __btrfs_workqueue *wq)
 
 	atomic_dec(&wq->pending);
 	spin_lock(&wq->thres_lock);
-	/*
-	 * Use wq->count to limit the calling frequency of
-	 * workqueue_set_max_active.
-	 */
+	 
 	wq->count++;
 	wq->count %= (wq->thresh / 4);
 	if (!wq->count)
 		goto  out;
 	new_max_active = wq->current_max;
 
-	/*
-	 * pending may be changed later, but it's OK since we really
-	 * don't need it so accurate to calculate new_max_active.
-	 */
 	pending = atomic_read(&wq->pending);
 	if (pending > wq->thresh)
 		new_max_active++;
@@ -205,48 +204,27 @@ static void run_ordered_work(struct __btrfs_workqueue *wq)
 		if (!test_bit(WORK_DONE_BIT, &work->flags))
 			break;
 
-		/*
-		 * we are going to call the ordered done function, but
-		 * we leave the work item on the list as a barrier so
-		 * that later work items that are done don't have their
-		 * functions called before this one returns
-		 */
 		if (test_and_set_bit(WORK_ORDER_DONE_BIT, &work->flags))
 			break;
 		trace_btrfs_ordered_sched(work);
 		spin_unlock_irqrestore(lock, flags);
 		work->ordered_func(work);
 
-		/* now take the lock again and drop our item from the list */
 		spin_lock_irqsave(lock, flags);
 		list_del(&work->ordered_list);
 		spin_unlock_irqrestore(lock, flags);
 
-		/*
-		 * we don't want to call the ordered free functions
-		 * with the lock held though
-		 */
 		work->ordered_free(work);
 		trace_btrfs_all_work_done(work);
 	}
 	spin_unlock_irqrestore(lock, flags);
 }
 
-static void normal_work_helper(struct work_struct *arg)
+static void normal_work_helper(struct btrfs_work *work)
 {
-	struct btrfs_work *work;
 	struct __btrfs_workqueue *wq;
 	int need_order = 0;
 
-	work = container_of(arg, struct btrfs_work, normal_work);
-	/*
-	 * We should not touch things inside work in the following cases:
-	 * 1) after work->func() if it has no ordered_free
-	 *    Since the struct is freed in work->func().
-	 * 2) after setting WORK_DONE_BIT
-	 *    The work may be freed in other threads almost instantly.
-	 * So we save the needed things here.
-	 */
 	if (work->ordered_func)
 		need_order = 1;
 	wq = work->wq;
@@ -262,7 +240,7 @@ static void normal_work_helper(struct work_struct *arg)
 		trace_btrfs_all_work_done(work);
 }
 
-void btrfs_init_work(struct btrfs_work *work,
+void btrfs_init_work(struct btrfs_work *work, btrfs_work_func_t uniq_func,
 		     btrfs_func_t func,
 		     btrfs_func_t ordered_func,
 		     btrfs_func_t ordered_free)
@@ -270,7 +248,7 @@ void btrfs_init_work(struct btrfs_work *work,
 	work->func = func;
 	work->ordered_func = ordered_func;
 	work->ordered_free = ordered_free;
-	INIT_WORK(&work->normal_work, normal_work_helper);
+	INIT_WORK(&work->normal_work, uniq_func);
 	INIT_LIST_HEAD(&work->ordered_list);
 	work->flags = 0;
 }

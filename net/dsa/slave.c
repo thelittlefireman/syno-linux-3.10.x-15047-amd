@@ -46,7 +46,6 @@ void dsa_slave_mii_bus_init(struct dsa_switch *ds)
 	ds->slave_mii_bus->parent = &ds->master_mii_bus->dev;
 }
 
-
 /* slave device handling ****************************************************/
 static int dsa_slave_init(struct net_device *dev)
 {
@@ -156,7 +155,7 @@ static int dsa_slave_set_mac_address(struct net_device *dev, void *a)
 		dev_uc_del(master, dev->dev_addr);
 
 out:
-	ether_addr_copy(dev->dev_addr, addr->sa_data);
+	memcpy(dev->dev_addr, addr->sa_data, ETH_ALEN);
 
 	return 0;
 }
@@ -170,7 +169,6 @@ static int dsa_slave_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 
 	return -EOPNOTSUPP;
 }
-
 
 /* ethtool operations *******************************************************/
 static int
@@ -347,7 +345,7 @@ dsa_slave_create(struct dsa_switch *ds, struct device *parent,
 
 	slave_dev->features = master->vlan_features;
 	SET_ETHTOOL_OPS(slave_dev, &dsa_slave_ethtool_ops);
-	eth_hw_addr_inherit(slave_dev, master);
+	memcpy(slave_dev->dev_addr, master->dev_addr, ETH_ALEN);
 	slave_dev->tx_queue_len = 0;
 
 	switch (ds->dst->tag_protocol) {

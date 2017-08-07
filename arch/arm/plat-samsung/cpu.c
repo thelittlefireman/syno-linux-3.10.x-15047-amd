@@ -15,7 +15,6 @@
 #include <linux/init.h>
 #include <linux/io.h>
 
-
 #include <mach/map.h>
 #include <plat/cpu.h>
 
@@ -27,6 +26,13 @@ unsigned int samsung_rev(void)
 	return samsung_cpu_rev;
 }
 EXPORT_SYMBOL(samsung_rev);
+
+void __init s3c24xx_init_cpu(void)
+{
+	/* nothing here yet */
+
+	samsung_cpu_rev = 0;
+}
 
 void __init s3c64xx_init_cpu(void)
 {

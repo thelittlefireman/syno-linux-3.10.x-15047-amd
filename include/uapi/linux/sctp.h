@@ -22,12 +22,13 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, see
- * <http://www.gnu.org/licenses/>.
+ * along with GNU CC; see the file COPYING.  If not, write to
+ * the Free Software Foundation, 59 Temple Place - Suite 330,
+ * Boston, MA 02111-1307, USA.
  *
  * Please send any bug reports or fixes you make to the
  * email address(es):
- *    lksctp developers <linux-sctp@vger.kernel.org>
+ *    lksctp developers <lksctp-developers@lists.sourceforge.net>
  *
  * Or submit a bug report through the following website:
  *    http://www.sf.net/projects/lksctp
@@ -253,7 +254,6 @@ enum sctp_spc_state {
 	SCTP_ADDR_CONFIRMED,
 };
 
-
 /*
  * 5.3.1.3 SCTP_REMOTE_ERROR
  *
@@ -272,7 +272,6 @@ struct sctp_remote_error {
 	sctp_assoc_t sre_assoc_id;
 	__u8 sre_data[0];
 };
-
 
 /*
  * 5.3.1.4 SCTP_SEND_FAILED
@@ -633,7 +632,6 @@ struct sctp_authkeyid {
 	sctp_assoc_t	scact_assoc_id;
 	__u16		scact_keynumber;
 };
-
 
 /*
  * 7.1.23.  Get or set delayed ack timer (SCTP_DELAYED_SACK)

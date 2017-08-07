@@ -37,7 +37,6 @@ void arch_local_irq_restore(unsigned long flags)
 }
 EXPORT_SYMBOL(arch_local_irq_restore);
 
-
 /* OR1K PIC implementation */
 
 /* We're a couple of cycles faster than the generic implementations with
@@ -130,7 +129,6 @@ static inline int pic_get_irq(int first)
 
 	return irq_find_mapping(root_domain, hwirq);
 }
-
 
 static int or1k_map(struct irq_domain *d, unsigned int irq, irq_hw_number_t hw)
 {

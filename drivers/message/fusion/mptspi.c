@@ -1012,7 +1012,6 @@ static void mptspi_write_dt(struct scsi_target *starget, int dt)
 
 	nego = mptspi_getRP(starget);
 
-
 	pg1.RequestedParameters = cpu_to_le32(nego);
 	pg1.Reserved = 0;
 	pg1.Configuration = 0;
@@ -1156,7 +1155,6 @@ static void mpt_work_wrapper(struct work_struct *work)
 	scsi_scan_target(&ioc->sh->shost_gendev, 1, disk, 0, 1);
 }
 
-
 static void mpt_dv_raid(struct _MPT_SCSI_HOST *hd, int disk)
 {
 	struct work_queue_wrapper *wqw = kmalloc(sizeof(*wqw), GFP_ATOMIC);
@@ -1256,7 +1254,6 @@ static struct pci_device_id mptspi_pci_table[] = {
 	{0}	/* Terminating entry */
 };
 MODULE_DEVICE_TABLE(pci, mptspi_pci_table);
-
 
 /*
  * renegotiate for a given target
@@ -1421,6 +1418,11 @@ mptspi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 		error = -1;
 		goto out_mptspi_probe;
         }
+
+	/* VMWare emulation doesn't properly implement WRITE_SAME
+	 */
+	if (pdev->subsystem_vendor == 0x15AD)
+		sh->no_write_same = 1;
 
 	spin_lock_irqsave(&ioc->FreeQlock, flags);
 

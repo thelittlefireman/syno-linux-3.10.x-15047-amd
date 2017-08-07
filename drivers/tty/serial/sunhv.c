@@ -433,10 +433,13 @@ static void sunhv_console_write_paged(struct console *con, const char *s, unsign
 	unsigned long flags;
 	int locked = 1;
 
-	if (port->sysrq || oops_in_progress)
-		locked = spin_trylock_irqsave(&port->lock, flags);
-	else
-		spin_lock_irqsave(&port->lock, flags);
+	local_irq_save(flags);
+	if (port->sysrq) {
+		locked = 0;
+	} else if (oops_in_progress) {
+		locked = spin_trylock(&port->lock);
+	} else
+		spin_lock(&port->lock);
 
 	while (n > 0) {
 		unsigned long ra = __pa(con_write_page);
@@ -467,7 +470,8 @@ static void sunhv_console_write_paged(struct console *con, const char *s, unsign
 	}
 
 	if (locked)
-		spin_unlock_irqrestore(&port->lock, flags);
+		spin_unlock(&port->lock);
+	local_irq_restore(flags);
 }
 
 static inline void sunhv_console_putchar(struct uart_port *port, char c)
@@ -488,10 +492,7 @@ static void sunhv_console_write_bychar(struct console *con, const char *s, unsig
 	unsigned long flags;
 	int i, locked = 1;
 
-	if (port->sysrq || oops_in_progress)
-		locked = spin_trylock_irqsave(&port->lock, flags);
-	else
-		spin_lock_irqsave(&port->lock, flags);
+	local_irq_save(flags);
 	if (port->sysrq) {
 		locked = 0;
 	} else if (oops_in_progress) {
@@ -506,7 +507,8 @@ static void sunhv_console_write_bychar(struct console *con, const char *s, unsig
 	}
 
 	if (locked)
-		spin_unlock_irqrestore(&port->lock, flags);
+		spin_unlock(&port->lock);
+	local_irq_restore(flags);
 }
 
 static struct console sunhv_console = {
@@ -575,7 +577,7 @@ static int hv_probe(struct platform_device *op)
 	if (err)
 		goto out_remove_port;
 
-	platform_set_drvdata(op, port);
+	dev_set_drvdata(&op->dev, port);
 
 	return 0;
 
@@ -599,7 +601,7 @@ out_free_port:
 
 static int hv_remove(struct platform_device *dev)
 {
-	struct uart_port *port = platform_get_drvdata(dev);
+	struct uart_port *port = dev_get_drvdata(&dev->dev);
 
 	free_irq(port->irq, port);
 
@@ -609,6 +611,8 @@ static int hv_remove(struct platform_device *dev)
 
 	kfree(port);
 	sunhv_port = NULL;
+
+	dev_set_drvdata(&dev->dev, NULL);
 
 	return 0;
 }

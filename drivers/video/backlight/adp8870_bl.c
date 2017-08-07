@@ -22,7 +22,6 @@
 #define ADP8870_EXT_FEATURES
 #define ADP8870_USE_LEDS
 
-
 #define ADP8870_MFDVID	0x00  /* Manufacturer and device ID */
 #define ADP8870_MDCR	0x01  /* Device mode and status */
 #define ADP8870_INT_STAT 0x02  /* Interrupts status */
@@ -140,7 +139,6 @@ static int adp8870_read(struct i2c_client *client, int reg, uint8_t *val)
 	return 0;
 }
 
-
 static int adp8870_write(struct i2c_client *client, u8 reg, u8 val)
 {
 	int ret = i2c_smbus_write_byte_data(client, reg, val);
@@ -238,7 +236,7 @@ static int adp8870_led_setup(struct adp8870_led *led)
 static int adp8870_led_probe(struct i2c_client *client)
 {
 	struct adp8870_backlight_platform_data *pdata =
-		dev_get_platdata(&client->dev);
+		client->dev.platform_data;
 	struct adp8870_bl *data = i2c_get_clientdata(client);
 	struct adp8870_led *led, *led_dat;
 	struct led_info *cur_led;
@@ -246,8 +244,10 @@ static int adp8870_led_probe(struct i2c_client *client)
 
 	led = devm_kzalloc(&client->dev, pdata->num_leds * sizeof(*led),
 				GFP_KERNEL);
-	if (led == NULL)
+	if (led == NULL) {
+		dev_err(&client->dev, "failed to alloc memory\n");
 		return -ENOMEM;
+	}
 
 	ret = adp8870_write(client, ADP8870_ISCLAW, pdata->led_fade_law);
 	if (ret)
@@ -323,7 +323,7 @@ static int adp8870_led_probe(struct i2c_client *client)
 static int adp8870_led_remove(struct i2c_client *client)
 {
 	struct adp8870_backlight_platform_data *pdata =
-		dev_get_platdata(&client->dev);
+		client->dev.platform_data;
 	struct adp8870_bl *data = i2c_get_clientdata(client);
 	int i;
 
@@ -593,7 +593,6 @@ static ssize_t adp8870_bl_l5_dark_max_store(struct device *dev,
 static DEVICE_ATTR(l5_dark_max, 0664, adp8870_bl_l5_dark_max_show,
 			adp8870_bl_l5_dark_max_store);
 
-
 static ssize_t adp8870_bl_l4_indoor_max_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -607,7 +606,6 @@ static ssize_t adp8870_bl_l4_indoor_max_store(struct device *dev,
 }
 static DEVICE_ATTR(l4_indoor_max, 0664, adp8870_bl_l4_indoor_max_show,
 			adp8870_bl_l4_indoor_max_store);
-
 
 static ssize_t adp8870_bl_l3_office_max_show(struct device *dev,
 				     struct device_attribute *attr, char *buf)
@@ -686,7 +684,6 @@ static ssize_t adp8870_bl_l4_indoor_dim_store(struct device *dev,
 }
 static DEVICE_ATTR(l4_indoor_dim, 0664, adp8870_bl_l4_indoor_dim_show,
 			adp8870_bl_l4_indoor_dim_store);
-
 
 static ssize_t adp8870_bl_l3_office_dim_show(struct device *dev,
 			struct device_attribute *attr, char *buf)
@@ -846,7 +843,7 @@ static int adp8870_probe(struct i2c_client *client,
 	struct backlight_device *bl;
 	struct adp8870_bl *data;
 	struct adp8870_backlight_platform_data *pdata =
-		dev_get_platdata(&client->dev);
+		client->dev.platform_data;
 	uint8_t reg_val;
 	int ret;
 
@@ -886,9 +883,8 @@ static int adp8870_probe(struct i2c_client *client,
 	memset(&props, 0, sizeof(props));
 	props.type = BACKLIGHT_RAW;
 	props.max_brightness = props.brightness = ADP8870_MAX_BRIGHTNESS;
-	bl = devm_backlight_device_register(&client->dev,
-				dev_driver_string(&client->dev),
-				&client->dev, data, &adp8870_bl_ops, &props);
+	bl = backlight_device_register(dev_driver_string(&client->dev),
+			&client->dev, data, &adp8870_bl_ops, &props);
 	if (IS_ERR(bl)) {
 		dev_err(&client->dev, "failed to register backlight\n");
 		return PTR_ERR(bl);
@@ -901,7 +897,7 @@ static int adp8870_probe(struct i2c_client *client,
 			&adp8870_bl_attr_group);
 		if (ret) {
 			dev_err(&client->dev, "failed to register sysfs\n");
-			return ret;
+			goto out1;
 		}
 	}
 
@@ -924,6 +920,8 @@ out:
 	if (data->pdata->en_ambl_sens)
 		sysfs_remove_group(&data->bl->dev.kobj,
 			&adp8870_bl_attr_group);
+out1:
+	backlight_device_unregister(bl);
 
 	return ret;
 }
@@ -940,6 +938,8 @@ static int adp8870_remove(struct i2c_client *client)
 	if (data->pdata->en_ambl_sens)
 		sysfs_remove_group(&data->bl->dev.kobj,
 			&adp8870_bl_attr_group);
+
+	backlight_device_unregister(data->bl);
 
 	return 0;
 }

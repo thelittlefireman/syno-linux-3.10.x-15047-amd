@@ -93,7 +93,6 @@ static void mfree_all_stainfo(struct sta_priv *pstapriv)
 	spin_unlock_irqrestore(&pstapriv->sta_hash_lock, irqL);
 }
 
-
 static void mfree_sta_priv_lock(struct	sta_priv *pstapriv)
 {
 	 mfree_all_stainfo(pstapriv); /* be done before free sta_hash_lock */
@@ -138,7 +137,7 @@ struct sta_info *r8712_alloc_stainfo(struct sta_priv *pstapriv, u8 *hwaddr)
 		}
 		phash_list = &(pstapriv->sta_hash[index]);
 		list_insert_tail(&psta->hash_list, phash_list);
-		pstapriv->asoc_sta_count++;
+		pstapriv->asoc_sta_count++ ;
 
 /* For the SMC router, the sequence number of first packet of WPS handshake
  * will be 0. In this case, this packet will be dropped by recv_decache function
@@ -149,7 +148,7 @@ struct sta_info *r8712_alloc_stainfo(struct sta_priv *pstapriv, u8 *hwaddr)
 			memcpy(&psta->sta_recvpriv.rxcache.tid_rxseq[i],
 				&wRxSeqInitialValue, 2);
 		/* for A-MPDU Rx reordering buffer control */
-		for (i = 0; i < 16; i++) {
+		for (i = 0; i < 16 ; i++) {
 			preorder_ctrl = &psta->recvreorder_ctrl[i];
 			preorder_ctrl->padapter = pstapriv->padapter;
 			preorder_ctrl->indicate_seq = 0xffff;
@@ -288,7 +287,6 @@ struct sta_info *r8712_get_bcmc_stainfo(struct _adapter *padapter)
 	psta = r8712_get_stainfo(pstapriv, bc_addr);
 	return psta;
 }
-
 
 u8 r8712_access_ctrl(struct wlan_acl_pool *pacl_list, u8 *mac_addr)
 {

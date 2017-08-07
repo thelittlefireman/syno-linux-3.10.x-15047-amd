@@ -120,7 +120,6 @@ static int create_bbt(struct mtd_info *mtd, uint8_t *buf, struct nand_bbt_descr 
 	return 0;
 }
 
-
 /**
  * onenand_memory_bbt - [GENERIC] create a memory based bad block table
  * @param mtd		MTD device structure
@@ -133,6 +132,7 @@ static inline int onenand_memory_bbt (struct mtd_info *mtd, struct nand_bbt_desc
 {
 	struct onenand_chip *this = mtd->priv;
 
+        bd->options &= ~NAND_BBT_SCANEMPTY;
 	return create_bbt(mtd, this->page_buf, bd, -1);
 }
 

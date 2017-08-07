@@ -64,7 +64,6 @@ static const unsigned char usb_kbd_keycode[256] = {
 	150,158,159,128,136,177,178,176,142,152,173,140
 };
 
-
 /**
  * struct usb_kbd - state of each attached keyboard
  * @dev:	input device associated with this keyboard
@@ -146,7 +145,7 @@ static void usb_kbd_irq(struct urb *urb)
 				input_report_key(kbd->dev, usb_kbd_keycode[kbd->new[i]], 1);
 			else
 				hid_info(urb->dev,
-					 "Unknown key (scancode %#x) pressed.\n",
+					 "Unknown key (scancode %#x) released.\n",
 					 kbd->new[i]);
 		}
 	}

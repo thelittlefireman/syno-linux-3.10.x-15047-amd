@@ -54,7 +54,6 @@
 #define mcg_error_group(group, format, arg...) \
 	pr_err("  %16s: " format, (group)->name, ## arg)
 
-
 static union ib_gid mgid0;
 
 static struct workqueue_struct *clean_wq;
@@ -132,7 +131,6 @@ struct mcast_req {
 	struct mcast_group	*group;
 	int			clean;
 };
-
 
 #define safe_atomic_dec(ref) \
 	do {\
@@ -215,9 +213,8 @@ static int send_mad_to_wire(struct mlx4_ib_demux_ctx *ctx, struct ib_mad *mad)
 	}
 	mlx4_ib_query_ah(dev->sm_ah[ctx->port - 1], &ah_attr);
 	spin_unlock(&dev->sm_lock);
-	return mlx4_ib_send_to_wire(dev, mlx4_master_func_num(dev->dev),
-				    ctx->port, IB_QPT_GSI, 0, 1, IB_QP1_QKEY,
-				    &ah_attr, NULL, mad);
+	return mlx4_ib_send_to_wire(dev, mlx4_master_func_num(dev->dev), ctx->port,
+				    IB_QPT_GSI, 0, 1, IB_QP1_QKEY, &ah_attr, mad);
 }
 
 static int send_mad_to_slave(int slave, struct mlx4_ib_demux_ctx *ctx,
@@ -1157,7 +1154,6 @@ static void build_leave_mad(struct mcast_req *req)
 	mad->mad_hdr.method = IB_SA_METHOD_DELETE;
 }
 
-
 static void clear_pending_reqs(struct mcast_group *group, int vf)
 {
 	struct mcast_req *req, *tmp, *group_first = NULL;
@@ -1240,7 +1236,6 @@ void clean_vf_mcast(struct mlx4_ib_demux_ctx *ctx, int slave)
 	}
 	mutex_unlock(&ctx->mcg_table_lock);
 }
-
 
 int mlx4_ib_mcg_init(void)
 {

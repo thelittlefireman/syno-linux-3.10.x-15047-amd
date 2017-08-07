@@ -76,6 +76,13 @@
 #include <wl_wext.h>
 #include <wl_priv.h>
 
+/*******************************************************************************
+ * global definitions
+ ******************************************************************************/
+#if DBG
+extern dbg_info_t *DbgInfo;
+#endif  // DBG
+
 /* Set up the LTV to program the appropriate key */
 static int hermes_set_tkip_keys(ltv_t *ltv, u16 key_idx, u8 *addr,
 				int set_tx, u8 *seq, u8 *key, size_t key_len)
@@ -84,6 +91,8 @@ static int hermes_set_tkip_keys(ltv_t *ltv, u16 key_idx, u8 *addr,
 	int buf_idx = 0;
 	hcf_8 tsc[IW_ENCODE_SEQ_MAX_SIZE] =
 		{ 0x00, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00 };
+
+	DBG_ENTER(DbgInfo);
 
 	/*
 	 * Check the key index here; if 0, load as Pairwise Key, otherwise,
@@ -153,6 +162,7 @@ static int hermes_set_tkip_keys(ltv_t *ltv, u16 key_idx, u8 *addr,
 		break;
 	}
 
+	DBG_LEAVE(DbgInfo);
 	return ret;
 }
 
@@ -316,6 +326,10 @@ static int wireless_commit(struct net_device *dev,
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_commit" );
+	DBG_ENTER(DbgInfo);
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -333,12 +347,10 @@ static int wireless_commit(struct net_device *dev,
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_commit
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_protocol()
@@ -360,18 +372,19 @@ out:
  ******************************************************************************/
 static int wireless_get_protocol(struct net_device *dev, struct iw_request_info *info, char *name, char *extra)
 {
+	DBG_FUNC( "wireless_get_protocol" );
+	DBG_ENTER( DbgInfo );
+
 	/* Originally, the driver was placing the string "Wireless" here. However,
 	   the wireless extensions (/linux/wireless.h) indicate this string should
 	   describe the wireless protocol. */
 
 	strcpy(name, "IEEE 802.11b");
 
+	DBG_LEAVE(DbgInfo);
 	return 0;
 } // wireless_get_protocol
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_frequency()
@@ -398,6 +411,10 @@ static int wireless_set_frequency(struct net_device *dev, struct iw_request_info
 	unsigned long flags;
 	int channel = 0;
 	int ret     = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_frequency" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -406,9 +423,9 @@ static int wireless_set_frequency(struct net_device *dev, struct iw_request_info
 
 	if( !capable( CAP_NET_ADMIN )) {
 		ret = -EPERM;
+		DBG_LEAVE( DbgInfo );
 		return ret;
 	}
-
 
 	/* If frequency specified, look up channel */
 	if( freq->e == 1 ) {
@@ -416,25 +433,21 @@ static int wireless_set_frequency(struct net_device *dev, struct iw_request_info
 		channel = wl_get_chan_from_freq( f );
 	}
 
-
 	/* Channel specified */
 	if( freq->e == 0 ) {
 		channel = freq->m;
 	}
-
 
 	/* If the channel is an 802.11a channel, set Bit 8 */
 	if( channel > 14 ) {
 		channel = channel | 0x100;
 	}
 
-
 	wl_lock( lp, &flags );
 
     	wl_act_int_off( lp );
 
 	lp->Channel = channel;
-
 
 	/* Commit the adapter parameters */
 	wl_apply( lp );
@@ -447,12 +460,10 @@ static int wireless_set_frequency(struct net_device *dev, struct iw_request_info
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_frequency
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_frequency()
@@ -478,6 +489,10 @@ static int wireless_get_frequency(struct net_device *dev, struct iw_request_info
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = -1;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_frequency" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -506,12 +521,10 @@ static int wireless_get_frequency(struct net_device *dev, struct iw_request_info
 	ret = (ret == HCF_SUCCESS ? 0 : -EFAULT);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_frequency
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_range()
@@ -543,6 +556,10 @@ static int wireless_get_range(struct net_device *dev, struct iw_request_info *in
 	int                count;
 	__u16             *pTxRate;
 	int                retries = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_range" );
+	DBG_ENTER( DbgInfo );
 
 	/* Set range information */
 	data->length = sizeof(struct iw_range);
@@ -607,14 +624,11 @@ retry:
 
 	// NWID - NOT SUPPORTED
 
-
 	/* Channel/Frequency Info */
 	range->num_channels = RADIO_CHANNELS;
 
-
 	/* Signal Level Thresholds */
 	range->sensitivity = RADIO_SENSITIVITY_LEVELS;
-
 
 	/* Link quality */
 	range->max_qual.qual     = (u_char)HCF_MAX_COMM_QUALITY;
@@ -625,7 +639,6 @@ retry:
 
 	range->max_qual.level   = (u_char)( dbm( HCF_MIN_SIGNAL_LEVEL ) - 1 );
 	range->max_qual.noise   = (u_char)( dbm( HCF_MIN_NOISE_LEVEL ) - 1 );
-
 
 	/* Set available rates */
 	range->num_bitrates = 0;
@@ -710,10 +723,10 @@ out_unlock:
 
 	wl_unlock(lp, &flags);
 
+	DBG_LEAVE(DbgInfo);
 	return ret;
 } // wireless_get_range
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wireless_get_bssid()
@@ -742,6 +755,10 @@ static int wireless_get_bssid(struct net_device *dev, struct iw_request_info *in
 #if 1 //;? (HCF_TYPE) & HCF_TYPE_STA
 	int status = -1;
 #endif /* (HCF_TYPE) & HCF_TYPE_STA */
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_bssid" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -758,7 +775,6 @@ static int wireless_get_bssid(struct net_device *dev, struct iw_request_info *in
 	   STA mode, this address will be overwritten with the actual BSSID using
 	   the code below. */
 	memcpy(&ap_addr->sa_data, lp->dev->dev_addr, ETH_ALEN);
-
 
 #if 1 //;? (HCF_TYPE) & HCF_TYPE_STA
 					//;?should we return an error status in AP mode
@@ -784,12 +800,10 @@ static int wireless_get_bssid(struct net_device *dev, struct iw_request_info *in
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE(DbgInfo);
 	return ret;
 } // wireless_get_bssid
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_ap_list()
@@ -829,6 +843,10 @@ static int wireless_get_ap_list (struct net_device *dev, struct iw_request_info 
 #else
 	ProbeResult         *p = &lp->probe_results;
 #endif  // WARP
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_ap_list" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -928,12 +946,10 @@ static int wireless_get_ap_list (struct net_device *dev, struct iw_request_info 
 		}
 	}
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_ap_list
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_sensitivity()
@@ -960,6 +976,10 @@ static int wireless_set_sensitivity(struct net_device *dev, struct iw_request_in
 	unsigned long flags;
 	int ret = 0;
 	int dens = sens->value;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_sensitivity" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -983,12 +1003,10 @@ static int wireless_set_sensitivity(struct net_device *dev, struct iw_request_in
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_sensitivity
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_sensitivity()
@@ -1013,6 +1031,11 @@ static int wireless_get_sensitivity(struct net_device *dev, struct iw_request_in
 {
 	struct wl_private *lp = wl_priv(dev);
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_sensitivity" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1023,12 +1046,10 @@ static int wireless_get_sensitivity(struct net_device *dev, struct iw_request_in
 	sens->value = lp->DistanceBetweenAPs;
 	sens->fixed = 0;	/* auto */
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_sensitivity
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_essid()
@@ -1056,12 +1077,15 @@ static int wireless_set_essid(struct net_device *dev, struct iw_request_info *in
 	unsigned long flags;
 	int ret = 0;
 
+	DBG_FUNC( "wireless_set_essid" );
+	DBG_ENTER( DbgInfo );
+
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
 		goto out;
 	}
 
-	if (data->flags != 0 && data->length > HCF_MAX_NAME_LEN) {
+	if (data->flags != 0 && data->length > HCF_MAX_NAME_LEN + 1) {
 		ret = -EINVAL;
 		goto out;
 	}
@@ -1099,12 +1123,10 @@ static int wireless_set_essid(struct net_device *dev, struct iw_request_info *in
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_essid
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_essid()
@@ -1134,6 +1156,10 @@ static int wireless_get_essid(struct net_device *dev, struct iw_request_info *in
 	int         ret = 0;
 	int         status = -1;
 	wvName_t    *pName;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_essid" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1147,14 +1173,12 @@ static int wireless_get_essid(struct net_device *dev, struct iw_request_info *in
 	/* Get the desired network name */
 	lp->ltvRecord.len = 1 + ( sizeof( *pName ) / sizeof( hcf_16 ));
 
-
 #if 1 //;? (HCF_TYPE) & HCF_TYPE_STA
 					//;?should we return an error status in AP mode
 
 	lp->ltvRecord.typ = CFG_DESIRED_SSID;
 
 #endif
-
 
 #if 1 //;? (HCF_TYPE) & HCF_TYPE_AP
 		//;?should we restore this to allow smaller memory footprint
@@ -1164,7 +1188,6 @@ static int wireless_get_essid(struct net_device *dev, struct iw_request_info *in
 	}
 
 #endif // HCF_AP
-
 
 	status = hcf_get_info( &( lp->hcfCtx ), (LTVP)&( lp->ltvRecord ));
 	if( status == HCF_SUCCESS ) {
@@ -1181,7 +1204,6 @@ static int wireless_get_essid(struct net_device *dev, struct iw_request_info *in
 		}
 
 		data->flags = 1;
-
 
 #if 1 //;? (HCF_TYPE) & HCF_TYPE_STA
 					//;?should we return an error status in AP mode
@@ -1228,12 +1250,10 @@ out_unlock:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_essid
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_encode()
@@ -1262,6 +1282,8 @@ static int wireless_set_encode(struct net_device *dev, struct iw_request_info *i
 	int ret = 0;
 	bool enable = true;
 
+	DBG_ENTER(DbgInfo);
+
 	if (lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
 		goto out;
@@ -1286,6 +1308,7 @@ static int wireless_set_encode(struct net_device *dev, struct iw_request_info *i
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE(DbgInfo);
 	return ret;
 }
 
@@ -1315,7 +1338,10 @@ static int wireless_get_encode(struct net_device *dev, struct iw_request_info *i
 	unsigned long flags;
 	int ret = 0;
 	int index;
+	/*------------------------------------------------------------------------*/
 
+	DBG_FUNC( "wireless_get_encode" );
+	DBG_ENTER( DbgInfo );
 	DBG_NOTICE(DbgInfo, "GIWENCODE: encrypt: %d, ID: %d\n", lp->EnableEncryption, lp->TransmitKeyID);
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
@@ -1326,6 +1352,7 @@ static int wireless_get_encode(struct net_device *dev, struct iw_request_info *i
 	/* Only super-user can see WEP key */
 	if( !capable( CAP_NET_ADMIN )) {
 		ret = -EPERM;
+		DBG_LEAVE( DbgInfo );
 		return ret;
 	}
 
@@ -1341,7 +1368,6 @@ static int wireless_get_encode(struct net_device *dev, struct iw_request_info *i
 
 	/* Basic checking */
 	index = (erq->flags & IW_ENCODE_INDEX ) - 1;
-
 
 	/* Set the flags */
 	erq->flags = 0;
@@ -1369,12 +1395,10 @@ out_unlock:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_encode
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_nickname()
@@ -1400,6 +1424,10 @@ static int wireless_set_nickname(struct net_device *dev, struct iw_request_info 
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_nickname" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1409,6 +1437,7 @@ static int wireless_set_nickname(struct net_device *dev, struct iw_request_info 
 #if 0 //;? Needed, was present in original code but not in 7.18 Linux 2.6 kernel version
 	if( !capable(CAP_NET_ADMIN )) {
 		ret = -EPERM;
+		DBG_LEAVE( DbgInfo );
 		return ret;
 	}
 #endif
@@ -1435,12 +1464,10 @@ static int wireless_set_nickname(struct net_device *dev, struct iw_request_info 
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_nickname
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_nickname()
@@ -1468,6 +1495,10 @@ static int wireless_get_nickname(struct net_device *dev, struct iw_request_info 
 	int         ret = 0;
 	int         status = -1;
 	wvName_t    *pName;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_nickname" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1506,12 +1537,10 @@ static int wireless_get_nickname(struct net_device *dev, struct iw_request_info 
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE(DbgInfo);
 	return ret;
 } // wireless_get_nickname
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_porttype()
@@ -1539,6 +1568,10 @@ static int wireless_set_porttype(struct net_device *dev, struct iw_request_info 
 	int ret = 0;
 	hcf_16  portType;
 	hcf_16	createIBSS;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_porttype" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1561,7 +1594,6 @@ static int wireless_set_porttype(struct net_device *dev, struct iw_request_info 
 
 		break;
 
-
 	case IW_MODE_AUTO:
 	case IW_MODE_INFRA:
 
@@ -1572,7 +1604,6 @@ static int wireless_set_porttype(struct net_device *dev, struct iw_request_info 
 		lp->DownloadFirmware = WVLAN_DRV_MODE_STA; //1;
 
 		break;
-
 
 #if 0 //;? (HCF_TYPE) & HCF_TYPE_AP
 
@@ -1587,7 +1618,6 @@ static int wireless_set_porttype(struct net_device *dev, struct iw_request_info 
 		break;
 
 #endif /* (HCF_TYPE) & HCF_TYPE_AP */
-
 
 	default:
 
@@ -1615,12 +1645,10 @@ static int wireless_set_porttype(struct net_device *dev, struct iw_request_info 
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_porttype
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_porttype()
@@ -1649,6 +1677,10 @@ static int wireless_get_porttype(struct net_device *dev, struct iw_request_info 
 	int     ret = 0;
 	int     status = -1;
 	hcf_16  *pPortType;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_porttype" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1701,7 +1733,6 @@ static int wireless_get_porttype(struct net_device *dev, struct iw_request_info 
 
 			break;
 
-
 		case 3:
 			*mode = IW_MODE_ADHOC;
 			break;
@@ -1719,12 +1750,10 @@ static int wireless_get_porttype(struct net_device *dev, struct iw_request_info 
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_porttype
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_power()
@@ -1750,6 +1779,10 @@ static int wireless_set_power(struct net_device *dev, struct iw_request_info *in
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_power" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1761,6 +1794,8 @@ static int wireless_set_power(struct net_device *dev, struct iw_request_info *in
 #if 0 //;? Needed, was present in original code but not in 7.18 Linux 2.6 kernel version
 	if( !capable( CAP_NET_ADMIN )) {
 		ret = -EPERM;
+
+		DBG_LEAVE( DbgInfo );
 		return ret;
 	}
 #endif
@@ -1784,12 +1819,10 @@ static int wireless_set_power(struct net_device *dev, struct iw_request_info *in
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_power
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_power()
@@ -1816,6 +1849,9 @@ static int wireless_get_power(struct net_device *dev, struct iw_request_info *in
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+	DBG_FUNC( "wireless_get_power" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1842,12 +1878,10 @@ static int wireless_get_power(struct net_device *dev, struct iw_request_info *in
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_power
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_tx_power()
@@ -1873,6 +1907,9 @@ static int wireless_get_tx_power(struct net_device *dev, struct iw_request_info 
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+	DBG_FUNC( "wireless_get_tx_power" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1898,12 +1935,10 @@ static int wireless_get_tx_power(struct net_device *dev, struct iw_request_info 
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_tx_power
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_set_rts_threshold()
@@ -1930,6 +1965,10 @@ static int wireless_set_rts_threshold (struct net_device *dev, struct iw_request
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
 	int rthr = rts->value;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_rts_threshold" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -1963,12 +2002,10 @@ static int wireless_set_rts_threshold (struct net_device *dev, struct iw_request
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_rts_threshold
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_rts_threshold()
@@ -1994,6 +2031,10 @@ static int wireless_get_rts_threshold (struct net_device *dev, struct iw_request
 	int ret = 0;
 	struct wl_private *lp = wl_priv(dev);
 	unsigned long flags;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_rts_threshold" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2015,13 +2056,10 @@ static int wireless_get_rts_threshold (struct net_device *dev, struct iw_request
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_rts_threshold
 /*============================================================================*/
-
-
-
-
 
 /*******************************************************************************
  *	wireless_set_rate()
@@ -2051,6 +2089,10 @@ static int wireless_set_rate(struct net_device *dev, struct iw_request_info *inf
 	int status = -1;
 	int index = 0;
 #endif  // WARP
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_set_rate" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2076,6 +2118,7 @@ static int wireless_set_rate(struct net_device *dev, struct iw_request_info *inf
 		DBG_PRINT( "Index: %d\n", index );
 	} else {
 		DBG_ERROR( DbgInfo, "Could not determine radio frequency\n" );
+		DBG_LEAVE( DbgInfo );
 		ret = -EINVAL;
 		goto out_unlock;
 	}
@@ -2182,7 +2225,6 @@ static int wireless_set_rate(struct net_device *dev, struct iw_request_info *inf
 		goto out_unlock;
 	}
 
-
 #else
 
 	if( rrq->value > 0 &&
@@ -2225,7 +2267,6 @@ static int wireless_set_rate(struct net_device *dev, struct iw_request_info *inf
 
 #endif  // WARP
 
-
 	/* Commit the adapter parameters */
 	wl_apply( lp );
 
@@ -2236,12 +2277,10 @@ out_unlock:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_rate
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_rate()
@@ -2270,6 +2309,10 @@ static int wireless_get_rate(struct net_device *dev, struct iw_request_info *inf
 	int     ret = 0;
 	int     status = -1;
 	hcf_16  txRate;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_rate" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2345,12 +2388,10 @@ static int wireless_get_rate(struct net_device *dev, struct iw_request_info *inf
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_rate
 /*============================================================================*/
-
-
-
 
 #if 0 //;? Not used anymore
 /*******************************************************************************
@@ -2376,6 +2417,10 @@ out:
 int wireless_get_private_interface( struct iwreq *wrq, struct wl_private *lp )
 {
 	int ret = 0;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_private_interface" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2396,8 +2441,10 @@ int wireless_get_private_interface( struct iwreq *wrq, struct wl_private *lp )
 		/* Verify the user buffer */
 		ret = verify_area( VERIFY_WRITE, wrq->u.data.pointer, sizeof( priv ));
 
-		if( ret != 0 )
+		if( ret != 0 ) {
+			DBG_LEAVE( DbgInfo );
 			return ret;
+		}
 
 		/* Copy the data into the user's buffer */
 		wrq->u.data.length = NELEM( priv );
@@ -2405,12 +2452,11 @@ int wireless_get_private_interface( struct iwreq *wrq, struct wl_private *lp )
 	}
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_private_interface
 /*============================================================================*/
 #endif
-
-
 
 /*******************************************************************************
  *	wireless_set_scan()
@@ -2438,8 +2484,12 @@ static int wireless_set_scan(struct net_device *dev, struct iw_request_info *inf
 	int                 ret = 0;
 	int                 status = -1;
 	int		    retries = 0;
+	/*------------------------------------------------------------------------*/
 
 	//;? Note: shows results as trace, returns always 0 unless BUSY
+
+	DBG_FUNC( "wireless_set_scan" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2466,7 +2516,6 @@ static int wireless_set_scan(struct net_device *dev, struct iw_request_info *inf
 retry:
 	/* Set the completion state to FALSE */
 	lp->probe_results.scan_complete = FALSE;
-
 
 	/* Channels to scan */
 #ifdef WARP
@@ -2536,12 +2585,10 @@ retry:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE(DbgInfo);
 	return ret;
 } // wireless_set_scan
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wireless_get_scan()
@@ -2575,6 +2622,10 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 	hcf_8               msg[512];
 	hcf_8               *wpa_ie;
 	hcf_16              wpa_ie_len;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wireless_get_scan" );
+	DBG_ENTER( DbgInfo );
 
 	if(lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2600,7 +2651,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 	for( count = 0; count < lp->probe_results.num_aps; count++ ) {
 		/* Reference the probe response from the table */
 		probe_resp = (PROBE_RESP *)&lp->probe_results.ProbeTable[count];
-
 
 		/* First entry MUST be the MAC address */
 		memset( &iwe, 0, sizeof( iwe ));
@@ -2643,7 +2693,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 		buf = iwe_stream_add_event(info, buf, buf_end,
 					   &iwe, IW_EV_QUAL_LEN);
 
-
 		/* ESSID information */
 		if( probe_resp->rawData[1] > 0 ) {
 			memset( &iwe, 0, sizeof( iwe ));
@@ -2655,7 +2704,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 			buf = iwe_stream_add_point(info, buf, buf_end,
 					       &iwe, &probe_resp->rawData[2]);
 		}
-
 
 		/* Encryption Information */
 		memset( &iwe, 0, sizeof( iwe ));
@@ -2673,7 +2721,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 
 		buf = iwe_stream_add_point(info, buf, buf_end, &iwe, NULL);
 
-
 		/* Frequency Info */
 		memset( &iwe, 0, sizeof( iwe ));
 
@@ -2685,7 +2732,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 		buf = iwe_stream_add_event(info, buf, buf_end,
 					   &iwe, IW_EV_FREQ_LEN);
 
-
 		/* Custom info (Beacon Interval) */
 		memset( &iwe, 0, sizeof( iwe ));
 		memset( msg, 0, sizeof( msg ));
@@ -2695,7 +2741,6 @@ static int wireless_get_scan(struct net_device *dev, struct iw_request_info *inf
 		iwe.u.data.length = strlen( msg );
 
 		buf = iwe_stream_add_point(info, buf, buf_end, &iwe, msg);
-
 
 		/* WPA-IE */
 		wpa_ie = NULL;
@@ -2724,6 +2769,7 @@ out_unlock:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_get_scan
 /*============================================================================*/
@@ -2757,6 +2803,9 @@ static int wireless_set_auth(struct net_device *dev,
 	int ret;
 	int iwa_idx = data->flags & IW_AUTH_INDEX;
 	int iwa_val = data->value;
+
+	DBG_FUNC( "wireless_set_auth" );
+	DBG_ENTER( DbgInfo );
 
 	if (lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
@@ -2870,10 +2919,10 @@ static int wireless_set_auth(struct net_device *dev,
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE( DbgInfo );
 	return ret;
 } // wireless_set_auth
 /*============================================================================*/
-
 
 static void flush_tx(struct wl_private *lp)
 {
@@ -2918,6 +2967,8 @@ static int wireless_set_encodeext(struct net_device *dev,
 	bool enable = true;
 	bool set_tx = false;
 
+	DBG_ENTER(DbgInfo);
+
 	if (lp->portState == WVLAN_PORT_STATE_DISABLED) {
 		ret = -EBUSY;
 		goto out;
@@ -2943,6 +2994,7 @@ static int wireless_set_encodeext(struct net_device *dev,
 
 		if (sizeof(ext->rx_seq) != 8) {
 			DBG_TRACE(DbgInfo, "rx_seq size mismatch\n");
+			DBG_LEAVE(DbgInfo);
 			ret = -EINVAL;
 			goto out_unlock;
 		}
@@ -3016,11 +3068,10 @@ out_unlock:
 	wl_unlock(lp, &flags);
 
 out:
+	DBG_LEAVE(DbgInfo);
 	return ret;
 }
 /*============================================================================*/
-
-
 
 static int wireless_set_genie(struct net_device *dev,
 			      struct iw_request_info *info,
@@ -3029,14 +3080,16 @@ static int wireless_set_genie(struct net_device *dev,
 {
 	int   ret = 0;
 
+	DBG_ENTER(DbgInfo);
+
 	/* We can't write this to the card, but apparently this
 	 * operation needs to succeed */
 	ret = 0;
 
+	DBG_LEAVE(DbgInfo);
 	return ret;
 }
 /*============================================================================*/
-
 
 /*******************************************************************************
  *	wl_wireless_stats()
@@ -3061,7 +3114,10 @@ struct iw_statistics * wl_wireless_stats( struct net_device *dev )
 {
 	struct iw_statistics    *pStats;
 	struct wl_private       *lp = wl_priv(dev);
+	/*------------------------------------------------------------------------*/
 
+	DBG_FUNC( "wl_wireless_stats" );
+	DBG_ENTER(DbgInfo);
 	DBG_PARAM(DbgInfo, "dev", "%s (0x%p)", dev->name, dev);
 
 	pStats = NULL;
@@ -3122,12 +3178,10 @@ struct iw_statistics * wl_wireless_stats( struct net_device *dev )
 		}
 	}
 
+	DBG_LEAVE( DbgInfo );
 	return pStats;
 } // wl_wireless_stats
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_get_wireless_stats()
@@ -3155,6 +3209,10 @@ struct iw_statistics * wl_get_wireless_stats( struct net_device *dev )
 	unsigned long           flags;
 	struct wl_private       *lp = wl_priv(dev);
 	struct iw_statistics    *pStats = NULL;
+	/*------------------------------------------------------------------------*/
+
+	DBG_FUNC( "wl_get_wireless_stats" );
+	DBG_ENTER(DbgInfo);
 
 	wl_lock( lp, &flags );
 
@@ -3172,9 +3230,9 @@ struct iw_statistics * wl_get_wireless_stats( struct net_device *dev )
 
 	wl_unlock(lp, &flags);
 
+	DBG_LEAVE( DbgInfo );
 	return pStats;
 } // wl_get_wireless_stats
-
 
 /*******************************************************************************
  *	wl_spy_gather()
@@ -3235,9 +3293,6 @@ inline void wl_spy_gather( struct net_device *dev, u_char *mac )
 } // wl_spy_gather
 /*============================================================================*/
 
-
-
-
 /*******************************************************************************
  *	wl_wext_event_freq()
  *******************************************************************************
@@ -3263,7 +3318,6 @@ void wl_wext_event_freq( struct net_device *dev )
 	struct wl_private *lp = wl_priv(dev);
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	wrqu.freq.m = lp->Channel;
@@ -3274,9 +3328,6 @@ void wl_wext_event_freq( struct net_device *dev )
 	return;
 } // wl_wext_event_freq
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_mode()
@@ -3303,7 +3354,6 @@ void wl_wext_event_mode( struct net_device *dev )
 	struct wl_private *lp = wl_priv(dev);
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	if ( CNV_INT_TO_LITTLE( lp->hcfCtx.IFB_FWIdentity.comp_id ) == COMP_ID_FW_STA  ) {
@@ -3317,9 +3367,6 @@ void wl_wext_event_mode( struct net_device *dev )
 	return;
 } // wl_wext_event_mode
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_essid()
@@ -3346,7 +3393,6 @@ void wl_wext_event_essid( struct net_device *dev )
 	struct wl_private *lp = wl_priv(dev);
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	/* Fill out the buffer. Note that the buffer doesn't actually contain the
@@ -3354,7 +3400,7 @@ void wl_wext_event_essid( struct net_device *dev )
 	   the call to wireless_send_event() must also point to where the ESSID
 	   lives */
 	wrqu.essid.length  = strlen( lp->NetworkName );
-	wrqu.essid.pointer = (void __user *)lp->NetworkName;
+	wrqu.essid.pointer = (caddr_t)lp->NetworkName;
 	wrqu.essid.flags   = 1;
 
 	wireless_send_event( dev, SIOCSIWESSID, &wrqu, lp->NetworkName );
@@ -3362,9 +3408,6 @@ void wl_wext_event_essid( struct net_device *dev )
 	return;
 } // wl_wext_event_essid
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_encode()
@@ -3392,7 +3435,6 @@ void wl_wext_event_encode( struct net_device *dev )
 	int index = 0;
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	if( lp->EnableEncryption == 0 ) {
@@ -3419,7 +3461,7 @@ void wl_wext_event_encode( struct net_device *dev )
 
 		/* Only provide the key if permissions allow */
 		if( capable( CAP_NET_ADMIN )) {
-			wrqu.encoding.pointer = (void __user *)lp->DefaultKeys.key[index].key;
+			wrqu.encoding.pointer = (caddr_t)lp->DefaultKeys.key[index].key;
 			wrqu.encoding.length  = lp->DefaultKeys.key[index].len;
 		} else {
 			wrqu.encoding.flags |= IW_ENCODE_NOKEY;
@@ -3432,9 +3474,6 @@ void wl_wext_event_encode( struct net_device *dev )
 	return;
 } // wl_wext_event_encode
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_ap()
@@ -3462,7 +3501,6 @@ void wl_wext_event_ap( struct net_device *dev )
 	int status;
 	/*------------------------------------------------------------------------*/
 
-
 	/* Retrieve the WPA-IEs used by the firmware and send an event. We must send
 	   this event BEFORE sending the association event, as there are timing
 	   issues with the hostap supplicant. The supplicant will attempt to process
@@ -3489,8 +3527,6 @@ void wl_wext_event_ap( struct net_device *dev )
 } // wl_wext_event_ap
 /*============================================================================*/
 
-
-
 /*******************************************************************************
  *	wl_wext_event_scan_complete()
  *******************************************************************************
@@ -3515,7 +3551,6 @@ void wl_wext_event_scan_complete( struct net_device *dev )
 	union iwreq_data wrqu;
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	wrqu.addr.sa_family = ARPHRD_ETHER;
@@ -3524,9 +3559,6 @@ void wl_wext_event_scan_complete( struct net_device *dev )
 	return;
 } // wl_wext_event_scan_complete
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_new_sta()
@@ -3552,7 +3584,6 @@ void wl_wext_event_new_sta( struct net_device *dev )
 	union iwreq_data wrqu;
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	/* Send the station's mac address here */
@@ -3563,9 +3594,6 @@ void wl_wext_event_new_sta( struct net_device *dev )
 	return;
 } // wl_wext_event_new_sta
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_expired_sta()
@@ -3591,7 +3619,6 @@ void wl_wext_event_expired_sta( struct net_device *dev )
 	union iwreq_data wrqu;
 	/*------------------------------------------------------------------------*/
 
-
 	memset( &wrqu, 0, sizeof( wrqu ));
 
 	memcpy( wrqu.addr.sa_data, dev->dev_addr, ETH_ALEN );
@@ -3601,9 +3628,6 @@ void wl_wext_event_expired_sta( struct net_device *dev )
 	return;
 } // wl_wext_event_expired_sta
 /*============================================================================*/
-
-
-
 
 /*******************************************************************************
  *	wl_wext_event_mic_failed()
@@ -3633,7 +3657,6 @@ void wl_wext_event_mic_failed( struct net_device *dev )
 	char              *addr2;
 	WVLAN_RX_WMP_HDR  *hdr;
 	/*------------------------------------------------------------------------*/
-
 
 	key_idx = lp->lookAheadBuf[HFS_STAT+1] >> 3;
 	key_idx &= 0x03;
@@ -3665,9 +3688,6 @@ void wl_wext_event_mic_failed( struct net_device *dev )
 } // wl_wext_event_mic_failed
 /*============================================================================*/
 
-
-
-
 /*******************************************************************************
  *	wl_wext_event_assoc_ie()
  *******************************************************************************
@@ -3696,7 +3716,6 @@ void wl_wext_event_assoc_ie( struct net_device *dev )
 	hcf_16             length;
 	hcf_8              *wpa_ie;
 	/*------------------------------------------------------------------------*/
-
 
 	memset( &wrqu, 0, sizeof( wrqu ));
 
@@ -3778,7 +3797,7 @@ static const iw_handler wl_private_handler[] =
 #endif
 };
 
-static struct iw_priv_args wl_priv_args[] = {
+struct iw_priv_args wl_priv_args[] = {
         {SIOCSIWNETNAME,    IW_PRIV_TYPE_CHAR | HCF_MAX_NAME_LEN, 0, "snetwork_name" },
         {SIOCGIWNETNAME, 0, IW_PRIV_TYPE_CHAR | HCF_MAX_NAME_LEN,    "gnetwork_name" },
         {SIOCSIWSTANAME,    IW_PRIV_TYPE_CHAR | HCF_MAX_NAME_LEN, 0, "sstation_name" },

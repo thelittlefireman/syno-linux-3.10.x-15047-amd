@@ -175,7 +175,6 @@ void kvmppc_44x_tlb_put(struct kvm_vcpu *vcpu)
 	}
 }
 
-
 /* Search the guest TLB for a matching entry. */
 int kvmppc_44x_tlb_index(struct kvm_vcpu *vcpu, gva_t eaddr, unsigned int pid,
                          unsigned int as)
@@ -268,7 +267,7 @@ static void kvmppc_44x_shadow_release(struct kvmppc_vcpu_44x *vcpu_44x,
 	trace_kvm_stlb_inval(stlb_index);
 }
 
-void kvmppc_mmu_destroy_44x(struct kvm_vcpu *vcpu)
+void kvmppc_mmu_destroy(struct kvm_vcpu *vcpu)
 {
 	struct kvmppc_vcpu_44x *vcpu_44x = to_44x(vcpu);
 	int i;

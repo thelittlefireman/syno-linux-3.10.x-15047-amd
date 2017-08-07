@@ -15,6 +15,10 @@ This program is free software; you can redistribute it and/or modify it under th
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+
+You should also find the complete GPL in the COPYING file accompanying this source code.
+
 @endverbatim
 */
 /*
@@ -125,7 +129,6 @@ struct {
 	int i_ModuleSelection;
 } Config_Parameters_Module1, Config_Parameters_Module2,
     Config_Parameters_Module3, Config_Parameters_Module4;
-
 
 struct str_ADDIDATA_RTDStruct {
 	unsigned int ul_NumberOfValue;
@@ -318,7 +321,6 @@ static int i_AddiHeaderRW_ReadEeprom(int i_NbOfWordsToRead,
 				b_ReadLowByte = pb_ReadByte[0];
 			else
 				b_ReadHighByte = pb_ReadByte[0];
-
 
 			/* Sleep */
 			msleep(1);
@@ -623,11 +625,16 @@ static int apci3200_do_insn_bits(struct comedi_device *dev,
 				 unsigned int *data)
 {
 	struct addi_private *devpriv = dev->private;
+	unsigned int mask = data[0];
+	unsigned int bits = data[1];
 
 	s->state = inl(devpriv->i_IobaseAddon) & 0xf;
+	if (mask) {
+		s->state &= ~mask;
+		s->state |= (bits & mask);
 
-	if (comedi_dio_update_state(s, data))
 		outl(s->state, devpriv->i_IobaseAddon);
+	}
 
 	data[1] = s->state;
 
@@ -1268,7 +1275,7 @@ static int i_APCI3200_ReadCJCCalGain(struct comedi_device *dev,
 	return 0;
 }
 
-static int apci3200_reset(struct comedi_device *dev)
+static int i_APCI3200_Reset(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
 	int i_Temp;
@@ -1322,10 +1329,10 @@ static int apci3200_reset(struct comedi_device *dev)
  * data[7] : Channel current source from eeprom
  * data[8] : Channle gain factor from eeprom
  */
-static int apci3200_ai_read(struct comedi_device *dev,
-			    struct comedi_subdevice *s,
-			    struct comedi_insn *insn,
-			    unsigned int *data)
+static int i_APCI3200_ReadAnalogInput(struct comedi_device *dev,
+				      struct comedi_subdevice *s,
+				      struct comedi_insn *insn,
+				      unsigned int *data)
 {
 	unsigned int ui_DummyValue = 0;
 	int i_ConvertCJCCalibration;
@@ -1336,7 +1343,7 @@ static int apci3200_ai_read(struct comedi_device *dev,
 	if (s_BoardInfos[dev->minor].i_Initialised == 0)
 		/* END JK 06.07.04: Management of sevrals boards */
 	{
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return -EINVAL;
 	}			/* if(i_Initialised==0); */
 
@@ -1586,7 +1593,7 @@ static int apci3200_ai_read(struct comedi_device *dev,
 		break;
 	default:
 		printk("\nThe parameters passed are in error\n");
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return -EINVAL;
 	}			/* switch(insn->unused[0]) */
 
@@ -1626,10 +1633,10 @@ static int apci3200_ai_read(struct comedi_device *dev,
  *	    = 2  RTD 3 wire connection
  *	    = 3  RTD 4 wire connection
  */
-static int apci3200_ai_config(struct comedi_device *dev,
-			      struct comedi_subdevice *s,
-			      struct comedi_insn *insn,
-			      unsigned int *data)
+static int i_APCI3200_ConfigAnalogInput(struct comedi_device *dev,
+					struct comedi_subdevice *s,
+					struct comedi_insn *insn,
+					unsigned int *data)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int ul_Config = 0, ul_Temp = 0;
@@ -1970,7 +1977,7 @@ static int apci3200_ai_config(struct comedi_device *dev,
 		}		/*  switch(data[11]) */
 	}			/*  elseif(data[12]==0 || data[12]==1) */
 	if (i_err) {
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return -EINVAL;
 	}
 	/* if(i_ScanType!=1) */
@@ -2079,7 +2086,7 @@ static int apci3200_ai_config(struct comedi_device *dev,
 		/* END JK 06.07.04: Management of sevrals boards */
 
 		insn->unused[0] = 0;
-		apci3200_ai_read(dev, s, insn, &ui_Dummy);
+		i_APCI3200_ReadAnalogInput(dev, s, insn, &ui_Dummy);
 	}
 
 	return insn->n;
@@ -2095,10 +2102,10 @@ static int apci3200_ai_config(struct comedi_device *dev,
  * data[1] : calibration offset
  * data[2] : calibration gain
  */
-static int apci3200_ai_bits_test(struct comedi_device *dev,
-				 struct comedi_subdevice *s,
-				 struct comedi_insn *insn,
-				 unsigned int *data)
+static int i_APCI3200_InsnBits_AnalogInput_Test(struct comedi_device *dev,
+						struct comedi_subdevice *s,
+						struct comedi_insn *insn,
+						unsigned int *data)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int ui_Configuration = 0;
@@ -2107,12 +2114,12 @@ static int apci3200_ai_bits_test(struct comedi_device *dev,
 	/* if(i_Initialised==0) */
 
 	if (s_BoardInfos[dev->minor].i_Initialised == 0) {
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return -EINVAL;
 	}			/* if(i_Initialised==0); */
 	if (data[0] != 0 && data[0] != 1) {
 		printk("\nError in selection of functionality\n");
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return -EINVAL;
 	}			/* if(data[0]!=0 && data[0]!=1) */
 
@@ -2202,18 +2209,18 @@ static int apci3200_ai_bits_test(struct comedi_device *dev,
 	return insn->n;
 }
 
-static int apci3200_ai_write(struct comedi_device *dev,
-			     struct comedi_subdevice *s,
-			     struct comedi_insn *insn,
-			     unsigned int *data)
+static int i_APCI3200_InsnWriteReleaseAnalogInput(struct comedi_device *dev,
+						  struct comedi_subdevice *s,
+						  struct comedi_insn *insn,
+						  unsigned int *data)
 {
-	apci3200_reset(dev);
+	i_APCI3200_Reset(dev);
 	return insn->n;
 }
 
-static int apci3200_ai_cmdtest(struct comedi_device *dev,
-			       struct comedi_subdevice *s,
-			       struct comedi_cmd *cmd)
+static int i_APCI3200_CommandTestAnalogInput(struct comedi_device *dev,
+					     struct comedi_subdevice *s,
+					     struct comedi_cmd *cmd)
 {
 
 	int err = 0;
@@ -2241,7 +2248,7 @@ static int apci3200_ai_cmdtest(struct comedi_device *dev,
 		err |= -EINVAL;
 
 	if (err) {
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return 1;
 	}
 
@@ -2267,7 +2274,7 @@ static int apci3200_ai_cmdtest(struct comedi_device *dev,
 	}
 
 	if (err) {
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return 2;
 	}
 	/* i_FirstChannel=cmd->chanlist[0]; */
@@ -2308,7 +2315,7 @@ static int apci3200_ai_cmdtest(struct comedi_device *dev,
 			printk("\nThe Delay time value is in error\n");
 		}
 		if (err) {
-			apci3200_reset(dev);
+			i_APCI3200_Reset(dev);
 			return 3;
 		}
 		fpu_begin();
@@ -2366,15 +2373,15 @@ static int apci3200_ai_cmdtest(struct comedi_device *dev,
 	}			/* else if(cmd->scan_begin_src==TRIG_FOLLOW) */
 
 	if (err) {
-		apci3200_reset(dev);
+		i_APCI3200_Reset(dev);
 		return 4;
 	}
 
 	return 0;
 }
 
-static int apci3200_cancel(struct comedi_device *dev,
-			   struct comedi_subdevice *s)
+static int i_APCI3200_StopCyclicAcquisition(struct comedi_device *dev,
+					    struct comedi_subdevice *s)
 {
 	struct addi_private *devpriv = dev->private;
 	unsigned int ui_Configuration = 0;
@@ -2410,8 +2417,8 @@ static int apci3200_cancel(struct comedi_device *dev,
  * Does asynchronous acquisition
  * Determines the mode 1 or 2.
  */
-static int apci3200_ai_cmd(struct comedi_device *dev,
-			   struct comedi_subdevice *s)
+static int i_APCI3200_CommandAnalogInput(struct comedi_device *dev,
+					 struct comedi_subdevice *s)
 {
 	struct addi_private *devpriv = dev->private;
 	struct comedi_cmd *cmd = &s->async->cmd;
@@ -2590,8 +2597,8 @@ static int apci3200_ai_cmd(struct comedi_device *dev,
 static int i_APCI3200_InterruptHandleEos(struct comedi_device *dev)
 {
 	struct addi_private *devpriv = dev->private;
-	struct comedi_subdevice *s = dev->read_subdev;
 	unsigned int ui_StatusRegister = 0;
+	struct comedi_subdevice *s = &dev->subdevices[0];
 
 	/* BEGIN JK 18.10.2004: APCI-3200 Driver update 0.7.57 -> 0.7.68 */
 	/* comedi_async *async = s->async; */
@@ -2619,6 +2626,7 @@ static int i_APCI3200_InterruptHandleEos(struct comedi_device *dev)
 		/* BEGIN JK 18.10.2004: APCI-3200 Driver update 0.7.57 -> 0.7.68 */
 		/* This value is not used */
 		/* ui_ChannelNumber = inl(devpriv->iobase+s_BoardInfos [dev->minor].i_Offset + 24); */
+		s->async->events = 0;
 		/* END JK 18.10.2004: APCI-3200 Driver update 0.7.57 -> 0.7.68 */
 
       /*************************************/
@@ -2729,7 +2737,7 @@ static int i_APCI3200_InterruptHandleEos(struct comedi_device *dev)
 	return 0;
 }
 
-static void apci3200_interrupt(int irq, void *d)
+static void v_APCI3200_Interrupt(int irq, void *d)
 {
 	struct comedi_device *dev = d;
 	struct addi_private *devpriv = dev->private;

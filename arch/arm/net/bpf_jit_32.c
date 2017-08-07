@@ -19,7 +19,6 @@
 #include <linux/if_vlan.h>
 #include <asm/cacheflush.h>
 #include <asm/hwcap.h>
-#include <asm/opcodes.h>
 
 #include "bpf_jit_32.h"
 
@@ -114,11 +113,8 @@ static u32 jit_udiv(u32 dividend, u32 divisor)
 
 static inline void _emit(int cond, u32 inst, struct jit_ctx *ctx)
 {
-	inst |= (cond << 28);
-	inst = __opcode_to_mem_arm(inst);
-
 	if (ctx->target != NULL)
-		ctx->target[ctx->idx] = inst;
+		ctx->target[ctx->idx] = inst | (cond << 28);
 
 	ctx->idx++;
 }
@@ -386,7 +382,6 @@ static inline void emit_swap16(u8 r_dst __maybe_unused,
 }
 
 #endif /* __LINUX_ARM_ARCH__ < 6 */
-
 
 /* Compute the immediate value for a PC-relative branch. */
 static inline u32 b_imm(unsigned tgt, struct jit_ctx *ctx)
@@ -825,8 +820,8 @@ b_epilogue:
 			break;
 		case BPF_S_ANC_RXHASH:
 			ctx->seen |= SEEN_SKB;
-			BUILD_BUG_ON(FIELD_SIZEOF(struct sk_buff, hash) != 4);
-			off = offsetof(struct sk_buff, hash);
+			BUILD_BUG_ON(FIELD_SIZEOF(struct sk_buff, rxhash) != 4);
+			off = offsetof(struct sk_buff, rxhash);
 			emit(ARM_LDR_I(r_A, r_skb, off), ctx);
 			break;
 		case BPF_S_ANC_VLAN_TAG:
@@ -860,7 +855,6 @@ b_epilogue:
 
 	return 0;
 }
-
 
 void bpf_jit_compile(struct sk_filter *fp)
 {
@@ -904,7 +898,8 @@ void bpf_jit_compile(struct sk_filter *fp)
 #endif
 
 	alloc_size = 4 * ctx.idx;
-	ctx.target = module_alloc(alloc_size);
+	ctx.target = module_alloc(max(sizeof(struct work_struct),
+				      alloc_size));
 	if (unlikely(ctx.target == NULL))
 		goto out;
 
@@ -925,15 +920,24 @@ void bpf_jit_compile(struct sk_filter *fp)
 		bpf_jit_dump(fp->len, alloc_size, 2, ctx.target);
 
 	fp->bpf_func = (void *)ctx.target;
-	fp->jited = 1;
 out:
 	kfree(ctx.offsets);
 	return;
 }
 
+static void bpf_jit_free_worker(struct work_struct *work)
+{
+	module_free(NULL, work);
+}
+
 void bpf_jit_free(struct sk_filter *fp)
 {
-	if (fp->jited)
-		module_free(NULL, fp->bpf_func);
-	kfree(fp);
+	struct work_struct *work;
+
+	if (fp->bpf_func != sk_run_filter) {
+		work = (struct work_struct *)fp->bpf_func;
+
+		INIT_WORK(work, bpf_jit_free_worker);
+		schedule_work(work);
+	}
 }

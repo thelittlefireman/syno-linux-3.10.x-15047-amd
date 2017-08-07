@@ -14,7 +14,6 @@
 #ifndef _ASM_TILE_SETUP_H
 #define _ASM_TILE_SETUP_H
 
-
 #include <linux/pfn.h>
 #include <linux/init.h>
 #include <uapi/asm/setup.h>
@@ -24,8 +23,9 @@
  */
 #define MAXMEM_PFN	PFN_DOWN(MAXMEM)
 
-int tile_console_write(const char *buf, int count);
 void early_panic(const char *fmt, ...);
+void warn_early_printk(void);
+void __init disable_early_printk(void);
 
 /* Init-time routine to do tile-specific per-cpu setup. */
 void setup_cpu(int boot);

@@ -13,7 +13,6 @@
 #define X25_ESCAPE(x)	((x)^0x20)
 #define X25_UNESCAPE(x)	((x)^0x20)
 
-
 struct x25_asy {
   int			magic;
 
@@ -37,10 +36,8 @@ struct x25_asy {
 #define SLF_OUTWAIT	4		/* Waiting for output		*/
 };
 
-
-
 #define X25_ASY_MAGIC 0x5303
 
-int x25_asy_init(struct net_device *dev);
+extern int x25_asy_init(struct net_device *dev);
 
 #endif	/* _LINUX_X25_ASY.H */

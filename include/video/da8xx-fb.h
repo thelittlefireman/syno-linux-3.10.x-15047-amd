@@ -23,11 +23,6 @@ enum raster_load_mode {
 	LOAD_PALETTE,
 };
 
-enum da8xx_frame_complete {
-	DA8XX_FRAME_WAIT,
-	DA8XX_FRAME_NOWAIT,
-};
-
 struct da8xx_lcdc_platform_data {
 	const char manu_name[10];
 	void *controller_data;
@@ -92,4 +87,3 @@ struct lcd_sync_arg {
 #define FB_SYNC_CLK_INVERT 0x40000000
 
 #endif  /* ifndef DA8XX_FB_H */
-

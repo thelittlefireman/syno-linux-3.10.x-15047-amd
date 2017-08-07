@@ -5,6 +5,7 @@
 
 #include <linux/string.h>
 #include <linux/slab.h>
+#include <linux/init.h>
 #include <linux/pci.h>
 #include <linux/device.h>
 #include <linux/of_device.h>
@@ -281,7 +282,6 @@ static int sun4v_read_pci_cfg(struct pci_bus *bus_dev, unsigned int devfn,
 		*value = ret & 0xffffffff;
 		break;
 	}
-
 
 	return PCIBIOS_SUCCESSFUL;
 }

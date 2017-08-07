@@ -47,6 +47,7 @@ struct task_struct;
  */
 
 #define task_pt_regs(task) user_regs(task_thread_info(task))
+#define current_regs() task_pt_regs(current)
 
 unsigned long get_wchan(struct task_struct *p);
 

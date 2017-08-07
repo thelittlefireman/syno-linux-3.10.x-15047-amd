@@ -275,6 +275,7 @@ static int opl3_kill_note  (int devno, int voice, int note, int velocity)
 	 devc->v_alloc->map[voice] = 0;
 
 	 map = &pv_map[devc->lv_map[voice]];
+	 DEB(printk("Kill note %d\n", voice));
 
 	 if (map->voice_mode == 0)
 		 return 0;
@@ -871,6 +872,8 @@ static void opl3_aftertouch(int dev, int voice, int pressure)
 		return;
 
 	map = &pv_map[devc->lv_map[voice]];
+
+	DEB(printk("Aftertouch %d\n", voice));
 
 	if (map->voice_mode == 0)
 		return;

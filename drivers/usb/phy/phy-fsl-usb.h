@@ -15,7 +15,7 @@
  * 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include <linux/usb/otg-fsm.h>
+#include "phy-fsm-usb.h"
 #include <linux/usb/otg.h>
 #include <linux/ioctl.h>
 
@@ -266,7 +266,6 @@
 
 /* B-device timing constants */
 
-
 /* Data-Line Pulse Time*/
 #define TB_DATA_PLS	(10)	/* b_srp_init,continue 5~10ms, section:5.3.3 */
 #define TB_DATA_PLS_MIN	(5)	/* minimum 5 ms */
@@ -401,6 +400,6 @@ struct fsl_otg_config {
 #define GET_A_BUS_REQ		_IOR(OTG_IOCTL_MAGIC, 8, int)
 #define GET_B_BUS_REQ		_IOR(OTG_IOCTL_MAGIC, 9, int)
 
-void fsl_otg_add_timer(struct otg_fsm *fsm, void *timer);
-void fsl_otg_del_timer(struct otg_fsm *fsm, void *timer);
+void fsl_otg_add_timer(void *timer);
+void fsl_otg_del_timer(void *timer);
 void fsl_otg_pulse_vbus(void);

@@ -12,13 +12,10 @@
 
 #include <linux/slab.h>
 #include <linux/kernel.h>
-#include <linux/module.h>
 #include <linux/device.h>
 #include <linux/etherdevice.h>
 
 #include "u_ether.h"
-#include "u_ether_configfs.h"
-#include "u_gether.h"
 
 /*
  * This function packages a simple "CDC Subset" Ethernet port with no real
@@ -276,7 +273,7 @@ static int geth_set_alt(struct usb_function *f, unsigned intf, unsigned alt)
 	}
 
 	net = gether_connect(&geth->port);
-	return PTR_RET(net);
+	return IS_ERR(net) ? PTR_ERR(net) : 0;
 }
 
 static void geth_disable(struct usb_function *f)
@@ -297,38 +294,8 @@ geth_bind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct usb_composite_dev *cdev = c->cdev;
 	struct f_gether		*geth = func_to_geth(f);
-	struct usb_string	*us;
 	int			status;
 	struct usb_ep		*ep;
-
-	struct f_gether_opts	*gether_opts;
-
-	gether_opts = container_of(f->fi, struct f_gether_opts, func_inst);
-
-	/*
-	 * in drivers/usb/gadget/configfs.c:configfs_composite_bind()
-	 * configurations are bound in sequence with list_for_each_entry,
-	 * in each configuration its functions are bound in sequence
-	 * with list_for_each_entry, so we assume no race condition
-	 * with regard to gether_opts->bound access
-	 */
-	if (!gether_opts->bound) {
-		mutex_lock(&gether_opts->lock);
-		gether_set_gadget(gether_opts->net, cdev->gadget);
-		status = gether_register_netdev(gether_opts->net);
-		mutex_unlock(&gether_opts->lock);
-		if (status)
-			return status;
-		gether_opts->bound = true;
-	}
-
-	us = usb_gstrings_attach(cdev, geth_strings,
-				 ARRAY_SIZE(geth_string_defs));
-	if (IS_ERR(us))
-		return PTR_ERR(us);
-
-	subset_data_intf.iInterface = us[0].id;
-	ether_desc.iMACAddress = us[1].id;
 
 	/* allocate instance-specific interface IDs */
 	status = usb_interface_id(c, f);
@@ -392,128 +359,66 @@ fail:
 	return status;
 }
 
-static inline struct f_gether_opts *to_f_gether_opts(struct config_item *item)
-{
-	return container_of(to_config_group(item), struct f_gether_opts,
-			    func_inst.group);
-}
-
-/* f_gether_item_ops */
-USB_ETHERNET_CONFIGFS_ITEM(gether);
-
-/* f_gether_opts_dev_addr */
-USB_ETHERNET_CONFIGFS_ITEM_ATTR_DEV_ADDR(gether);
-
-/* f_gether_opts_host_addr */
-USB_ETHERNET_CONFIGFS_ITEM_ATTR_HOST_ADDR(gether);
-
-/* f_gether_opts_qmult */
-USB_ETHERNET_CONFIGFS_ITEM_ATTR_QMULT(gether);
-
-/* f_gether_opts_ifname */
-USB_ETHERNET_CONFIGFS_ITEM_ATTR_IFNAME(gether);
-
-static struct configfs_attribute *gether_attrs[] = {
-	&f_gether_opts_dev_addr.attr,
-	&f_gether_opts_host_addr.attr,
-	&f_gether_opts_qmult.attr,
-	&f_gether_opts_ifname.attr,
-	NULL,
-};
-
-static struct config_item_type gether_func_type = {
-	.ct_item_ops	= &gether_item_ops,
-	.ct_attrs	= gether_attrs,
-	.ct_owner	= THIS_MODULE,
-};
-
-static void geth_free_inst(struct usb_function_instance *f)
-{
-	struct f_gether_opts *opts;
-
-	opts = container_of(f, struct f_gether_opts, func_inst);
-	if (opts->bound)
-		gether_cleanup(netdev_priv(opts->net));
-	else
-		free_netdev(opts->net);
-	kfree(opts);
-}
-
-static struct usb_function_instance *geth_alloc_inst(void)
-{
-	struct f_gether_opts *opts;
-
-	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
-	if (!opts)
-		return ERR_PTR(-ENOMEM);
-	mutex_init(&opts->lock);
-	opts->func_inst.free_func_inst = geth_free_inst;
-	opts->net = gether_setup_default();
-	if (IS_ERR(opts->net)) {
-		struct net_device *net = opts->net;
-		kfree(opts);
-		return ERR_CAST(net);
-	}
-
-	config_group_init_type_name(&opts->func_inst.group, "",
-				    &gether_func_type);
-
-	return &opts->func_inst;
-}
-
-static void geth_free(struct usb_function *f)
-{
-	struct f_gether *eth;
-
-	eth = func_to_geth(f);
-	kfree(eth);
-}
-
-static void geth_unbind(struct usb_configuration *c, struct usb_function *f)
+static void
+geth_unbind(struct usb_configuration *c, struct usb_function *f)
 {
 	geth_string_defs[0].id = 0;
 	usb_free_all_descriptors(f);
+	kfree(func_to_geth(f));
 }
 
-static struct usb_function *geth_alloc(struct usb_function_instance *fi)
+/**
+ * geth_bind_config - add CDC Subset network link to a configuration
+ * @c: the configuration to support the network link
+ * @ethaddr: a buffer in which the ethernet address of the host side
+ *	side of the link was recorded
+ * @dev: eth_dev structure
+ * Context: single threaded during gadget setup
+ *
+ * Returns zero on success, else negative errno.
+ *
+ * Caller must have called @gether_setup().  Caller is also responsible
+ * for calling @gether_cleanup() before module unload.
+ */
+int geth_bind_config(struct usb_configuration *c, u8 ethaddr[ETH_ALEN],
+		struct eth_dev *dev)
 {
 	struct f_gether	*geth;
-	struct f_gether_opts *opts;
-	int status;
+	int		status;
+
+	if (!ethaddr)
+		return -EINVAL;
+
+	/* maybe allocate device-global string IDs */
+	if (geth_string_defs[0].id == 0) {
+		status = usb_string_ids_tab(c->cdev, geth_string_defs);
+		if (status < 0)
+			return status;
+		subset_data_intf.iInterface = geth_string_defs[0].id;
+		ether_desc.iMACAddress = geth_string_defs[1].id;
+	}
 
 	/* allocate and initialize one new instance */
-	geth = kzalloc(sizeof(*geth), GFP_KERNEL);
+	geth = kzalloc(sizeof *geth, GFP_KERNEL);
 	if (!geth)
-		return ERR_PTR(-ENOMEM);
+		return -ENOMEM;
 
-	opts = container_of(fi, struct f_gether_opts, func_inst);
-
-	mutex_lock(&opts->lock);
-	opts->refcnt++;
 	/* export host's Ethernet address in CDC format */
-	status = gether_get_host_addr_cdc(opts->net, geth->ethaddr,
-					  sizeof(geth->ethaddr));
-	if (status < 12) {
-		kfree(geth);
-		mutex_unlock(&opts->lock);
-		return ERR_PTR(-EINVAL);
-	}
+	snprintf(geth->ethaddr, sizeof geth->ethaddr, "%pm", ethaddr);
 	geth_string_defs[1].s = geth->ethaddr;
 
-	geth->port.ioport = netdev_priv(opts->net);
-	mutex_unlock(&opts->lock);
+	geth->port.ioport = dev;
 	geth->port.cdc_filter = DEFAULT_FILTER;
 
 	geth->port.func.name = "cdc_subset";
+	geth->port.func.strings = geth_strings;
 	geth->port.func.bind = geth_bind;
 	geth->port.func.unbind = geth_unbind;
 	geth->port.func.set_alt = geth_set_alt;
 	geth->port.func.disable = geth_disable;
-	geth->port.func.free_func = geth_free;
 
-	return &geth->port.func;
+	status = usb_add_function(c, &geth->port.func);
+	if (status)
+		kfree(geth);
+	return status;
 }
-
-DECLARE_USB_FUNCTION_INIT(geth, geth_alloc_inst, geth_alloc);
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("David Brownell");

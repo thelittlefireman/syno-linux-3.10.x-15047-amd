@@ -28,7 +28,6 @@
 #include <linux/types.h>
 #include <linux/crypto.h>
 #include <linux/err.h>
-#include <crypto/ablk_helper.h>
 #include <crypto/algapi.h>
 #include <crypto/serpent.h>
 #include <crypto/cryptd.h>
@@ -39,6 +38,7 @@
 #include <asm/xcr.h>
 #include <asm/xsave.h>
 #include <asm/crypto/serpent-avx.h>
+#include <asm/crypto/ablk_helper.h>
 #include <asm/crypto/glue_helper.h>
 
 /* 8-way parallel cipher functions */
@@ -91,7 +91,6 @@ void serpent_xts_dec(void *ctx, u128 *dst, const u128 *src, le128 *iv)
 				  GLUE_FUNC_CAST(__serpent_decrypt));
 }
 EXPORT_SYMBOL_GPL(serpent_xts_dec);
-
 
 static const struct common_glue_ctx serpent_enc = {
 	.num_funcs = 2,
@@ -617,4 +616,4 @@ module_exit(serpent_exit);
 
 MODULE_DESCRIPTION("Serpent Cipher Algorithm, AVX optimized");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("serpent");
+MODULE_ALIAS_CRYPTO("serpent");

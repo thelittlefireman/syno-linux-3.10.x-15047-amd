@@ -14,6 +14,7 @@
 #include <linux/interrupt.h>
 #include <linux/types.h>
 #include <linux/delay.h>
+#include <linux/init.h>
 #include <linux/spinlock.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
@@ -27,7 +28,6 @@
 
 #define DRV_NAME "s6gmac"
 #define DRV_PRMT DRV_NAME ": "
-
 
 /* register declarations */
 
@@ -334,7 +334,6 @@
 #define S6_GMAC_BURST_POSTRD_LEN	0
 #define S6_GMAC_BURST_POSTRD_LEN_MASK		((1 << 20) - 1)
 #define S6_GMAC_BURST_POSTRD_DROP	20
-
 
 /* data handling */
 
@@ -1039,6 +1038,7 @@ static int s6gmac_remove(struct platform_device *pdev)
 		unregister_netdev(dev);
 		free_irq(dev->irq, dev);
 		free_netdev(dev);
+		platform_set_drvdata(pdev, NULL);
 	}
 	return 0;
 }

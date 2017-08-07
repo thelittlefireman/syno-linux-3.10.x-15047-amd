@@ -112,7 +112,7 @@ static struct snd_seq_queue *queue_new(int owner, int locked)
 
 	q = kzalloc(sizeof(*q), GFP_KERNEL);
 	if (q == NULL) {
-		pr_debug("ALSA: seq: malloc failed for snd_seq_queue_new()\n");
+		snd_printd("malloc failed for snd_seq_queue_new()\n");
 		return NULL;
 	}
 
@@ -144,8 +144,10 @@ static struct snd_seq_queue *queue_new(int owner, int locked)
 static void queue_delete(struct snd_seq_queue *q)
 {
 	/* stop and release the timer */
+	mutex_lock(&q->timer_mutex);
 	snd_seq_timer_stop(q->timer);
 	snd_seq_timer_close(q);
+	mutex_unlock(&q->timer_mutex);
 	/* wait until access free */
 	snd_use_lock_sync(&q->use_lock);
 	/* release resources... */
@@ -155,7 +157,6 @@ static void queue_delete(struct snd_seq_queue *q)
 
 	kfree(q);
 }
-
 
 /*----------------------------------------------------------------*/
 
@@ -215,7 +216,6 @@ int snd_seq_queue_delete(int client, int queueid)
 	return 0;
 }
 
-
 /* return pointer to queue structure for specified id */
 struct snd_seq_queue *queueptr(int queueid)
 {
@@ -247,7 +247,6 @@ struct snd_seq_queue *snd_seq_queue_find_name(char *name)
 	}
 	return NULL;
 }
-
 
 /* -------------------------------------------------------- */
 
@@ -283,7 +282,6 @@ void snd_seq_check_queue(struct snd_seq_queue *q, int atomic, int hop)
 		}
 	}
 
-
 	/* Process time queue... */
 	while ((cell = snd_seq_prioq_cell_peek(q->timeq)) != NULL) {
 		if (snd_seq_compare_real_time(&q->timer->cur_time,
@@ -307,7 +305,6 @@ void snd_seq_check_queue(struct snd_seq_queue *q, int atomic, int hop)
 	q->check_blocked = 0;
 	spin_unlock_irqrestore(&q->check_lock, flags);
 }
-
 
 /* enqueue a event to singe queue */
 int snd_seq_enqueue_event(struct snd_seq_event_cell *cell, int atomic, int hop)
@@ -360,7 +357,6 @@ int snd_seq_enqueue_event(struct snd_seq_event_cell *cell, int atomic, int hop)
 
 	return 0;
 }
-
 
 /*----------------------------------------------------------------*/
 
@@ -436,7 +432,6 @@ int snd_seq_queue_set_owner(int queueid, int client, int locked)
 	return 0;
 }
 
-
 /*----------------------------------------------------------------*/
 
 /* open timer -
@@ -502,7 +497,6 @@ int snd_seq_queue_timer_set_tempo(int queueid, int client,
 	return result;
 }
 
-
 /* use or unuse this queue -
  * if it is the first client, starts the timer.
  * if it is not longer used by any clients, stop the timer.
@@ -551,7 +545,6 @@ int snd_seq_queue_is_used(int queueid, int client)
 	queuefree(q);
 	return result;
 }
-
 
 /*----------------------------------------------------------------*/
 
@@ -609,8 +602,6 @@ void snd_seq_queue_client_leave(int client)
 		queuefree(q);
 	}
 }
-
-
 
 /*----------------------------------------------------------------*/
 
@@ -724,7 +715,6 @@ static void snd_seq_queue_process_event(struct snd_seq_queue *q,
 	}
 }
 
-
 /*
  * Queue control via timer control port:
  * this function is exported as a callback of timer port.
@@ -751,7 +741,6 @@ int snd_seq_control_queue(struct snd_seq_event *ev, int atomic, int hop)
 	queuefree(q);
 	return 0;
 }
-
 
 /*----------------------------------------------------------------*/
 
@@ -790,4 +779,3 @@ void snd_seq_info_queues_read(struct snd_info_entry *entry,
 	}
 }
 #endif /* CONFIG_PROC_FS */
-

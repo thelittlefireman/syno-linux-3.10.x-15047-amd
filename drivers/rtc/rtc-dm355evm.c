@@ -16,7 +16,6 @@
 #include <linux/i2c/dm355evm_msp.h>
 #include <linux/module.h>
 
-
 /*
  * The MSP430 firmware on the DM355 EVM uses a watch crystal to feed
  * a 1 Hz counter.  When a backup battery is supplied, that makes a
@@ -139,12 +138,19 @@ static int dm355evm_rtc_probe(struct platform_device *pdev)
 	return 0;
 }
 
+static int dm355evm_rtc_remove(struct platform_device *pdev)
+{
+	platform_set_drvdata(pdev, NULL);
+	return 0;
+}
+
 /*
  * I2C is used to talk to the MSP430, but this platform device is
  * exposed by an MFD driver that manages I2C communications.
  */
 static struct platform_driver rtc_dm355evm_driver = {
 	.probe		= dm355evm_rtc_probe,
+	.remove		= dm355evm_rtc_remove,
 	.driver		= {
 		.owner	= THIS_MODULE,
 		.name	= "rtc-dm355evm",

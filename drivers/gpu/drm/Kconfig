@@ -8,9 +8,11 @@ menuconfig DRM
 	tristate "Direct Rendering Manager (XFree86 4.1.0 and higher DRI support)"
 	depends on (AGP || AGP=n) && !EMULATED_CMPXCHG && MMU && HAS_DMA
 	select HDMI
+	select FB_CMDLINE
 	select I2C
 	select I2C_ALGOBIT
 	select DMA_SHARED_BUFFER
+	select SYNO_DRM_I915_BACKPORT
 	help
 	  Kernel-level support for the Direct Rendering Infrastructure (DRI)
 	  introduced in XFree86 4.0. If you say Y here, you need to select
@@ -23,12 +25,6 @@ menuconfig DRM
 config DRM_MIPI_DSI
 	bool
 	depends on DRM
-
-config DRM_USB
-	tristate
-	depends on DRM
-	depends on USB_SUPPORT && USB_ARCH_HAS_HCD
-	select USB
 
 config DRM_KMS_HELPER
 	tristate
@@ -112,6 +108,8 @@ config DRM_RADEON
 	select POWER_SUPPLY
 	select HWMON
 	select BACKLIGHT_CLASS_DEVICE
+	select INTERVAL_TREE
+	select MMU_NOTIFIER
 	help
 	  Choose this option if you have an ATI Radeon graphics card.  There
 	  are both PCI and AGP versions.  You don't need to choose this to
@@ -180,10 +178,6 @@ source "drivers/gpu/drm/mgag200/Kconfig"
 
 source "drivers/gpu/drm/cirrus/Kconfig"
 
-source "drivers/gpu/drm/armada/Kconfig"
-
-source "drivers/gpu/drm/rcar-du/Kconfig"
-
 source "drivers/gpu/drm/shmobile/Kconfig"
 
 source "drivers/gpu/drm/omapdrm/Kconfig"
@@ -191,13 +185,3 @@ source "drivers/gpu/drm/omapdrm/Kconfig"
 source "drivers/gpu/drm/tilcdc/Kconfig"
 
 source "drivers/gpu/drm/qxl/Kconfig"
-
-source "drivers/gpu/drm/bochs/Kconfig"
-
-source "drivers/gpu/drm/msm/Kconfig"
-
-source "drivers/gpu/drm/tegra/Kconfig"
-
-source "drivers/gpu/drm/panel/Kconfig"
-
-source "drivers/gpu/drm/bridge/Kconfig"

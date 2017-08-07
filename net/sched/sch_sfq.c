@@ -26,7 +26,6 @@
 #include <net/flow_keys.h>
 #include <net/red.h>
 
-
 /*	Stochastic Fairness Queuing algorithm.
 	=======================================
 
@@ -37,11 +36,9 @@
 	Paul E. McKenney "Stochastic Fairness Queuing",
 	"Interworking: Research and Experience", v.2, 1991, p.113-131.
 
-
 	See also:
 	M. Shreedhar and George Varghese "Efficient Fair
 	Queuing using Deficit Round Robin", Proc. SIGCOMM 95.
-
 
 	This is not the thing that is usually called (W)FQ nowadays.
 	It does not use any timestamp mechanism, but instead
@@ -237,13 +234,10 @@ static inline void sfq_link(struct sfq_sched_data *q, sfq_index x)
 }
 
 #define sfq_unlink(q, x, n, p)			\
-	do {					\
-		n = q->slots[x].dep.next;	\
-		p = q->slots[x].dep.prev;	\
-		sfq_dep_head(q, p)->next = n;	\
-		sfq_dep_head(q, n)->prev = p;	\
-	} while (0)
-
+	n = q->slots[x].dep.next;		\
+	p = q->slots[x].dep.prev;		\
+	sfq_dep_head(q, p)->next = n;		\
+	sfq_dep_head(q, n)->prev = p
 
 static inline void sfq_dec(struct sfq_sched_data *q, sfq_index x)
 {
@@ -629,7 +623,7 @@ static void sfq_perturbation(unsigned long arg)
 	spinlock_t *root_lock = qdisc_lock(qdisc_root_sleeping(sch));
 
 	spin_lock(root_lock);
-	q->perturbation = prandom_u32();
+	q->perturbation = net_random();
 	if (!q->filter_list && q->tail)
 		sfq_rehash(sch);
 	spin_unlock(root_lock);
@@ -698,7 +692,7 @@ static int sfq_change(struct Qdisc *sch, struct nlattr *opt)
 	del_timer(&q->perturb_timer);
 	if (q->perturb_period) {
 		mod_timer(&q->perturb_timer, jiffies + q->perturb_period);
-		q->perturbation = prandom_u32();
+		q->perturbation = net_random();
 	}
 	sch_tree_unlock(sch);
 	kfree(p);
@@ -759,7 +753,7 @@ static int sfq_init(struct Qdisc *sch, struct nlattr *opt)
 	q->quantum = psched_mtu(qdisc_dev(sch));
 	q->scaled_quantum = SFQ_ALLOT_SIZE(q->quantum);
 	q->perturb_period = 0;
-	q->perturbation = prandom_u32();
+	q->perturbation = net_random();
 
 	if (opt) {
 		int err = sfq_change(sch, opt);

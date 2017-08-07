@@ -169,7 +169,6 @@ static int minor = -1;	/* minor number */
 				 ## args);				\
 	} while (0)
 
-
 /* struct IR reference counting */
 static struct IR *get_ir_device(struct IR *ir, bool ir_devices_lock_held)
 {
@@ -767,8 +766,8 @@ static int fw_load(struct IR_tx *tx)
 	/* Request codeset data file */
 	ret = request_firmware(&fw_entry, "haup-ir-blaster.bin", tx->ir->l.dev);
 	if (ret != 0) {
-		zilog_error("firmware haup-ir-blaster.bin not available (%d)\n",
-			    ret);
+		zilog_error("firmware haup-ir-blaster.bin not available "
+			    "(%d)\n", ret);
 		ret = ret < 0 ? ret : -EFAULT;
 		goto out;
 	}
@@ -1418,7 +1417,6 @@ static int ir_remove(struct i2c_client *client)
 	}
 	return 0;
 }
-
 
 /* ir_devices_lock must be held */
 static struct IR *get_ir_device_by_adapter(struct i2c_adapter *adapter)

@@ -27,6 +27,7 @@
 #include <linux/slab.h>
 #include <linux/videodev2.h>
 #include <media/v4l2-device.h>
+#include <media/v4l2-chip-ident.h>
 #include <linux/device.h>
 #include <linux/wait.h>
 #include <linux/delay.h>
@@ -36,7 +37,6 @@
 
 #define CAFE_VERSION 0x000002
 
-
 /*
  * Parameters.
  */
@@ -44,9 +44,6 @@ MODULE_AUTHOR("Jonathan Corbet <corbet@lwn.net>");
 MODULE_DESCRIPTION("Marvell 88ALP01 CMOS Camera Controller driver");
 MODULE_LICENSE("GPL");
 MODULE_SUPPORTED_DEVICE("Video");
-
-
-
 
 struct cafe_camera {
 	int registered;			/* Fully initialized? */
@@ -124,7 +121,6 @@ struct cafe_camera {
 
 #define REG_LEN		       (REG_GL_IMASK + 4)
 
-
 /*
  * Debugging and related.
  */
@@ -146,7 +142,6 @@ static inline struct cafe_camera *to_cam(struct v4l2_device *dev)
 	struct mcam_camera *m = container_of(dev, struct mcam_camera, v4l2_dev);
 	return container_of(m, struct cafe_camera, mcam);
 }
-
 
 static int cafe_smbus_write_done(struct mcam_camera *mcam)
 {
@@ -223,8 +218,6 @@ static int cafe_smbus_write_data(struct cafe_camera *cam,
 	return 0;
 }
 
-
-
 static int cafe_smbus_read_done(struct mcam_camera *mcam)
 {
 	unsigned long flags;
@@ -241,8 +234,6 @@ static int cafe_smbus_read_done(struct mcam_camera *mcam)
 	spin_unlock_irqrestore(&mcam->dev_lock, flags);
 	return c1 & (TWSIC1_RVALID|TWSIC1_ERROR);
 }
-
-
 
 static int cafe_smbus_read_data(struct cafe_camera *cam,
 		u16 addr, u8 command, u8 *value)
@@ -310,7 +301,6 @@ static int cafe_smbus_xfer(struct i2c_adapter *adapter, u16 addr,
 	return ret;
 }
 
-
 static void cafe_smbus_enable_irq(struct cafe_camera *cam)
 {
 	unsigned long flags;
@@ -358,7 +348,6 @@ static void cafe_smbus_shutdown(struct cafe_camera *cam)
 	kfree(cam->mcam.i2c_adapter);
 }
 
-
 /*
  * Controller-level stuff
  */
@@ -398,8 +387,7 @@ static void cafe_ctlr_init(struct mcam_camera *mcam)
 	spin_unlock_irqrestore(&mcam->dev_lock, flags);
 }
 
-
-static int cafe_ctlr_power_up(struct mcam_camera *mcam)
+static void cafe_ctlr_power_up(struct mcam_camera *mcam)
 {
 	/*
 	 * Part one of the sensor dance: turn the global
@@ -414,8 +402,6 @@ static int cafe_ctlr_power_up(struct mcam_camera *mcam)
 	 */
 	mcam_reg_write(mcam, REG_GPR, GPR_C1EN|GPR_C0EN); /* pwr up, reset */
 	mcam_reg_write(mcam, REG_GPR, GPR_C1EN|GPR_C0EN|GPR_C0);
-
-	return 0;
 }
 
 static void cafe_ctlr_power_down(struct mcam_camera *mcam)
@@ -424,8 +410,6 @@ static void cafe_ctlr_power_down(struct mcam_camera *mcam)
 	mcam_reg_write(mcam, REG_GL_FCR, GFCR_GPIO_ON);
 	mcam_reg_write(mcam, REG_GL_GPIOR, GGPIO_OUT);
 }
-
-
 
 /*
  * The platform interrupt handler.
@@ -448,7 +432,6 @@ static irqreturn_t cafe_irq(int irq, void *data)
 	return IRQ_RETVAL(handled);
 }
 
-
 /* -------------------------------------------------------------------------- */
 /*
  * PCI interface stuff.
@@ -470,7 +453,7 @@ static int cafe_pci_probe(struct pci_dev *pdev,
 		goto out;
 	cam->pdev = pdev;
 	mcam = &cam->mcam;
-	mcam->chip_id = MCAM_CAFE;
+	mcam->chip_id = V4L2_IDENT_CAFE;
 	spin_lock_init(&mcam->dev_lock);
 	init_waitqueue_head(&cam->smbus_wait);
 	mcam->plat_power_up = cafe_ctlr_power_up;
@@ -502,7 +485,6 @@ static int cafe_pci_probe(struct pci_dev *pdev,
 		printk(KERN_ERR "Unable to ioremap cafe-ccic regs\n");
 		goto out_disable;
 	}
-	mcam->regs_size = pci_resource_len(pdev, 0);
 	ret = request_irq(pdev->irq, cafe_irq, IRQF_SHARED, "cafe-ccic", cam);
 	if (ret)
 		goto out_iounmap;
@@ -542,7 +524,6 @@ out:
 	return ret;
 }
 
-
 /*
  * Shut down an initialized device
  */
@@ -553,7 +534,6 @@ static void cafe_shutdown(struct cafe_camera *cam)
 	free_irq(cam->pdev->irq, cam);
 	pci_iounmap(cam->pdev, cam->mcam.regs);
 }
-
 
 static void cafe_pci_remove(struct pci_dev *pdev)
 {
@@ -567,7 +547,6 @@ static void cafe_pci_remove(struct pci_dev *pdev)
 	cafe_shutdown(cam);
 	kfree(cam);
 }
-
 
 #ifdef CONFIG_PM
 /*
@@ -586,7 +565,6 @@ static int cafe_pci_suspend(struct pci_dev *pdev, pm_message_t state)
 	pci_disable_device(pdev);
 	return 0;
 }
-
 
 static int cafe_pci_resume(struct pci_dev *pdev)
 {
@@ -626,9 +604,6 @@ static struct pci_driver cafe_pci_driver = {
 #endif
 };
 
-
-
-
 static int __init cafe_init(void)
 {
 	int ret;
@@ -645,7 +620,6 @@ static int __init cafe_init(void)
 out:
 	return ret;
 }
-
 
 static void __exit cafe_exit(void)
 {

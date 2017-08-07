@@ -99,7 +99,7 @@ static int xfer_read(struct i2c_adapter *adap, struct i2c_msg *pmsg)
 	i2c_dev->status = I2C_STAT_INIT;
 	i2c_dev->msg = pmsg;
 	i2c_dev->buf_offset = 0;
-	reinit_completion(&i2c_dev->complete);
+	INIT_COMPLETION(i2c_dev->complete);
 
 	/* Enable I2C transaction */
 	temp = ((pmsg->len) << 20) | HI2C_EDID_READ | HI2C_ENABLE_TRANSACTION;
@@ -210,7 +210,6 @@ static void hdmi_i2c_transaction_done(struct oaktrail_hdmi_dev *hdmi_dev)
 	temp = HDMI_READ(HDMI_HISR);
 	HDMI_WRITE(HDMI_HISR, temp | HDMI_INTR_I2C_DONE);
 	HDMI_READ(HDMI_HISR);
-
 
 	temp = HDMI_READ(HDMI_HI2CHCR);
 	HDMI_WRITE(HDMI_HI2CHCR, temp & ~HI2C_ENABLE_TRANSACTION);

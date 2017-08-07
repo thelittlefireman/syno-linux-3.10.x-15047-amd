@@ -183,9 +183,6 @@ static inline u32 ethtool_rxfh_indir_default(u32 index, u32 n_rx_rings)
  * hold the RTNL lock.
  *
  * See the structures used by these operations for further documentation.
- * Note that for all operations using a structure ending with a zero-
- * length array, the array is allocated separately in the kernel and
- * is passed to the driver as an additional parameter.
  *
  * See &struct net_device and &struct net_device_ops for documentation
  * of the generic netdev features interface.
@@ -248,7 +245,6 @@ struct ethtool_ops {
 				     struct ethtool_eeprom *, u8 *);
 	int	(*get_eee)(struct net_device *, struct ethtool_eee *);
 	int	(*set_eee)(struct net_device *, struct ethtool_eee *);
-
 
 };
 #endif /* _LINUX_ETHTOOL_H */

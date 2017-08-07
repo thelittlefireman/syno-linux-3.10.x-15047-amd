@@ -33,15 +33,11 @@
 
 #include "../core.h"
 #include "../pci.h"
-#include "../base.h"
 #include "reg.h"
 #include "def.h"
 #include "phy.h"
-#include "../rtl8723com/phy_common.h"
 #include "dm.h"
 #include "hw.h"
-#include "fw.h"
-#include "../rtl8723com/fw_common.h"
 #include "sw.h"
 #include "trx.h"
 #include "led.h"
@@ -196,11 +192,6 @@ void rtl8723ae_deinit_sw_vars(struct ieee80211_hw *hw)
 	}
 }
 
-static bool is_fw_header(struct rtl92c_firmware_header *hdr)
-{
-	return (hdr->signature & 0xfff0) == 0x2300;
-}
-
 static struct rtl_hal_ops rtl8723ae_hal_ops = {
 	.init_sw_vars = rtl8723ae_init_sw_vars,
 	.deinit_sw_vars = rtl8723ae_deinit_sw_vars,
@@ -229,7 +220,7 @@ static struct rtl_hal_ops rtl8723ae_hal_ops = {
 	.set_bw_mode = rtl8723ae_phy_set_bw_mode,
 	.switch_channel = rtl8723ae_phy_sw_chnl,
 	.dm_watchdog = rtl8723ae_dm_watchdog,
-	.scan_operation_backup = rtl_phy_scan_operation_backup,
+	.scan_operation_backup = rtl8723ae_phy_scan_operation_backup,
 	.set_rf_power_state = rtl8723ae_phy_set_rf_power_state,
 	.led_control = rtl8723ae_led_control,
 	.set_desc = rtl8723ae_set_desc,
@@ -239,14 +230,13 @@ static struct rtl_hal_ops rtl8723ae_hal_ops = {
 	.set_key = rtl8723ae_set_key,
 	.init_sw_leds = rtl8723ae_init_sw_leds,
 	.allow_all_destaddr = rtl8723ae_allow_all_destaddr,
-	.get_bbreg = rtl8723_phy_query_bb_reg,
-	.set_bbreg = rtl8723_phy_set_bb_reg,
+	.get_bbreg = rtl8723ae_phy_query_bb_reg,
+	.set_bbreg = rtl8723ae_phy_set_bb_reg,
 	.get_rfreg = rtl8723ae_phy_query_rf_reg,
 	.set_rfreg = rtl8723ae_phy_set_rf_reg,
 	.c2h_command_handle = rtl_8723e_c2h_command_handle,
 	.bt_wifi_media_status_notify = rtl_8723e_bt_wifi_media_status_notify,
 	.bt_coex_off_before_lps = rtl8723ae_bt_coex_off_before_lps,
-	.is_fw_header = is_fw_header,
 };
 
 static struct rtl_mod_params rtl8723ae_mod_params = {
@@ -332,7 +322,6 @@ static struct rtl_hal_cfg rtl8723ae_hal_cfg = {
 	.maps[RTL_IBSS_INT_MASKS] = (PHIMR_BCNDMAINT0 |
 				     PHIMR_TXBCNOK | PHIMR_TXBCNERR),
 	.maps[RTL_IMR_C2HCMD] = PHIMR_C2HCMD,
-
 
 	.maps[RTL_RC_CCK_RATE1M] = DESC92_RATE1M,
 	.maps[RTL_RC_CCK_RATE2M] = DESC92_RATE2M,

@@ -129,7 +129,7 @@ static inline notrace unsigned long arch_local_irq_save(void)
 
 #define PARAVIRT_ADJUST_EXCEPTION_FRAME	/*  */
 
-#define INTERRUPT_RETURN	iretq
+#define INTERRUPT_RETURN	jmp native_iret
 #define USERGS_SYSRET64				\
 	swapgs;					\
 	sysretq;
@@ -146,7 +146,6 @@ static inline notrace unsigned long arch_local_irq_save(void)
 #define ENABLE_INTERRUPTS_SYSEXIT	sti; sysexit
 #define GET_CR0_INTO_EAX		movl %cr0, %eax
 #endif
-
 
 #endif /* __ASSEMBLY__ */
 #endif /* CONFIG_PARAVIRT */

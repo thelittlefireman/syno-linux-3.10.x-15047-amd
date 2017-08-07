@@ -26,7 +26,6 @@
 #define DRV_VERSION	"1.2"
 #define DRV_RELDATE	"11-Sep-2006"
 
-
 /* The user-configurable values.
    These may be modified when a driver module is loaded.*/
 static int debug = 1;			/* 1 normal messages, 0 quiet .. 7 verbose. */
@@ -55,7 +54,6 @@ static int flowctrl=1;
 */
 #define MAX_UNITS 8
 static char *media[MAX_UNITS];
-
 
 /* Operational parameters that are set at compile time. */
 
@@ -469,17 +467,6 @@ static void sundance_reset(struct net_device *dev, unsigned long reset_cmd)
 	}
 }
 
-#ifdef CONFIG_NET_POLL_CONTROLLER
-static void sundance_poll_controller(struct net_device *dev)
-{
-	struct netdev_private *np = netdev_priv(dev);
-
-	disable_irq(np->pci_dev->irq);
-	intr_handler(np->pci_dev->irq, dev);
-	enable_irq(np->pci_dev->irq);
-}
-#endif
-
 static const struct net_device_ops netdev_ops = {
 	.ndo_open		= netdev_open,
 	.ndo_stop		= netdev_close,
@@ -491,9 +478,6 @@ static const struct net_device_ops netdev_ops = {
 	.ndo_change_mtu		= change_mtu,
 	.ndo_set_mac_address 	= sundance_set_mac_addr,
 	.ndo_validate_addr	= eth_validate_addr,
-#ifdef CONFIG_NET_POLL_CONTROLLER
-	.ndo_poll_controller 	= sundance_poll_controller,
-#endif
 };
 
 static int sundance_probe1(struct pci_dev *pdev,
@@ -703,6 +687,7 @@ err_out_unmap_tx:
 	dma_free_coherent(&pdev->dev, TX_TOTAL_SIZE,
 		np->tx_ring, np->tx_ring_dma);
 err_out_cleardev:
+	pci_set_drvdata(pdev, NULL);
 	pci_iounmap(pdev, ioaddr);
 err_out_res:
 	pci_release_regions(pdev);
@@ -1020,7 +1005,6 @@ static void tx_timeout(struct net_device *dev)
 	tasklet_enable(&np->tx_tasklet);
 }
 
-
 /* Initialize the Rx and Tx rings, along with various 'dev' bits. */
 static void init_ring(struct net_device *dev)
 {
@@ -1137,7 +1121,7 @@ start_tx (struct sk_buff *skb, struct net_device *dev)
 	return NETDEV_TX_OK;
 
 drop_frame:
-	dev_kfree_skb_any(skb);
+	dev_kfree_skb(skb);
 	np->tx_skbuff[entry] = NULL;
 	dev->stats.tx_dropped++;
 	return NETDEV_TX_OK;
@@ -1192,7 +1176,6 @@ static irqreturn_t intr_handler(int irq, void *dev_instance)
 	int tx_status;
 	int handled = 0;
 	int i;
-
 
 	do {
 		int intr_status = ioread16(ioaddr + IntrStatus);
@@ -1940,6 +1923,7 @@ static void sundance_remove1(struct pci_dev *pdev)
 	    pci_iounmap(pdev, np->base);
 	    pci_release_regions(pdev);
 	    free_netdev(dev);
+	    pci_set_drvdata(pdev, NULL);
 	}
 }
 
@@ -2023,5 +2007,3 @@ static void __exit sundance_exit(void)
 
 module_init(sundance_init);
 module_exit(sundance_exit);
-
-

@@ -36,7 +36,6 @@
 #include "b43.h"
 #include "main.h"
 
-
 int b43_phy_allocate(struct b43_wldev *dev)
 {
 	struct b43_phy *phy = &(dev->phy);
@@ -133,9 +132,9 @@ void b43_phy_exit(struct b43_wldev *dev)
 bool b43_has_hardware_pctl(struct b43_wldev *dev)
 {
 	if (!dev->phy.hardware_power_control)
-		return false;
+		return 0;
 	if (!dev->phy.ops->supports_hwpctl)
-		return false;
+		return 0;
 	return dev->phy.ops->supports_hwpctl(dev);
 }
 
@@ -455,7 +454,6 @@ void b43_phyop_switch_analog_generic(struct b43_wldev *dev, bool on)
 {
 	b43_write16(dev, B43_MMIO_PHY0, on ? 0 : 0xF4);
 }
-
 
 bool b43_channel_type_is_40mhz(enum nl80211_channel_type channel_type)
 {

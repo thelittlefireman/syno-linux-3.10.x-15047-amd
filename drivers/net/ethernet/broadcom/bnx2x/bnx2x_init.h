@@ -41,7 +41,6 @@ enum {
 #define BLOCK_OPS_IDX(block, stage, end) \
 	(2*(((block)*NUM_OF_INIT_PHASES) + (stage)) + (end))
 
-
 /* structs for the various opcodes */
 struct raw_op {
 	u32 op:8;
@@ -85,7 +84,6 @@ struct op_if_mode {
 	u32 mode_bit_map;
 };
 
-
 union init_op {
 	struct op_read		read;
 	struct op_write		write;
@@ -94,7 +92,6 @@ union init_op {
 	struct raw_op		raw;
 	struct op_if_mode	if_mode;
 };
-
 
 /* Init Phases */
 enum {
@@ -200,7 +197,6 @@ enum {
 #define BNX2X_PF_Q_NUM(q_num, port, vnic)\
 	((((port) << 1) | (vnic)) * 16 + (q_num))
 
-
 /* Maps the specified queue to the specified COS */
 static inline void bnx2x_map_q_cos(struct bnx2x *bp, u32 q_num, u32 new_cos)
 {
@@ -277,7 +273,6 @@ static inline void bnx2x_dcb_config_qm(struct bnx2x *bp, enum cos_mode mode,
 	}
 }
 
-
 /* congestion managment port init api description
  * the api works as follows:
  * the driver should pass the cmng_init_input struct, the port_init function
@@ -327,7 +322,6 @@ static inline void bnx2x_dcb_config_qm(struct bnx2x *bp, enum cos_mode mode,
 #define SAFC_TIMEOUT_USEC 52
 
 #define SDM_TICKS 4
-
 
 static inline void bnx2x_init_max(const struct cmng_init_input *input_data,
 				  u32 r_param, struct cmng_init *ram_data)
@@ -484,12 +478,9 @@ static inline void bnx2x_init_cmng(const struct cmng_init_input *input_data,
 	bnx2x_init_safc(input_data, ram_data);
 }
 
-
-
 /* Returns the index of start or end of a specific block stage in ops array */
 #define BLOCK_OPS_IDX(block, stage, end) \
 			(2*(((block)*NUM_OF_INIT_PHASES) + (stage)) + (end))
-
 
 #define INITOP_SET		0	/* set the HW directly */
 #define INITOP_CLEAR		1	/* clear the HW directly */
@@ -634,41 +625,28 @@ static const struct {
 	BLOCK_PRTY_INFO_1(XSEM, 0, 0x3, 0x1f, 0x3f, 0x3f),
 };
 
-
 /* [28] MCP Latched rom_parity
  * [29] MCP Latched ump_rx_parity
  * [30] MCP Latched ump_tx_parity
  * [31] MCP Latched scpad_parity
  */
-#define MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS	\
+#define MISC_AEU_ENABLE_MCP_PRTY_BITS	\
 	(AEU_INPUTS_ATTN_BITS_MCP_LATCHED_ROM_PARITY | \
 	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_RX_PARITY | \
-	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_TX_PARITY)
-
-#define MISC_AEU_ENABLE_MCP_PRTY_BITS	\
-	(MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS | \
+	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_UMP_TX_PARITY | \
 	 AEU_INPUTS_ATTN_BITS_MCP_LATCHED_SCPAD_PARITY)
 
 /* Below registers control the MCP parity attention output. When
  * MISC_AEU_ENABLE_MCP_PRTY_BITS are set - attentions are
  * enabled, when cleared - disabled.
  */
-static const struct {
-	u32 addr;
-	u32 bits;
-} mcp_attn_ctl_regs[] = {
-	{ MISC_REG_AEU_ENABLE4_FUNC_0_OUT_0,
-		MISC_AEU_ENABLE_MCP_PRTY_BITS },
-	{ MISC_REG_AEU_ENABLE4_NIG_0,
-		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
-	{ MISC_REG_AEU_ENABLE4_PXP_0,
-		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
-	{ MISC_REG_AEU_ENABLE4_FUNC_1_OUT_0,
-		MISC_AEU_ENABLE_MCP_PRTY_BITS },
-	{ MISC_REG_AEU_ENABLE4_NIG_1,
-		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS },
-	{ MISC_REG_AEU_ENABLE4_PXP_1,
-		MISC_AEU_ENABLE_MCP_PRTY_SUB_BITS }
+static const u32 mcp_attn_ctl_regs[] = {
+	MISC_REG_AEU_ENABLE4_FUNC_0_OUT_0,
+	MISC_REG_AEU_ENABLE4_NIG_0,
+	MISC_REG_AEU_ENABLE4_PXP_0,
+	MISC_REG_AEU_ENABLE4_FUNC_1_OUT_0,
+	MISC_REG_AEU_ENABLE4_NIG_1,
+	MISC_REG_AEU_ENABLE4_PXP_1
 };
 
 static inline void bnx2x_set_mcp_parity(struct bnx2x *bp, u8 enable)
@@ -677,14 +655,14 @@ static inline void bnx2x_set_mcp_parity(struct bnx2x *bp, u8 enable)
 	u32 reg_val;
 
 	for (i = 0; i < ARRAY_SIZE(mcp_attn_ctl_regs); i++) {
-		reg_val = REG_RD(bp, mcp_attn_ctl_regs[i].addr);
+		reg_val = REG_RD(bp, mcp_attn_ctl_regs[i]);
 
 		if (enable)
-			reg_val |= mcp_attn_ctl_regs[i].bits;
+			reg_val |= MISC_AEU_ENABLE_MCP_PRTY_BITS;
 		else
-			reg_val &= ~mcp_attn_ctl_regs[i].bits;
+			reg_val &= ~MISC_AEU_ENABLE_MCP_PRTY_BITS;
 
-		REG_WR(bp, mcp_attn_ctl_regs[i].addr, reg_val);
+		REG_WR(bp, mcp_attn_ctl_regs[i], reg_val);
 	}
 }
 
@@ -781,6 +759,4 @@ static inline void bnx2x_enable_blocks_parity(struct bnx2x *bp)
 	bnx2x_set_mcp_parity(bp, true);
 }
 
-
 #endif /* BNX2X_INIT_H */
-

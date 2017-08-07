@@ -23,7 +23,6 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/module.h>
-#include <linux/of.h>
 
 #define BH1780_REG_CONTROL	0x80
 #define BH1780_REG_PARTID	0x8A
@@ -108,7 +107,7 @@ static ssize_t bh1780_store_power_state(struct device *dev,
 	unsigned long val;
 	int error;
 
-	error = kstrtoul(buf, 0, &val);
+	error = strict_strtoul(buf, 0, &val);
 	if (error)
 		return error;
 
@@ -245,15 +244,6 @@ static const struct i2c_device_id bh1780_id[] = {
 	{ },
 };
 
-#ifdef CONFIG_OF
-static const struct of_device_id of_bh1780_match[] = {
-	{ .compatible = "rohm,bh1780gli", },
-	{},
-};
-
-MODULE_DEVICE_TABLE(of, of_bh1780_match);
-#endif
-
 static struct i2c_driver bh1780_driver = {
 	.probe		= bh1780_probe,
 	.remove		= bh1780_remove,
@@ -261,7 +251,6 @@ static struct i2c_driver bh1780_driver = {
 	.driver = {
 		.name = "bh1780",
 		.pm	= &bh1780_pm,
-		.of_match_table = of_match_ptr(of_bh1780_match),
 	},
 };
 

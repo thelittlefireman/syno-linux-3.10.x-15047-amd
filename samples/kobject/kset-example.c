@@ -23,7 +23,6 @@
  * read out of it.
  */
 
-
 /*
  * This is our "object" that we will create a few of and register them with
  * sysfs.
@@ -262,7 +261,6 @@ baz_error:
 bar_error:
 	destroy_foo_obj(foo_obj);
 foo_error:
-	kset_unregister(example_kset);
 	return -EINVAL;
 }
 
